@@ -221,10 +221,3 @@ Make sure to use a production-ready PostgreSQL database:
 - **Twilio**: [twilio.com/docs](https://www.twilio.com/docs)
 - **Stripe**: [stripe.com/docs](https://stripe.com/docs)
 
-## License
-
-MIT License - feel free to use this project for your own purposes.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
