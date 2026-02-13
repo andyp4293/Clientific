@@ -11,7 +11,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -25,16 +24,41 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError(result.error);
+        // Convert technical errors to user-friendly messages
+        const userFriendlyError = getFriendlyErrorMessage(result.error);
+        setError(userFriendlyError);
       } else {
         router.push('/dashboard');
         router.refresh();
       }
     } catch (err) {
-      setError('An error occurred. Please try again.');
+      setError('Unable to connect to the server. Please try again later.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const getFriendlyErrorMessage = (error: string): string => {
+    // Database connection errors
+    if (error.includes('database') || error.includes('prisma') || error.includes('ECONNREFUSED')) {
+      return 'Service temporarily unavailable. Please try again in a few moments.';
+    }
+    
+    // Authentication errors
+    if (error.includes('No account found')) {
+      return 'No account found with this email address.';
+    }
+    
+    if (error.includes('Incorrect password')) {
+      return 'Incorrect password. Please try again.';
+    }
+    
+    if (error.includes('Invalid credentials')) {
+      return 'Invalid email or password.';
+    }
+    
+    // Default friendly message
+    return 'Login failed. Please check your credentials and try again.';
   };
 
   return (

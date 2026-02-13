@@ -130,7 +130,6 @@ function RegisterForm() {
   const prevStep = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 1) as Step);
   };
-
   const handleSubmit = async () => {
     setIsLoading(true);
     setError('');
@@ -145,7 +144,8 @@ function RegisterForm() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Registration failed');
+        const friendlyError = getFriendlyRegistrationError(data.error || 'Registration failed');
+        throw new Error(friendlyError);
       }
 
       // Auto-login after registration
@@ -162,6 +162,26 @@ function RegisterForm() {
       setError(err.message);
       setIsLoading(false);
     }
+  };
+
+  const getFriendlyRegistrationError = (error: string): string => {
+    // Database connection errors
+    if (error.includes('database') || error.includes('prisma') || error.includes('ECONNREFUSED')) {
+      return 'Service temporarily unavailable. Please try again in a few moments.';
+    }
+    
+    // Duplicate email
+    if (error.includes('already exists') || error.includes('duplicate') || error.includes('unique constraint')) {
+      return 'An account with this email already exists. Please log in instead.';
+    }
+    
+    // Missing fields
+    if (error.includes('required') || error.includes('Missing')) {
+      return 'Please fill in all required fields.';
+    }
+    
+    // Default friendly message
+    return 'Unable to create account. Please check your information and try again.';
   };
 
   return (
