@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -386,19 +387,23 @@ function RegisterForm() {
               <h2 className="text-2xl font-bold mb-6">Business Location</h2>
               <p className="text-sm text-gray-600 mb-4">
                 This information will be shown to customers booking appointments.
-              </p>
-
-              <div>
+              </p>              <div>
                 <label htmlFor="street" className="label">
                   Street Address
                 </label>
-                <input
-                  id="street"
-                  type="text"
-                  value={formData.street}
-                  onChange={(e) => updateFormData({ street: e.target.value })}
+                <AddressAutocomplete
+                  defaultValue={formData.street}
+                  placeholder="Start typing your business address..."
                   className="input"
-                  placeholder="123 Main Street"
+                  onAddressSelect={(address) => {
+                    updateFormData({
+                      street: address.street,
+                      city: address.city,
+                      state: address.state,
+                      zipCode: address.zipCode,
+                      country: address.country,
+                    });
+                  }}
                 />
               </div>
 
