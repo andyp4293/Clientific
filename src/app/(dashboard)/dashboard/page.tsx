@@ -5,6 +5,9 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { startOfMonth, startOfWeek, startOfToday, subDays } from 'date-fns';
 
+// Enable Next.js ISR with 60 second revalidation
+export const revalidate = 60;
+
 async function getDashboardStats(businessId: string) {
   const today = startOfToday();
   const thisWeekStart = startOfWeek(new Date());
@@ -39,14 +42,13 @@ async function getDashboardStats(businessId: string) {
       checkInTime: { gte: thisWeekStart },
     },
   });
-
   // Average review rating
   const reviews = await prisma.review.findMany({
     where: { businessId },
     select: { rating: true },
   });
   const avgRating = reviews.length > 0
-    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+    ? reviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0) / reviews.length
     : 0;
 
   // Total reviews
@@ -122,11 +124,10 @@ async function getDashboardStats(businessId: string) {
     totalCustomers,
     newCustomersThisMonth,
     checkInsToday,
-    checkInsThisWeek,
-    avgRating: avgRating.toFixed(1),
+    checkInsThisWeek,    avgRating: avgRating.toFixed(1),
     totalReviews,
     pointsThisMonth: pointsThisMonth._sum.amount || 0,
-    segments: segments.reduce((acc, s) => {
+    segments: segments.reduce((acc: Record<string, number>, s: any) => {
       acc[s.segment] = s._count;
       return acc;
     }, {} as Record<string, number>),
@@ -248,10 +249,9 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Customer Segments */}
         <div className="card p-6">
-          <h2 className="text-lg font-semibold mb-4">Customer Segments</h2>
-          {Object.keys(stats.segments).length > 0 ? (
+          <h2 className="text-lg font-semibold mb-4">Customer Segments</h2>          {Object.keys(stats.segments).length > 0 ? (
             <div className="space-y-3">
-              {Object.entries(stats.segments).map(([segment, count]) => {
+              {Object.entries(stats.segments).map(([segment, count]: [string, number]) => {
                 const colors: Record<string, string> = {
                   NEW: 'bg-blue-100 text-blue-800',
                   REGULAR: 'bg-green-100 text-green-800',
@@ -276,10 +276,9 @@ export default async function DashboardPage() {
 
         {/* Upcoming Appointments */}
         <div className="card p-6">
-          <h2 className="text-lg font-semibold mb-4">Today's Appointments</h2>
-          {stats.upcomingAppointments.length > 0 ? (
+          <h2 className="text-lg font-semibold mb-4">Today's Appointments</h2>          {stats.upcomingAppointments.length > 0 ? (
             <div className="space-y-3">
-              {stats.upcomingAppointments.map((apt) => (
+              {stats.upcomingAppointments.map((apt: any) => (
                 <div key={apt.id} className="flex items-start justify-between border-b border-gray-100 pb-3 last:border-0">                          <div>
                             <p className="font-medium text-gray-900">
                               {apt.customer.name}
@@ -301,10 +300,9 @@ export default async function DashboardPage() {
 
         {/* Recent Check-Ins */}
         <div className="card p-6">
-          <h2 className="text-lg font-semibold mb-4">Recent Check-Ins</h2>
-          {stats.recentCheckIns.length > 0 ? (
+          <h2 className="text-lg font-semibold mb-4">Recent Check-Ins</h2>          {stats.recentCheckIns.length > 0 ? (
             <div className="space-y-3">
-              {stats.recentCheckIns.map((checkin) => (
+              {stats.recentCheckIns.map((checkin: any) => (
                 <div key={checkin.id} className="flex items-start justify-between border-b border-gray-100 pb-3 last:border-0">                          <div>
                             <p className="font-medium text-gray-900">
                               {checkin.customer.name}
@@ -326,10 +324,9 @@ export default async function DashboardPage() {
 
         {/* Recent Reviews */}
         <div className="card p-6">
-          <h2 className="text-lg font-semibold mb-4">Recent Reviews</h2>
-          {stats.recentReviews.length > 0 ? (
+          <h2 className="text-lg font-semibold mb-4">Recent Reviews</h2>          {stats.recentReviews.length > 0 ? (
             <div className="space-y-3">
-              {stats.recentReviews.map((review) => (
+              {stats.recentReviews.map((review: any) => (
                 <div key={review.id} className="border-b border-gray-100 pb-3 last:border-0">                  <div className="flex items-center justify-between mb-1">
                     <p className="font-medium text-gray-900">
                       {review.customer.name}
