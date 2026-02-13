@@ -1,10 +1,9 @@
 import Stripe from 'stripe';
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is not set');
-}
+// Use placeholder key if not set (for build purposes)
+const STRIPE_KEY = process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder_key_for_build';
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+export const stripe = new Stripe(STRIPE_KEY, {
   apiVersion: '2024-12-18.acacia' as any,
   typescript: true,
 });
