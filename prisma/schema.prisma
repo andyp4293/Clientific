@@ -1,0 +1,387 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Business {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Account
+  email        String   @unique
+  passwordHash String
+  
+  // Business Info
+  name         String
+  slug         String   @unique
+  businessType String   // Salon, Spa, Gym, Restaurant, Medical, Auto, Retail, Professional, Other
+  phone        String
+  businessEmail String?
+  
+  // Address
+  street       String?
+  city         String?
+  state        String?
+  zipCode      String?
+  country      String?
+  timezone     String   @default("America/New_York")
+  
+  // Branding
+  logoUrl      String?
+  
+  // Links
+  googleReviewUrl  String?
+  facebookPageUrl  String?
+  yelpUrl          String?
+  instagramUrl     String?
+  
+  // Subscription
+  subscriptionPlan   String   @default("trial") // trial, basic, pro, premium
+  subscriptionStatus String   @default("trialing") // trialing, active, past_due, canceled
+  trialEndsAt        DateTime?
+  stripeCustomerId   String?  @unique
+  stripeSubscriptionId String? @unique
+  
+  // Settings
+  enableOnlineBooking Boolean @default(true)
+  enableReviewRequests Boolean @default(true)
+  reviewRequestDelay  Int     @default(2) // hours after check-in
+  enableBirthdayCampaign Boolean @default(true)
+  pointsPerDollar    Float   @default(1.0)
+  pointsPerVisit     Int     @default(10)
+  referralBonusPoints Int    @default(50)
+  
+  // Relations
+  customers     Customer[]
+  checkIns      CheckIn[]
+  reviews       Review[]
+  appointments  Appointment[]
+  services      Service[]
+  staff         Staff[]
+  rewards       Reward[]
+  campaigns     Campaign[]
+  notifications Notification[]
+  businessHours BusinessHours[]
+}
+
+model BusinessHours {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  dayOfWeek  Int      // 0 = Sunday, 6 = Saturday
+  isOpen     Boolean  @default(true)
+  openTime   String?  // "09:00"
+  closeTime  String?  // "17:00"
+  
+  @@unique([businessId, dayOfWeek])
+}
+
+model Customer {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  // Personal Info
+  name       String
+  phone      String?
+  email      String?
+  birthday   DateTime?
+  
+  // Segmentation (auto-calculated)
+  segment    String   @default("NEW") // NEW, REGULAR, VIP, AT_RISK, CHURNED
+  
+  // Stats
+  totalSpent  Float   @default(0)
+  lastVisit   DateTime?
+  
+  // Loyalty
+  points Int @default(0)
+  
+  // Marketing
+  optedInMarketing Boolean @default(true)
+  optedOutAt       DateTime?
+  
+  // Internal notes
+  notes      String?
+  
+  // Relations
+  checkIns      CheckIn[]
+  reviews       Review[]
+  appointments  Appointment[]
+  pointsTransactions PointsTransaction[]
+  redemptions   Redemption[]
+  
+  @@index([businessId, segment])
+  @@index([businessId, lastVisit])
+}
+
+model CheckIn {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  serviceId  String?
+  service    Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  
+  staffId    String?
+  staff      Staff?   @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  
+  // Check-in details
+  checkInTime  DateTime @default(now())
+  amountSpent  Float?
+  pointsEarned Int      @default(0)
+  
+  // Review request tracking
+  feedbackRequested Boolean @default(false)
+  feedbackRequestedAt DateTime?
+  
+  @@index([businessId, checkInTime])
+  @@index([customerId, checkInTime])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  // Review data
+  rating     Int      // 1-5
+  comment    String?
+  sentiment  String   @default("neutral") // positive, neutral, negative
+  platform   String   @default("private") // private, google, facebook
+  
+  // Response
+  response   String?
+  respondedAt DateTime?
+  
+  // Status
+  status     String   @default("pending") // pending, responded, published, hidden
+  
+  // Token for public review submission
+  token      String   @unique
+  
+  @@index([businessId, rating])
+  @@index([businessId, createdAt])
+}
+
+model Appointment {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  serviceId  String?
+  service    Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  
+  staffId    String?
+  staff      Staff?   @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  
+  // Appointment details
+  startTime    DateTime
+  endTime      DateTime
+  duration     Int      // minutes
+  notes        String?
+  
+  // Status
+  status       String   @default("scheduled") // scheduled, confirmed, completed, cancelled, no_show
+  
+  // Notifications
+  confirmationSent Boolean @default(false)
+  reminderSent     Boolean @default(false)
+  
+  @@index([businessId, startTime])
+  @@index([customerId, startTime])
+}
+
+model Service {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  name        String
+  description String?
+  duration    Int      // minutes
+  price       Float?
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  
+  // Relations
+  checkIns     CheckIn[]
+  appointments Appointment[]
+  
+  @@index([businessId, active])
+}
+
+model Staff {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  fullName   String
+  email      String?
+  phone      String?
+  role       String   @default("staff") // staff, admin
+  active     Boolean  @default(true)
+  
+  // Relations
+  checkIns     CheckIn[]
+  appointments Appointment[]
+}
+
+model Reward {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  name         String
+  description  String
+  pointsCost   Int
+  rewardType   String   // discount_percent, discount_dollar, free_service, free_item
+  rewardValue  Float?   // value depends on type
+  active       Boolean  @default(true)
+  expirationDays Int?   // days until redemption expires
+  
+  // Relations
+  redemptions  Redemption[]
+  
+  @@index([businessId, active])
+}
+
+model Redemption {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  rewardId   String
+  reward     Reward   @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  
+  pointsSpent Int
+  code       String   @unique // redemption code
+  used       Boolean  @default(false)
+  usedAt     DateTime?
+  expiresAt  DateTime?
+  
+  @@index([customerId, createdAt])
+}
+
+model PointsTransaction {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  amount     Int      // positive for earning, negative for spending
+  description String
+  balanceAfter Int
+  
+  @@index([customerId, createdAt])
+}
+
+model Campaign {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  name       String
+  type       String   // promotional, birthday, re_engagement, announcement
+  message    String
+  
+  // Targeting
+  targetSegments String[] // ["NEW", "REGULAR"] or ["ALL"]
+  
+  // Schedule
+  status     String   @default("draft") // draft, scheduled, sent
+  scheduledFor DateTime?
+  sentAt     DateTime?
+  
+  // Stats
+  recipientCount Int @default(0)
+  sentCount      Int @default(0)
+  deliveredCount Int @default(0)
+  failedCount    Int @default(0)
+  
+  @@index([businessId, status])
+}
+
+model SmsLog {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  
+  businessId String
+  
+  toPhone    String
+  message    String
+  messageType String  // review_request, appointment_confirmation, appointment_reminder, campaign, manual
+  
+  status     String   @default("sent") // sent, delivered, failed
+  errorMessage String?
+  
+  twilioSid  String?  @unique
+  
+  @@index([businessId, createdAt])
+  @@index([toPhone])
+}
+
+model Notification {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  type       String   // new_review, negative_review, new_appointment, appointment_cancelled, payment_success, payment_failed, trial_expiring
+  title      String
+  message    String
+  link       String?
+  
+  read       Boolean  @default(false)
+  readAt     DateTime?
+  
+  @@index([businessId, read, createdAt])
+}
+
