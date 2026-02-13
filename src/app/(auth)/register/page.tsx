@@ -137,15 +137,43 @@ function RegisterForm() {
       default:
         return true;
     }
-  };
-  const nextStep = () => {
+  };  const nextStep = async () => {
     if (validateStep(currentStep)) {
+      // Check email availability before moving from step 1
+      if (currentStep === 1) {
+        setIsLoading(true);
+        const emailAvailable = await checkEmailAvailability(formData.email);
+        setIsLoading(false);
+        
+        if (!emailAvailable) {
+          setError('An account with this email already exists. Please log in instead.');
+          return;
+        }
+      }
+      
       // If moving from step 3 to step 4, create the account first
       if (currentStep === 3) {
         handleSubmit();
       } else {
         setCurrentStep((prev) => Math.min(prev + 1, 4) as Step);
       }
+    }
+  };
+
+  const checkEmailAvailability = async (email: string): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/auth/check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.toLowerCase() }),
+      });
+      
+      const data = await response.json();
+      return data.available;
+    } catch (err) {
+      // On error, allow user to proceed (fail gracefully)
+      console.error('Email check failed:', err);
+      return true;
     }
   };
 
