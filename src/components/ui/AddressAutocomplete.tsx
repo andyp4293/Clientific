@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Loader } from '@googlemaps/js-api-loader';
+import { useState, useEffect, useRef } from 'react';
 
 interface AddressComponents {
   street: string;
@@ -18,115 +17,149 @@ interface AddressAutocompleteProps {
   placeholder?: string;
 }
 
+interface MapboxFeature {
+  place_name: string;
+  text: string;
+  context?: Array<{
+    id: string;
+    text: string;
+  }>;
+  address?: string;
+}
+
 export default function AddressAutocomplete({
   onAddressSelect,
   defaultValue = '',
   className = '',
   placeholder = 'Start typing your address...',
-}: AddressAutocompleteProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [inputValue, setInputValue] = useState(defaultValue);
-  const [isLoaded, setIsLoaded] = useState(false);
+}: AddressAutocompleteProps) {  const [inputValue, setInputValue] = useState(defaultValue);
+  const [suggestions, setSuggestions] = useState<MapboxFeature[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
+  const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+
+  // Close dropdown when clicking outside
   useEffect(() => {
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-    // If no API key, just use regular input
-    if (!apiKey) {
-      console.warn('Google Maps API key not found. Address autocomplete disabled.');
+  const fetchSuggestions = async (query: string) => {
+    if (!query || query.length < 3 || !MAPBOX_TOKEN) {
+      setSuggestions([]);
       return;
     }
 
-    const loader = new Loader({
-      apiKey,
-      version: 'weekly',
-      libraries: ['places'],
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&types=address&autocomplete=true&limit=5&country=us,ca`
+      );
+      
+      const data = await response.json();
+      setSuggestions(data.features || []);
+      setIsOpen(true);
+    } catch (error) {
+      console.error('Mapbox API error:', error);
+      setSuggestions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInputChange = (value: string) => {
+    setInputValue(value);
+
+    // Debounce API calls
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    debounceRef.current = setTimeout(() => {
+      fetchSuggestions(value);
+    }, 300);
+  };
+
+  const handleSelectAddress = (feature: MapboxFeature) => {
+    setInputValue(feature.place_name);
+    setIsOpen(false);
+
+    // Parse address components from Mapbox response
+    let street = '';
+    let city = '';
+    let state = '';
+    let zipCode = '';
+    let country = '';
+
+    // Street number + street name
+    if (feature.address && feature.text) {
+      street = `${feature.address} ${feature.text}`;
+    } else if (feature.text) {
+      street = feature.text;
+    }
+
+    // Parse context for other components
+    feature.context?.forEach((item) => {
+      if (item.id.startsWith('place')) {
+        city = item.text;
+      } else if (item.id.startsWith('region')) {
+        state = item.text;
+      } else if (item.id.startsWith('postcode')) {
+        zipCode = item.text;
+      } else if (item.id.startsWith('country')) {
+        country = item.text;
+      }
     });
 
-    loader
-      .load()
-      .then(() => {
-        setIsLoaded(true);
-        if (inputRef.current && window.google) {
-          const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-            types: ['address'],
-            componentRestrictions: { country: ['us', 'ca'] }, // US and Canada
-            fields: ['address_components', 'formatted_address'],
-          });
-
-          autocomplete.addListener('place_changed', () => {
-            const place = autocomplete.getPlace();
-
-            if (!place.address_components) {
-              return;
-            }
-
-            const addressComponents: AddressComponents = {
-              street: '',
-              city: '',
-              state: '',
-              zipCode: '',
-              country: '',
-            };
-
-            let streetNumber = '';
-            let route = '';
-
-            place.address_components.forEach((component) => {
-              const types = component.types;
-
-              if (types.includes('street_number')) {
-                streetNumber = component.long_name;
-              } else if (types.includes('route')) {
-                route = component.long_name;
-              } else if (types.includes('locality')) {
-                addressComponents.city = component.long_name;
-              } else if (types.includes('administrative_area_level_1')) {
-                addressComponents.state = component.short_name;
-              } else if (types.includes('postal_code')) {
-                addressComponents.zipCode = component.long_name;
-              } else if (types.includes('country')) {
-                addressComponents.country = component.long_name;
-              }
-            });
-
-            // Combine street number and route
-            addressComponents.street = `${streetNumber} ${route}`.trim();
-
-            // Update input value
-            setInputValue(addressComponents.street);
-
-            // Call parent callback
-            onAddressSelect(addressComponents);
-          });
-        }
-      })
-      .catch((error) => {
-        console.error('Error loading Google Maps API:', error);
-      });
-  }, [onAddressSelect]);
+    onAddressSelect({ street, city, state, zipCode, country });
+  };
 
   return (
-    <div className="relative">
+    <div ref={wrapperRef} className="relative">
       <input
-        ref={inputRef}
         type="text"
         value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
-        className={className}
+        onChange={(e) => handleInputChange(e.target.value)}
+        onFocus={() => inputValue.length >= 3 && setIsOpen(true)}
+        className={className || 'input'}
         placeholder={placeholder}
         autoComplete="off"
       />
-      {isLoaded && (
+      
+      {isLoading && (
         <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-          <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-              clipRule="evenodd"
-            />
-          </svg>
+          <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
         </div>
+      )}
+
+      {isOpen && suggestions.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+          {suggestions.map((feature, index) => (
+            <button
+              key={index}
+              type="button"
+              onClick={() => handleSelectAddress(feature)}
+              className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none transition-colors"
+            >
+              <div className="text-sm text-gray-900">{feature.place_name}</div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {!MAPBOX_TOKEN && (
+        <p className="text-xs text-red-500 mt-1">
+          Mapbox token not configured. Address autocomplete is disabled.
+        </p>
       )}
     </div>
   );
