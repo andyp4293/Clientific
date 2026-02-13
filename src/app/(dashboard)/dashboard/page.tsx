@@ -224,24 +224,22 @@ export default async function DashboardPage() {
           <p className="text-3xl font-bold text-gray-900">{stats.pointsThisMonth}</p>
           <p className="text-sm text-gray-500 mt-1">This month</p>
         </div>
-      </div>
-
-      {/* Quick Actions */}
+      </div>      {/* Quick Actions */}
       <div className="card p-6">
         <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <button className="btn-primary">
+          <Link href="/dashboard/checkins" className="btn-primary text-center">
             Check In Customer
-          </button>
-          <button className="btn-outline">
+          </Link>
+          <Link href="/dashboard/customers" className="btn-outline text-center">
             Add Customer
-          </button>
-          <button className="btn-outline">
+          </Link>
+          <Link href="/dashboard/appointments" className="btn-outline text-center">
             View Appointments
-          </button>
-          <button className="btn-outline">
+          </Link>
+          <Link href="/dashboard/campaigns" className="btn-outline text-center">
             Send Campaign
-          </button>
+          </Link>
         </div>
       </div>
 
