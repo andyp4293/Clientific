@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -31,7 +31,7 @@ interface FormData {
   plan: string;
 }
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const defaultPlan = searchParams.get('plan') || 'pro';
@@ -537,9 +537,7 @@ export default function RegisterPage() {
               </button>
             </div>
           )}
-        </div>
-
-        {/* Login Link */}
+        </div>        {/* Login Link */}
         <div className="text-center mt-6 text-sm text-gray-600">
           Already have an account?{' '}
           <Link href="/login" className="text-primary hover:text-primary-700 font-medium">
@@ -548,5 +546,13 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <RegisterForm />
+    </Suspense>
   );
 }

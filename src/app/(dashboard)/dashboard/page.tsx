@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { startOfMonth, startOfWeek, startOfToday, subDays } from 'date-fns';
 
 async function getDashboardStats(businessId: string) {
