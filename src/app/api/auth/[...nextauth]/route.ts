@@ -13,7 +13,7 @@ export const authOptions: NextAuthOptions = {
       },      async authorize(credentials) {
         try {
           if (!credentials?.email || !credentials?.password) {
-            throw new Error('Invalid credentials');
+            throw new Error('Please enter your email and password');
           }
 
           const business = await prisma.business.findUnique({
@@ -21,13 +21,13 @@ export const authOptions: NextAuthOptions = {
           });
 
           if (!business) {
-            throw new Error('No account found with this email');
+            throw new Error('Email or password is incorrect');
           }
 
           const isValid = await verifyPassword(credentials.password, business.passwordHash);
 
           if (!isValid) {
-            throw new Error('Incorrect password');
+            throw new Error('Email or password is incorrect');
           }
 
           return {
