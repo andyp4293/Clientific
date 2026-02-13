@@ -32,14 +32,21 @@ export default function AddressAutocomplete({
   defaultValue = '',
   className = '',
   placeholder = 'Start typing your address...',
-}: AddressAutocompleteProps) {  const [inputValue, setInputValue] = useState(defaultValue);
+}: AddressAutocompleteProps) {
+  const [inputValue, setInputValue] = useState(defaultValue);
   const [suggestions, setSuggestions] = useState<MapboxFeature[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+
+  // Handle client-side mounting
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -147,10 +154,9 @@ export default function AddressAutocomplete({
               <div className="text-sm text-gray-900">{feature.place_name}</div>
             </button>
           ))}
-        </div>
-      )}
+        </div>      )}
 
-      {!MAPBOX_TOKEN && (
+      {isMounted && !MAPBOX_TOKEN && (
         <p className="text-xs text-red-500 mt-1">
           Mapbox token not configured. Address autocomplete is disabled.
         </p>

@@ -80,12 +80,13 @@ export function DashboardNav() {
           </div>
           <span className="text-xl font-bold text-gray-900">ClientFlow</span>
         </Link>
-      </div>
-
-      {/* Navigation */}
+      </div>      {/* Navigation */}
       <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
         {navigation.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+          // For Dashboard, only match exact path. For others, match path and subpaths
+          const isActive = item.href === '/dashboard' 
+            ? pathname === item.href 
+            : pathname === item.href || pathname.startsWith(item.href + '/');
           return (
             <Link
               key={item.name}

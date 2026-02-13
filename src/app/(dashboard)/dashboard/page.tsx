@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { startOfMonth, startOfWeek, startOfToday, subDays } from 'date-fns';
+import BookingLinkCard from '@/components/booking/BookingLinkCard';
 
 // Enable Next.js ISR with 60 second revalidation
 export const revalidate = 60;
@@ -244,6 +245,9 @@ export default async function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* Booking Link Card */}
+      <BookingLinkCard />
 
       {/* Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { DashboardNav } from '@/components/layout/DashboardNav';
 import { DashboardHeader } from '@/components/layout/DashboardHeader';
+import { SubscriptionBanner } from '@/components/billing/SubscriptionBanner';
 
 export default async function DashboardLayout({
   children,
@@ -25,10 +26,9 @@ export default async function DashboardLayout({
       {/* Desktop Sidebar */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <DashboardNav />
-      </div>
-
-      {/* Main Content */}
+      </div>      {/* Main Content */}
       <div className="lg:pl-64">
+        <SubscriptionBanner />
         <main className="py-6 px-4 sm:px-6 lg:px-8">
           {children}
         </main>

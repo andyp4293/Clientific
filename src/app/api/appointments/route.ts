@@ -1,0 +1,186 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]/route';
+import { prisma } from '@/lib/prisma';
+
+// GET - List appointments
+export async function GET(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const business = await prisma.business.findUnique({
+      where: { email: session.user.email },
+    });
+
+    if (!business) {
+      return NextResponse.json({ error: 'Business not found' }, { status: 404 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const date = searchParams.get('date');
+    const status = searchParams.get('status');
+    const customerId = searchParams.get('customerId');
+
+    const where: any = { businessId: business.id };
+
+    if (date) {
+      const selectedDate = new Date(date);
+      const startOfDay = new Date(selectedDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(selectedDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      where.startTime = {
+        gte: startOfDay,
+        lte: endOfDay,
+      };
+    }
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (customerId) {
+      where.customerId = customerId;
+    }
+
+    const appointments = await prisma.appointment.findMany({
+      where,
+      include: {
+        customer: true,
+        service: true,
+        staff: true,
+      },
+      orderBy: {
+        startTime: 'asc',
+      },
+    });
+
+    return NextResponse.json({ appointments });
+  } catch (error: any) {
+    console.error('Fetch appointments error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch appointments' },
+      { status: 500 }
+    );
+  }
+}
+
+// POST - Create appointment
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const business = await prisma.business.findUnique({
+      where: { email: session.user.email },
+    });
+
+    if (!business) {
+      return NextResponse.json({ error: 'Business not found' }, { status: 404 });
+    }
+
+    const {
+      customerId,
+      serviceId,
+      staffId,
+      startTime,
+      duration,
+      notes,
+    } = await req.json();
+
+    if (!customerId || !startTime || !duration) {
+      return NextResponse.json(
+        { error: 'Customer, start time, and duration are required' },
+        { status: 400 }
+      );
+    }
+
+    const start = new Date(startTime);
+    const end = new Date(start.getTime() + duration * 60000);
+
+    // Check for conflicts
+    const conflicts = await prisma.appointment.findMany({
+      where: {
+        businessId: business.id,
+        status: {
+          in: ['scheduled', 'confirmed'],
+        },
+        ...(staffId && { staffId }),
+        OR: [
+          {
+            AND: [
+              { startTime: { lte: start } },
+              { endTime: { gt: start } },
+            ],
+          },
+          {
+            AND: [
+              { startTime: { lt: end } },
+              { endTime: { gte: end } },
+            ],
+          },
+          {
+            AND: [
+              { startTime: { gte: start } },
+              { endTime: { lte: end } },
+            ],
+          },
+        ],
+      },
+    });
+
+    if (conflicts.length > 0) {
+      return NextResponse.json(
+        { error: 'Time slot is not available' },
+        { status: 409 }
+      );
+    }
+
+    const appointment = await prisma.appointment.create({
+      data: {
+        businessId: business.id,
+        customerId,
+        serviceId: serviceId || null,
+        staffId: staffId || null,
+        startTime: start,
+        endTime: end,
+        duration,
+        notes: notes || null,
+        status: 'scheduled',
+      },
+      include: {
+        customer: true,
+        service: true,
+        staff: true,
+      },
+    });
+
+    // Create notification
+    await prisma.notification.create({
+      data: {
+        businessId: business.id,
+        type: 'new_appointment',
+        title: 'New Appointment',
+        message: `New appointment scheduled with ${appointment.customer.name} for ${new Date(appointment.startTime).toLocaleString()}`,
+        link: `/dashboard/appointments`,
+      },
+    });
+
+    return NextResponse.json({ appointment }, { status: 201 });
+  } catch (error: any) {
+    console.error('Create appointment error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to create appointment' },
+      { status: 500 }
+    );
+  }
+}

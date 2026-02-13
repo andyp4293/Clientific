@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
@@ -36,10 +36,10 @@ function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const defaultPlan = searchParams.get('plan') || 'pro';
-
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [passwordFocused, setPasswordFocused] = useState(false);
   
   const [formData, setFormData] = useState<FormData>({
     email: '',
@@ -55,9 +55,16 @@ function RegisterForm() {
     state: '',
     zipCode: '',
     country: 'United States',
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timezone: '',
     plan: defaultPlan,
   });
+
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    }));
+  }, []);
 
   const businessTypes = [
     'Salon',
@@ -69,11 +76,17 @@ function RegisterForm() {
     'Retail',
     'Professional Services',
     'Other',
-  ];
-
-  const updateFormData = (updates: Partial<FormData>) => {
+  ];  const updateFormData = (updates: Partial<FormData>) => {
     setFormData(prev => ({ ...prev, ...updates }));
   };
+
+  // Password validation checks - memoized to recalculate when password changes
+  const passwordChecks = useMemo(() => ({
+    minLength: formData.password.length >= 8,
+    hasNumber: /[0-9]/.test(formData.password),
+    hasSpecialChar: /[!@#$%^&*]/.test(formData.password),
+    passwordsMatch: formData.password === formData.confirmPassword && formData.confirmPassword.length > 0,
+  }), [formData.password, formData.confirmPassword]);
 
   const validateStep = (step: Step): boolean => {
     setError('');
@@ -88,8 +101,12 @@ function RegisterForm() {
           setError('Password must be at least 8 characters');
           return false;
         }
-        if (!/(?=.*[0-9])(?=.*[!@#$%^&*])/.test(formData.password)) {
-          setError('Password must include a number and special character');
+        if (!/[0-9]/.test(formData.password)) {
+          setError('Password must include a number');
+          return false;
+        }
+        if (!/[!@#$%^&*]/.test(formData.password)) {
+          setError('Password must include a special character (!@#$%^&*)');
           return false;
         }
         if (formData.password !== formData.confirmPassword) {
@@ -121,17 +138,20 @@ function RegisterForm() {
         return true;
     }
   };
-
   const nextStep = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep((prev) => Math.min(prev + 1, 4) as Step);
+      // If moving from step 3 to step 4, create the account first
+      if (currentStep === 3) {
+        handleSubmit();
+      } else {
+        setCurrentStep((prev) => Math.min(prev + 1, 4) as Step);
+      }
     }
   };
 
   const prevStep = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 1) as Step);
-  };
-  const handleSubmit = async () => {
+  };  const handleSubmit = async () => {
     setIsLoading(true);
     setError('');
 
@@ -149,18 +169,38 @@ function RegisterForm() {
         throw new Error(friendlyError);
       }
 
+      // Account created successfully, move to step 4
+      setCurrentStep(4);
+      setIsLoading(false);
+    } catch (err: any) {
+      setError(err.message);
+      setIsLoading(false);
+      // Stay on step 3 so user can see the error
+    }
+  };
+
+  const handleDashboardRedirect = async () => {
+    setIsLoading(true);
+    
+    try {
       // Auto-login after registration
       const { signIn } = await import('next-auth/react');
-      await signIn('credentials', {
+      const result = await signIn('credentials', {
         email: formData.email,
         password: formData.password,
         redirect: false,
       });
 
+      if (result?.error) {
+        setError('Account created but login failed. Please try logging in manually.');
+        setIsLoading(false);
+        return;
+      }
+
       router.push('/dashboard');
       router.refresh();
     } catch (err: any) {
-      setError(err.message);
+      setError('Account created but login failed. Please try logging in manually.');
       setIsLoading(false);
     }
   };
@@ -257,9 +297,7 @@ function RegisterForm() {
                   placeholder="you@example.com"
                   required
                 />
-              </div>
-
-              <div>
+              </div>              <div>
                 <label htmlFor="password" className="label">
                   Password *
                 </label>
@@ -268,10 +306,53 @@ function RegisterForm() {
                   type="password"
                   value={formData.password}
                   onChange={(e) => updateFormData({ password: e.target.value })}
+                  onFocus={() => setPasswordFocused(true)}
                   className="input"
                   placeholder="Min. 8 characters with number & special character"
                   required
                 />
+                
+                {/* Password Requirements Checklist */}
+                {(passwordFocused || formData.password.length > 0) && (
+                  <div className="mt-3 space-y-2 text-sm">
+                    <div className={`flex items-center ${passwordChecks.minLength ? 'text-success' : 'text-gray-500'}`}>
+                      {passwordChecks.minLength ? (
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <circle cx="10" cy="10" r="3" />
+                        </svg>
+                      )}
+                      <span>At least 8 characters</span>
+                    </div>
+                    <div className={`flex items-center ${passwordChecks.hasNumber ? 'text-success' : 'text-gray-500'}`}>
+                      {passwordChecks.hasNumber ? (
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <circle cx="10" cy="10" r="3" />
+                        </svg>
+                      )}
+                      <span>Contains a number</span>
+                    </div>
+                    <div className={`flex items-center ${passwordChecks.hasSpecialChar ? 'text-success' : 'text-gray-500'}`}>
+                      {passwordChecks.hasSpecialChar ? (
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <circle cx="10" cy="10" r="3" />
+                        </svg>
+                      )}
+                      <span>Contains a special character (!@#$%^&*)</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -287,9 +368,28 @@ function RegisterForm() {
                   placeholder="Re-enter your password"
                   required
                 />
-              </div>
-
-              <div className="flex items-start">
+                
+                {/* Password Match Indicator */}
+                {formData.confirmPassword.length > 0 && (
+                  <div className={`mt-2 text-sm flex items-center ${passwordChecks.passwordsMatch ? 'text-success' : 'text-red-600'}`}>
+                    {passwordChecks.passwordsMatch ? (
+                      <>
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        <span>Passwords match</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                        <span>Passwords do not match</span>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>              <div className="flex items-start">
                 <input
                   id="acceptTerms"
                   type="checkbox"
@@ -299,13 +399,13 @@ function RegisterForm() {
                 />
                 <label htmlFor="acceptTerms" className="text-sm text-gray-600">
                   I accept the{' '}
-                  <a href="#" className="text-primary hover:underline">
+                  <Link href="/terms" target="_blank" className="text-primary hover:underline">
                     Terms of Service
-                  </a>{' '}
+                  </Link>{' '}
                   and{' '}
-                  <a href="#" className="text-primary hover:underline">
+                  <Link href="/privacy" target="_blank" className="text-primary hover:underline">
                     Privacy Policy
-                  </a>
+                  </Link>
                 </label>
               </div>
             </div>
@@ -527,38 +627,34 @@ function RegisterForm() {
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                     <span>Enable online booking for customers</span>
-                  </li>
-                  <li className="flex items-start">
+                  </li>                  <li className="flex items-start">
                     <svg className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                     <span>Configure automatic review requests</span>
                   </li>
                 </ul>
-              </div>
-
-              <button
-                onClick={handleSubmit}
+              </div>              <button
+                onClick={handleDashboardRedirect}
                 className="btn-primary px-8 py-3 text-lg"
                 disabled={isLoading}
               >
-                {isLoading ? 'Setting up your account...' : 'Go to Dashboard'}
+                {isLoading ? 'Logging you in...' : 'Go to Dashboard'}
               </button>
             </div>
           )}
 
           {/* Navigation Buttons */}
           {currentStep < 4 && (
-            <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
-              {currentStep > 1 ? (
-                <button onClick={prevStep} className="btn-secondary">
+            <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">              {currentStep > 1 ? (
+                <button onClick={prevStep} className="btn-secondary" disabled={isLoading}>
                   ← Previous
                 </button>
               ) : (
                 <div />
               )}
-              <button onClick={nextStep} className="btn-primary">
-                Next →
+              <button onClick={nextStep} className="btn-primary" disabled={isLoading}>
+                {isLoading && currentStep === 3 ? 'Creating account...' : 'Next →'}
               </button>
             </div>
           )}

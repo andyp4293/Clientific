@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Business {
@@ -43,12 +44,14 @@ model Business {
   yelpUrl          String?
   instagramUrl     String?
   
-  // Subscription
-  subscriptionPlan   String   @default("trial") // trial, basic, pro, premium
-  subscriptionStatus String   @default("trialing") // trialing, active, past_due, canceled
+  // Subscription & Billing
+  subscriptionPlan   String   @default("trial") // trial, starter, pro, premium
+  subscriptionStatus String   @default("trialing") // trialing, active, past_due, canceled, incomplete, incomplete_expired, unpaid
   trialEndsAt        DateTime?
   stripeCustomerId   String?  @unique
   stripeSubscriptionId String? @unique
+  stripePriceId      String?
+  stripeCurrentPeriodEnd DateTime?
   
   // Settings
   enableOnlineBooking Boolean @default(true)
@@ -70,6 +73,8 @@ model Business {
   campaigns     Campaign[]
   notifications Notification[]
   businessHours BusinessHours[]
+  payments      Payment[]
+  invoices      Invoice[]
 }
 
 model BusinessHours {
@@ -383,5 +388,50 @@ model Notification {
   readAt     DateTime?
   
   @@index([businessId, read, createdAt])
+}
+
+model Payment {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  amount          Int      // In cents
+  currency        String   @default("usd")
+  status          String   // succeeded, pending, failed
+  stripePaymentId String   @unique
+  stripeInvoiceId String?
+  
+  description     String?
+  receiptUrl      String?
+  
+  @@index([businessId, createdAt])
+}
+
+model Invoice {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  stripeInvoiceId String   @unique
+  amount          Int      // In cents
+  currency        String   @default("usd")
+  status          String   // draft, open, paid, uncollectible, void
+  
+  periodStart     DateTime
+  periodEnd       DateTime
+  
+  invoicePdf      String?
+  hostedInvoiceUrl String?
+  
+  paidAt          DateTime?
+  
+  @@index([businessId, createdAt])
+  @@index([businessId, status])
 }
 
