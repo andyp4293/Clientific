@@ -40,7 +40,6 @@ export default function AddressAutocomplete({
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
-
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -51,7 +50,6 @@ export default function AddressAutocomplete({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
   const fetchSuggestions = async (query: string) => {
     if (!query || query.length < 3 || !MAPBOX_TOKEN) {
       setSuggestions([]);
@@ -87,9 +85,7 @@ export default function AddressAutocomplete({
     debounceRef.current = setTimeout(() => {
       fetchSuggestions(value);
     }, 300);
-  };
-
-  const handleSelectAddress = (feature: MapboxFeature) => {
+  };  const handleSelectAddress = (feature: MapboxFeature) => {
     setInputValue(feature.place_name);
     setIsOpen(false);
 
@@ -139,9 +135,7 @@ export default function AddressAutocomplete({
         <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
           <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
         </div>
-      )}
-
-      {isOpen && suggestions.length > 0 && (
+      )}      {isOpen && suggestions.length > 0 && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
           {suggestions.map((feature, index) => (
             <button
