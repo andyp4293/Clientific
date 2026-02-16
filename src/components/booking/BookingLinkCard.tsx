@@ -16,19 +16,18 @@ export default function BookingLinkCard() {
       if (!res.ok) throw new Error('Failed to fetch business');
       return res.json();
     },
-  });
-  const business = businessData?.business;
-    // Generate booking URL with subdomain format
+  });  const business = businessData?.business;
+    // Generate booking URL
   const getBookingUrl = () => {
-    if (!business?.publicId) return '';
+    if (!business?.slug) return '';
     
     const currentHost = window.location.hostname;
     const currentPort = window.location.port;
     const protocol = window.location.protocol;
     const port = currentPort ? `:${currentPort}` : '';
     
-    // Use /book/publicId format instead of subdomain
-    return `${protocol}//${currentHost}${port}/book/${business.publicId}`;
+    // Use /book/slug format
+    return `${protocol}//${currentHost}${port}/book/${business.slug}`;
   };
   
   const bookingUrl = getBookingUrl();
