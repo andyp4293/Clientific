@@ -162,6 +162,9 @@ export default function AppointmentsPage() {
 }
 
 function AppointmentCard({ appointment }: { appointment: Appointment }) {
+  const queryClient = useQueryClient();
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const startTime = new Date(appointment.startTime);
   const endTime = new Date(appointment.endTime);
 
@@ -173,59 +176,144 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
     no_show: 'bg-orange-100 text-orange-800',
   };
 
+  // Cancel appointment mutation
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/appointments/${appointment.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled' }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to cancel appointment');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      setShowCancelConfirm(false);
+    },
+    onError: (error: any) => {
+      alert(error.message || 'Failed to cancel appointment');
+    },
+  });
+
+  // Check if appointment can be edited/cancelled (only scheduled/confirmed)
+  const canModify = ['scheduled', 'confirmed'].includes(appointment.status);
+
   return (
-    <div className="card p-4 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between">
-        <div className="flex items-start space-x-4">
-          <div className="text-center min-w-[80px]">
-            <div className="text-2xl font-bold text-primary">
-              {startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+    <>
+      <div className="card p-4 hover:shadow-md transition-shadow">
+        <div className="flex items-start justify-between">
+          <div className="flex items-start space-x-4">
+            <div className="text-center min-w-[80px]">
+              <div className="text-2xl font-bold text-primary">
+                {startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+              </div>
+              <div className="text-sm text-gray-600">
+                {appointment.duration} min
+              </div>
             </div>
-            <div className="text-sm text-gray-600">
-              {appointment.duration} min
+
+            <div className="flex-1">
+              <div className="flex items-center space-x-2 mb-1">
+                <h3 className="font-semibold text-lg">{appointment.customer.name}</h3>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[appointment.status as keyof typeof statusColors] || statusColors.scheduled}`}>
+                  {appointment.status}
+                </span>
+              </div>
+
+              {appointment.service && (
+                <p className="text-sm text-gray-600 mb-1">
+                  <span className="font-medium">Service:</span> {appointment.service.name}
+                </p>
+              )}
+
+              {appointment.staff && (
+                <p className="text-sm text-gray-600 mb-1">
+                  <span className="font-medium">Staff:</span> {appointment.staff.fullName}
+                </p>
+              )}
+
+              {appointment.customer.phone && (
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Phone:</span> {appointment.customer.phone}
+                </p>
+              )}
+
+              {appointment.notes && (
+                <p className="text-sm text-gray-600 mt-2 italic">
+                  {appointment.notes}
+                </p>
+              )}
             </div>
           </div>
 
-          <div className="flex-1">
-            <div className="flex items-center space-x-2 mb-1">
-              <h3 className="font-semibold text-lg">{appointment.customer.name}</h3>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[appointment.status as keyof typeof statusColors] || statusColors.scheduled}`}>
-                {appointment.status}
-              </span>
+          {canModify && (
+            <div className="flex space-x-2">
+              <button 
+                onClick={() => setShowEditModal(true)}
+                className="btn-outline btn-sm"
+              >
+                Edit
+              </button>
+              <button 
+                onClick={() => setShowCancelConfirm(true)}
+                className="btn-outline btn-sm text-red-600 hover:bg-red-50"
+              >
+                Cancel
+              </button>
             </div>
-
-            {appointment.service && (
-              <p className="text-sm text-gray-600 mb-1">
-                <span className="font-medium">Service:</span> {appointment.service.name}
-              </p>
-            )}
-
-            {appointment.staff && (
-              <p className="text-sm text-gray-600 mb-1">
-                <span className="font-medium">Staff:</span> {appointment.staff.fullName}
-              </p>
-            )}
-
-            {appointment.customer.phone && (
-              <p className="text-sm text-gray-600">
-                <span className="font-medium">Phone:</span> {appointment.customer.phone}
-              </p>
-            )}
-
-            {appointment.notes && (
-              <p className="text-sm text-gray-600 mt-2 italic">
-                {appointment.notes}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex space-x-2">
-          <button className="btn-outline btn-sm">Edit</button>
-          <button className="btn-outline btn-sm text-red-600 hover:bg-red-50">Cancel</button>
+          )}
         </div>
       </div>
-    </div>
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <EditAppointmentModal
+          appointment={appointment}
+          onClose={() => setShowEditModal(false)}
+        />
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold mb-4">Cancel Appointment?</h3>
+            <p className="text-gray-600 mb-2">
+              Are you sure you want to cancel this appointment with <strong>{appointment.customer.name}</strong>?
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              {startTime.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                month: 'long', 
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+              })}
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowCancelConfirm(false)}
+                className="btn-outline"
+                disabled={cancelMutation.isPending}
+              >
+                Keep Appointment
+              </button>
+              <button
+                onClick={() => cancelMutation.mutate()}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50"
+                disabled={cancelMutation.isPending}
+              >
+                {cancelMutation.isPending ? 'Cancelling...' : 'Yes, Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -373,6 +461,175 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
               </button>
               <button type="submit" className="btn-primary">
                 Create Appointment
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditAppointmentModal({ appointment, onClose }: { appointment: Appointment; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const startTime = new Date(appointment.startTime);
+  
+  const [formData, setFormData] = useState({
+    date: startTime.toISOString().split('T')[0],
+    time: startTime.toTimeString().slice(0, 5),
+    duration: appointment.duration,
+    notes: appointment.notes || '',
+    status: appointment.status,
+  });
+
+  // Update appointment mutation
+  const updateMutation = useMutation({
+    mutationFn: async (updates: any) => {
+      const res = await fetch(`/api/appointments/${appointment.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to update appointment');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      onClose();
+    },
+    onError: (error: any) => {
+      alert(error.message || 'Failed to update appointment');
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const newStartTime = new Date(`${formData.date}T${formData.time}`);
+    const newEndTime = new Date(newStartTime.getTime() + formData.duration * 60000);
+
+    updateMutation.mutate({
+      startTime: newStartTime.toISOString(),
+      endTime: newEndTime.toISOString(),
+      duration: formData.duration,
+      notes: formData.notes || null,
+      status: formData.status,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold">Edit Appointment</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Customer Info (Read-only) */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <h3 className="font-semibold mb-2">Customer</h3>
+            <p className="text-lg">{appointment.customer.name}</p>
+            {appointment.customer.phone && (
+              <p className="text-sm text-gray-600">{appointment.customer.phone}</p>
+            )}
+            {appointment.service && (
+              <p className="text-sm text-gray-600 mt-2">
+                <span className="font-medium">Service:</span> {appointment.service.name}
+              </p>
+            )}
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="label">Date *</label>
+                <input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  className="input"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="label">Time *</label>
+                <input
+                  type="time"
+                  value={formData.time}
+                  onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                  className="input"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="label">Duration (minutes) *</label>
+              <select
+                value={formData.duration}
+                onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
+                className="input"
+                required
+              >
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="45">45 minutes</option>
+                <option value="60">1 hour</option>
+                <option value="90">1.5 hours</option>
+                <option value="120">2 hours</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="label">Status</label>
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                className="input"
+              >
+                <option value="scheduled">Scheduled</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="completed">Completed</option>
+                <option value="no_show">No Show</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="label">Notes</label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                className="input"
+                rows={3}
+                placeholder="Any special requests or notes..."
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <button 
+                type="button" 
+                onClick={onClose} 
+                className="btn-outline"
+                disabled={updateMutation.isPending}
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                className="btn-primary"
+                disabled={updateMutation.isPending}
+              >
+                {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </form>
