@@ -1,0 +1,123 @@
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { prisma } from '@/lib/prisma';
+
+export async function GET(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.businessId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const date = searchParams.get('date');
+
+    const where: any = { businessId: session.user.businessId };
+
+    if (date) {
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      where.checkInTime = {
+        gte: startOfDay,
+        lte: endOfDay,
+      };
+    }
+
+    const checkIns = await prisma.checkIn.findMany({
+      where,
+      include: {
+        customer: true,
+        service: true,
+        staff: true,
+      },
+      orderBy: { checkInTime: 'desc' },
+    });
+
+    return NextResponse.json({ checkIns });
+  } catch (error) {
+    console.error('GET /api/checkins error:', error);
+    return NextResponse.json({ error: 'Failed to fetch check-ins' }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.businessId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { customerId, serviceId, staffId, amountSpent } = body;
+
+    if (!customerId) {
+      return NextResponse.json({ error: 'Customer ID required' }, { status: 400 });
+    }
+
+    // Get business settings for points calculation
+    const business = await prisma.business.findUnique({
+      where: { id: session.user.businessId },
+      select: {
+        pointsPerVisit: true,
+        pointsPerDollar: true,
+      },
+    });
+
+    if (!business) {
+      return NextResponse.json({ error: 'Business not found' }, { status: 404 });
+    }
+
+    // Calculate points earned
+    let pointsEarned = business.pointsPerVisit || 10;
+    if (amountSpent && business.pointsPerDollar) {
+      pointsEarned += Math.floor(amountSpent * business.pointsPerDollar);
+    }
+
+    // Create check-in
+    const checkIn = await prisma.checkIn.create({
+      data: {
+        businessId: session.user.businessId,
+        customerId,
+        serviceId: serviceId || undefined,
+        staffId: staffId || undefined,
+        amountSpent: amountSpent || undefined,
+        pointsEarned,
+        checkInTime: new Date(),
+      },
+      include: {
+        customer: true,
+        service: true,
+        staff: true,
+      },
+    });
+
+    // Update customer points and stats
+    await prisma.customer.update({
+      where: { id: customerId },
+      data: {
+        points: { increment: pointsEarned },
+        lastVisit: new Date(),
+        totalSpent: amountSpent ? { increment: amountSpent } : undefined,
+      },
+    });
+
+    // Create points transaction record
+    await prisma.pointsTransaction.create({
+      data: {
+        customerId,
+        amount: pointsEarned,
+        type: 'earned',
+        description: 'Check-in points',
+      },
+    });
+
+    return NextResponse.json({ checkIn });
+  } catch (error) {
+    console.error('POST /api/checkins error:', error);
+    return NextResponse.json({ error: 'Failed to create check-in' }, { status: 500 });
+  }
+}
