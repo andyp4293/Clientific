@@ -68,14 +68,13 @@ export async function GET(
     console.log('🕐 Hours for day', dayOfWeek, ':', JSON.stringify(hours, null, 2));    if (!hours || !hours.isOpen) {
       console.log('❌ Business is closed on this day. Hours:', JSON.stringify(hours, null, 2));
       return NextResponse.json({ slots: [], message: 'Business is closed on this day' });
-    }
-
-    // Parse business hours
+    }    // Parse business hours
     const [openHour, openMinute] = hours.openTime!.split(':').map(Number);
     const [closeHour, closeMinute] = hours.closeTime!.split(':').map(Number);
 
     console.log('✅ Business hours:', { openHour, openMinute, closeHour, closeMinute });
-    console.log('📍 Service duration:', duration, 'minutes');    // Get existing appointments for this day
+
+    // Get existing appointments for this day
     const startOfDay = new Date(selectedDate);
     startOfDay.setHours(0, 0, 0, 0);
     
@@ -96,15 +95,14 @@ export async function GET(
         },
         ...(staffId && staffId !== 'anyone' && { staffId }),
       },
-    });
-
-    console.log('📋 Existing appointments:', existingAppointments.length);    console.log('📋 Existing appointments:', existingAppointments.length);
+    });    console.log('📋 Existing appointments:', existingAppointments.length);
 
     // Generate time slots
     const slots: string[] = [];
     const slotInterval = 30; // 30-minute intervals
     const duration = service.duration;
 
+    console.log('📍 Service duration:', duration, 'minutes');
     console.log('⏰ Generating slots with', slotInterval, 'min intervals for', duration, 'min service');
 
     for (let hour = openHour; hour < closeHour; hour++) {
