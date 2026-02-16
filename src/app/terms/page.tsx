@@ -113,10 +113,78 @@ export default function TermsOfServicePage() {
               damages resulting from your use or inability to use the Service. Our total liability shall not 
               exceed the amount you paid us in the last 12 months.
             </p>
+          </section>          <section>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">11. SMS/Text Messaging Terms</h2>
+            <div className="text-gray-700 leading-relaxed space-y-3">
+              <h3 className="font-semibold text-gray-900 mt-4">Consent to Receive SMS Messages</h3>
+              <p>
+                By providing your mobile phone number and checking the SMS consent box when booking an appointment, 
+                you expressly consent to receive automated text messages from ClientFlow and the business you are 
+                booking with regarding your appointment. This includes appointment confirmations, reminders, and 
+                cancellation notifications.
+              </p>
+
+              <h3 className="font-semibold text-gray-900 mt-4">Message Frequency</h3>
+              <p>
+                Message frequency varies depending on your appointments. You may receive up to 3 messages per appointment:
+              </p>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>One confirmation message when you book</li>
+                <li>One or more reminder messages before your appointment</li>
+                <li>One cancellation message if your appointment is cancelled</li>
+              </ul>
+
+              <h3 className="font-semibold text-gray-900 mt-4">Message and Data Rates</h3>
+              <p>
+                Message and data rates may apply. The number of messages you receive will depend on how often you 
+                book appointments. Standard messaging rates from your wireless carrier will apply.
+              </p>
+
+              <h3 className="font-semibold text-gray-900 mt-4">How to Opt-Out</h3>
+              <p>
+                You can opt-out of SMS notifications at any time by:
+              </p>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>Replying <strong>STOP</strong> to any text message you receive from us</li>
+                <li>Contacting the business directly to request removal from SMS notifications</li>
+              </ul>
+              <p className="mt-2">
+                After you send the SMS message "STOP" to us, we will send you an SMS message to confirm that you 
+                have been unsubscribed. You will no longer receive SMS messages from us unless you re-opt-in.
+              </p>
+
+              <h3 className="font-semibold text-gray-900 mt-4">Help and Support</h3>
+              <p>
+                If you need help or have questions about SMS notifications, reply <strong>HELP</strong> to any 
+                message or contact us at{' '}
+                <a href="mailto:support@clientflow.com" className="text-primary hover:text-primary-700">
+                  support@clientflow.com
+                </a>
+              </p>
+
+              <h3 className="font-semibold text-gray-900 mt-4">Carrier Liability</h3>
+              <p>
+                Carriers are not liable for delayed or undelivered messages. We are not responsible for any delays 
+                or failures in message delivery, or for messages sent to an incorrect phone number you provided.
+              </p>
+
+              <h3 className="font-semibold text-gray-900 mt-4">Supported Carriers</h3>
+              <p>
+                Our SMS service works with all major U.S. carriers including AT&T, T-Mobile, Verizon, Sprint, 
+                and many regional carriers. International SMS availability may vary.
+              </p>
+
+              <h3 className="font-semibold text-gray-900 mt-4">Privacy</h3>
+              <p>
+                Your phone number and SMS consent status will be stored securely and used only for appointment 
+                notifications. We will never sell or share your phone number with third parties for marketing 
+                purposes. See our Privacy Policy for more details.
+              </p>
+            </div>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">11. Changes to Terms</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">12. Changes to Terms</h2>
             <p className="text-gray-700 leading-relaxed">
               We reserve the right to modify these terms at any time. We will notify you of any changes by 
               posting the new Terms of Service on this page and updating the "Last updated" date. Your continued 
@@ -125,7 +193,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">12. Contact Us</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">13. Contact Us</h2>
             <p className="text-gray-700 leading-relaxed">
               If you have any questions about these Terms, please contact us at:
               <br />

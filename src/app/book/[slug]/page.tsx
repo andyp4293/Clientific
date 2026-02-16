@@ -49,12 +49,12 @@ export default function PublicBookingPage() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const [selectedDate, setSelectedDate] = useState<Date>(today);
-  const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [customerInfo, setCustomerInfo] = useState({
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);  const [customerInfo, setCustomerInfo] = useState({
     name: '',
     phone: '',
     email: '',
     notes: '',
+    smsConsent: false,
   });
   const [bookingComplete, setBookingComplete] = useState(false);
 
@@ -515,9 +515,7 @@ export default function PublicBookingPage() {
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="john@example.com"
                   />
-                </div>
-
-                <div>
+                </div>                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Additional Notes (Optional)
                   </label>
@@ -528,6 +526,22 @@ export default function PublicBookingPage() {
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Any special requests or notes..."
                   />
+                </div>
+
+                {/* SMS Consent Checkbox */}
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      id="smsConsent"
+                      checked={customerInfo.smsConsent || false}
+                      onChange={(e) => setCustomerInfo({ ...customerInfo, smsConsent: e.target.checked })}
+                      className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <label htmlFor="smsConsent" className="text-sm text-gray-700 flex-1">
+                      <span className="font-medium">I consent to receive SMS notifications</span> including appointment confirmations, reminders, and updates. Message and data rates may apply. Reply STOP to unsubscribe, HELP for help. See our <a href="/terms" target="_blank" className="text-blue-600 underline">Terms of Service</a> and <a href="/privacy" target="_blank" className="text-blue-600 underline">Privacy Policy</a>.
+                    </label>
+                  </div>
                 </div>
               </div>
 
@@ -548,12 +562,12 @@ export default function PublicBookingPage() {
                   className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   ← Back
-                </button>
-                <button
+                </button>                <button
                   onClick={handleBooking}
                   disabled={
                     !customerInfo.name ||
                     !customerInfo.phone ||
+                    !customerInfo.smsConsent ||
                     bookingMutation.isPending
                   }
                   className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

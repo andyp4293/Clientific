@@ -27,9 +27,7 @@ export async function POST(
         { error: 'Online booking is not enabled' },
         { status: 403 }
       );
-    }
-
-    const {
+    }    const {
       serviceId,
       staffId,
       startTime,
@@ -38,12 +36,21 @@ export async function POST(
       customerPhone,
       customerEmail,
       notes,
+      smsConsent, // TCPA compliance: explicit SMS consent
     } = await req.json();
 
     // Validation
     if (!serviceId || !startTime || !duration || !customerName || !customerPhone) {
       return NextResponse.json(
         { error: 'Service, start time, duration, name, and phone are required' },
+        { status: 400 }
+      );
+    }
+
+    // SMS Consent validation - required for TCPA compliance
+    if (!smsConsent) {
+      return NextResponse.json(
+        { error: 'SMS consent is required to receive appointment notifications' },
         { status: 400 }
       );
     }
@@ -119,35 +126,36 @@ export async function POST(
         { error: 'Time slot is no longer available' },
         { status: 409 }
       );
-    }
-
-    // Find or create customer
+    }    // Find or create customer
     let customer = await prisma.customer.findFirst({
       where: {
         businessId: business.id,
         phone: customerPhone,
       },
-    });
-
-    if (!customer) {
+    });    if (!customer) {
       customer = await prisma.customer.create({
         data: {
           businessId: business.id,
           name: customerName,
           phone: customerPhone,
           email: customerEmail || null,
+          smsConsent: smsConsent || false,
         },
       });
     } else {
-      // Update customer info if provided
+      // Update customer info and SMS consent
       customer = await prisma.customer.update({
         where: { id: customer.id },
         data: {
           name: customerName,
           ...(customerEmail && { email: customerEmail }),
+          // Update SMS consent if provided and not already opted out
+          ...(smsConsent && !customer.smsOptedOut && {
+            smsConsent: true,
+          }),
         },
       });
-    }    // Create appointment
+    }// Create appointment
     const appointment = await prisma.appointment.create({
       data: {
         businessId: business.id,

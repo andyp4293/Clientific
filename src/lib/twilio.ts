@@ -108,7 +108,6 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SMSResult
   }
 
   const formattedPhone = formatPhoneNumber(to);
-
   try {
     const result = await twilioClient.messages.create({
       body: message,
@@ -120,6 +119,17 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SMSResult
     return { success: true, sid: result.sid };
   } catch (error: any) {
     console.error('❌ Failed to send SMS:', error);
+    
+    // Check if this is a trial account error
+    if (error?.code === 21608 || error?.message?.includes('trial')) {
+      console.warn('⚠️  Twilio trial account - phone number must be verified first');
+      console.warn('   Visit: https://console.twilio.com/us1/develop/phone-numbers/manage/verified');
+      return { 
+        success: false, 
+        error: 'Phone number not verified. Twilio trial accounts can only send to verified numbers.' 
+      };
+    }
+    
     return { 
       success: false, 
       error: error?.message || 'Failed to send SMS' 
@@ -127,57 +137,28 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SMSResult
   }
 }
 
-// Template: Appointment Confirmation
+// Template: Appointment Confirmation (shortened for trial accounts)
 export function formatAppointmentConfirmationSMS(details: AppointmentDetails): string {
   const dateStr = formatDate(details.dateTime);
   const timeStr = formatTime(details.dateTime);
-  const durationStr = details.duration ? ` (${details.duration} min)` : '';
 
-  return `Hi ${details.customerName}! 🎉
-
-Your appointment at ${details.businessName} is confirmed.
-
-📋 Service: ${details.serviceName}${durationStr}
-👤 With: ${details.staffName}
-📅 Date: ${dateStr}
-🕒 Time: ${timeStr}
-
-See you soon!`;
+  return `${details.businessName}: Appointment confirmed for ${dateStr} at ${timeStr}. Service: ${details.serviceName} with ${details.staffName}. See you soon!`;
 }
 
-// Template: Appointment Reminder (24 hours before)
+// Template: Appointment Reminder (24 hours before) - shortened
 export function formatAppointmentReminderSMS(details: ReminderDetails): string {
   const dateStr = formatDate(details.dateTime);
   const timeStr = formatTime(details.dateTime);
-  const contactInfo = details.businessPhone 
-    ? `\n\nNeed to reschedule? Call us at ${details.businessPhone}` 
-    : '';
 
-  return `Hi ${details.customerName}! 👋
-
-Reminder: You have an appointment tomorrow at ${details.businessName}.
-
-📋 Service: ${details.serviceName}
-👤 With: ${details.staffName}
-📅 Date: ${dateStr}
-🕒 Time: ${timeStr}${contactInfo}
-
-Looking forward to seeing you!`;
+  return `Reminder: Appointment tomorrow at ${details.businessName}. ${details.serviceName} with ${details.staffName} at ${timeStr}.`;
 }
 
-// Template: Appointment Cancellation
+// Template: Appointment Cancellation - shortened
 export function formatAppointmentCancellationSMS(details: CancellationDetails): string {
   const dateStr = formatDate(details.dateTime);
   const timeStr = formatTime(details.dateTime);
 
-  return `Hi ${details.customerName},
-
-Your appointment at ${details.businessName} has been cancelled.
-
-📋 Service: ${details.serviceName}
-📅 Was scheduled for: ${dateStr} at ${timeStr}
-
-We hope to see you again soon!`;
+  return `${details.businessName}: Your appointment on ${dateStr} at ${timeStr} has been cancelled. Hope to see you again soon!`;
 }
 
 // Helper: Send appointment confirmation

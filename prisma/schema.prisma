@@ -104,6 +104,11 @@ model Customer {
   email      String?
   birthday   DateTime?
   
+  // SMS Consent & Opt-out
+  smsConsent    Boolean  @default(false)
+  smsOptedOut   Boolean  @default(false)
+  smsOptedOutAt DateTime?
+  
   // Segmentation (auto-calculated)
   segment    String   @default("NEW") // NEW, REGULAR, VIP, AT_RISK, CHURNED
   
