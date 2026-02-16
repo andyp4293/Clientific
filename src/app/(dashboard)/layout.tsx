@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { DashboardNav } from '@/components/layout/DashboardNav';
 import { DashboardHeader } from '@/components/layout/DashboardHeader';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { SubscriptionBanner } from '@/components/billing/SubscriptionBanner';
 
 export default async function DashboardLayout({
@@ -29,16 +30,14 @@ export default async function DashboardLayout({
       </div>      {/* Main Content */}
       <div className="lg:pl-64">
         <SubscriptionBanner />
-        <main className="py-6 px-4 sm:px-6 lg:px-8">
+        <main className="py-6 px-4 sm:px-6 lg:px-8 pb-20 lg:pb-6">
           {children}
         </main>
       </div>
 
       {/* Mobile Bottom Nav */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
-        <div className="flex justify-around items-center h-16">
-          {/* Mobile nav items will go here */}
-        </div>
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
+        <MobileBottomNav />
       </div>
     </div>
   );

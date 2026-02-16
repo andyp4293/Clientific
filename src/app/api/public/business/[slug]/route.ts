@@ -23,14 +23,9 @@ export async function GET(
         state: true,
         zipCode: true,
         country: true,
-        timezone: true,
-        logoUrl: true,
+        timezone: true,        logoUrl: true,
         enableOnlineBooking: true,
-        businessHours: {
-          orderBy: {
-            dayOfWeek: 'asc',
-          },
-        },
+        businessHours: true,
       },
     });
 

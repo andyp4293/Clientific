@@ -17,11 +17,21 @@ export default function BookingLinkCard() {
       return res.json();
     },
   });
-
   const business = businessData?.business;
-  const bookingUrl = business?.slug 
-    ? `${window.location.origin}/book/${business.slug}`
-    : '';
+    // Generate booking URL with subdomain format
+  const getBookingUrl = () => {
+    if (!business?.publicId) return '';
+    
+    const currentHost = window.location.hostname;
+    const currentPort = window.location.port;
+    const protocol = window.location.protocol;
+    const port = currentPort ? `:${currentPort}` : '';
+    
+    // Use /book/publicId format instead of subdomain
+    return `${protocol}//${currentHost}${port}/book/${business.publicId}`;
+  };
+  
+  const bookingUrl = getBookingUrl();
 
   const handleCopy = () => {
     if (bookingUrl) {
@@ -33,18 +43,21 @@ export default function BookingLinkCard() {
 
   if (!business) {
     return null;
-  }
-
-  return (
-    <div className="card p-6">
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">
+  }  return (
+    <div className="card p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-0 mb-4">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1">
             Your Booking Page
           </h3>
-          <p className="text-sm text-gray-600">
+          <p className="text-xs sm:text-sm text-gray-600">
             Share this link with customers to let them book appointments online
           </p>
+          {business.publicId && (
+            <p className="text-xs text-gray-500 mt-1">
+              Business ID: <span className="font-mono font-semibold text-primary">{business.publicId}</span>
+            </p>
+          )}
         </div>
         <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
           <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -53,16 +66,16 @@ export default function BookingLinkCard() {
         </div>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <input
           type="text"
           value={bookingUrl}
           readOnly
-          className="flex-1 px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none"
+          className="flex-1 px-3 sm:px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-xs sm:text-sm text-gray-700 focus:outline-none truncate"
         />
         <button
           onClick={handleCopy}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium flex items-center justify-center gap-2 whitespace-nowrap"
         >
           {copied ? (
             <>

@@ -39,9 +39,7 @@ export async function GET(
         { error: 'Online booking is not enabled' },
         { status: 403 }
       );
-    }
-
-    // Get service details for duration
+    }    // Get service details for duration
     const service = await prisma.service.findUnique({
       where: { id: serviceId },
       select: { duration: true },
@@ -52,29 +50,39 @@ export async function GET(
         { error: 'Service not found' },
         { status: 404 }
       );
+    }    // Parse date in local timezone
+    const [year, month, day] = date.split('-').map(Number);
+    const selectedDate = new Date(year, month - 1, day);
+    const dayOfWeek = selectedDate.getDay();    // Get business hours for this day from JSON structure
+    if (!business.businessHours || business.businessHours.length === 0) {
+      console.log('❌ No business hours found for business:', business.id);
+      return NextResponse.json({ slots: [], message: 'Business hours not configured' });
     }
 
-    // Get day of week (0 = Sunday, 6 = Saturday)
-    const selectedDate = new Date(date);
-    const dayOfWeek = selectedDate.getDay();
+    const businessHoursRecord = business.businessHours[0];
+    const hoursData = businessHoursRecord.hours as any;
+    const hours = hoursData[dayOfWeek.toString()];
 
-    // Get business hours for this day
-    const hours = business.businessHours.find(h => h.dayOfWeek === dayOfWeek);
-
-    if (!hours || !hours.isOpen) {
-      return NextResponse.json({ slots: [] });
+    console.log('📅 Selected date:', date, 'Day of week:', dayOfWeek);
+    console.log('🕐 Full hours data:', JSON.stringify(hoursData, null, 2));
+    console.log('🕐 Hours for day', dayOfWeek, ':', JSON.stringify(hours, null, 2));    if (!hours || !hours.isOpen) {
+      console.log('❌ Business is closed on this day. Hours:', JSON.stringify(hours, null, 2));
+      return NextResponse.json({ slots: [], message: 'Business is closed on this day' });
     }
 
     // Parse business hours
     const [openHour, openMinute] = hours.openTime!.split(':').map(Number);
     const [closeHour, closeMinute] = hours.closeTime!.split(':').map(Number);
 
-    // Get existing appointments for this day
+    console.log('✅ Business hours:', { openHour, openMinute, closeHour, closeMinute });
+    console.log('📍 Service duration:', duration, 'minutes');    // Get existing appointments for this day
     const startOfDay = new Date(selectedDate);
     startOfDay.setHours(0, 0, 0, 0);
     
     const endOfDay = new Date(selectedDate);
     endOfDay.setHours(23, 59, 59, 999);
+
+    console.log('🔍 Checking appointments between:', startOfDay.toISOString(), 'and', endOfDay.toISOString());
 
     const existingAppointments = await prisma.appointment.findMany({
       where: {
@@ -90,10 +98,14 @@ export async function GET(
       },
     });
 
+    console.log('📋 Existing appointments:', existingAppointments.length);    console.log('📋 Existing appointments:', existingAppointments.length);
+
     // Generate time slots
     const slots: string[] = [];
     const slotInterval = 30; // 30-minute intervals
     const duration = service.duration;
+
+    console.log('⏰ Generating slots with', slotInterval, 'min intervals for', duration, 'min service');
 
     for (let hour = openHour; hour < closeHour; hour++) {
       for (let minute = 0; minute < 60; minute += slotInterval) {
@@ -110,10 +122,16 @@ export async function GET(
         const closeTime = new Date(selectedDate);
         closeTime.setHours(closeHour, closeMinute, 0, 0);
         
-        if (slotEndTime > closeTime) continue;
+        if (slotEndTime > closeTime) {
+          console.log('⏭️  Skipping slot', slotTime.toLocaleTimeString(), '- would exceed closing time');
+          continue;
+        }
 
         // Check if slot is in the past
-        if (slotTime < new Date()) continue;
+        if (slotTime < new Date()) {
+          console.log('⏭️  Skipping slot', slotTime.toLocaleTimeString(), '- in the past');
+          continue;
+        }
 
         // Check if slot conflicts with existing appointments
         const hasConflict = existingAppointments.some(apt => {
@@ -125,13 +143,16 @@ export async function GET(
             (slotEndTime > aptStart && slotEndTime <= aptEnd) ||
             (slotTime <= aptStart && slotEndTime >= aptEnd)
           );
-        });
-
-        if (!hasConflict) {
+        });        if (!hasConflict) {
+          console.log('✅ Adding slot:', slotTime.toLocaleTimeString());
           slots.push(slotTime.toISOString());
+        } else {
+          console.log('⏭️  Skipping slot', slotTime.toLocaleTimeString(), '- conflict with existing appointment');
         }
       }
     }
+
+    console.log('🎯 Generated', slots.length, 'available slots');
 
     return NextResponse.json({ slots });
   } catch (error: any) {

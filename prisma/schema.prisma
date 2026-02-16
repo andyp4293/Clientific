@@ -23,6 +23,7 @@ model Business {
   // Business Info
   name         String
   slug         String   @unique
+  publicId     String?  @unique // Human-readable ID like "CF-A1B2C3" for easy reference (nullable temporarily for migration)
   businessType String   // Salon, Spa, Gym, Restaurant, Medical, Auto, Retail, Professional, Other
   phone        String
   businessEmail String?
@@ -79,15 +80,14 @@ model Business {
 
 model BusinessHours {
   id         String   @id @default(cuid())
-  businessId String
+  businessId String   @unique
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   
-  dayOfWeek  Int      // 0 = Sunday, 6 = Saturday
-  isOpen     Boolean  @default(true)
-  openTime   String?  // "09:00"
-  closeTime  String?  // "17:00"
+  // JSON structure storing all 7 days: { "0": { "isOpen": false }, "1": { "isOpen": true, "openTime": "09:00", "closeTime": "17:00" }, ... }
+  hours      Json
   
-  @@unique([businessId, dayOfWeek])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model Customer {

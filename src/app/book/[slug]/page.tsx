@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { DatePicker } from '@/components/ui/DatePicker';
 
 interface Business {
   id: string;
@@ -40,12 +41,14 @@ interface Staff {
 
 export default function PublicBookingPage() {
   const params = useParams();
-  const slug = params.slug as string;
-
+  const slugOrPublicId = params.slug as string;
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedStaff, setSelectedStaff] = useState<string>('anyone');
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  // Initialize with today's date in local timezone
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const [selectedDate, setSelectedDate] = useState<Date>(today);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [customerInfo, setCustomerInfo] = useState({
     name: '',
@@ -55,11 +58,17 @@ export default function PublicBookingPage() {
   });
   const [bookingComplete, setBookingComplete] = useState(false);
 
+  // Determine if this is a publicId (format: XX-XXXXXX) or a slug
+  const isPublicId = /^[A-Z]{2}-[A-Z0-9]{6}$/.test(slugOrPublicId);
+  const apiBase = isPublicId 
+    ? `/api/public/business-by-id/${slugOrPublicId}`
+    : `/api/public/business/${slugOrPublicId}`;
+
   // Fetch business info
-  const { data: businessData, isLoading: isLoadingBusiness } = useQuery({
-    queryKey: ['business', slug],
+  const { data: businessData, isLoading: isLoadingBusiness, error: businessError } = useQuery({
+    queryKey: ['business', slugOrPublicId],
     queryFn: async () => {
-      const res = await fetch(`/api/public/business/${slug}`);
+      const res = await fetch(apiBase);
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || 'Failed to fetch business');
@@ -67,12 +76,11 @@ export default function PublicBookingPage() {
       return res.json();
     },
   });
-
   // Fetch services
   const { data: servicesData } = useQuery({
-    queryKey: ['services', slug],
+    queryKey: ['services', slugOrPublicId],
     queryFn: async () => {
-      const res = await fetch(`/api/public/business/${slug}/services`);
+      const res = await fetch(`${apiBase}/services`);
       if (!res.ok) throw new Error('Failed to fetch services');
       return res.json();
     },
@@ -81,9 +89,9 @@ export default function PublicBookingPage() {
 
   // Fetch staff
   const { data: staffData } = useQuery({
-    queryKey: ['staff', slug],
+    queryKey: ['staff', slugOrPublicId],
     queryFn: async () => {
-      const res = await fetch(`/api/public/business/${slug}/staff`);
+      const res = await fetch(`${apiBase}/staff`);
       if (!res.ok) throw new Error('Failed to fetch staff');
       return res.json();
     },
@@ -92,7 +100,7 @@ export default function PublicBookingPage() {
 
   // Fetch available slots
   const { data: slotsData, isLoading: isLoadingSlots } = useQuery({
-    queryKey: ['slots', slug, selectedDate.toISOString().split('T')[0], selectedService?.id, selectedStaff],
+    queryKey: ['slots', slugOrPublicId, selectedDate.toISOString().split('T')[0], selectedService?.id, selectedStaff],
     queryFn: async () => {
       if (!selectedService) return { slots: [] };
       const params = new URLSearchParams({
@@ -100,7 +108,7 @@ export default function PublicBookingPage() {
         serviceId: selectedService.id,
         ...(selectedStaff !== 'anyone' && { staffId: selectedStaff }),
       });
-      const res = await fetch(`/api/public/business/${slug}/available-slots?${params}`);
+      const res = await fetch(`${apiBase}/available-slots?${params}`);
       if (!res.ok) throw new Error('Failed to fetch slots');
       return res.json();
     },
@@ -110,7 +118,7 @@ export default function PublicBookingPage() {
   // Create booking mutation
   const bookingMutation = useMutation({
     mutationFn: async (bookingData: any) => {
-      const res = await fetch(`/api/public/business/${slug}/book`, {
+      const res = await fetch(`${apiBase}/book`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(bookingData),
@@ -255,14 +263,14 @@ export default function PublicBookingPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b">
-        <div className="max-w-3xl mx-auto px-4 py-6">
-          <div className="flex items-center space-x-4">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+          <div className="flex items-center gap-3 sm:gap-4">
             {business.logoUrl && (
-              <img src={business.logoUrl} alt={business.name} className="w-12 h-12 rounded-lg object-cover" />
+              <img src={business.logoUrl} alt={business.name} className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover flex-shrink-0" />
             )}
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{business.name}</h1>
-              <p className="text-sm text-gray-600">Book an appointment</p>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">{business.name}</h1>
+              <p className="text-xs sm:text-sm text-gray-600">Book an appointment</p>
             </div>
           </div>
         </div>
@@ -270,7 +278,7 @@ export default function PublicBookingPage() {
 
       {/* Progress Bar */}
       <div className="bg-white border-b">
-        <div className="max-w-3xl mx-auto px-4 py-4">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             {[
               { num: 1, label: 'Service' },
@@ -281,7 +289,7 @@ export default function PublicBookingPage() {
               <div key={item.num} className="flex items-center flex-1">
                 <div className="flex items-center">
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${
                       step >= item.num
                         ? 'bg-blue-600 text-white'
                         : 'bg-gray-200 text-gray-600'
@@ -289,14 +297,14 @@ export default function PublicBookingPage() {
                   >
                     {item.num}
                   </div>
-                  <span className={`ml-2 text-sm font-medium hidden sm:inline ${
+                  <span className={`ml-1 sm:ml-2 text-xs sm:text-sm font-medium hidden md:inline ${
                     step >= item.num ? 'text-gray-900' : 'text-gray-500'
                   }`}>
                     {item.label}
                   </span>
                 </div>
                 {idx < 3 && (
-                  <div className={`flex-1 h-1 mx-2 ${
+                  <div className={`flex-1 h-0.5 sm:h-1 mx-1 sm:mx-2 ${
                     step > item.num ? 'bg-blue-600' : 'bg-gray-200'
                   }`} />
                 )}
@@ -307,8 +315,8 @@ export default function PublicBookingPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-2xl shadow-sm p-6">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm p-4 sm:p-6">
           {/* Step 1: Select Service */}
           {step === 1 && (
             <div>
@@ -395,20 +403,16 @@ export default function PublicBookingPage() {
           {/* Step 3: Select Date & Time */}
           {step === 3 && (
             <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Choose Date & Time</h2>
-
-              {/* Date Selector */}
+              <h2 className="text-xl font-bold text-gray-900 mb-6">Choose Date & Time</h2>              {/* Date Selector */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Select Date</label>
-                <input
-                  type="date"
-                  value={selectedDate.toISOString().split('T')[0]}
-                  min={new Date().toISOString().split('T')[0]}
-                  onChange={(e) => {
-                    setSelectedDate(new Date(e.target.value + 'T00:00:00'));
+                <DatePicker
+                  value={selectedDate}
+                  onChange={(newDate) => {
+                    setSelectedDate(newDate);
                     setSelectedTime(null);
                   }}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  minDate={new Date()}
                 />
               </div>
 

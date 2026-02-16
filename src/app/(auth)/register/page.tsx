@@ -2,6 +2,7 @@
 
 import { useState, Suspense, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
 
@@ -34,6 +35,7 @@ interface FormData {
 
 function RegisterForm() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const searchParams = useSearchParams();
   const defaultPlan = searchParams.get('plan') || 'pro';
   const [currentStep, setCurrentStep] = useState<Step>(1);
@@ -59,12 +61,36 @@ function RegisterForm() {
     plan: defaultPlan,
   });
 
+  // Redirect if already logged in
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.push('/dashboard');
+    }
+  }, [status, router]);
+
   useEffect(() => {
     setFormData((prev) => ({
       ...prev,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     }));
   }, []);
+
+  // Show loading while checking auth status
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-sm text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render registration form if authenticated
+  if (status === 'authenticated') {
+    return null;
+  }
 
   const businessTypes = [
     'Salon',
@@ -253,27 +279,26 @@ function RegisterForm() {
     return 'Unable to create account. Please check your information and try again.';
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-100 py-12 px-4">
+  return (    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-100 py-8 sm:py-12 px-4">
       <div className="w-full max-w-2xl mx-auto">
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 sm:mb-8">
           <Link href="/" className="inline-flex items-center space-x-2">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-2xl">C</span>
+            <div className="w-8 sm:w-10 h-8 sm:h-10 bg-primary rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-xl sm:text-2xl">C</span>
             </div>
-            <span className="text-2xl font-bold text-gray-900">ClientFlow</span>
+            <span className="text-xl sm:text-2xl font-bold text-gray-900">ClientFlow</span>
           </Link>
-          <p className="text-gray-600 mt-2">Start your 14-day free trial</p>
+          <p className="text-sm sm:text-base text-gray-600 mt-2">Start your 14-day free trial</p>
         </div>
 
         {/* Progress Steps */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <div className="flex justify-between items-center">
             {[1, 2, 3, 4].map((step) => (
               <div key={step} className="flex items-center flex-1">
                 <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center font-medium ${
+                  className={`w-8 sm:w-10 h-8 sm:h-10 rounded-full flex items-center justify-center font-medium text-sm sm:text-base ${
                     step <= currentStep
                       ? 'bg-primary text-white'
                       : 'bg-gray-200 text-gray-500'
@@ -283,7 +308,7 @@ function RegisterForm() {
                 </div>
                 {step < 4 && (
                   <div
-                    className={`flex-1 h-1 mx-2 ${
+                    className={`flex-1 h-0.5 sm:h-1 mx-1 sm:mx-2 ${
                       step < currentStep ? 'bg-primary' : 'bg-gray-200'
                     }`}
                   />
@@ -291,26 +316,22 @@ function RegisterForm() {
               </div>
             ))}
           </div>
-          <div className="flex justify-between mt-2 text-xs text-gray-600">
+          <div className="flex justify-between mt-2 text-[10px] sm:text-xs text-gray-600">
             <span>Account</span>
             <span>Business</span>
             <span>Details</span>
             <span>Complete</span>
           </div>
-        </div>
-
-        {/* Registration Card */}
-        <div className="card p-8">
+        </div>        {/* Registration Card */}
+        <div className="card p-4 sm:p-6 lg:p-8">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-6 text-sm">
+            <div className="bg-red-50 border border-red-200 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-md mb-4 sm:mb-6 text-xs sm:text-sm">
               {error}
             </div>
-          )}
-
-          {/* Step 1: Account Creation */}
+          )}          {/* Step 1: Account Creation */}
           {currentStep === 1 && (
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold mb-6">Create Your Account</h2>
+            <div className="space-y-3 sm:space-y-4">
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Create Your Account</h2>
               
               <div>
                 <label htmlFor="email" className="label">
@@ -437,12 +458,10 @@ function RegisterForm() {
                 </label>
               </div>
             </div>
-          )}
-
-          {/* Step 2: Business Information */}
+          )}          {/* Step 2: Business Information */}
           {currentStep === 2 && (
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold mb-6">Tell Us About Your Business</h2>
+            <div className="space-y-3 sm:space-y-4">
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Tell Us About Your Business</h2>
 
               <div>
                 <label htmlFor="businessName" className="label">

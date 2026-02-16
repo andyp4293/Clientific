@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { hashPassword, generateSlug } from '@/lib/utils';
+import { hashPassword, generateSlug, generatePublicBusinessId } from '@/lib/utils';
 import { addDays } from 'date-fns';
 
 export async function POST(request: Request) {
@@ -41,9 +41,7 @@ export async function POST(request: Request) {
         { error: 'An account with this email already exists' },
         { status: 400 }
       );
-    }
-
-    // Generate unique slug
+    }    // Generate unique slug
     let slug = generateSlug(businessName);
     let slugExists = await prisma.business.findUnique({ where: { slug } });
     let counter = 1;
@@ -54,19 +52,27 @@ export async function POST(request: Request) {
       counter++;
     }
 
+    // Generate unique public business ID
+    let publicId = generatePublicBusinessId();
+    let publicIdExists = await prisma.business.findUnique({ where: { publicId } });
+    
+    while (publicIdExists) {
+      publicId = generatePublicBusinessId();
+      publicIdExists = await prisma.business.findUnique({ where: { publicId } });
+    }
+
     // Hash password
     const passwordHash = await hashPassword(password);
 
     // Calculate trial end date (14 days from now)
-    const trialEndsAt = addDays(new Date(), 14);
-
-    // Create business account
+    const trialEndsAt = addDays(new Date(), 14);    // Create business account
     const business = await prisma.business.create({
       data: {
         email: email.toLowerCase(),
         passwordHash,
         name: businessName,
         slug,
+        publicId,
         businessType,
         phone,
         businessEmail: businessEmail || email.toLowerCase(),
@@ -80,24 +86,30 @@ export async function POST(request: Request) {
         subscriptionStatus: 'trialing',
         trialEndsAt,
       },
-    });
+    });    // Create default business hours (Monday-Friday 9-5, closed weekends)
+    try {
+      const defaultHoursJson: any = {};
+      for (let day = 0; day <= 6; day++) {
+        const isWeekend = day === 0 || day === 6;
+        defaultHoursJson[day.toString()] = {
+          isOpen: !isWeekend,
+          openTime: isWeekend ? null : '09:00',
+          closeTime: isWeekend ? null : '17:00',
+        };
+      }
 
-    // Create default business hours (Monday-Friday 9-5, closed weekends)
-    const defaultHours = [];
-    for (let day = 0; day <= 6; day++) {
-      const isWeekend = day === 0 || day === 6;
-      defaultHours.push({
-        businessId: business.id,
-        dayOfWeek: day,
-        isOpen: !isWeekend,
-        openTime: isWeekend ? null : '09:00',
-        closeTime: isWeekend ? null : '17:00',
+      await prisma.businessHours.create({
+        data: {
+          businessId: business.id,
+          hours: defaultHoursJson,
+        },
       });
+    } catch (hoursError) {
+      console.error('Failed to create default business hours:', hoursError);
+      // Continue anyway - hours can be set up later
     }
 
-    await prisma.businessHours.createMany({
-      data: defaultHours,
-    });    return NextResponse.json({
+    return NextResponse.json({
       success: true,
       business: {
         id: business.id,

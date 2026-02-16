@@ -93,7 +93,6 @@ export default function AddressAutocomplete({
       fetchSuggestions(value);
     }, 300);
   };  const handleSelectAddress = (feature: MapboxFeature) => {
-    setInputValue(feature.place_name);
     setIsOpen(false);
 
     // Parse address components from Mapbox response
@@ -103,7 +102,7 @@ export default function AddressAutocomplete({
     let zipCode = '';
     let country = '';
 
-    // Street number + street name
+    // Street number + street name (just the street, not full address)
     if (feature.address && feature.text) {
       street = `${feature.address} ${feature.text}`;
     } else if (feature.text) {
@@ -122,6 +121,9 @@ export default function AddressAutocomplete({
         country = item.text;
       }
     });
+
+    // Set input value to just the street address, not the full place_name
+    setInputValue(street);
 
     onAddressSelect({ street, city, state, zipCode, country });
   };

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { sendAppointmentConfirmation } from '@/lib/twilio';
 
 // GET - List appointments
 export async function GET(req: NextRequest) {
@@ -143,9 +144,7 @@ export async function POST(req: NextRequest) {
         { error: 'Time slot is not available' },
         { status: 409 }
       );
-    }
-
-    const appointment = await prisma.appointment.create({
+    }    const appointment = await prisma.appointment.create({
       data: {
         businessId: business.id,
         customerId,
@@ -161,8 +160,28 @@ export async function POST(req: NextRequest) {
         customer: true,
         service: true,
         staff: true,
+        business: {
+          select: {
+            name: true,
+          },
+        },
       },
-    });
+    });    // Send SMS confirmation
+    let smsResult = null;
+    if (appointment.customer.phone) {
+      smsResult = await sendAppointmentConfirmation(appointment.customer.phone, {
+        customerName: appointment.customer.name,
+        serviceName: appointment.service?.name || 'Appointment',
+        staffName: appointment.staff?.fullName || 'our team',
+        dateTime: appointment.startTime,
+        businessName: appointment.business.name,
+        duration: appointment.duration,
+      });
+
+      if (smsResult.success) {
+        console.log('✅ SMS confirmation sent to:', appointment.customer.phone);
+      }
+    }
 
     // Create notification
     await prisma.notification.create({
@@ -175,7 +194,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ appointment }, { status: 201 });
+    return NextResponse.json({ 
+      appointment,
+      smsNotification: smsResult?.success 
+        ? 'Confirmation SMS sent' 
+        : appointment.customer.phone 
+          ? 'SMS notification failed' 
+          : 'No phone number provided',
+    }, { status: 201 });
   } catch (error: any) {
     console.error('Create appointment error:', error);
     return NextResponse.json(

@@ -47,3 +47,14 @@ export function generateRedemptionCode(): string {
   }
   return code;
 }
+
+export function generatePublicBusinessId(): string {
+  // Generate a human-readable business ID like "CF-A1B2C3"
+  // CF prefix for ClientFlow, followed by 6 alphanumeric characters
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let id = 'CF-';
+  for (let i = 0; i < 6; i++) {
+    id += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return id;
+}

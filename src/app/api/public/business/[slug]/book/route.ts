@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { sendAppointmentConfirmation } from '@/lib/twilio';
 
 // POST - Create public booking (no auth required)
 export async function POST(
@@ -146,9 +147,7 @@ export async function POST(
           ...(customerEmail && { email: customerEmail }),
         },
       });
-    }
-
-    // Create appointment
+    }    // Create appointment
     const appointment = await prisma.appointment.create({
       data: {
         businessId: business.id,
@@ -165,13 +164,40 @@ export async function POST(
         customer: true,
         service: true,
         staff: true,
+        business: {
+          select: {
+            name: true,
+          },
+        },
       },
-    });
+    });    // Send SMS confirmation
+    let smsResult = null;
+    if (customer.phone) {
+      smsResult = await sendAppointmentConfirmation(customer.phone, {
+        customerName: customer.name,
+        serviceName: appointment.service?.name || 'Appointment',
+        staffName: appointment.staff?.fullName || 'our team',
+        dateTime: appointment.startTime,
+        businessName: appointment.business.name,
+        duration: appointment.duration,
+      });
+
+      if (smsResult.success) {
+        console.log('✅ SMS confirmation sent to:', customer.phone);
+      } else {
+        console.warn('⚠️  SMS failed:', smsResult.error);
+      }
+    }
 
     return NextResponse.json({ 
       success: true,
       appointment,
-      message: 'Appointment booked successfully!' 
+      message: 'Appointment booked successfully!',
+      smsNotification: smsResult?.success 
+        ? 'Confirmation SMS sent' 
+        : customer.phone 
+          ? 'SMS notification failed' 
+          : 'No phone number provided',
     });
   } catch (error: any) {
     console.error('Create booking error:', error);

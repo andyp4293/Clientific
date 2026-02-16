@@ -1,9 +1,14 @@
+'use client';
+
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 
 export default function HomePage() {
+  const { data: session, status } = useSession();
+  const isAuthenticated = status === 'authenticated';
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-100">
-      {/* Header */}
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-100">      {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
@@ -12,35 +17,48 @@ export default function HomePage() {
             </div>
             <span className="text-xl font-bold text-gray-900">ClientFlow</span>
           </div>
-          <div className="space-x-4">
-            <Link href="/login" className="text-gray-600 hover:text-gray-900 font-medium">
-              Log In
-            </Link>
-            <Link href="/register" className="btn-primary">
-              Start Free Trial
-            </Link>
+          <div className="flex items-center gap-2 sm:gap-4">
+            {isAuthenticated ? (
+              <Link href="/dashboard" className="btn-primary text-sm sm:text-base px-3 py-2 sm:px-4 sm:py-2">
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link href="/login" className="text-gray-600 hover:text-gray-900 font-medium text-sm sm:text-base">
+                  Log In
+                </Link>
+                <Link href="/register" className="btn-primary text-sm sm:text-base px-3 py-2 sm:px-4 sm:py-2 whitespace-nowrap">
+                  Start Free Trial
+                </Link>
+              </>
+            )}
           </div>
         </div>
-      </header>
-
-      {/* Hero Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+      </header>      {/* Hero Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-24">
         <div className="text-center">
-          <h1 className="text-5xl font-bold text-gray-900 mb-6">
-            Grow Your Business with<br />
-            <span className="text-primary">Effortless Customer Management</span>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6 leading-tight">
+            Grow Your Business with<br className="hidden sm:block" />
+            <span className="text-primary"> Effortless Customer Management</span>
           </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+          <p className="text-base sm:text-lg lg:text-xl text-gray-600 mb-6 sm:mb-8 max-w-2xl mx-auto px-4">
             Track customers, collect reviews, manage appointments, and reward loyalty - all in one powerful platform.
-          </p>
-          <Link href="/register" className="btn-primary text-lg px-8 py-3 inline-block">
-            Start Your 14-Day Free Trial
-          </Link>
-          <p className="text-sm text-gray-500 mt-4">No credit card required • Setup in 3 minutes</p>
+          </p>          {isAuthenticated ? (
+            <Link href="/dashboard" className="btn-primary text-base sm:text-lg px-6 py-3 sm:px-8 sm:py-3 inline-block">
+              Go to Your Dashboard
+            </Link>
+          ) : (
+            <>
+              <Link href="/register" className="btn-primary text-base sm:text-lg px-6 py-3 sm:px-8 sm:py-3 inline-block">
+                Start Your 14-Day Free Trial
+              </Link>
+              <p className="text-xs sm:text-sm text-gray-500 mt-4">No credit card required • Setup in 3 minutes</p>
+            </>
+          )}
         </div>
 
         {/* Features Grid */}
-        <div className="grid md:grid-cols-3 gap-8 mt-24">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mt-12 sm:mt-16 lg:mt-24">
           <div className="card p-6">
             <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center mb-4">
               <svg className="w-6 h-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -112,12 +130,10 @@ export default function HomePage() {
               Track revenue, customer trends, and business performance. Understand what's working and make data-driven decisions.
             </p>
           </div>
-        </div>
-
-        {/* Pricing Section */}
-        <div className="mt-32">
-          <h2 className="text-3xl font-bold text-center mb-12">Simple, Transparent Pricing</h2>
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        </div>        {/* Pricing Section */}
+        <div className="mt-16 sm:mt-24 lg:mt-32">
+          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-8 sm:mb-12">Simple, Transparent Pricing</h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
             <div className="card p-8">
               <h3 className="text-2xl font-bold mb-2">Basic</h3>
               <p className="text-4xl font-bold mb-4">$59<span className="text-lg text-gray-500">/mo</span></p>
@@ -144,12 +160,17 @@ export default function HomePage() {
                   <svg className="w-5 h-5 text-success mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  <span>Online booking</span>
-                </li>
+                  <span>Online booking</span>                </li>
               </ul>
-              <Link href="/register?plan=basic" className="btn-outline w-full text-center">
-                Start Free Trial
-              </Link>
+              {isAuthenticated ? (
+                <Link href="/dashboard/settings/billing" className="btn-outline w-full text-center">
+                  View Plans
+                </Link>
+              ) : (
+                <Link href="/register?plan=basic" className="btn-outline w-full text-center">
+                  Start Free Trial
+                </Link>
+              )}
             </div>
 
             <div className="card p-8 ring-2 ring-primary relative">
@@ -187,12 +208,17 @@ export default function HomePage() {
                   <svg className="w-5 h-5 text-success mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  <span>SMS campaigns</span>
-                </li>
+                  <span>SMS campaigns</span>                </li>
               </ul>
-              <Link href="/register?plan=pro" className="btn-primary w-full text-center">
-                Start Free Trial
-              </Link>
+              {isAuthenticated ? (
+                <Link href="/dashboard/settings/billing" className="btn-primary w-full text-center">
+                  View Plans
+                </Link>
+              ) : (
+                <Link href="/register?plan=pro" className="btn-primary w-full text-center">
+                  Start Free Trial
+                </Link>
+              )}
             </div>
 
             <div className="card p-8">
@@ -227,21 +253,24 @@ export default function HomePage() {
                   <svg className="w-5 h-5 text-success mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  <span>Priority support</span>
-                </li>
+                  <span>Priority support</span>                </li>
               </ul>
-              <Link href="/register?plan=premium" className="btn-outline w-full text-center">
-                Start Free Trial
-              </Link>
+              {isAuthenticated ? (
+                <Link href="/dashboard/settings/billing" className="btn-outline w-full text-center">
+                  View Plans
+                </Link>
+              ) : (
+                <Link href="/register?plan=premium" className="btn-outline w-full text-center">
+                  Start Free Trial
+                </Link>
+              )}
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid md:grid-cols-4 gap-8">
+      </div>      {/* Footer */}
+      <footer className="bg-white border-t border-gray-200 mt-16 sm:mt-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
             <div>
               <div className="flex items-center space-x-2 mb-4">
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">

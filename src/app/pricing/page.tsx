@@ -29,15 +29,13 @@ export default function PricingPage() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Pricing Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+      </div>      {/* Pricing Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">
             Simple, Transparent Pricing
           </h1>
-          <p className="text-xl text-gray-600 mb-8">
+          <p className="text-lg sm:text-xl text-gray-600 mb-6 sm:mb-8">
             Choose the plan that's right for your business. Start with a 14-day free trial.
           </p>
 
@@ -61,10 +59,8 @@ export default function PricingPage() {
               <span className="ml-1 text-xs text-success">(Save 20%)</span>
             </span>
           </div>
-        </div>
-
-        {/* Pricing Cards */}
-        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        </div>        {/* Pricing Cards */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto">
           {Object.entries(PRICING_PLANS).map(([key, plan]) => (
             <div
               key={key}

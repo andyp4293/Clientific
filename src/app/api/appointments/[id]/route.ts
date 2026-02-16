@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { sendAppointmentCancellation } from '@/lib/twilio';
 
 // GET - Get single appointment
 export async function GET(
@@ -161,19 +162,36 @@ export async function DELETE(
 
     if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
-    }
-
-    const { id } = await params;
+    }    const { id } = await params;
 
     const appointment = await prisma.appointment.findFirst({
       where: {
         id: id,
         businessId: business.id,
       },
+      include: {
+        customer: true,
+        service: true,
+        business: {
+          select: {
+            name: true,
+          },
+        },
+      },
     });
 
     if (!appointment) {
       return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
+    }
+
+    // Send cancellation SMS
+    if (appointment.customer.phone) {
+      await sendAppointmentCancellation(appointment.customer.phone, {
+        customerName: appointment.customer.name,
+        serviceName: appointment.service?.name || 'Appointment',
+        dateTime: appointment.startTime,
+        businessName: appointment.business.name,
+      });
     }
 
     await prisma.appointment.delete({
