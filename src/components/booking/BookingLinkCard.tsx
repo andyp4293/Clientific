@@ -17,17 +17,17 @@ export default function BookingLinkCard() {
       return res.json();
     },
   });  const business = businessData?.business;
-    // Generate booking URL
+    // Generate booking URL with publicId
   const getBookingUrl = () => {
-    if (!business?.slug) return '';
+    if (!business?.publicId) return '';
     
     const currentHost = window.location.hostname;
     const currentPort = window.location.port;
     const protocol = window.location.protocol;
     const port = currentPort ? `:${currentPort}` : '';
     
-    // Use /book/slug format
-    return `${protocol}//${currentHost}${port}/book/${business.slug}`;
+    // Use /book/publicId format
+    return `${protocol}//${currentHost}${port}/book/${business.publicId}`;
   };
   
   const bookingUrl = getBookingUrl();

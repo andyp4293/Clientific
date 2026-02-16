@@ -337,19 +337,18 @@ export default function SettingsPage() {
               {/* Public ID & Booking URL */}
               {business?.publicId && typeof window !== 'undefined' && (
                 <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <label className="block text-sm font-medium text-blue-900 mb-2">
-                    Your Booking URL
+                  <label className="block text-sm font-medium text-blue-900 mb-2">                  Your Booking URL
                   </label>
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
-                      value={`${window.location.origin}/book/${business.slug}`}
+                      value={`${window.location.origin}/book/${business.publicId}`}
                       readOnly
                       className="input flex-1 bg-white"
                     />
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/book/${business.slug}`);
+                        navigator.clipboard.writeText(`${window.location.origin}/book/${business.publicId}`);
                         alert('Copied to clipboard!');
                       }}
                       className="btn-outline"
