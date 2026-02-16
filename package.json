@@ -7,9 +7,12 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "validate": "npm run type-check && npm run lint && npm run build",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:generate": "prisma generate"
+    "db:generate": "prisma generate",
+    "prepare": "husky install || true"
   },
   "keywords": [],
   "author": "",

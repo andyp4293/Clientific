@@ -93,10 +93,8 @@ export async function POST(req: Request) {
         service: true,
         staff: true,
       },
-    });
-
-    // Update customer points and stats
-    await prisma.customer.update({
+    });    // Update customer points and stats
+    const updatedCustomer = await prisma.customer.update({
       where: { id: customerId },
       data: {
         points: { increment: pointsEarned },
@@ -110,8 +108,8 @@ export async function POST(req: Request) {
       data: {
         customerId,
         amount: pointsEarned,
-        type: 'earned',
         description: 'Check-in points',
+        balanceAfter: updatedCustomer.points,
       },
     });
 
