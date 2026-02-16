@@ -56,8 +56,6 @@ model Business {
   
   // Settings
   enableOnlineBooking Boolean @default(true)
-  enableReviewRequests Boolean @default(true)
-  reviewRequestDelay  Int     @default(2) // hours after check-in
   enableBirthdayCampaign Boolean @default(true)
   pointsPerDollar    Float   @default(1.0)
   pointsPerVisit     Int     @default(10)
@@ -66,7 +64,6 @@ model Business {
   // Relations
   customers     Customer[]
   checkIns      CheckIn[]
-  reviews       Review[]
   appointments  Appointment[]
   services      Service[]
   staff         Staff[]
@@ -76,6 +73,7 @@ model Business {
   businessHours BusinessHours[]
   payments      Payment[]
   invoices      Invoice[]
+  smsLogs       SmsLog[]      @relation("SmsLogs")
 }
 
 model BusinessHours {
@@ -128,7 +126,6 @@ model Customer {
   
   // Relations
   checkIns      CheckIn[]
-  reviews       Review[]
   appointments  Appointment[]
   pointsTransactions PointsTransaction[]
   redemptions   Redemption[]
@@ -165,37 +162,6 @@ model CheckIn {
   
   @@index([businessId, checkInTime])
   @@index([customerId, checkInTime])
-}
-
-model Review {
-  id         String   @id @default(cuid())
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  
-  businessId String
-  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  
-  customerId String
-  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  
-  // Review data
-  rating     Int      // 1-5
-  comment    String?
-  sentiment  String   @default("neutral") // positive, neutral, negative
-  platform   String   @default("private") // private, google, facebook
-  
-  // Response
-  response   String?
-  respondedAt DateTime?
-  
-  // Status
-  status     String   @default("pending") // pending, responded, published, hidden
-  
-  // Token for public review submission
-  token      String   @unique
-  
-  @@index([businessId, rating])
-  @@index([businessId, createdAt])
 }
 
 model Appointment {
@@ -363,6 +329,7 @@ model SmsLog {
   createdAt  DateTime @default(now())
   
   businessId String
+  business   Business @relation("SmsLogs", fields: [businessId], references: [id], onDelete: Cascade)
   
   toPhone    String
   message    String
