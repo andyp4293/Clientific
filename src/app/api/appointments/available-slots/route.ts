@@ -26,22 +26,25 @@ export async function GET(req: NextRequest) {
 
     if (!date) {
       return NextResponse.json({ error: 'Date is required' }, { status: 400 });
-    }
-
-    // Get business hours for the selected date
+    }    // Get business hours for the selected date
     const selectedDate = new Date(date);
     const dayOfWeek = selectedDate.getDay();
 
     const businessHours = await prisma.businessHours.findUnique({
       where: {
-        businessId_dayOfWeek: {
-          businessId: business.id,
-          dayOfWeek,
-        },
+        businessId: business.id,
       },
     });
 
-    if (!businessHours || !businessHours.isOpen) {
+    if (!businessHours) {
+      return NextResponse.json({ availableSlots: [] });
+    }
+
+    // Parse the hours JSON
+    const hours = businessHours.hours as any;
+    const dayHours = hours[dayOfWeek];
+
+    if (!dayHours || !dayHours.isOpen) {
       return NextResponse.json({ availableSlots: [] });
     }
 
@@ -75,12 +78,10 @@ export async function GET(req: NextRequest) {
         },
         ...(staffId && { staffId }),
       },
-    });
-
-    // Generate time slots
+    });    // Generate time slots
     const availableSlots = generateTimeSlots(
-      businessHours.openTime!,
-      businessHours.closeTime!,
+      dayHours.openTime!,
+      dayHours.closeTime!,
       duration,
       existingAppointments,
       selectedDate
