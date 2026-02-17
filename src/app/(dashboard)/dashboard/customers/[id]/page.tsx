@@ -22,12 +22,7 @@ export default async function CustomerDetailPage({
       id,
       businessId: session.user.businessId,
     },
-    include: {
-      checkIns: {
-        orderBy: { createdAt: "desc" },
-        take: 10,
-      },
-      reviews: {
+    include: {      checkIns: {
         orderBy: { createdAt: "desc" },
         take: 10,
       },
@@ -38,7 +33,8 @@ export default async function CustomerDetailPage({
           service: true,
           staff: true,
         },
-      },      redemptions: {
+      },
+      redemptions: {
         orderBy: { createdAt: "desc" },
         include: {
           reward: true,
@@ -51,7 +47,6 @@ export default async function CustomerDetailPage({
       _count: {
         select: {
           checkIns: true,
-          reviews: true,
           appointments: true,
         },
       },

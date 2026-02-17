@@ -62,13 +62,12 @@ export async function GET(
     console.log('Business hours:', JSON.stringify(business.businessHours, null, 2));
 
     // Get business hours for this day from JSON structure
-    if (!business.businessHours || business.businessHours.length === 0) {
+    if (!business.businessHours) {
       console.log('No business hours configured');
       return NextResponse.json({ slots: [], message: 'Business hours not configured' });
     }
 
-    const businessHoursRecord = business.businessHours[0];
-    const hoursData = businessHoursRecord.hours as any;
+    const hoursData = business.businessHours.hours as any;
     const hours = hoursData[dayOfWeek.toString()];
 
     console.log('Hours for day:', hours);

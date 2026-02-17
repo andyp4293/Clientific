@@ -8,13 +8,13 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user?.email) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get business
     const business = await prisma.business.findUnique({
-      where: { email: session.user.email },
+      where: { id: session.user.id },
     });
 
     if (!business) {

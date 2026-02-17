@@ -33,7 +33,6 @@ export default async function CustomersPage({
   if (searchParams.segment) {
     where.segment = searchParams.segment;
   }
-
   // Fetch customers with their stats
   const customers = await prisma.customer.findMany({
     where,
@@ -41,7 +40,6 @@ export default async function CustomersPage({
       _count: {
         select: {
           checkIns: true,
-          reviews: true,
           appointments: true,
         },
       },

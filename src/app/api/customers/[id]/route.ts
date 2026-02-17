@@ -23,13 +23,8 @@ export async function GET(
       where: {
         id,
         businessId: session.user.businessId,
-      },
-      include: {
+      },      include: {
         checkIns: {
-          orderBy: { createdAt: "desc" },
-          take: 10,
-        },
-        reviews: {
           orderBy: { createdAt: "desc" },
           take: 10,
         },

@@ -29,15 +29,12 @@ export async function GET(request: NextRequest) {
 
     if (segment) {
       where.segment = segment;
-    }
-
-    const customers = await prisma.customer.findMany({
+    }    const customers = await prisma.customer.findMany({
       where,
       include: {
         _count: {
           select: {
             checkIns: true,
-            reviews: true,
             appointments: true,
           },
         },

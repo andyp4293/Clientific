@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { DatePicker } from '@/components/ui/DatePicker';
+import Link from 'next/link';
+import { Info } from 'lucide-react';
 
 interface Business {
   id: string;
@@ -260,18 +262,27 @@ export default function PublicBookingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+    <div className="min-h-screen bg-gray-50">      {/* Header */}
       <div className="bg-white border-b">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
-          <div className="flex items-center gap-3 sm:gap-4">
-            {business.logoUrl && (
-              <img src={business.logoUrl} alt={business.name} className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover flex-shrink-0" />
-            )}
-            <div className="min-w-0">
-              <h1 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">{business.name}</h1>
-              <p className="text-xs sm:text-sm text-gray-600">Book an appointment</p>
+          <div className="flex items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+              {business.logoUrl && (
+                <img src={business.logoUrl} alt={business.name} className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover flex-shrink-0" />
+              )}
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">{business.name}</h1>
+                <p className="text-xs sm:text-sm text-gray-600">Book an appointment</p>
+              </div>
             </div>
+            <Link
+              href={`/book/${slugOrPublicId}/info`}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex-shrink-0"
+              title="View business information"
+            >
+              <Info className="w-4 h-4" />
+              <span className="hidden sm:inline">Info</span>
+            </Link>
           </div>
         </div>
       </div>
@@ -631,9 +642,53 @@ export default function PublicBookingPage() {
                 </div>
               )}
             </div>
-          </div>
-        )}
+          </div>        )}
       </div>
+
+      {/* Footer with Terms & Privacy */}
+      {business && (
+        <div className="mt-8 pt-6 border-t border-gray-200 text-center">
+          <p className="text-sm text-gray-600">
+            I have read and agree to the{' '}
+            <Link 
+              href="https://gocheckin.net/cancellation-policy/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              cancellation policy
+            </Link>{' '}
+            of {business.name} &amp; also to{' '}
+            <Link 
+              href="https://gocheckin.net" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              ClientFlow
+            </Link>{' '}
+            Marketing&apos;s{' '}
+            <Link 
+              href="/terms" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              terms and conditions
+            </Link>
+            /
+            <Link 
+              href="/privacy" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              privacy policy
+            </Link>
+            .
+          </p>
+        </div>
+      )}
     </div>
   );
 }

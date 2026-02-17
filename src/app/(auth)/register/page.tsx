@@ -60,7 +60,6 @@ function RegisterForm() {
     timezone: '',
     plan: defaultPlan,
   });
-
   // Redirect if already logged in
   useEffect(() => {
     if (status === 'authenticated') {
@@ -74,6 +73,15 @@ function RegisterForm() {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     }));
   }, []);
+
+  // Password validation checks - memoized to recalculate when password changes
+  // MUST be called before any conditional returns (Rules of Hooks)
+  const passwordChecks = useMemo(() => ({
+    minLength: formData.password.length >= 8,
+    hasNumber: /[0-9]/.test(formData.password),
+    hasSpecialChar: /[!@#$%^&*]/.test(formData.password),
+    passwordsMatch: formData.password === formData.confirmPassword && formData.confirmPassword.length > 0,
+  }), [formData.password, formData.confirmPassword]);
 
   // Show loading while checking auth status
   if (status === 'loading') {
@@ -102,17 +110,11 @@ function RegisterForm() {
     'Retail',
     'Professional Services',
     'Other',
-  ];  const updateFormData = (updates: Partial<FormData>) => {
+  ];
+
+  const updateFormData = (updates: Partial<FormData>) => {
     setFormData(prev => ({ ...prev, ...updates }));
   };
-
-  // Password validation checks - memoized to recalculate when password changes
-  const passwordChecks = useMemo(() => ({
-    minLength: formData.password.length >= 8,
-    hasNumber: /[0-9]/.test(formData.password),
-    hasSpecialChar: /[!@#$%^&*]/.test(formData.password),
-    passwordsMatch: formData.password === formData.confirmPassword && formData.confirmPassword.length > 0,
-  }), [formData.password, formData.confirmPassword]);
 
   const validateStep = (step: Step): boolean => {
     setError('');

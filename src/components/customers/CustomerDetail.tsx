@@ -20,14 +20,7 @@ type Customer = {
   checkIns: Array<{
     id: string;
     createdAt: Date;
-    amountSpent: number | null;
-    pointsEarned: number;
-  }>;
-  reviews: Array<{
-    id: string;
-    rating: number;
-    comment: string | null;
-    createdAt: Date;
+    amountSpent: number | null;    pointsEarned: number;
   }>;
   appointments: Array<{
     id: string;
@@ -51,10 +44,8 @@ type Customer = {
     amount: number;
     description: string;
     createdAt: Date;
-  }>;
-  _count: {
+  }>;  _count: {
     checkIns: number;
-    reviews: number;
     appointments: number;
   };
 };
@@ -80,10 +71,6 @@ export default function CustomerDetail({ customer }: { customer: Customer }) {
   const [activeTab, setActiveTab] = useState<"overview" | "history" | "points">(
     "overview"
   );
-
-  const averageRating = customer.reviews.length > 0
-    ? (customer.reviews.reduce((sum, r) => sum + r.rating, 0) / customer.reviews.length).toFixed(1)
-    : "N/A";
 
   return (
     <>
@@ -160,19 +147,17 @@ export default function CustomerDetail({ customer }: { customer: Customer }) {
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="text-sm font-medium text-gray-600 mb-1">
               Loyalty Points
-            </div>
-            <div className="text-2xl font-bold text-purple-600">
+            </div>            <div className="text-2xl font-bold text-purple-600">
               {customer.points.toLocaleString()}
             </div>
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="text-sm font-medium text-gray-600 mb-1">
-              Average Rating
+              Total Visits
             </div>
-            <div className="text-2xl font-bold text-yellow-600">
-              {averageRating}
-              {averageRating !== "N/A" && " ★"}
+            <div className="text-2xl font-bold text-blue-600">
+              {customer._count.checkIns}
             </div>
           </div>
         </div>

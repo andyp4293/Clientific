@@ -41,19 +41,11 @@ async function getDashboardStats(businessId: string) {
     where: {
       businessId,
       checkInTime: { gte: thisWeekStart },
-    },
-  });
-  // Average review rating
-  const reviews = await prisma.review.findMany({
-    where: { businessId },
-    select: { rating: true },
-  });
-  const avgRating = reviews.length > 0
-    ? reviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0) / reviews.length
-    : 0;
-
-  // Total reviews
-  const totalReviews = reviews.length;
+    },  });
+  
+  // Review functionality not yet implemented
+  const avgRating = 0;
+  const totalReviews = 0;
 
   // Loyalty points issued this month
   const pointsThisMonth = await prisma.pointsTransaction.aggregate({
@@ -80,18 +72,10 @@ async function getDashboardStats(businessId: string) {
     include: {
       customer: true,
       service: true,
-    },
-  });
+    },  });
 
-  // Recent reviews
-  const recentReviews = await prisma.review.findMany({
-    where: { businessId },
-    orderBy: { createdAt: 'desc' },
-    take: 5,
-    include: {
-      customer: true,
-    },
-  });
+  // Review functionality not yet implemented
+  const recentReviews: any[] = [];
 
   // Upcoming appointments today
   const upcomingAppointments = await prisma.appointment.findMany({

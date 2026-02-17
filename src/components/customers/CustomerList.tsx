@@ -17,11 +17,9 @@ type Customer = {
   totalSpent: number;
   lastVisit: Date | null;
   birthday: Date | null;
-  notes: string | null;
-  createdAt: Date;
+  notes: string | null;  createdAt: Date;
   _count: {
     checkIns: number;
-    reviews: number;
     appointments: number;
   };
 };
