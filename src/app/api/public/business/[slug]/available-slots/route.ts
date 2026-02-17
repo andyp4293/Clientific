@@ -54,12 +54,12 @@ export async function GET(
     const [year, month, day] = date.split('-').map(Number);
     const selectedDate = new Date(year, month - 1, day);
     const dayOfWeek = selectedDate.getDay();    // Get business hours for this day from JSON structure
-    if (!business.businessHours || business.businessHours.length === 0) {
+    if (!business.businessHours) {
       console.log('❌ No business hours found for business:', business.id);
       return NextResponse.json({ slots: [], message: 'Business hours not configured' });
     }
 
-    const businessHoursRecord = business.businessHours[0];
+    const businessHoursRecord = business.businessHours;
     const hoursData = businessHoursRecord.hours as any;
     const hours = hoursData[dayOfWeek.toString()];
 
