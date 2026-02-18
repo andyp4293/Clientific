@@ -134,7 +134,7 @@ export default async function DashboardPage() {
   });
 
   if (!business) {
-    redirect('/login');
+    redirect('/signout');
   }
 
   const stats = await getDashboardStats(business.id);
