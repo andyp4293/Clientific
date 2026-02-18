@@ -649,37 +649,19 @@ export default function PublicBookingPage() {
       {business && (
         <div className="mt-8 pt-6 border-t border-gray-200 text-center">
           <p className="text-sm text-gray-600">
-            I have read and agree to the{' '}
-            <Link 
-              href="https://gocheckin.net/cancellation-policy/" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
-            >
-              cancellation policy
-            </Link>{' '}
-            of {business.name} &amp; also to{' '}
-            <Link 
-              href="https://gocheckin.net" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
-            >
-              ClientFlow
-            </Link>{' '}
-            Marketing&apos;s{' '}
-            <Link 
-              href="/terms" 
-              target="_blank" 
+            By booking, I agree to {business.name}&apos;s cancellation policy and ClientFlow&apos;s{' '}
+            <Link
+              href="/terms"
+              target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 hover:underline"
             >
               terms and conditions
             </Link>
-            /
-            <Link 
-              href="/privacy" 
-              target="_blank" 
+            {' '}/{' '}
+            <Link
+              href="/privacy"
+              target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 hover:underline"
             >
