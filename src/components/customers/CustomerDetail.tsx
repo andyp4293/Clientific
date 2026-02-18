@@ -273,47 +273,6 @@ export default function CustomerDetail({ customer }: { customer: Customer }) {
                   )}
                 </div>
 
-                {/* Recent Reviews */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                    Recent Reviews
-                  </h3>
-                  {customer.reviews.length === 0 ? (
-                    <p className="text-gray-500">No reviews yet</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {customer.reviews.map((review) => (
-                        <div
-                          key={review.id}
-                          className="p-4 bg-gray-50 rounded-lg"
-                        >
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="flex">
-                              {[...Array(5)].map((_, i) => (
-                                <span
-                                  key={i}
-                                  className={
-                                    i < review.rating
-                                      ? "text-yellow-400"
-                                      : "text-gray-300"
-                                  }
-                                >
-                                  ★
-                                </span>
-                              ))}
-                            </div>
-                            <span className="text-sm text-gray-500">
-                              {format(new Date(review.createdAt), "MMM d, yyyy")}
-                            </span>
-                          </div>
-                          {review.comment && (
-                            <p className="text-sm text-gray-700">{review.comment}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
               </div>
             )}
 
