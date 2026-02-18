@@ -8,10 +8,10 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user?.email) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }    const business = await prisma.business.findUnique({
-      where: { email: session.user.email },
+      where: { id: session.user.id },
       select: {
         id: true,
         name: true,
@@ -58,7 +58,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user?.email) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -83,7 +83,7 @@ export async function PATCH(req: NextRequest) {
     } = body;
 
     const business = await prisma.business.update({
-      where: { email: session.user.email },
+      where: { id: session.user.id },
       data: {
         ...(name && { name }),
         ...(businessType && { businessType }),

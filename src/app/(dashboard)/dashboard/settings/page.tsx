@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
@@ -44,14 +44,16 @@ export default function SettingsPage() {
     queryFn: async () => {
       const res = await fetch('/api/business');
       if (!res.ok) throw new Error('Failed to fetch business');
-      const json = await res.json();
-      if (json?.business) {
-        setFormData(json.business);
-        setLogoPreview(json.business.logoUrl);
-      }
-      return json;
+      return res.json();
     },
   });
+
+  useEffect(() => {
+    if (data?.business) {
+      setFormData(data.business);
+      setLogoPreview(data.business.logoUrl);
+    }
+  }, [data]);
 
   const business: Business | undefined = data?.business;
 
