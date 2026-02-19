@@ -38,6 +38,8 @@ model Business {
   stripeSubscriptionId   String?        @unique
   stripePriceId          String?
   stripeCurrentPeriodEnd DateTime?
+  resetToken             String?
+  resetTokenExpiry       DateTime?
   enableOnlineBooking    Boolean        @default(true)
   enableBirthdayCampaign Boolean        @default(true)
   pointsPerDollar        Float          @default(1.0)
