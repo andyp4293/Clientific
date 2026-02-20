@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+// Convert a local business-timezone time to its correct UTC equivalent
+function businessTimeToUTC(dateStr: string, hour: number, minute: number, timezone: string): Date {
+  const localStr = `${dateStr}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+  const naiveUTC = new Date(localStr + 'Z');
+  const inBizTz = new Date(naiveUTC.toLocaleString('en-US', { timeZone: timezone }));
+  const offsetMs = naiveUTC.getTime() - inBizTz.getTime();
+  return new Date(naiveUTC.getTime() + offsetMs);
+}
+
 // GET - Get available time slots (public)
 export async function GET(
   req: NextRequest,
@@ -74,12 +83,9 @@ export async function GET(
 
     console.log('✅ Business hours:', { openHour, openMinute, closeHour, closeMinute });
 
-    // Get existing appointments for this day
-    const startOfDay = new Date(selectedDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    
-    const endOfDay = new Date(selectedDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Get existing appointments for this day (in business timezone)
+    const startOfDay = businessTimeToUTC(date, 0, 0, business.timezone);
+    const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1);
 
     console.log('🔍 Checking appointments between:', startOfDay.toISOString(), 'and', endOfDay.toISOString());
 
@@ -111,14 +117,12 @@ export async function GET(
         if (hour === closeHour && minute >= closeMinute) break;
         if (hour === closeHour - 1 && minute + duration > 60 && closeMinute === 0) break;
 
-        const slotTime = new Date(selectedDate);
-        slotTime.setHours(hour, minute, 0, 0);
+        const slotTime = businessTimeToUTC(date, hour, minute, business.timezone);
 
         const slotEndTime = new Date(slotTime.getTime() + duration * 60000);
 
         // Check if slot end time exceeds business closing time
-        const closeTime = new Date(selectedDate);
-        closeTime.setHours(closeHour, closeMinute, 0, 0);
+        const closeTime = businessTimeToUTC(date, closeHour, closeMinute, business.timezone);
         
         if (slotEndTime > closeTime) {
           console.log('⏭️  Skipping slot', slotTime.toLocaleTimeString(), '- would exceed closing time');

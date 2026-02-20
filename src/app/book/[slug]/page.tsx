@@ -219,6 +219,7 @@ export default function PublicBookingPage() {
                   {new Date(selectedTime!).toLocaleTimeString('en-US', {
                     hour: 'numeric',
                     minute: '2-digit',
+                    timeZone: business.timezone,
                   })}
                 </span>
               </div>
@@ -445,6 +446,7 @@ export default function PublicBookingPage() {
                       const timeStr = slotDate.toLocaleTimeString('en-US', {
                         hour: 'numeric',
                         minute: '2-digit',
+                        timeZone: business.timezone,
                       });
                       
                       return (
@@ -626,6 +628,7 @@ export default function PublicBookingPage() {
                       {new Date(selectedTime).toLocaleTimeString('en-US', {
                         hour: 'numeric',
                         minute: '2-digit',
+                        timeZone: business.timezone,
                       })}
                     </span>
                   </div>
