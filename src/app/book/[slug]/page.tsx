@@ -153,6 +153,7 @@ export default function PublicBookingPage() {
       customerPhone: customerInfo.phone,
       customerEmail: customerInfo.email || undefined,
       notes: customerInfo.notes || undefined,
+      smsConsent: customerInfo.smsConsent,
     });
   };
 
