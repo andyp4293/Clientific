@@ -9,15 +9,17 @@ export const stripe = new Stripe(STRIPE_KEY, {
 });
 
 // Pricing Plans Configuration
-export const PRICING_PLANS = {  STARTER: {
+export const PRICING_PLANS = {
+  STARTER: {
     name: 'Starter',
     price: 29,
+    yearlyPrice: 23, // per month when billed annually ($276/year)
     priceId: process.env.STRIPE_STARTER_PRICE_ID || 'price_starter',
+    yearlyPriceId: process.env.STRIPE_STARTER_YEARLY_PRICE_ID || 'price_starter_yearly',
     features: [
       'Up to 100 customers',
       'Basic check-in system',
       'Email & SMS notifications',
-      'Review requests',
       'Basic analytics',
       '14-day free trial',
     ],
@@ -31,7 +33,9 @@ export const PRICING_PLANS = {  STARTER: {
   PRO: {
     name: 'Pro',
     price: 79,
+    yearlyPrice: 63, // per month when billed annually ($756/year)
     priceId: process.env.STRIPE_PRO_PRICE_ID || 'price_pro',
+    yearlyPriceId: process.env.STRIPE_PRO_YEARLY_PRICE_ID || 'price_pro_yearly',
     features: [
       'Up to 1,000 customers',
       'Advanced check-in & kiosk mode',
@@ -48,10 +52,13 @@ export const PRICING_PLANS = {  STARTER: {
       services: 50,
     },
     popular: true,
-  },  PREMIUM: {
+  },
+  PREMIUM: {
     name: 'Premium',
     price: 149,
+    yearlyPrice: 119, // per month when billed annually ($1,428/year)
     priceId: process.env.STRIPE_PREMIUM_PRICE_ID || 'price_premium',
+    yearlyPriceId: process.env.STRIPE_PREMIUM_YEARLY_PRICE_ID || 'price_premium_yearly',
     features: [
       'Unlimited customers',
       'Everything in Pro',

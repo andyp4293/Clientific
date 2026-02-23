@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import Stripe from 'stripe';
-import { stripe } from '@/lib/stripe';
+import { stripe, PRICING_PLANS } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
+
+function getPlanFromPriceId(priceId: string): string | null {
+  const entry = Object.entries(PRICING_PLANS).find(([, plan]) => plan.priceId === priceId);
+  return entry ? entry[0].toLowerCase() : null;
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
@@ -117,12 +122,17 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   });
 
   if (!business) return;
+
+  const newPriceId = subscription.items.data[0].price.id;
+  const newPlan = getPlanFromPriceId(newPriceId);
+
   await prisma.business.update({
     where: { id: business.id },
     data: {
       subscriptionStatus: subscription.status,
-      stripePriceId: subscription.items.data[0].price.id,
+      stripePriceId: newPriceId,
       stripeCurrentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
+      ...(newPlan && { subscriptionPlan: newPlan }),
     },
   });
 }

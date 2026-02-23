@@ -553,7 +553,7 @@ export default function PublicBookingPage() {
                       className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     />
                     <label htmlFor="smsConsent" className="text-sm text-gray-700 flex-1">
-                      <span className="font-medium">I consent to receive SMS notifications</span> including appointment confirmations, reminders, and updates. Message and data rates may apply. Reply STOP to unsubscribe, HELP for help. See our <a href="/terms" target="_blank" className="text-blue-600 underline">Terms of Service</a> and <a href="/privacy" target="_blank" className="text-blue-600 underline">Privacy Policy</a>.
+                      <span className="font-medium">Yes, send me SMS appointment reminders and updates.</span> Message and data rates may apply. Message frequency varies. Reply STOP to cancel, HELP for help. This is optional — you can still book without SMS.
                     </label>
                   </div>
                 </div>
@@ -581,7 +581,6 @@ export default function PublicBookingPage() {
                   disabled={
                     !customerInfo.name ||
                     !customerInfo.phone ||
-                    !customerInfo.smsConsent ||
                     bookingMutation.isPending
                   }
                   className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

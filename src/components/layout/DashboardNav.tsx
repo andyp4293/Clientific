@@ -7,15 +7,11 @@ import { ReactElement } from 'react';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: 'home' },
-  { name: 'Customers', href: '/dashboard/customers', icon: 'users' },
+  { name: 'Appointments', href: '/dashboard/appointments', icon: 'calendar' },
   { name: 'Services & Staff', href: '/dashboard/services', icon: 'briefcase' },
+  { name: 'Customers', href: '/dashboard/customers', icon: 'users' },
   { name: 'Business Hours', href: '/dashboard/business-hours', icon: 'clock' },
   { name: 'Check-Ins', href: '/dashboard/checkins', icon: 'check' },
-  { name: 'Reviews', href: '/dashboard/reviews', icon: 'star' },
-  { name: 'Appointments', href: '/dashboard/appointments', icon: 'calendar' },
-  { name: 'Rewards', href: '/dashboard/rewards', icon: 'gift' },
-  { name: 'Campaigns', href: '/dashboard/campaigns', icon: 'megaphone' },
-  { name: 'Analytics', href: '/dashboard/analytics', icon: 'chart' },
   { name: 'Settings', href: '/dashboard/settings', icon: 'settings' },
 ];
 

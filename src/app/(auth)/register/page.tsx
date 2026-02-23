@@ -237,7 +237,7 @@ function RegisterForm() {
 
   const handleDashboardRedirect = async () => {
     setIsLoading(true);
-    
+
     try {
       // Auto-login after registration
       const { signIn } = await import('next-auth/react');
@@ -257,6 +257,33 @@ function RegisterForm() {
       router.refresh();
     } catch (err: any) {
       setError('Account created but login failed. Please try logging in manually.');
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubscribeRedirect = async () => {
+    setIsLoading(true);
+
+    try {
+      // Auto-login first so the checkout API can read the session
+      const { signIn } = await import('next-auth/react');
+      const result = await signIn('credentials', {
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setError('Login failed. Please go to the dashboard and subscribe from billing settings.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Now trigger checkout for the selected plan
+      router.push(`/pricing?autostart=${formData.plan}`);
+      router.refresh();
+    } catch {
+      setError('Something went wrong. Please subscribe from the billing settings page.');
       setIsLoading(false);
     }
   };
@@ -676,20 +703,25 @@ function RegisterForm() {
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                     <span>Enable online booking for customers</span>
-                  </li>                  <li className="flex items-start">
-                    <svg className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <span>Configure automatic review requests</span>
-                  </li>
-                </ul>
-              </div>              <button
-                onClick={handleDashboardRedirect}
-                className="btn-primary px-8 py-3 text-lg"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Logging you in...' : 'Go to Dashboard'}
-              </button>
+                  </li>                </ul>
+              </div>              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                {formData.plan && formData.plan !== 'trial' && (
+                  <button
+                    onClick={handleSubscribeRedirect}
+                    className="btn-primary px-8 py-3 text-lg"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Please wait...' : 'Subscribe Now'}
+                  </button>
+                )}
+                <button
+                  onClick={handleDashboardRedirect}
+                  className={formData.plan && formData.plan !== 'trial' ? 'btn-outline px-8 py-3 text-base' : 'btn-primary px-8 py-3 text-lg'}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Logging you in...' : formData.plan && formData.plan !== 'trial' ? 'Skip — use free trial' : 'Go to Dashboard'}
+                </button>
+              </div>
             </div>
           )}
 

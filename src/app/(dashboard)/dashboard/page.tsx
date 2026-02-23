@@ -43,10 +43,6 @@ async function getDashboardStats(businessId: string) {
       checkInTime: { gte: thisWeekStart },
     },  });
   
-  // Review functionality not yet implemented
-  const avgRating = 0;
-  const totalReviews = 0;
-
   // Loyalty points issued this month
   const pointsThisMonth = await prisma.pointsTransaction.aggregate({
     where: {
@@ -73,9 +69,6 @@ async function getDashboardStats(businessId: string) {
       customer: true,
       service: true,
     },  });
-
-  // Review functionality not yet implemented
-  const recentReviews: any[] = [];
 
   // Upcoming appointments today
   const upcomingAppointments = await prisma.appointment.findMany({
@@ -109,22 +102,24 @@ async function getDashboardStats(businessId: string) {
     totalCustomers,
     newCustomersThisMonth,
     checkInsToday,
-    checkInsThisWeek,    avgRating: avgRating.toFixed(1),
-    totalReviews,
+    checkInsThisWeek,
     pointsThisMonth: pointsThisMonth._sum.amount || 0,
     segments: segments.reduce((acc: Record<string, number>, s: any) => {
       acc[s.segment] = s._count;
       return acc;
     }, {} as Record<string, number>),
     recentCheckIns,
-    recentReviews,
     upcomingAppointments,
   };
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ checkout?: string }>;
+}) {
   const session = await getServerSession(authOptions);
-  
+
   if (!session?.user?.id) {
     redirect('/login');
   }
@@ -137,7 +132,16 @@ export default async function DashboardPage() {
     redirect('/signout');
   }
 
+  const params = await searchParams;
+  const checkoutSuccess = params.checkout === 'success';
   const stats = await getDashboardStats(business.id);
+
+  // Calculate trial days remaining
+  const trialDaysRemaining = business.trialEndsAt
+    ? Math.max(0, Math.ceil((new Date(business.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
+
+  const isTrialUrgent = trialDaysRemaining !== null && trialDaysRemaining <= 3;
 
   return (
     <div className="space-y-6">
@@ -147,23 +151,93 @@ export default async function DashboardPage() {
         <p className="text-gray-600">Welcome back, {business.name}!</p>
       </div>
 
-      {/* Trial Banner */}
-      {business.subscriptionStatus === 'trialing' && business.trialEndsAt && (
-        <div className="card bg-primary-50 border-primary-200 p-4">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <svg className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div className="ml-3 flex-1">
-              <h3 className="text-sm font-medium text-primary-900">Free Trial Active</h3>
-              <p className="text-sm text-primary-700 mt-1">
-                Your trial ends on {new Date(business.trialEndsAt).toLocaleDateString()}. Upgrade now to continue using ClientFlow.
-              </p>
-            </div>
+      {/* Checkout success toast */}
+      {checkoutSuccess && (
+        <div className="rounded-lg bg-green-50 border border-green-200 p-4 flex items-start gap-3">
+          <svg className="w-5 h-5 text-green-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <p className="text-sm font-semibold text-green-800">You&apos;re subscribed!</p>
+            <p className="text-sm text-green-700">Your plan is now active. You&apos;re all set.</p>
           </div>
         </div>
+      )}
+
+      {/* Subscription status banners — hidden when active or just subscribed */}
+      {!checkoutSuccess && business.subscriptionStatus !== 'active' && (
+        <>
+          {/* Trial banner */}
+          {business.subscriptionStatus === 'trialing' && trialDaysRemaining !== null && (
+            <div className={`rounded-lg border p-4 flex items-center justify-between gap-4 ${
+              isTrialUrgent
+                ? 'bg-red-50 border-red-200'
+                : 'bg-yellow-50 border-yellow-200'
+            }`}>
+              <div className="flex items-start gap-3">
+                <svg className={`w-5 h-5 shrink-0 mt-0.5 ${isTrialUrgent ? 'text-red-500' : 'text-yellow-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className={`text-sm font-semibold ${isTrialUrgent ? 'text-red-800' : 'text-yellow-800'}`}>
+                    {isTrialUrgent
+                      ? `Trial expires in ${trialDaysRemaining} day${trialDaysRemaining === 1 ? '' : 's'}`
+                      : `${trialDaysRemaining} days left in your free trial`}
+                  </p>
+                  <p className={`text-sm ${isTrialUrgent ? 'text-red-700' : 'text-yellow-700'}`}>
+                    Subscribe now to keep your data and stay uninterrupted.
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/pricing"
+                className={`shrink-0 text-sm font-medium px-4 py-2 rounded-lg transition-colors ${
+                  isTrialUrgent
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'bg-yellow-500 text-white hover:bg-yellow-600'
+                }`}
+              >
+                Choose a plan
+              </Link>
+            </div>
+          )}
+
+          {/* Past due banner */}
+          {business.subscriptionStatus === 'past_due' && (
+            <div className="rounded-lg bg-red-50 border border-red-200 p-4 flex items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-semibold text-red-800">Payment failed</p>
+                  <p className="text-sm text-red-700">Please update your payment method to avoid service interruption.</p>
+                </div>
+              </div>
+              <Link href="/dashboard/settings/billing" className="shrink-0 text-sm font-medium px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">
+                Fix payment
+              </Link>
+            </div>
+          )}
+
+          {/* Canceled banner */}
+          {business.subscriptionStatus === 'canceled' && (
+            <div className="rounded-lg bg-red-50 border border-red-200 p-4 flex items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+                <div>
+                  <p className="text-sm font-semibold text-red-800">Subscription canceled</p>
+                  <p className="text-sm text-red-700">Your subscription has ended. Reactivate to continue using ClientFlow.</p>
+                </div>
+              </div>
+              <Link href="/pricing" className="shrink-0 text-sm font-medium px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">
+                Reactivate
+              </Link>
+            </div>
+          )}
+        </>
       )}
 
       {/* Stats Grid */}
@@ -188,17 +262,6 @@ export default async function DashboardPage() {
           </div>
           <p className="text-3xl font-bold text-gray-900">{stats.checkInsToday}</p>
           <p className="text-sm text-gray-500 mt-1">Today • {stats.checkInsThisWeek} this week</p>
-        </div>
-
-        <div className="card p-6">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-600">Avg Rating</p>
-            <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-            </svg>
-          </div>
-          <p className="text-3xl font-bold text-gray-900">{stats.avgRating}</p>
-          <p className="text-sm text-gray-500 mt-1">{stats.totalReviews} reviews</p>
         </div>
 
         <div className="card p-6">
@@ -310,38 +373,6 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* Recent Reviews */}
-        <div className="card p-6">
-          <h2 className="text-lg font-semibold mb-4">Recent Reviews</h2>          {stats.recentReviews.length > 0 ? (
-            <div className="space-y-3">
-              {stats.recentReviews.map((review: any) => (
-                <div key={review.id} className="border-b border-gray-100 pb-3 last:border-0">                  <div className="flex items-center justify-between mb-1">
-                    <p className="font-medium text-gray-900">
-                      {review.customer.name}
-                    </p>
-                    <div className="flex items-center">
-                      {[...Array(5)].map((_, i) => (
-                        <svg
-                          key={i}
-                          className={`w-4 h-4 ${i < review.rating ? 'text-yellow-400' : 'text-gray-300'}`}
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                      ))}
-                    </div>
-                  </div>
-                  {review.comment && (
-                    <p className="text-sm text-gray-600 line-clamp-2">{review.comment}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500 text-center py-8">No reviews yet</p>
-          )}
-        </div>
       </div>
     </div>
   );

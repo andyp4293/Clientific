@@ -12,14 +12,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { priceId, plan } = await req.json();
+    const { plan, billingPeriod } = await req.json();
 
-    if (!priceId || !plan) {
+    if (!plan) {
       return NextResponse.json(
-        { error: 'Price ID and plan are required' },
+        { error: 'Plan is required' },
         { status: 400 }
       );
     }
+
+    const planKey = plan.toUpperCase() as keyof typeof PRICING_PLANS;
+    const planConfig = PRICING_PLANS[planKey];
+
+    if (!planConfig) {
+      return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
+    }
+
+    const priceId = billingPeriod === 'yearly' ? planConfig.yearlyPriceId : planConfig.priceId;
 
     // Get business
     const business = await prisma.business.findUnique({
