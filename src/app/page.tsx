@@ -518,7 +518,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="border-t border-gray-100 mt-10 pt-8 text-center text-sm text-gray-400">
-            © 2026 ClientFlow. All rights reserved.
+            © 2026 ClientFlow by Andy Pham. All rights reserved.
           </div>
         </div>
       </footer>
