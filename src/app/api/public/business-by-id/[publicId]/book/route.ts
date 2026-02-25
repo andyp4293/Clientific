@@ -47,14 +47,6 @@ export async function POST(
       );
     }
 
-    // SMS Consent validation - required for TCPA compliance
-    if (!smsConsent) {
-      return NextResponse.json(
-        { error: 'SMS consent is required to receive appointment notifications' },
-        { status: 400 }
-      );
-    }
-
     // Verify service belongs to this business
     const service = await prisma.service.findFirst({
       where: {
@@ -178,9 +170,9 @@ export async function POST(
           },
         },
       },
-    });    // Send SMS confirmation
+    });    // Send SMS confirmation only if customer consented
     let smsResult = null;
-    if (customer.phone) {
+    if (customer.phone && smsConsent) {
       smsResult = await sendAppointmentConfirmation(customer.phone, {
         customerName: customer.name,
         serviceName: appointment.service?.name || 'Appointment',
@@ -197,15 +189,22 @@ export async function POST(
       }
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       appointment,
       message: 'Appointment booked successfully!',
-      smsNotification: smsResult?.success 
-        ? 'Confirmation SMS sent' 
-        : customer.phone 
-          ? 'SMS notification failed' 
+      smsNotification: smsResult?.success
+        ? 'Confirmation SMS sent'
+        : customer.phone
+          ? 'SMS notification failed'
           : 'No phone number provided',
+      smsDebug: {
+        attempted: !!(customer.phone && smsConsent),
+        consentGiven: !!smsConsent,
+        hasPhone: !!customer.phone,
+        error: smsResult?.error || null,
+        sid: smsResult?.sid || null,
+      },
     });
   } catch (error: any) {
     console.error('Create booking error:', error);

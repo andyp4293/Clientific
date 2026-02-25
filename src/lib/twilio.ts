@@ -1,20 +1,5 @@
 import twilio from 'twilio';
 
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
-
-// Validate configuration
-const isTwilioConfigured = accountSid && authToken && twilioPhoneNumber;
-
-if (!isTwilioConfigured) {
-  console.warn('⚠️  Twilio not configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER in .env');
-}
-
-export const twilioClient = isTwilioConfigured
-  ? twilio(accountSid, authToken)
-  : null;
-
 // Types
 interface SendSMSParams {
   to: string;
@@ -55,15 +40,15 @@ interface ReminderDetails {
 // Utility: Format phone number to E.164
 export function formatPhoneNumber(phone: string): string {
   const cleaned = phone.replace(/\D/g, '');
-  
+
   if (cleaned.length === 10) {
     return `+1${cleaned}`;
   }
-  
+
   if (cleaned.length === 11 && cleaned.startsWith('1')) {
     return `+${cleaned}`;
   }
-  
+
   return phone.startsWith('+') ? phone : `+${cleaned}`;
 }
 
@@ -93,9 +78,13 @@ function formatTime(date: Date): string {
   });
 }
 
-// Main SMS sending function
+// Main SMS sending function — reads env vars at call time (lazy) to avoid build-time null
 export async function sendSMS({ to, message }: SendSMSParams): Promise<SMSResult> {
-  if (!twilioClient || !twilioPhoneNumber) {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
+
+  if (!accountSid || !authToken || !twilioPhoneNumber) {
     console.log('📱 SMS disabled (Twilio not configured)');
     console.log('Would have sent to:', to);
     console.log('Message:', message);
@@ -107,9 +96,11 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SMSResult
     return { success: false, error: 'Invalid phone number format' };
   }
 
+  const client = twilio(accountSid, authToken);
   const formattedPhone = formatPhoneNumber(to);
+
   try {
-    const result = await twilioClient.messages.create({
+    const result = await client.messages.create({
       body: message,
       from: twilioPhoneNumber,
       to: formattedPhone,
@@ -119,23 +110,15 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SMSResult
     return { success: true, sid: result.sid };
   } catch (error: any) {
     console.error('❌ Failed to send SMS:', error);
-    
-    // Check if this is a trial account error
-    if (error?.code === 21608 || error?.message?.includes('trial')) {
-      console.warn('⚠️  Twilio trial account - phone number must be verified first');
-      console.warn('   Visit: https://console.twilio.com/us1/develop/phone-numbers/manage/verified');
-      return { 
-        success: false, 
-        error: 'Phone number not verified. Twilio trial accounts can only send to verified numbers.' 
-      };
-    }
-    
-    return { 
-      success: false, 
-      error: error?.message || 'Failed to send SMS' 
+    return {
+      success: false,
+      error: error?.message || 'Failed to send SMS'
     };
   }
 }
+
+// Legacy export kept for compatibility
+export const twilioClient = null;
 
 // Template: Appointment Confirmation (shortened for trial accounts)
 export function formatAppointmentConfirmationSMS(details: AppointmentDetails): string {
