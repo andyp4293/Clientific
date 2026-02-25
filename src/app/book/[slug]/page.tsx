@@ -46,7 +46,7 @@ export default function PublicBookingPage() {
   const slugOrPublicId = params.slug as string;
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
-  const [selectedStaff, setSelectedStaff] = useState<string>('anyone');
+  const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
   // Initialize with today's date in local timezone
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -108,7 +108,7 @@ export default function PublicBookingPage() {
       const params = new URLSearchParams({
         date: selectedDate.toISOString().split('T')[0],
         serviceId: selectedService.id,
-        ...(selectedStaff !== 'anyone' && { staffId: selectedStaff }),
+        ...(selectedStaff && selectedStaff !== 'anyone' && { staffId: selectedStaff }),
       });
       const res = await fetch(`${apiBase}/available-slots?${params}`);
       if (!res.ok) throw new Error('Failed to fetch slots');
@@ -146,7 +146,7 @@ export default function PublicBookingPage() {
 
     bookingMutation.mutate({
       serviceId: selectedService.id,
-      staffId: selectedStaff,
+      staffId: selectedStaff ?? 'anyone',
       startTime: selectedTime,
       duration: selectedService.duration,
       customerName: customerInfo.name,
@@ -372,10 +372,7 @@ export default function PublicBookingPage() {
               <h2 className="text-xl font-bold text-gray-900 mb-6">Choose Staff Member</h2>
               <div className="space-y-3">
                 <button
-                  onClick={() => {
-                    setSelectedStaff('anyone');
-                    setStep(3);
-                  }}
+                  onClick={() => setSelectedStaff('anyone')}
                   className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                     selectedStaff === 'anyone'
                       ? 'border-blue-500 bg-blue-50'
@@ -389,10 +386,7 @@ export default function PublicBookingPage() {
                 {staff.map((member) => (
                   <button
                     key={member.id}
-                    onClick={() => {
-                      setSelectedStaff(member.id);
-                      setStep(3);
-                    }}
+                    onClick={() => setSelectedStaff(member.id)}
                     className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                       selectedStaff === member.id
                         ? 'border-blue-500 bg-blue-50'
@@ -404,12 +398,21 @@ export default function PublicBookingPage() {
                 ))}
               </div>
 
-              <button
-                onClick={() => setStep(1)}
-                className="mt-6 text-blue-600 hover:text-blue-700 font-medium"
-              >
-                ← Back to Services
-              </button>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setStep(1)}
+                  className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+                >
+                  ← Back
+                </button>
+                <button
+                  onClick={() => setStep(3)}
+                  disabled={!selectedStaff}
+                  className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Continue
+                </button>
+              </div>
             </div>
           )}
 
@@ -601,12 +604,12 @@ export default function PublicBookingPage() {
                 <span className="text-gray-600">Service:</span>
                 <span className="font-medium">{selectedService.name}</span>
               </div>
-              {step >= 2 && selectedStaff && (
+              {step >= 3 && selectedStaff && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Staff:</span>
                   <span className="font-medium">
-                    {selectedStaff === 'anyone' 
-                      ? 'Anyone Available' 
+                    {selectedStaff === 'anyone'
+                      ? 'Anyone Available'
                       : staff.find(s => s.id === selectedStaff)?.fullName}
                   </span>
                 </div>
