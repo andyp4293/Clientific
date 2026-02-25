@@ -473,7 +473,7 @@ export default function PublicBookingPage() {
 
               <div className="flex gap-3 mt-6">
                 <button
-                  onClick={() => setStep(2)}
+                  onClick={() => { setSelectedStaff(null); setStep(2); }}
                   className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
                 >
                   ← Back
