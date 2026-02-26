@@ -171,6 +171,7 @@ export async function POST(
         },
       },
     });    // Send SMS confirmation only if customer consented
+    const appointmentUrl = `${process.env.NEXT_PUBLIC_APP_URL}/appt/${appointment.id}`;
     let smsResult = null;
     if (customer.phone && smsConsent) {
       smsResult = await sendAppointmentConfirmation(customer.phone, {
@@ -180,6 +181,7 @@ export async function POST(
         dateTime: appointment.startTime,
         businessName: appointment.business.name,
         duration: appointment.duration,
+        appointmentUrl,
       });
 
       if (smsResult.success) {

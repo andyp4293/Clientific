@@ -19,6 +19,7 @@ interface AppointmentDetails {
   dateTime: Date;
   businessName: string;
   duration?: number;
+  appointmentUrl?: string;
 }
 
 interface CancellationDetails {
@@ -125,7 +126,10 @@ export function formatAppointmentConfirmationSMS(details: AppointmentDetails): s
   const dateStr = formatDate(details.dateTime);
   const timeStr = formatTime(details.dateTime);
 
-  return `${details.businessName}: Appointment confirmed for ${dateStr} at ${timeStr}. Service: ${details.serviceName} with ${details.staffName}. See you soon!`;
+  const base = `${details.businessName}: Appt confirmed for ${dateStr} at ${timeStr}. ${details.serviceName}.`;
+  return details.appointmentUrl
+    ? `${base} View/cancel: ${details.appointmentUrl}`
+    : `${base} See you soon!`;
 }
 
 // Template: Appointment Reminder (24 hours before) - shortened

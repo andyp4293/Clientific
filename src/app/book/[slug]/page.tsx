@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { DatePicker } from '@/components/ui/DatePicker';
 import Link from 'next/link';
@@ -43,6 +43,7 @@ interface Staff {
 
 export default function PublicBookingPage() {
   const params = useParams();
+  const router = useRouter();
   const slugOrPublicId = params.slug as string;
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -58,7 +59,6 @@ export default function PublicBookingPage() {
     notes: '',
     smsConsent: false,
   });
-  const [bookingComplete, setBookingComplete] = useState(false);
 
   // Determine if this is a publicId (format: XX-XXXXXX) or a slug
   const isPublicId = /^[A-Z]{2}-[A-Z0-9]{6}$/.test(slugOrPublicId);
@@ -131,8 +131,8 @@ export default function PublicBookingPage() {
       }
       return res.json();
     },
-    onSuccess: () => {
-      setBookingComplete(true);
+    onSuccess: (data) => {
+      router.push(`/appt/${data.appointment.id}`);
     },
   });
 
@@ -174,90 +174,6 @@ export default function PublicBookingPage() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Business Not Found</h1>
           <p className="text-gray-600">The booking page you're looking for doesn't exist.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (bookingComplete) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
-          <div className="mb-6">
-            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-              <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-          </div>
-          
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Booking Confirmed!</h1>
-          <p className="text-gray-600 mb-6">
-            Your appointment has been successfully booked. We've sent a confirmation to your phone.
-          </p>
-          
-          <div className="bg-gray-50 rounded-xl p-6 mb-6 text-left">
-            <h3 className="font-semibold text-gray-900 mb-4">Appointment Details</h3>
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Service:</span>
-                <span className="font-medium">{selectedService?.name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Date:</span>
-                <span className="font-medium">
-                  {new Date(selectedTime!).toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    month: 'long',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Time:</span>
-                <span className="font-medium">
-                  {new Date(selectedTime!).toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    timeZone: business.timezone,
-                  })}
-                </span>
-              </div>
-              {selectedStaff !== 'anyone' && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Staff:</span>
-                  <span className="font-medium">
-                    {staff.find(s => s.id === selectedStaff)?.fullName}
-                  </span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-gray-600">Duration:</span>
-                <span className="font-medium">{selectedService?.duration} minutes</span>
-              </div>
-              {selectedService?.price && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Price:</span>
-                  <span className="font-medium">${selectedService.price.toFixed(2)}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <p className="text-sm text-gray-600 mb-6">
-            Please arrive 5-10 minutes early. If you need to cancel or reschedule, please call us at{' '}
-            <a href={`tel:${business.phone}`} className="text-blue-600 hover:underline">
-              {business.phone}
-            </a>
-          </p>
-
-          <button
-            onClick={() => window.location.reload()}
-            className="w-full bg-blue-600 text-white rounded-xl py-3 font-medium hover:bg-blue-700 transition-colors"
-          >
-            Book Another Appointment
-          </button>
         </div>
       </div>
     );
