@@ -3,13 +3,11 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import Link from 'next/link';
 
 interface Appointment {
   id: string;
   status: string;
   startTime: string;
-  endTime: string;
   duration: number;
   notes: string | null;
   service: { name: string; price: number | null } | null;
@@ -21,12 +19,6 @@ interface Appointment {
     slug: string;
     publicId: string;
   };
-}
-
-function statusMessage(status: string) {
-  if (status === 'confirmed') return 'Your appointment has been confirmed!';
-  if (status === 'cancelled') return 'This appointment has been cancelled.';
-  return "Your appointment has been sent to the owner but you need to wait for their confirmation.";
 }
 
 export default function AppointmentPage() {
@@ -61,7 +53,7 @@ export default function AppointmentPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
       </div>
     );
   }
@@ -70,8 +62,8 @@ export default function AppointmentPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="text-center">
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Appointment not found</h1>
-          <p className="text-gray-500 text-sm">This link may be invalid or expired.</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Appointment not found</h1>
+          <p className="text-gray-600">This link may be invalid or expired.</p>
         </div>
       </div>
     );
@@ -81,7 +73,9 @@ export default function AppointmentPage() {
     ? { ...data.appointment, status: 'cancelled' }
     : data.appointment;
 
+  const isCancelled = appt.status === 'cancelled';
   const start = new Date(appt.startTime);
+
   const dateStr = start.toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
@@ -92,124 +86,149 @@ export default function AppointmentPage() {
   const timeStr = start.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
-    hour12: true,
     timeZone: appt.business.timezone,
   });
 
-  const isCancelled = appt.status === 'cancelled';
   const bookingPath = `/book/${appt.business.publicId}`;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-md overflow-hidden">
-        {/* Top checkmark / X */}
-        <div className="flex flex-col items-center pt-8 pb-4 px-6 text-center">
-          <div
-            className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
-              isCancelled ? 'bg-red-100' : 'bg-green-500'
-            }`}
-          >
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
+
+        {/* Icon */}
+        <div className="mb-6">
+          <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center ${
+            isCancelled ? 'bg-red-100' : 'bg-green-100'
+          }`}>
             {isCancelled ? (
-              <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+              <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             ) : (
-              <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             )}
           </div>
-
-          <p className="text-sm text-gray-700 leading-snug mb-4">
-            {statusMessage(appt.status)}
-          </p>
-
-          <p className="font-bold text-gray-900 text-base">{appt.business.name}</p>
-          <a
-            href={`tel:${appt.business.phone}`}
-            className="text-blue-500 text-sm mt-0.5 hover:underline"
-          >
-            {appt.business.phone}
-          </a>
         </div>
 
-        <hr className="border-gray-200 mx-6" />
+        {/* Heading */}
+        {isCancelled ? (
+          <>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Appointment Cancelled</h1>
+            <p className="text-gray-600 mb-6">
+              Your appointment has been cancelled. We hope to see you again soon!
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Booking Confirmed!</h1>
+            <p className="text-gray-600 mb-6">
+              Your appointment has been successfully booked. We&apos;ve sent a confirmation to your phone.
+            </p>
+          </>
+        )}
 
-        {/* Service & Staff */}
-        <div className="px-6 py-4 text-center">
-          <p className="font-bold text-gray-900 text-base">
-            {appt.service?.name || 'Appointment'}{' '}
-            <span className="font-normal text-gray-700">
-              by {appt.staff?.fullName || 'Any Staff'}
-            </span>
-          </p>
-        </div>
-
-        <hr className="border-gray-200 mx-6" />
-
-        {/* Date & Time */}
-        <div className="px-6 py-4 text-center">
-          <p className="font-bold text-gray-900">{dateStr}</p>
-          <p className="font-bold text-gray-900 mt-1">{timeStr}</p>
-        </div>
-
-        {/* Buttons */}
-        {!isCancelled && (
-          <div className="px-6 pb-6 space-y-3">
-            <Link
-              href={bookingPath}
-              className="block w-full py-3 rounded-xl bg-indigo-500 text-white font-semibold text-sm text-center hover:bg-indigo-600 transition-colors"
-            >
-              Book another appointment
-            </Link>
-
-            {!showCancelConfirm ? (
-              <button
-                onClick={() => setShowCancelConfirm(true)}
-                className="block w-full py-3 rounded-xl bg-red-500 text-white font-semibold text-sm text-center hover:bg-red-600 transition-colors"
-              >
-                Cancel appointment
-              </button>
-            ) : (
-              <div className="border border-red-200 rounded-xl p-4 bg-red-50">
-                <p className="text-sm text-gray-700 mb-3 text-center">
-                  Are you sure you want to cancel this appointment?
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowCancelConfirm(false)}
-                    className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors"
-                  >
-                    Keep it
-                  </button>
-                  <button
-                    onClick={() => cancelMutation.mutate()}
-                    disabled={cancelMutation.isPending}
-                    className="flex-1 py-2 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
-                  >
-                    {cancelMutation.isPending ? 'Cancelling...' : 'Yes, cancel'}
-                  </button>
-                </div>
-                {cancelMutation.isError && (
-                  <p className="text-xs text-red-600 mt-2 text-center">
-                    {cancelMutation.error instanceof Error ? cancelMutation.error.message : 'Failed to cancel'}
-                  </p>
-                )}
+        {/* Details card */}
+        <div className="bg-gray-50 rounded-xl p-6 mb-6 text-left">
+          <h3 className="font-semibold text-gray-900 mb-4">Appointment Details</h3>
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Business:</span>
+              <span className="font-medium">{appt.business.name}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Service:</span>
+              <span className="font-medium">{appt.service?.name || 'Appointment'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Date:</span>
+              <span className="font-medium">{dateStr}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Time:</span>
+              <span className="font-medium">{timeStr}</span>
+            </div>
+            {appt.staff && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Staff:</span>
+                <span className="font-medium">{appt.staff.fullName}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-gray-600">Duration:</span>
+              <span className="font-medium">{appt.duration} minutes</span>
+            </div>
+            {appt.service?.price != null && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Price:</span>
+                <span className="font-medium">${Number(appt.service.price).toFixed(2)}</span>
               </div>
             )}
           </div>
+        </div>
+
+        {/* Footer text */}
+        {!isCancelled && (
+          <p className="text-sm text-gray-600 mb-6">
+            Please arrive 5–10 minutes early. To reschedule, call us at{' '}
+            <a href={`tel:${appt.business.phone}`} className="text-blue-600 hover:underline">
+              {appt.business.phone}
+            </a>
+          </p>
         )}
 
-        {isCancelled && (
-          <div className="px-6 pb-6">
-            <Link
-              href={bookingPath}
-              className="block w-full py-3 rounded-xl bg-indigo-500 text-white font-semibold text-sm text-center hover:bg-indigo-600 transition-colors"
-            >
-              Book another appointment
-            </Link>
-          </div>
-        )}
+        {/* Actions */}
+        <div className="space-y-3">
+          <a
+            href={bookingPath}
+            className="block w-full bg-blue-600 text-white rounded-xl py-3 font-medium hover:bg-blue-700 transition-colors"
+          >
+            Book Another Appointment
+          </a>
+
+          {!isCancelled && (
+            <>
+              {!showCancelConfirm ? (
+                <button
+                  onClick={() => setShowCancelConfirm(true)}
+                  className="w-full border border-red-300 text-red-600 rounded-xl py-3 font-medium hover:bg-red-50 transition-colors"
+                >
+                  Cancel Appointment
+                </button>
+              ) : (
+                <div className="border border-red-200 rounded-xl p-4 bg-red-50 text-left">
+                  <p className="text-sm text-gray-700 mb-3 text-center">
+                    Are you sure you want to cancel this appointment?
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowCancelConfirm(false)}
+                      className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors"
+                    >
+                      Keep it
+                    </button>
+                    <button
+                      onClick={() => cancelMutation.mutate()}
+                      disabled={cancelMutation.isPending}
+                      className="flex-1 py-2 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+                    >
+                      {cancelMutation.isPending ? 'Cancelling...' : 'Yes, cancel'}
+                    </button>
+                  </div>
+                  {cancelMutation.isError && (
+                    <p className="text-xs text-red-600 mt-2 text-center">
+                      {cancelMutation.error instanceof Error
+                        ? cancelMutation.error.message
+                        : 'Failed to cancel'}
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
       </div>
     </div>
   );
