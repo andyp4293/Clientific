@@ -36,6 +36,9 @@ export async function GET(req: NextRequest) {
         facebookPageUrl: true,
         yelpUrl: true,
         instagramUrl: true,
+        aiReceptionistEnabled: true,
+        aiReceptionistPhone: true,
+        aiReceptionistGreeting: true,
       },
     });
 
@@ -80,6 +83,9 @@ export async function PATCH(req: NextRequest) {
       facebookPageUrl,
       yelpUrl,
       instagramUrl,
+      aiReceptionistEnabled,
+      aiReceptionistPhone,
+      aiReceptionistGreeting,
     } = body;
 
     const business = await prisma.business.update({
@@ -101,6 +107,9 @@ export async function PATCH(req: NextRequest) {
         ...(facebookPageUrl !== undefined && { facebookPageUrl }),
         ...(yelpUrl !== undefined && { yelpUrl }),
         ...(instagramUrl !== undefined && { instagramUrl }),
+        ...(aiReceptionistEnabled !== undefined && { aiReceptionistEnabled }),
+        ...(aiReceptionistPhone !== undefined && { aiReceptionistPhone }),
+        ...(aiReceptionistGreeting !== undefined && { aiReceptionistGreeting }),
       },
     });
 

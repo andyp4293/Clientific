@@ -42,6 +42,9 @@ model Business {
   resetTokenExpiry       DateTime?
   enableOnlineBooking    Boolean        @default(true)
   enableBirthdayCampaign Boolean        @default(true)
+  aiReceptionistEnabled  Boolean        @default(false)
+  aiReceptionistPhone    String?
+  aiReceptionistGreeting String?
   pointsPerDollar        Float          @default(1.0)
   pointsPerVisit         Int            @default(10)
   referralBonusPoints    Int            @default(50)

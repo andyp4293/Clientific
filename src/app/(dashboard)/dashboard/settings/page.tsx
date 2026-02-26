@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
 
-type Tab = 'profile' | 'branding' | 'integrations' | 'notifications';
+type Tab = 'profile' | 'branding' | 'integrations' | 'notifications' | 'ai-receptionist';
 
 interface Business {
   id: string;
@@ -28,6 +28,9 @@ interface Business {
   facebookPageUrl: string | null;
   yelpUrl: string | null;
   instagramUrl: string | null;
+  aiReceptionistEnabled: boolean;
+  aiReceptionistPhone: string | null;
+  aiReceptionistGreeting: string | null;
 }
 
 export default function SettingsPage() {
@@ -161,6 +164,7 @@ export default function SettingsPage() {
     { id: 'branding', label: 'Branding & Logo', icon: 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01' },
     { id: 'integrations', label: 'Integrations', icon: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1' },
     { id: 'notifications', label: 'Notifications', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' },
+    { id: 'ai-receptionist', label: 'AI Receptionist', icon: 'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z' },
   ];
 
   return (
@@ -516,6 +520,110 @@ export default function SettingsPage() {
                   placeholder="https://instagram.com/..."
                 />
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* AI Receptionist Tab */}
+        {activeTab === 'ai-receptionist' && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">AI Phone Receptionist</h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Let AI answer your business calls 24/7. It handles questions about services, hours, and pricing — and transfers to your personal phone if the caller asks to speak with a real person.
+              </p>
+
+              {/* Enable Toggle */}
+              <div className="mb-6 p-4 border border-gray-200 rounded-lg">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.aiReceptionistEnabled ?? false}
+                    onChange={(e) => handleInputChange('aiReceptionistEnabled', e.target.checked)}
+                    className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary mr-3"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-gray-900">Enable AI Receptionist</span>
+                    <p className="text-xs text-gray-500">AI will answer inbound calls to your Twilio number</p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Forwarding Phone */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Transfer-to Phone Number
+                </label>
+                <input
+                  type="tel"
+                  value={formData.aiReceptionistPhone || ''}
+                  onChange={(e) => handleInputChange('aiReceptionistPhone', e.target.value)}
+                  className="input"
+                  placeholder="(555) 123-4567"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  When a caller asks for a real person, the AI will transfer the call here (e.g. your personal cell)
+                </p>
+              </div>
+
+              {/* Custom Greeting */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Custom Greeting <span className="font-normal text-gray-400">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.aiReceptionistGreeting || ''}
+                  onChange={(e) => handleInputChange('aiReceptionistGreeting', e.target.value)}
+                  className="input"
+                  placeholder={`Hi, thank you for calling ${formData.name || 'us'}. How can I help you today?`}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Leave blank to use the default greeting above
+                </p>
+              </div>
+
+              {/* Webhook URL */}
+              {business?.publicId && typeof window !== 'undefined' && (
+                <div className="mb-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                  <label className="block text-sm font-medium text-indigo-900 mb-2">
+                    Your Twilio Webhook URL
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={`${window.location.origin}/api/webhooks/twilio-voice?publicId=${business.publicId}`}
+                      readOnly
+                      className="input flex-1 bg-white text-sm"
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/api/webhooks/twilio-voice?publicId=${business.publicId}`);
+                        alert('Copied to clipboard!');
+                      }}
+                      className="btn-outline whitespace-nowrap"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Setup Instructions */}
+              <details className="border border-gray-200 rounded-lg">
+                <summary className="px-4 py-3 cursor-pointer text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg">
+                  How to set up (Twilio)
+                </summary>
+                <div className="px-4 pb-4 pt-2 space-y-2 text-sm text-gray-600">
+                  <p>1. Log in to your <strong>Twilio Console</strong></p>
+                  <p>2. Go to <strong>Phone Numbers → Manage → Active Numbers</strong></p>
+                  <p>3. Click your phone number</p>
+                  <p>4. Under <strong>Voice Configuration</strong>, set <strong>A call comes in</strong> to <strong>Webhook</strong></p>
+                  <p>5. Paste the webhook URL above into the URL field</p>
+                  <p>6. Set the method to <strong>HTTP POST</strong> and save</p>
+                  <p className="pt-2 text-gray-500">You also need to add <strong>OPENAI_API_KEY</strong> to your environment variables in Vercel.</p>
+                </div>
+              </details>
             </div>
           </div>
         )}
