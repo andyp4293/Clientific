@@ -147,7 +147,10 @@ export async function POST(
           }),
         },
       });
-    }// Create appointment
+    }// Generate a short ID for the SMS link
+    const shortId = Math.random().toString(36).substring(2, 9).toUpperCase();
+
+    // Create appointment
     const appointment = await prisma.appointment.create({
       data: {
         businessId: business.id,
@@ -159,6 +162,7 @@ export async function POST(
         duration,
         notes: notes || null,
         status: 'scheduled',
+        shortId,
       },
       include: {
         customer: true,
@@ -171,7 +175,7 @@ export async function POST(
         },
       },
     });    // Send SMS confirmation only if customer consented
-    const appointmentUrl = `${process.env.NEXT_PUBLIC_APP_URL}/appt/${appointment.id}`;
+    const appointmentUrl = `${process.env.NEXT_PUBLIC_APP_URL}/a/${shortId}`;
     let smsResult = null;
     if (customer.phone && smsConsent) {
       smsResult = await sendAppointmentConfirmation(customer.phone, {

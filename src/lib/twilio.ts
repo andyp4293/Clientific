@@ -123,7 +123,11 @@ export const twilioClient = null;
 
 // Template: Appointment Confirmation (shortened for trial accounts)
 export function formatAppointmentConfirmationSMS(details: AppointmentDetails): string {
-  const dateStr = formatDate(details.dateTime);
+  const dateStr = details.dateTime.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
   const timeStr = formatTime(details.dateTime);
 
   const base = `${details.businessName}: Appt confirmed for ${dateStr} at ${timeStr}. ${details.serviceName}.`;
