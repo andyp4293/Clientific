@@ -589,7 +589,7 @@ export default function SettingsPage() {
                   />
                   <div>
                     <span className="text-sm font-medium text-gray-900">Enable AI Receptionist</span>
-                    <p className="text-xs text-gray-500">A dedicated phone number will be provisioned for your business</p>
+                    <p className="text-xs text-gray-500">A dedicated phone number will be set up for your business</p>
                   </div>
                 </label>
               </div>
@@ -628,7 +628,7 @@ export default function SettingsPage() {
                 </p>
               </div>
 
-              {/* Vapi provisioned number */}
+              {/* Vapi phone number */}
               {formData.aiReceptionistEnabled && (
                 <div className="mb-6">
                   {formData.vapiPhoneNumber ? (
@@ -670,7 +670,7 @@ export default function SettingsPage() {
                   ) : (
                     <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 flex items-center gap-3">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 flex-shrink-0" />
-                      <p className="text-sm text-gray-600">Provisioning your AI receptionist number…</p>
+                      <p className="text-sm text-gray-600">Setting up your AI receptionist number…</p>
                     </div>
                   )}
                 </div>
@@ -788,7 +788,7 @@ export default function SettingsPage() {
             </p>
             <ul className="space-y-2 mb-4">
               {[
-                'A dedicated phone number will be provisioned in your area code',
+                'A dedicated phone number will be created in your area code',
                 'The AI answers calls 24/7 and handles questions about services, hours, and pricing',
                 'Callers can book appointments directly over the phone',
                 'Transfers to your personal number when someone asks for a real person',
