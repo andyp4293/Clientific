@@ -6,6 +6,17 @@ import { prisma } from '@/lib/prisma';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+// ─── Serialization error detection ───────────────────────────────────────────
+
+function isSerializationError(err: any): boolean {
+  const msg: string = err?.message ?? '';
+  return (
+    msg.includes('could not serialize access') ||
+    msg.includes('deadlock detected') ||
+    err?.code === 'P2034'
+  );
+}
+
 // ─── Signature verification ───────────────────────────────────────────────────
 
 function verifyVapiSignature(rawBody: string, signature: string | null): boolean {
@@ -268,9 +279,8 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
       ],
     },
   });
-  if (conflicts > 0) return 'That slot was just taken. Let me check availability again — what date works for you?';
+  if (conflicts > 0) return 'That time was just taken — let me check what else is open. What date works for you?';
 
-  // Find or create customer
   // Find or create customer first (outside the booking transaction — not race-sensitive)
   const phone = callerPhone || null;
   let customer = phone
@@ -295,41 +305,45 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
 
   const shortId = Math.random().toString(36).substring(2, 9).toUpperCase();
 
-  // Serializable transaction: re-check conflicts and create atomically
-  try {
-    await prisma.$transaction(async (tx) => {
-      const conflicts = await tx.appointment.count({
-        where: {
-          businessId: business.id,
-          status: { in: ['pending', 'scheduled', 'confirmed'] },
-          OR: [
-            { AND: [{ startTime: { lte: start } }, { endTime: { gt: start } }] },
-            { AND: [{ startTime: { lt: end } }, { endTime: { gte: end } }] },
-            { AND: [{ startTime: { gte: start } }, { endTime: { lte: end } }] },
-          ],
-        },
-      });
-      if (conflicts > 0) throw new Error('SLOT_TAKEN');
+  // Serializable transaction with one retry for Postgres serialization failures
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      await prisma.$transaction(async (tx) => {
+        const txConflicts = await tx.appointment.count({
+          where: {
+            businessId: business.id,
+            status: { in: ['pending', 'scheduled', 'confirmed'] },
+            OR: [
+              { AND: [{ startTime: { lte: start } }, { endTime: { gt: start } }] },
+              { AND: [{ startTime: { lt: end } }, { endTime: { gte: end } }] },
+              { AND: [{ startTime: { gte: start } }, { endTime: { lte: end } }] },
+            ],
+          },
+        });
+        if (txConflicts > 0) throw new Error('SLOT_TAKEN');
 
-      await tx.appointment.create({
-        data: {
-          businessId: business.id,
-          customerId: customer!.id,
-          serviceId,
-          serviceIds: [serviceId],
-          startTime: start,
-          endTime: end,
-          duration: service.duration,
-          status: 'pending',
-          shortId,
-        },
-      });
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-  } catch (err: any) {
-    if (err.message === 'SLOT_TAKEN') {
-      return 'That slot was just taken. Let me check availability again — what date works for you?';
+        await tx.appointment.create({
+          data: {
+            businessId: business.id,
+            customerId: customer!.id,
+            serviceId,
+            serviceIds: [serviceId],
+            startTime: start,
+            endTime: end,
+            duration: service.duration,
+            status: 'pending',
+            shortId,
+          },
+        });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      break; // success — exit retry loop
+    } catch (err: any) {
+      if (err.message === 'SLOT_TAKEN') {
+        return 'That time was just taken — let me check what else is open. What date works for you?';
+      }
+      if (isSerializationError(err) && attempt === 0) continue; // retry once
+      throw err;
     }
-    throw err;
   }
 
   const formattedTime = start.toLocaleString('en-US', {
@@ -347,6 +361,7 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
 // ─── Tool calls dispatcher ────────────────────────────────────────────────────
 
 async function handleToolCalls(body: any): Promise<NextResponse> {
+  const t0 = Date.now();
   const toolCallList: any[] = body?.message?.toolCallList ?? [];
   const phoneNumberId =
     body?.message?.phoneNumber?.id ?? body?.message?.call?.phoneNumberId;
@@ -386,26 +401,33 @@ async function handleToolCalls(body: any): Promise<NextResponse> {
       const toolCallId: string = toolCall?.id ?? '';
 
       let result: string;
+      let outcome = 'ok';
       try {
         if (!business) {
           result = 'Unable to access business information right now.';
+          outcome = 'no_business';
         } else if (fnName === 'manage_booking') {
           const { action } = parsedArgs;
           if (action === 'checkAvailability') {
             result = await handleCheckAvailability(business, parsedArgs);
           } else if (action === 'createBooking') {
             result = await handleCreateBooking(business, parsedArgs, callerPhone);
+            outcome = result.startsWith('Done') ? 'booked' : 'conflict';
           } else {
             result = 'Unknown action requested.';
+            outcome = 'unknown_action';
           }
         } else {
           result = 'Unknown tool.';
+          outcome = 'unknown_tool';
         }
       } catch (err: any) {
         console.error('Tool call error:', err);
         result = 'An error occurred processing your request.';
+        outcome = 'error';
       }
 
+      console.log(`[vapi] tool-call fn=${fnName} action=${parsedArgs?.action ?? '-'} outcome=${outcome} ms=${Date.now() - t0} bizId=${business?.id ?? 'unknown'}`);
       return { toolCallId, result };
     })
   );
@@ -427,6 +449,7 @@ export async function POST(req: NextRequest) {
 
     const body = JSON.parse(rawBody);
     const messageType = body?.message?.type;
+    const t0 = Date.now();
 
     switch (messageType) {
       case 'assistant-request': {
@@ -468,6 +491,7 @@ export async function POST(req: NextRequest) {
         }
 
         const assistant = buildAssistantConfig(business);
+        console.log(`[vapi] assistant-request ms=${Date.now() - t0} bizId=${business.id}`);
         return NextResponse.json({ assistant });
       }
 
