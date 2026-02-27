@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
@@ -151,6 +152,11 @@ Your job:
       language: 'en',
     },
     voice: { provider: 'azure', voiceId: 'en-US-JennyNeural' },
+    voicemailDetection: {
+      provider: 'vapi',
+      enabled: true,
+    },
+    voicemailMessage: `Hi, you've reached ${business.name}. We missed your call — please call us back during business hours or book online at ${bookingUrl}.`,
     ...(business.aiReceptionistPhone && { forwardingPhoneNumber: business.aiReceptionistPhone }),
   };
 }
@@ -265,6 +271,7 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
   if (conflicts > 0) return 'That slot was just taken. Let me check availability again — what date works for you?';
 
   // Find or create customer
+  // Find or create customer first (outside the booking transaction — not race-sensitive)
   const phone = callerPhone || null;
   let customer = phone
     ? await prisma.customer.findFirst({ where: { businessId: business.id, phone } })
@@ -287,19 +294,43 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
   }
 
   const shortId = Math.random().toString(36).substring(2, 9).toUpperCase();
-  await prisma.appointment.create({
-    data: {
-      businessId: business.id,
-      customerId: customer.id,
-      serviceId,
-      serviceIds: [serviceId],
-      startTime: start,
-      endTime: end,
-      duration: service.duration,
-      status: 'pending',
-      shortId,
-    },
-  });
+
+  // Serializable transaction: re-check conflicts and create atomically
+  try {
+    await prisma.$transaction(async (tx) => {
+      const conflicts = await tx.appointment.count({
+        where: {
+          businessId: business.id,
+          status: { in: ['pending', 'scheduled', 'confirmed'] },
+          OR: [
+            { AND: [{ startTime: { lte: start } }, { endTime: { gt: start } }] },
+            { AND: [{ startTime: { lt: end } }, { endTime: { gte: end } }] },
+            { AND: [{ startTime: { gte: start } }, { endTime: { lte: end } }] },
+          ],
+        },
+      });
+      if (conflicts > 0) throw new Error('SLOT_TAKEN');
+
+      await tx.appointment.create({
+        data: {
+          businessId: business.id,
+          customerId: customer!.id,
+          serviceId,
+          serviceIds: [serviceId],
+          startTime: start,
+          endTime: end,
+          duration: service.duration,
+          status: 'pending',
+          shortId,
+        },
+      });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  } catch (err: any) {
+    if (err.message === 'SLOT_TAKEN') {
+      return 'That slot was just taken. Let me check availability again — what date works for you?';
+    }
+    throw err;
+  }
 
   const formattedTime = start.toLocaleString('en-US', {
     weekday: 'long',
