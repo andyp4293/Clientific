@@ -132,7 +132,7 @@ export function formatAppointmentConfirmationSMS(details: AppointmentDetails): s
 
   const base = `${details.businessName}: Appt confirmed for ${dateStr} at ${timeStr}. ${details.serviceName}.`;
   return details.appointmentUrl
-    ? `${base} View/cancel: ${details.appointmentUrl}`
+    ? `${base}\n${details.appointmentUrl}`
     : `${base} See you soon!`;
 }
 
