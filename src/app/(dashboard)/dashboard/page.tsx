@@ -9,11 +9,24 @@ import BookingLinkCard from '@/components/booking/BookingLinkCard';
 // Enable Next.js ISR with 60 second revalidation
 export const revalidate = 60;
 
-async function getDashboardStats(businessId: string) {
+// Convert a local business-timezone date string + hour/minute to UTC
+function bizDayBoundary(dateStr: string, hour: number, minute: number, timezone: string): Date {
+  const localStr = `${dateStr}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+  const naiveUTC = new Date(localStr + 'Z');
+  const inBizTz = new Date(naiveUTC.toLocaleString('en-US', { timeZone: timezone }));
+  const offsetMs = naiveUTC.getTime() - inBizTz.getTime();
+  return new Date(naiveUTC.getTime() + offsetMs);
+}
+
+async function getDashboardStats(businessId: string, timezone: string) {
   const today = startOfToday();
   const thisWeekStart = startOfWeek(new Date());
   const thisMonthStart = startOfMonth(new Date());
   const last30Days = subDays(new Date(), 30);
+  // Today's date string in the business's timezone
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: timezone }); // 'YYYY-MM-DD'
+  const startOfBizDay = bizDayBoundary(todayStr, 0, 0, timezone);
+  const endOfBizDay = new Date(startOfBizDay.getTime() + 24 * 60 * 60 * 1000 - 1);
 
   // Total customers
   const totalCustomers = await prisma.customer.count({
@@ -70,18 +83,18 @@ async function getDashboardStats(businessId: string) {
       service: true,
     },  });
 
-  // Upcoming appointments today
+  // All appointments today (full business-timezone day, including pending)
   const upcomingAppointments = await prisma.appointment.findMany({
     where: {
       businessId,
       startTime: {
-        gte: new Date(),
-        lt: new Date(new Date().setHours(23, 59, 59, 999)),
+        gte: startOfBizDay,
+        lte: endOfBizDay,
       },
-      status: { in: ['scheduled', 'confirmed'] },
+      status: { in: ['pending', 'scheduled', 'confirmed'] },
     },
     orderBy: { startTime: 'asc' },
-    take: 5,
+    take: 10,
     include: {
       customer: true,
       service: true,
@@ -134,7 +147,7 @@ export default async function DashboardPage({
 
   const params = await searchParams;
   const checkoutSuccess = params.checkout === 'success';
-  const stats = await getDashboardStats(business.id);
+  const stats = await getDashboardStats(business.id, business.timezone);
 
   // Calculate trial days remaining
   const trialDaysRemaining = business.trialEndsAt
@@ -339,7 +352,7 @@ export default async function DashboardPage({
                             </p>
                           </div>
                   <span className="text-sm font-medium text-gray-700">
-                    {new Date(apt.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(apt.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: business.timezone })}
                   </span>
                 </div>
               ))}
