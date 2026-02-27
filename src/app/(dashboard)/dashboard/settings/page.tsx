@@ -41,6 +41,8 @@ export default function SettingsPage() {
   const [formData, setFormData] = useState<Partial<Business>>({});
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [showEnableModal, setShowEnableModal] = useState(false);
+  const [showDisableModal, setShowDisableModal] = useState(false);
 
   // Fetch business data
   const { data, isLoading } = useQuery({
@@ -79,6 +81,42 @@ export default function SettingsPage() {
       queryClient.invalidateQueries({ queryKey: ['business-info'] });
     },
   });
+
+  // Dedicated mutation for AI receptionist toggle — fires immediately, no Save needed
+  const aiToggleMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const res = await fetch('/api/business', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aiReceptionistEnabled: enabled }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to update');
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setFormData(prev => ({
+        ...prev,
+        aiReceptionistEnabled: data.business.aiReceptionistEnabled,
+        vapiPhoneNumber: data.business.vapiPhoneNumber ?? null,
+      }));
+      queryClient.invalidateQueries({ queryKey: ['business-info'] });
+    },
+  });
+
+  const handleEnableConfirm = () => {
+    setShowEnableModal(false);
+    setFormData(prev => ({ ...prev, aiReceptionistEnabled: true }));
+    aiToggleMutation.mutate(true);
+  };
+
+  const handleDisableConfirm = () => {
+    setShowDisableModal(false);
+    setFormData(prev => ({ ...prev, aiReceptionistEnabled: false, vapiPhoneNumber: null }));
+    aiToggleMutation.mutate(false);
+  };
 
   const handleInputChange = (field: keyof Business, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -540,7 +578,13 @@ export default function SettingsPage() {
                   <input
                     type="checkbox"
                     checked={formData.aiReceptionistEnabled ?? false}
-                    onChange={(e) => handleInputChange('aiReceptionistEnabled', e.target.checked)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setShowEnableModal(true);
+                      } else {
+                        setShowDisableModal(true);
+                      }
+                    }}
                     className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary mr-3"
                   />
                   <div>
@@ -626,7 +670,7 @@ export default function SettingsPage() {
                   ) : (
                     <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 flex items-center gap-3">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 flex-shrink-0" />
-                      <p className="text-sm text-gray-600">Setting up your AI receptionist number… Save your settings to provision it.</p>
+                      <p className="text-sm text-gray-600">Provisioning your AI receptionist number…</p>
                     </div>
                   )}
                 </div>
@@ -727,7 +771,81 @@ export default function SettingsPage() {
         <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
           <p className="text-sm text-green-600">Settings saved successfully!</p>
         </div>
-      )}      {/* Action Buttons */}
+      )}      {/* Enable AI Receptionist Modal */}
+      {showEnableModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Enable AI Receptionist</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              You&apos;re about to set up an AI phone receptionist for <strong>{formData.name}</strong>.
+            </p>
+            <ul className="space-y-2 mb-4">
+              {[
+                'A dedicated phone number will be provisioned in your area code',
+                'The AI answers calls 24/7 and handles questions about services, hours, and pricing',
+                'Callers can book appointments directly over the phone',
+                'Transfers to your personal number when someone asks for a real person',
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2 text-sm text-gray-600">
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-gray-500 bg-gray-50 rounded-lg p-3 mb-6">
+              Once enabled, update your Google Business Profile with the new number — that&apos;s all you need to do.
+            </p>
+            {aiToggleMutation.isError && (
+              <p className="text-sm text-red-600 mb-4">{aiToggleMutation.error?.message}</p>
+            )}
+            <div className="flex gap-3">
+              <button onClick={() => setShowEnableModal(false)} className="btn-outline flex-1">Cancel</button>
+              <button onClick={handleEnableConfirm} disabled={aiToggleMutation.isPending} className="btn-primary flex-1">
+                {aiToggleMutation.isPending ? 'Setting up…' : 'Enable AI Receptionist'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Disable AI Receptionist Modal */}
+      {showDisableModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Disable AI Receptionist?</h3>
+            <p className="text-sm text-gray-600 mb-2">
+              This will release your dedicated number{formData.vapiPhoneNumber ? <> <strong>{formData.vapiPhoneNumber}</strong></> : ''}.
+            </p>
+            <p className="text-sm text-gray-600 mb-6">
+              Any customers who have this number saved will no longer reach your AI receptionist.
+            </p>
+            {aiToggleMutation.isError && (
+              <p className="text-sm text-red-600 mb-4">{aiToggleMutation.error?.message}</p>
+            )}
+            <div className="flex gap-3">
+              <button onClick={() => setShowDisableModal(false)} className="btn-outline flex-1">Keep it enabled</button>
+              <button
+                onClick={handleDisableConfirm}
+                disabled={aiToggleMutation.isPending}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+              >
+                {aiToggleMutation.isPending ? 'Disabling…' : 'Disable'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
       <div className="flex justify-end gap-3">
         <button
           onClick={() => {
