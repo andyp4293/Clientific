@@ -176,7 +176,8 @@ export async function POST(
         },
       },
     });    // Send SMS confirmation only if customer consented
-    const appointmentUrl = `${process.env.NEXT_PUBLIC_APP_URL}/a/${shortId}`;
+    const appBase = (process.env.NEXT_PUBLIC_APP_URL || 'https://clientflow-theta.vercel.app').trim().replace(/\/$/, '');
+    const appointmentUrl = `${appBase}/a/${shortId}`;
     let smsResult = null;
     if (customer.phone && smsConsent) {
       smsResult = await sendAppointmentConfirmation(customer.phone, {

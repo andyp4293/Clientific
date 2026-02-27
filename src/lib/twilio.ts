@@ -131,9 +131,11 @@ export function formatAppointmentConfirmationSMS(details: AppointmentDetails): s
   const timeStr = formatTime(details.dateTime);
 
   const base = `${details.businessName}: Appt confirmed for ${dateStr} at ${timeStr}. ${details.serviceName}.`;
-  return details.appointmentUrl
+  const msg = details.appointmentUrl
     ? `${base}\n${details.appointmentUrl}`
     : `${base} See you soon!`;
+  console.log('📱 SMS body (JSON):', JSON.stringify(msg));
+  return msg;
 }
 
 // Template: Appointment Reminder (24 hours before) - shortened
