@@ -142,14 +142,13 @@ export async function PATCH(req: NextRequest) {
     // Vapi operations — only run if VAPI_PRIVATE_KEY is configured
     const vapiUpdates: Record<string, string | null> = {};
     const vapiConfigured = !!process.env.VAPI_PRIVATE_KEY;
-    const serverUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/vapi`;
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '');
+    const serverUrl = `${appUrl}/api/webhooks/vapi`;
 
     if (vapiConfigured && finalEnabled && !current.vapiPhoneNumberId) {
       // Toggling ON — provision phone number with serverUrl (no assistant needed)
-      const areaCode = parseAreaCode(phone ?? current.phone);
       const phoneNumber = await vapiRequest('POST', '/phone-number', {
         provider: 'vapi',
-        ...(areaCode && { areaCode }),
         serverUrl,
         ...(process.env.VAPI_WEBHOOK_SECRET && { serverUrlSecret: process.env.VAPI_WEBHOOK_SECRET }),
         name: `${name ?? current.name} Receptionist`,
