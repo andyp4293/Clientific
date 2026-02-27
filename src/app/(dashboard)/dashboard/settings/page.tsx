@@ -667,10 +667,22 @@ export default function SettingsPage() {
                         </div>
                       </details>
                     </div>
-                  ) : (
+                  ) : aiToggleMutation.isPending ? (
                     <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 flex items-center gap-3">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 flex-shrink-0" />
                       <p className="text-sm text-gray-600">Setting up your AI receptionist number…</p>
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                      <p className="text-sm text-red-800 font-medium mb-2">Setup didn&apos;t complete.</p>
+                      <p className="text-sm text-red-700 mb-3">Your AI receptionist number couldn&apos;t be created. This can happen if no numbers are available in your area code.</p>
+                      <button
+                        type="button"
+                        onClick={() => aiToggleMutation.mutate(true)}
+                        className="px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                      >
+                        Try again
+                      </button>
                     </div>
                   )}
                 </div>
