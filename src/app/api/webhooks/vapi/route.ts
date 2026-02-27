@@ -162,7 +162,21 @@ Your job:
       model: 'nova-2',
       language: 'en',
     },
-    voice: { provider: 'azure', voiceId: 'en-US-JennyNeural' },
+    voice: {
+      provider: '11labs',
+      voiceId: 'Bella',
+      speed: 0.94,
+      stability: 0.45,
+      similarityBoost: 0.75,
+    },
+    startSpeakingPlan: {
+      waitSeconds: 0.4,
+    },
+    stopSpeakingPlan: {
+      numWords: 0,
+      voiceSeconds: 0.2,
+      backoffSeconds: 1,
+    },
     voicemailDetection: {
       provider: 'vapi',
       enabled: true,
