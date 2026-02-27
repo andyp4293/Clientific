@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
-import { sendAppointmentCancellation } from '@/lib/twilio';
+import { sendAppointmentCancellation, sendAppointmentBusinessConfirmed } from '@/lib/twilio';
 
 // GET - Get single appointment
 export async function GET(
@@ -79,6 +79,10 @@ export async function PATCH(
         id: id,
         businessId: business.id,
       },
+      include: {
+        customer: { select: { phone: true, smsConsent: true, smsOptedOut: true } },
+        service: { select: { name: true } },
+      },
     });
 
     if (!appointment) {
@@ -91,12 +95,14 @@ export async function PATCH(
     if (updates.startTime || updates.duration) {
       const start = new Date(updates.startTime || appointment.startTime);
       const duration = updates.duration || appointment.duration;
-      const end = new Date(start.getTime() + duration * 60000);      const conflicts = await prisma.appointment.findMany({
+      const end = new Date(start.getTime() + duration * 60000);
+
+      const conflicts = await prisma.appointment.findMany({
         where: {
           businessId: business.id,
           id: { not: id },
           status: {
-            in: ['scheduled', 'confirmed'],
+            in: ['pending', 'scheduled', 'confirmed'],
           },
           ...(updates.staffId && { staffId: updates.staffId }),
           OR: [
@@ -124,7 +130,9 @@ export async function PATCH(
       }
 
       updates.endTime = end;
-    }    const updatedAppointment = await prisma.appointment.update({
+    }
+
+    const updatedAppointment = await prisma.appointment.update({
       where: { id: id },
       data: updates,
       include: {
@@ -133,6 +141,34 @@ export async function PATCH(
         staff: true,
       },
     });
+
+    // Send confirmed SMS if business just confirmed a pending appointment
+    if (
+      updates.status === 'confirmed' &&
+      appointment.status === 'pending' &&
+      appointment.customer.phone &&
+      appointment.customer.smsConsent &&
+      !appointment.customer.smsOptedOut
+    ) {
+      const appBase = (process.env.NEXT_PUBLIC_APP_URL || 'https://clientflow-theta.vercel.app').trim().replace(/\/$/, '');
+      // Build service name from serviceIds if available
+      let serviceName = appointment.service?.name || 'Appointment';
+      if (appointment.serviceIds.length > 1) {
+        const services = await prisma.service.findMany({
+          where: { id: { in: appointment.serviceIds } },
+          select: { name: true },
+        });
+        serviceName = services.map(s => s.name).join(', ');
+      }
+      const appointmentUrl = appointment.shortId ? `${appBase}/a/${appointment.shortId}` : undefined;
+      sendAppointmentBusinessConfirmed(appointment.customer.phone, {
+        customerName: updatedAppointment.customer.name,
+        serviceName,
+        dateTime: appointment.startTime,
+        businessName: business.name,
+        appointmentUrl,
+      }).catch(err => console.warn('⚠️  Confirmed SMS failed:', err));
+    }
 
     return NextResponse.json({ appointment: updatedAppointment });
   } catch (error: any) {

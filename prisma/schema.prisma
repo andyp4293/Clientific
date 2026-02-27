@@ -130,6 +130,7 @@ model Appointment {
   businessId       String
   customerId       String
   serviceId        String?
+  serviceIds       String[] @default([])
   staffId          String?
   startTime        DateTime
   endTime          DateTime

@@ -27,8 +27,11 @@ export async function POST(
         { error: 'Online booking is not enabled' },
         { status: 403 }
       );
-    }    const {
-      serviceId,
+    }
+
+    const {
+      serviceIds: rawServiceIds,
+      serviceId: rawServiceId,
       staffId,
       startTime,
       duration,
@@ -36,28 +39,35 @@ export async function POST(
       customerPhone,
       customerEmail,
       notes,
-      smsConsent, // TCPA compliance: explicit SMS consent
+      smsConsent,
     } = await req.json();
 
+    // Support both serviceIds[] (new) and serviceId (legacy)
+    const serviceIds: string[] = rawServiceIds?.length
+      ? rawServiceIds
+      : rawServiceId
+        ? [rawServiceId]
+        : [];
+
     // Validation
-    if (!serviceId || !startTime || !duration || !customerName || !customerPhone) {
+    if (!serviceIds.length || !startTime || !duration || !customerName || !customerPhone) {
       return NextResponse.json(
         { error: 'Service, start time, duration, name, and phone are required' },
         { status: 400 }
       );
     }
 
-    // Verify service belongs to this business
-    const service = await prisma.service.findFirst({
+    // Verify all services belong to this business
+    const services = await prisma.service.findMany({
       where: {
-        id: serviceId,
+        id: { in: serviceIds },
         businessId: business.id,
       },
     });
 
-    if (!service) {
+    if (services.length !== serviceIds.length) {
       return NextResponse.json(
-        { error: 'Service not found' },
+        { error: 'One or more services not found' },
         { status: 404 }
       );
     }
@@ -82,12 +92,12 @@ export async function POST(
     const start = new Date(startTime);
     const end = new Date(start.getTime() + duration * 60000);
 
-    // Check for conflicts
+    // Check for conflicts (including pending appointments)
     const conflicts = await prisma.appointment.findMany({
       where: {
         businessId: business.id,
         status: {
-          in: ['scheduled', 'confirmed'],
+          in: ['pending', 'scheduled', 'confirmed'],
         },
         ...(staffId && staffId !== 'anyone' && { staffId }),
         OR: [
@@ -118,13 +128,17 @@ export async function POST(
         { error: 'Time slot is no longer available' },
         { status: 409 }
       );
-    }    // Find or create customer
+    }
+
+    // Find or create customer
     let customer = await prisma.customer.findFirst({
       where: {
         businessId: business.id,
         phone: customerPhone,
       },
-    });    if (!customer) {
+    });
+
+    if (!customer) {
       customer = await prisma.customer.create({
         data: {
           businessId: business.id,
@@ -135,33 +149,32 @@ export async function POST(
         },
       });
     } else {
-      // Update customer info and SMS consent
       customer = await prisma.customer.update({
         where: { id: customer.id },
         data: {
           name: customerName,
           ...(customerEmail && { email: customerEmail }),
-          // Update SMS consent if provided and not already opted out
-          ...(smsConsent && !customer.smsOptedOut && {
-            smsConsent: true,
-          }),
+          ...(smsConsent && !customer.smsOptedOut && { smsConsent: true }),
         },
       });
-    }// Generate a short ID for the SMS link
+    }
+
+    // Generate a short ID for the SMS link
     const shortId = Math.random().toString(36).substring(2, 9).toUpperCase();
 
-    // Create appointment
+    // Create appointment with pending status (business must confirm)
     const appointment = await prisma.appointment.create({
       data: {
         businessId: business.id,
         customerId: customer.id,
-        serviceId,
+        serviceId: serviceIds[0],
+        serviceIds,
         staffId: staffId && staffId !== 'anyone' ? staffId : null,
         startTime: start,
         endTime: end,
         duration,
         notes: notes || null,
-        status: 'scheduled',
+        status: 'pending',
         shortId,
       },
       include: {
@@ -174,14 +187,17 @@ export async function POST(
           },
         },
       },
-    });    // Send SMS confirmation only if customer consented
+    });
+
+    // Send SMS confirmation only if customer consented
     const appBase = (process.env.NEXT_PUBLIC_APP_URL || 'https://clientflow-theta.vercel.app').trim().replace(/\/$/, '');
     const appointmentUrl = `${appBase}/a/${shortId}`;
+    const serviceName = services.map(s => s.name).join(', ');
     let smsResult = null;
     if (customer.phone && smsConsent) {
       smsResult = await sendAppointmentConfirmation(customer.phone, {
         customerName: customer.name,
-        serviceName: appointment.service?.name || 'Appointment',
+        serviceName,
         staffName: appointment.staff?.fullName || 'our team',
         dateTime: appointment.startTime,
         businessName: appointment.business.name,
@@ -199,7 +215,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       appointment,
-      message: 'Appointment booked successfully!',
+      message: 'Appointment request submitted! The business will confirm shortly.',
       smsNotification: smsResult?.success
         ? 'Confirmation SMS sent'
         : customer.phone

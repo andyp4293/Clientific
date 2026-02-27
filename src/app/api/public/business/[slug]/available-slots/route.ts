@@ -21,6 +21,7 @@ export async function GET(
     const date = searchParams.get('date');
     const serviceId = searchParams.get('serviceId');
     const staffId = searchParams.get('staffId');
+    const durationOverride = searchParams.get('duration');
 
     if (!date || !serviceId) {
       return NextResponse.json(
@@ -93,7 +94,7 @@ export async function GET(
       where: {
         businessId: business.id,
         status: {
-          in: ['scheduled', 'confirmed'],
+          in: ['pending', 'scheduled', 'confirmed'],
         },
         startTime: {
           gte: startOfDay,
@@ -106,7 +107,7 @@ export async function GET(
     // Generate time slots
     const slots: string[] = [];
     const slotInterval = 30; // 30-minute intervals
-    const duration = service.duration;
+    const duration = durationOverride ? parseInt(durationOverride) : service.duration;
 
     console.log('📍 Service duration:', duration, 'minutes');
     console.log('⏰ Generating slots with', slotInterval, 'min intervals for', duration, 'min service');

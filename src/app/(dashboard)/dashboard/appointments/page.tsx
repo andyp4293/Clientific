@@ -169,6 +169,7 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
   const endTime = new Date(appointment.endTime);
 
   const statusColors = {
+    pending: 'bg-yellow-100 text-yellow-800',
     scheduled: 'bg-blue-100 text-blue-800',
     confirmed: 'bg-green-100 text-green-800',
     completed: 'bg-gray-100 text-gray-800',
@@ -199,8 +200,31 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
     },
   });
 
-  // Check if appointment can be edited/cancelled (only scheduled/confirmed)
-  const canModify = ['scheduled', 'confirmed'].includes(appointment.status);
+  // Confirm appointment mutation
+  const confirmMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/appointments/${appointment.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'confirmed' }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to confirm appointment');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+    },
+    onError: (error: any) => {
+      alert(error.message || 'Failed to confirm appointment');
+    },
+  });
+
+  const canConfirm = appointment.status === 'pending';
+  // Check if appointment can be edited/cancelled (pending/scheduled/confirmed)
+  const canModify = ['pending', 'scheduled', 'confirmed'].includes(appointment.status);
 
   return (
     <>
@@ -250,15 +274,32 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
             </div>
           </div>
 
-          {canModify && (
+          {canConfirm ? (
             <div className="flex space-x-2">
-              <button 
+              <button
+                onClick={() => confirmMutation.mutate()}
+                disabled={confirmMutation.isPending}
+                className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+              >
+                {confirmMutation.isPending ? 'Confirming...' : 'Confirm'}
+              </button>
+              <button
+                onClick={() => setShowCancelConfirm(true)}
+                disabled={cancelMutation.isPending}
+                className="bg-red-100 text-red-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-red-200 disabled:opacity-50"
+              >
+                Decline
+              </button>
+            </div>
+          ) : canModify && (
+            <div className="flex space-x-2">
+              <button
                 onClick={() => setShowEditModal(true)}
                 className="btn-outline btn-sm"
               >
                 Edit
               </button>
-              <button 
+              <button
                 onClick={() => setShowCancelConfirm(true)}
                 className="btn-outline btn-sm text-red-600 hover:bg-red-50"
               >
@@ -596,6 +637,7 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                 className="input"
               >
+                <option value="pending">Pending</option>
                 <option value="scheduled">Scheduled</option>
                 <option value="confirmed">Confirmed</option>
                 <option value="completed">Completed</option>

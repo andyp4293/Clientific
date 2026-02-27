@@ -10,6 +10,8 @@ interface Appointment {
   startTime: string;
   duration: number;
   notes: string | null;
+  services: { name: string; price: number | null }[];
+  totalPrice: number;
   service: { name: string; price: number | null } | null;
   staff: { fullName: string } | null;
   business: {
@@ -32,6 +34,11 @@ export default function AppointmentPage() {
       const res = await fetch(`/api/public/appointment/${id}`);
       if (!res.ok) throw new Error('Appointment not found');
       return res.json();
+    },
+    // Poll every 30s while pending so the page auto-updates when business confirms
+    refetchInterval: (query) => {
+      const status = query.state.data?.appointment?.status;
+      return status === 'pending' ? 30_000 : false;
     },
   });
 
@@ -73,7 +80,10 @@ export default function AppointmentPage() {
     ? { ...data.appointment, status: 'cancelled' }
     : data.appointment;
 
+  const isPending = appt.status === 'pending';
   const isCancelled = appt.status === 'cancelled';
+  const isConfirmed = appt.status === 'confirmed';
+
   const start = new Date(appt.startTime);
 
   const dateStr = start.toLocaleDateString('en-US', {
@@ -91,18 +101,29 @@ export default function AppointmentPage() {
 
   const bookingPath = `/book/${appt.business.publicId}`;
 
+  // Services display — use services[] array if available, fall back to service
+  const servicesList: { name: string; price: number | null }[] =
+    appt.services?.length ? appt.services : appt.service ? [appt.service] : [];
+  const servicesLabel = servicesList.map(s => s.name).join(', ') || 'Appointment';
+  const totalPrice = appt.totalPrice ?? servicesList.reduce((sum, s) => sum + (s.price ?? 0), 0);
+  const hasPrice = totalPrice > 0;
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
 
-        {/* Icon */}
+        {/* Status icon */}
         <div className="mb-6">
           <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center ${
-            isCancelled ? 'bg-red-100' : 'bg-green-100'
+            isCancelled ? 'bg-red-100' : isPending ? 'bg-yellow-100' : 'bg-green-100'
           }`}>
             {isCancelled ? (
               <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : isPending ? (
+              <svg className="w-8 h-8 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             ) : (
               <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -120,11 +141,18 @@ export default function AppointmentPage() {
               Your appointment has been cancelled. We hope to see you again soon!
             </p>
           </>
+        ) : isPending ? (
+          <>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Request Received!</h1>
+            <p className="text-gray-600 mb-6">
+              Your appointment request has been submitted. Check back here — this page will update automatically once the business confirms your booking.
+            </p>
+          </>
         ) : (
           <>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Booking Confirmed!</h1>
             <p className="text-gray-600 mb-6">
-              Your appointment has been successfully booked. We&apos;ve sent a confirmation to your phone.
+              Your appointment is confirmed. We&apos;ve sent a confirmation to your phone.
             </p>
           </>
         )}
@@ -138,8 +166,8 @@ export default function AppointmentPage() {
               <span className="font-medium">{appt.business.name}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Service:</span>
-              <span className="font-medium">{appt.service?.name || 'Appointment'}</span>
+              <span className="text-gray-600">{servicesList.length > 1 ? 'Services:' : 'Service:'}</span>
+              <span className="font-medium text-right max-w-[60%]">{servicesLabel}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Date:</span>
@@ -159,17 +187,27 @@ export default function AppointmentPage() {
               <span className="text-gray-600">Duration:</span>
               <span className="font-medium">{appt.duration} minutes</span>
             </div>
-            {appt.service?.price != null && (
+            {hasPrice && (
               <div className="flex justify-between">
-                <span className="text-gray-600">Price:</span>
-                <span className="font-medium">${Number(appt.service.price).toFixed(2)}</span>
+                <span className="text-gray-600">Total:</span>
+                <span className="font-medium">${totalPrice.toFixed(2)}</span>
               </div>
             )}
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Status:</span>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                isCancelled ? 'bg-red-100 text-red-800' :
+                isPending ? 'bg-yellow-100 text-yellow-800' :
+                'bg-green-100 text-green-800'
+              }`}>
+                {appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Footer text */}
-        {!isCancelled && (
+        {(isConfirmed || (!isPending && !isCancelled)) && (
           <p className="text-sm text-gray-600 mb-6">
             Please arrive 5–10 minutes early. To reschedule, call us at{' '}
             <a href={`tel:${appt.business.phone}`} className="text-blue-600 hover:underline">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { DatePicker } from '@/components/ui/DatePicker';
@@ -46,13 +46,14 @@ export default function PublicBookingPage() {
   const router = useRouter();
   const slugOrPublicId = params.slug as string;
   const [step, setStep] = useState(1);
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
   // Initialize with today's date in local timezone
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const [selectedDate, setSelectedDate] = useState<Date>(today);
-  const [selectedTime, setSelectedTime] = useState<string | null>(null);  const [customerInfo, setCustomerInfo] = useState({
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [customerInfo, setCustomerInfo] = useState({
     name: '',
     phone: '',
     email: '',
@@ -60,14 +61,19 @@ export default function PublicBookingPage() {
     smsConsent: false,
   });
 
+  // Derived totals
+  const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration, 0);
+  const totalPrice = selectedServices.reduce((sum, s) => sum + (s.price ?? 0), 0);
+  const hasPrices = selectedServices.some(s => s.price != null && s.price > 0);
+
   // Determine if this is a publicId (format: XX-XXXXXX) or a slug
   const isPublicId = /^[A-Z]{2}-[A-Z0-9]{6}$/.test(slugOrPublicId);
-  const apiBase = isPublicId 
+  const apiBase = isPublicId
     ? `/api/public/business-by-id/${slugOrPublicId}`
     : `/api/public/business/${slugOrPublicId}`;
 
   // Fetch business info
-  const { data: businessData, isLoading: isLoadingBusiness, error: businessError } = useQuery({
+  const { data: businessData, isLoading: isLoadingBusiness } = useQuery({
     queryKey: ['business', slugOrPublicId],
     queryFn: async () => {
       const res = await fetch(apiBase);
@@ -78,6 +84,7 @@ export default function PublicBookingPage() {
       return res.json();
     },
   });
+
   // Fetch services
   const { data: servicesData } = useQuery({
     queryKey: ['services', slugOrPublicId],
@@ -100,21 +107,22 @@ export default function PublicBookingPage() {
     enabled: !!businessData,
   });
 
-  // Fetch available slots
+  // Fetch available slots — use first service's id + combined duration
   const { data: slotsData, isLoading: isLoadingSlots } = useQuery({
-    queryKey: ['slots', slugOrPublicId, selectedDate.toISOString().split('T')[0], selectedService?.id, selectedStaff],
+    queryKey: ['slots', slugOrPublicId, selectedDate.toISOString().split('T')[0], selectedServices.map(s => s.id).join(','), selectedStaff],
     queryFn: async () => {
-      if (!selectedService) return { slots: [] };
-      const params = new URLSearchParams({
+      if (!selectedServices.length) return { slots: [] };
+      const qp = new URLSearchParams({
         date: selectedDate.toISOString().split('T')[0],
-        serviceId: selectedService.id,
+        serviceId: selectedServices[0].id,
+        duration: String(totalDuration),
         ...(selectedStaff && selectedStaff !== 'anyone' && { staffId: selectedStaff }),
       });
-      const res = await fetch(`${apiBase}/available-slots?${params}`);
+      const res = await fetch(`${apiBase}/available-slots?${qp}`);
       if (!res.ok) throw new Error('Failed to fetch slots');
       return res.json();
     },
-    enabled: !!selectedService && step === 3,
+    enabled: !!selectedServices.length && step === 3,
   });
 
   // Create booking mutation
@@ -141,14 +149,23 @@ export default function PublicBookingPage() {
   const staff: Staff[] = staffData?.staff || [];
   const availableSlots: string[] = slotsData?.slots || [];
 
+  const toggleService = (service: Service) => {
+    setSelectedServices(prev =>
+      prev.some(s => s.id === service.id)
+        ? prev.filter(s => s.id !== service.id)
+        : [...prev, service]
+    );
+  };
+
   const handleBooking = () => {
-    if (!selectedService || !selectedTime) return;
+    if (!selectedServices.length || !selectedTime) return;
 
     bookingMutation.mutate({
-      serviceId: selectedService.id,
+      serviceIds: selectedServices.map(s => s.id),
+      serviceId: selectedServices[0].id,
       staffId: selectedStaff ?? 'anyone',
       startTime: selectedTime,
-      duration: selectedService.duration,
+      duration: totalDuration,
       customerName: customerInfo.name,
       customerPhone: customerInfo.phone,
       customerEmail: customerInfo.email || undefined,
@@ -173,14 +190,15 @@ export default function PublicBookingPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Business Not Found</h1>
-          <p className="text-gray-600">The booking page you're looking for doesn't exist.</p>
+          <p className="text-gray-600">The booking page you&apos;re looking for doesn&apos;t exist.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">      {/* Header */}
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
       <div className="bg-white border-b">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
           <div className="flex items-center justify-between gap-3 sm:gap-4">
@@ -210,7 +228,7 @@ export default function PublicBookingPage() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             {[
-              { num: 1, label: 'Service' },
+              { num: 1, label: 'Services' },
               { num: 2, label: 'Staff' },
               { num: 3, label: 'Date & Time' },
               { num: 4, label: 'Your Info' },
@@ -246,38 +264,81 @@ export default function PublicBookingPage() {
       {/* Main Content */}
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm p-4 sm:p-6">
-          {/* Step 1: Select Service */}
+
+          {/* Step 1: Select Services (multi-select) */}
           {step === 1 && (
             <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Select a Service</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-1">Select Services</h2>
+              <p className="text-sm text-gray-500 mb-6">Choose one or more services for your appointment.</p>
+
               <div className="space-y-3">
-                {services.map((service) => (
-                  <button
-                    key={service.id}
-                    onClick={() => {
-                      setSelectedService(service);
-                      setStep(2);
-                    }}
-                    className="w-full text-left p-4 rounded-xl border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all group"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 mb-1">
-                          {service.name}
-                        </h3>
-                        {service.description && (
-                          <p className="text-sm text-gray-600 mb-2">{service.description}</p>
-                        )}
-                        <p className="text-sm text-gray-500">{service.duration} minutes</p>
-                      </div>
-                      {service.price && (
-                        <div className="text-right ml-4">
-                          <p className="text-lg font-bold text-gray-900">${service.price.toFixed(2)}</p>
+                {services.map((service) => {
+                  const isSelected = selectedServices.some(s => s.id === service.id);
+                  return (
+                    <button
+                      key={service.id}
+                      onClick={() => toggleService(service)}
+                      className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                        isSelected
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-blue-400 hover:bg-blue-50'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* Checkbox indicator */}
+                        <div className={`mt-0.5 w-5 h-5 rounded flex-shrink-0 border-2 flex items-center justify-center ${
+                          isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-400'
+                        }`}>
+                          {isSelected && (
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <h3 className={`font-semibold mb-0.5 ${isSelected ? 'text-blue-700' : 'text-gray-900'}`}>
+                                {service.name}
+                              </h3>
+                              {service.description && (
+                                <p className="text-sm text-gray-600 mb-1">{service.description}</p>
+                              )}
+                              <p className="text-sm text-gray-500">{service.duration} min</p>
+                            </div>
+                            {service.price != null && service.price > 0 && (
+                              <p className="text-lg font-bold text-gray-900 ml-4 flex-shrink-0">
+                                ${service.price.toFixed(2)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Selection summary + Continue */}
+              <div className="mt-6">
+                {selectedServices.length > 0 && (
+                  <div className="mb-3 px-4 py-3 bg-blue-50 rounded-xl text-sm text-blue-800 flex justify-between items-center">
+                    <span>
+                      {selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected
+                      {' · '}{totalDuration} min
+                    </span>
+                    {hasPrices && (
+                      <span className="font-bold">${totalPrice.toFixed(2)}</span>
+                    )}
+                  </div>
+                )}
+                <button
+                  onClick={() => setStep(2)}
+                  disabled={selectedServices.length === 0}
+                  className="w-full py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Continue →
+                </button>
               </div>
             </div>
           )}
@@ -335,7 +396,9 @@ export default function PublicBookingPage() {
           {/* Step 3: Select Date & Time */}
           {step === 3 && (
             <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Choose Date & Time</h2>              {/* Date Selector */}
+              <h2 className="text-xl font-bold text-gray-900 mb-6">Choose Date & Time</h2>
+
+              {/* Date Selector */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Select Date</label>
                 <DatePicker
@@ -368,7 +431,7 @@ export default function PublicBookingPage() {
                         minute: '2-digit',
                         timeZone: business.timezone,
                       });
-                      
+
                       return (
                         <button
                           key={slot}
@@ -448,7 +511,9 @@ export default function PublicBookingPage() {
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="john@example.com"
                   />
-                </div>                <div>
+                </div>
+
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Additional Notes (Optional)
                   </label>
@@ -481,8 +546,8 @@ export default function PublicBookingPage() {
               {bookingMutation.isError && (
                 <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl">
                   <p className="text-sm text-red-800">
-                    {bookingMutation.error instanceof Error 
-                      ? bookingMutation.error.message 
+                    {bookingMutation.error instanceof Error
+                      ? bookingMutation.error.message
                       : 'Failed to create booking'}
                   </p>
                 </div>
@@ -495,7 +560,8 @@ export default function PublicBookingPage() {
                   className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   ← Back
-                </button>                <button
+                </button>
+                <button
                   onClick={handleBooking}
                   disabled={
                     !customerInfo.name ||
@@ -504,22 +570,39 @@ export default function PublicBookingPage() {
                   }
                   className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {bookingMutation.isPending ? 'Booking...' : 'Confirm Booking'}
+                  {bookingMutation.isPending ? 'Submitting...' : 'Submit Request'}
                 </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Booking Summary Sidebar */}
-        {selectedService && step > 1 && step < 5 && (
+        {/* Booking Summary */}
+        {selectedServices.length > 0 && step > 1 && step < 5 && (
           <div className="mt-6 bg-blue-50 border border-blue-200 rounded-2xl p-6">
             <h3 className="font-semibold text-gray-900 mb-4">Booking Summary</h3>
             <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Service:</span>
-                <span className="font-medium">{selectedService.name}</span>
-              </div>
+              {selectedServices.length === 1 ? (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Service:</span>
+                  <span className="font-medium">{selectedServices[0].name}</span>
+                </div>
+              ) : (
+                <div>
+                  <span className="text-gray-600 block mb-1">Services:</span>
+                  <ul className="space-y-1">
+                    {selectedServices.map(s => (
+                      <li key={s.id} className="flex justify-between">
+                        <span className="font-medium ml-2">{s.name}</span>
+                        {s.price != null && s.price > 0 && (
+                          <span className="text-gray-600">${s.price.toFixed(2)}</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {step >= 3 && selectedStaff && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Staff:</span>
@@ -530,6 +613,7 @@ export default function PublicBookingPage() {
                   </span>
                 </div>
               )}
+
               {step >= 3 && selectedTime && (
                 <>
                   <div className="flex justify-between">
@@ -553,18 +637,21 @@ export default function PublicBookingPage() {
                   </div>
                 </>
               )}
+
               <div className="flex justify-between">
                 <span className="text-gray-600">Duration:</span>
-                <span className="font-medium">{selectedService.duration} min</span>
+                <span className="font-medium">{totalDuration} min</span>
               </div>
-              {selectedService.price && (
+
+              {hasPrices && (
                 <div className="flex justify-between pt-3 border-t border-blue-200">
                   <span className="font-semibold text-gray-900">Total:</span>
-                  <span className="font-bold text-gray-900">${selectedService.price.toFixed(2)}</span>
+                  <span className="font-bold text-gray-900">${totalPrice.toFixed(2)}</span>
                 </div>
               )}
             </div>
-          </div>        )}
+          </div>
+        )}
       </div>
 
       {/* Footer with Terms & Privacy */}

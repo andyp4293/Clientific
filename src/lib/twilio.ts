@@ -29,6 +29,14 @@ interface CancellationDetails {
   businessName: string;
 }
 
+interface BusinessConfirmedDetails {
+  customerName: string;
+  serviceName: string;
+  dateTime: Date;
+  businessName: string;
+  appointmentUrl?: string;
+}
+
 interface ReminderDetails {
   customerName: string;
   serviceName: string;
@@ -121,7 +129,7 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SMSResult
 // Legacy export kept for compatibility
 export const twilioClient = null;
 
-// Template: Appointment Confirmation (shortened for trial accounts)
+// Template: Appointment Request Received (pending confirmation)
 export function formatAppointmentConfirmationSMS(details: AppointmentDetails): string {
   const dateStr = details.dateTime.toLocaleDateString('en-US', {
     weekday: 'short',
@@ -130,11 +138,27 @@ export function formatAppointmentConfirmationSMS(details: AppointmentDetails): s
   });
   const timeStr = formatTime(details.dateTime);
 
-  const base = `${details.businessName}: Appt confirmed for ${dateStr} at ${timeStr}. ${details.serviceName}.`;
+  const base = `${details.businessName}: Appt request received for ${dateStr} at ${timeStr}. ${details.serviceName}. Awaiting confirmation.`;
+  const msg = details.appointmentUrl
+    ? `${base} Check status: ${details.appointmentUrl}`
+    : base;
+  console.log('📱 SMS body (JSON):', JSON.stringify(msg));
+  return msg;
+}
+
+// Template: Appointment Confirmed by Business
+export function formatAppointmentBusinessConfirmedSMS(details: BusinessConfirmedDetails): string {
+  const dateStr = details.dateTime.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+  const timeStr = formatTime(details.dateTime);
+
+  const base = `${details.businessName}: Your ${details.serviceName} appointment on ${dateStr} at ${timeStr} is CONFIRMED. See you then!`;
   const msg = details.appointmentUrl
     ? `${base} ${details.appointmentUrl}`
-    : `${base} See you soon!`;
-  console.log('📱 SMS body (JSON):', JSON.stringify(msg));
+    : base;
   return msg;
 }
 
@@ -182,5 +206,14 @@ export async function sendAppointmentCancellation(
   details: CancellationDetails
 ): Promise<SMSResult> {
   const message = formatAppointmentCancellationSMS(details);
+  return sendSMS({ to: phone, message });
+}
+
+// Helper: Send appointment confirmed by business
+export async function sendAppointmentBusinessConfirmed(
+  phone: string,
+  details: BusinessConfirmedDetails
+): Promise<SMSResult> {
+  const message = formatAppointmentBusinessConfirmedSMS(details);
   return sendSMS({ to: phone, message });
 }

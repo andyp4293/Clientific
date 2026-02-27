@@ -17,6 +17,7 @@ export async function GET(
       endTime: true,
       duration: true,
       notes: true,
+      serviceIds: true,
       service: { select: { name: true, price: true } },
       staff: { select: { fullName: true } },
       business: {
@@ -35,7 +36,19 @@ export async function GET(
     return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
   }
 
-  return NextResponse.json({ appointment });
+  // Resolve services array from serviceIds (fall back to single service)
+  let services: { name: string; price: number | null }[] = [];
+  if (appointment.serviceIds.length > 0) {
+    services = await prisma.service.findMany({
+      where: { id: { in: appointment.serviceIds } },
+      select: { name: true, price: true },
+    });
+  } else if (appointment.service) {
+    services = [appointment.service];
+  }
+  const totalPrice = services.reduce((sum, s) => sum + (s.price ?? 0), 0);
+
+  return NextResponse.json({ appointment: { ...appointment, services, totalPrice } });
 }
 
 export async function PATCH(
