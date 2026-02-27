@@ -5,11 +5,12 @@ import { prisma } from '@/lib/prisma';
 
 // ── Vapi helpers ──────────────────────────────────────────────────────────────
 
-function parseAreaCode(phone: string): string {
+function parseAreaCode(phone: string | null | undefined): string | null {
+  if (!phone) return null;
   const digits = phone.replace(/\D/g, '');
   if (digits.length === 11 && digits[0] === '1') return digits.slice(1, 4);
   if (digits.length === 10) return digits.slice(0, 3);
-  return '800';
+  return null;
 }
 
 async function vapiRequest(method: string, path: string, body?: object) {
@@ -148,7 +149,7 @@ export async function PATCH(req: NextRequest) {
       const areaCode = parseAreaCode(phone ?? current.phone);
       const phoneNumber = await vapiRequest('POST', '/phone-number', {
         provider: 'vapi',
-        areaCode,
+        ...(areaCode && { areaCode }),
         serverUrl,
         ...(process.env.VAPI_WEBHOOK_SECRET && { serverUrlSecret: process.env.VAPI_WEBHOOK_SECRET }),
         name: `${name ?? current.name} Receptionist`,

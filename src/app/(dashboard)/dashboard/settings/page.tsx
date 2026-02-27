@@ -675,7 +675,9 @@ export default function SettingsPage() {
                   ) : (
                     <div className="p-4 bg-red-50 rounded-lg border border-red-200">
                       <p className="text-sm text-red-800 font-medium mb-2">Setup didn&apos;t complete.</p>
-                      <p className="text-sm text-red-700 mb-3">Your AI receptionist number couldn&apos;t be created. This can happen if no numbers are available in your area code.</p>
+                      <p className="text-sm text-red-700 mb-3">
+                        {aiToggleMutation.error?.message || 'Your AI receptionist number couldn\'t be created.'}
+                      </p>
                       <button
                         type="button"
                         onClick={() => aiToggleMutation.mutate(true)}
