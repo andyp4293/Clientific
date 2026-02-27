@@ -132,7 +132,7 @@ export function formatAppointmentConfirmationSMS(details: AppointmentDetails): s
 
   const base = `${details.businessName}: Appt confirmed for ${dateStr} at ${timeStr}. ${details.serviceName}.`;
   const msg = details.appointmentUrl
-    ? `${base}\n${details.appointmentUrl}`
+    ? `${base} ${details.appointmentUrl}`
     : `${base} See you soon!`;
   console.log('📱 SMS body (JSON):', JSON.stringify(msg));
   return msg;
