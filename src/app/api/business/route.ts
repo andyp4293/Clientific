@@ -150,6 +150,7 @@ export async function PATCH(req: NextRequest) {
         provider: 'vapi',
         areaCode,
         serverUrl,
+        ...(process.env.VAPI_WEBHOOK_SECRET && { serverUrlSecret: process.env.VAPI_WEBHOOK_SECRET }),
         name: `${name ?? current.name} Receptionist`,
       });
       vapiUpdates.vapiPhoneNumberId = phoneNumber.id;
