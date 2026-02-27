@@ -146,12 +146,16 @@ export function formatAppointmentReminderSMS(details: ReminderDetails): string {
   return `Reminder: Appointment tomorrow at ${details.businessName}. ${details.serviceName} with ${details.staffName} at ${timeStr}.`;
 }
 
-// Template: Appointment Cancellation - shortened
+// Template: Appointment Cancellation
 export function formatAppointmentCancellationSMS(details: CancellationDetails): string {
-  const dateStr = formatDate(details.dateTime);
+  const dateStr = details.dateTime.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
   const timeStr = formatTime(details.dateTime);
 
-  return `${details.businessName}: Your appointment on ${dateStr} at ${timeStr} has been cancelled. Hope to see you again soon!`;
+  return `Hi ${details.customerName}, your ${details.serviceName} appointment at ${details.businessName} on ${dateStr} at ${timeStr} has been cancelled. We truly appreciate your time and hope to have the pleasure of welcoming you back in the future. You're always welcome! — ${details.businessName}`;
 }
 
 // Helper: Send appointment confirmation

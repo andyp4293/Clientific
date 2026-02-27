@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { sendAppointmentCancellation } from '@/lib/twilio';
 
 export async function GET(
   _req: NextRequest,
@@ -50,7 +51,13 @@ export async function PATCH(
 
   const existing = await prisma.appointment.findUnique({
     where: { id },
-    select: { status: true },
+    select: {
+      status: true,
+      startTime: true,
+      service: { select: { name: true } },
+      customer: { select: { name: true, phone: true } },
+      business: { select: { name: true } },
+    },
   });
 
   if (!existing) {
@@ -65,6 +72,16 @@ export async function PATCH(
     where: { id },
     data: { status: 'cancelled' },
   });
+
+  // Send cancellation SMS to customer
+  if (existing.customer.phone) {
+    sendAppointmentCancellation(existing.customer.phone, {
+      customerName: existing.customer.name,
+      serviceName: existing.service?.name || 'Appointment',
+      dateTime: existing.startTime,
+      businessName: existing.business.name,
+    }).catch((err) => console.warn('⚠️  Cancellation SMS failed:', err));
+  }
 
   return NextResponse.json({ appointment });
 }
