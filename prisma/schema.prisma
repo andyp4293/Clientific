@@ -45,6 +45,9 @@ model Business {
   aiReceptionistEnabled  Boolean        @default(false)
   aiReceptionistPhone    String?
   aiReceptionistGreeting String?
+  vapiAssistantId        String?
+  vapiPhoneNumberId      String?
+  vapiPhoneNumber        String?
   pointsPerDollar        Float          @default(1.0)
   pointsPerVisit         Int            @default(10)
   referralBonusPoints    Int            @default(50)

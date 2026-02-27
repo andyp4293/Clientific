@@ -31,6 +31,7 @@ interface Business {
   aiReceptionistEnabled: boolean;
   aiReceptionistPhone: string | null;
   aiReceptionistGreeting: string | null;
+  vapiPhoneNumber: string | null;
 }
 
 export default function SettingsPage() {
@@ -544,7 +545,7 @@ export default function SettingsPage() {
                   />
                   <div>
                     <span className="text-sm font-medium text-gray-900">Enable AI Receptionist</span>
-                    <p className="text-xs text-gray-500">AI will answer inbound calls to your Twilio number</p>
+                    <p className="text-xs text-gray-500">A dedicated phone number will be provisioned for your business</p>
                   </div>
                 </label>
               </div>
@@ -583,47 +584,53 @@ export default function SettingsPage() {
                 </p>
               </div>
 
-              {/* Webhook URL */}
-              {business?.publicId && typeof window !== 'undefined' && (
-                <div className="mb-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-                  <label className="block text-sm font-medium text-indigo-900 mb-2">
-                    Your Twilio Webhook URL
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={`${window.location.origin}/api/webhooks/twilio-voice?publicId=${business.publicId}`}
-                      readOnly
-                      className="input flex-1 bg-white text-sm"
-                    />
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/api/webhooks/twilio-voice?publicId=${business.publicId}`);
-                        alert('Copied to clipboard!');
-                      }}
-                      className="btn-outline whitespace-nowrap"
-                    >
-                      Copy
-                    </button>
-                  </div>
+              {/* Vapi provisioned number */}
+              {formData.aiReceptionistEnabled && (
+                <div className="mb-6">
+                  {formData.vapiPhoneNumber ? (
+                    <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                      <p className="text-sm font-medium text-green-900 mb-2">Your AI Receptionist Number</p>
+                      <div className="flex items-center gap-2 mb-3">
+                        <input
+                          type="text"
+                          value={formData.vapiPhoneNumber}
+                          readOnly
+                          className="input flex-1 bg-white text-sm font-mono"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(formData.vapiPhoneNumber!);
+                            alert('Copied to clipboard!');
+                          }}
+                          className="btn-outline whitespace-nowrap"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                      <p className="text-sm text-green-800 font-medium mb-3">
+                        → Update your Google Business Profile with this number — that&apos;s all you need to do.
+                      </p>
+                      <details className="border border-green-200 rounded-lg bg-white">
+                        <summary className="px-3 py-2 cursor-pointer text-sm text-green-700 hover:bg-green-50 rounded-lg">
+                          Already have a number? Forward calls to this number
+                        </summary>
+                        <div className="px-3 pb-3 pt-2 space-y-1 text-xs text-gray-600">
+                          <p><strong>iPhone:</strong> Settings → Phone → Call Forwarding → enter {formData.vapiPhoneNumber}</p>
+                          <p><strong>Android:</strong> Phone app → Settings → Call Forwarding → Always forward → enter {formData.vapiPhoneNumber}</p>
+                          <p><strong>Google Voice:</strong> Settings → Calls → Forward calls → Add forwarding number</p>
+                          <p><strong>Other VoIP:</strong> Go to your provider&apos;s call forwarding or routing settings and enter {formData.vapiPhoneNumber}</p>
+                        </div>
+                      </details>
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 flex items-center gap-3">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 flex-shrink-0" />
+                      <p className="text-sm text-gray-600">Setting up your AI receptionist number… Save your settings to provision it.</p>
+                    </div>
+                  )}
                 </div>
               )}
-
-              {/* Setup Instructions */}
-              <details className="border border-gray-200 rounded-lg">
-                <summary className="px-4 py-3 cursor-pointer text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg">
-                  How to set up (Twilio)
-                </summary>
-                <div className="px-4 pb-4 pt-2 space-y-2 text-sm text-gray-600">
-                  <p>1. Log in to your <strong>Twilio Console</strong></p>
-                  <p>2. Go to <strong>Phone Numbers → Manage → Active Numbers</strong></p>
-                  <p>3. Click your phone number</p>
-                  <p>4. Under <strong>Voice Configuration</strong>, set <strong>A call comes in</strong> to <strong>Webhook</strong></p>
-                  <p>5. Paste the webhook URL above into the URL field</p>
-                  <p>6. Set the method to <strong>HTTP POST</strong> and save</p>
-                  <p className="pt-2 text-gray-500">You also need to add <strong>OPENAI_API_KEY</strong> to your environment variables in Vercel.</p>
-                </div>
-              </details>
             </div>
           </div>
         )}
