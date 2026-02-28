@@ -43,6 +43,20 @@ export default function SettingsPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [showEnableModal, setShowEnableModal] = useState(false);
   const [showDisableModal, setShowDisableModal] = useState(false);
+  const [activatingUntil, setActivatingUntil] = useState<Date | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+
+  useEffect(() => {
+    if (!activatingUntil) return;
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((activatingUntil.getTime() - Date.now()) / 1000));
+      setSecondsLeft(remaining);
+      if (remaining === 0) setActivatingUntil(null);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [activatingUntil]);
 
   // Fetch business data
   const { data, isLoading } = useQuery({
@@ -97,11 +111,18 @@ export default function SettingsPage() {
       return res.json();
     },
     onSuccess: (data) => {
-      setFormData(prev => ({
-        ...prev,
-        aiReceptionistEnabled: data.business.aiReceptionistEnabled,
-        vapiPhoneNumber: data.business.vapiPhoneNumber ?? null,
-      }));
+      const newNumber = data.business.vapiPhoneNumber ?? null;
+      setFormData(prev => {
+        if (newNumber && !prev.vapiPhoneNumber) {
+          // Number was just provisioned — start 2-minute activation countdown
+          setActivatingUntil(new Date(Date.now() + 2 * 60 * 1000));
+        }
+        return {
+          ...prev,
+          aiReceptionistEnabled: data.business.aiReceptionistEnabled,
+          vapiPhoneNumber: newNumber,
+        };
+      });
       queryClient.invalidateQueries({ queryKey: ['business-info'] });
     },
   });
@@ -633,7 +654,20 @@ export default function SettingsPage() {
                 <div className="mb-6">
                   {formData.vapiPhoneNumber ? (
                     <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                      <p className="text-sm font-medium text-green-900 mb-2">Your AI Receptionist Number</p>
+                      <p className="text-sm font-medium text-green-900 mb-1">Your AI Receptionist Number</p>
+                      {activatingUntil ? (
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+                          <p className="text-xs text-yellow-700 font-medium">
+                            Activating — ready in {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <div className="w-2 h-2 rounded-full bg-green-500" />
+                          <p className="text-xs text-green-700 font-medium">Active — ready to receive calls</p>
+                        </div>
+                      )}
                       <div className="flex items-center gap-2 mb-3">
                         <input
                           type="text"
