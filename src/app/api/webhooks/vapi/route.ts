@@ -301,8 +301,8 @@ async function handleCheckAvailability(business: BusinessData, args: any): Promi
   const more = slots.length > 6 ? ` and ${slots.length - 6} more` : '';
   // Return available slots with their ISO times so the AI can pass them to createBooking
   const slotsWithIso = slots.slice(0, 6).map((iso, i) => `${formatted[i]} (${iso})`);
-  const staffReminder = staffId ? ` [staffId for booking: ${staffId}]` : '';
-  return `Available for ${service.name} on ${date}: ${slotsWithIso.join(', ')}${more}. Which time works for you?${staffReminder}`;
+  const staffNote = staffId ? ` Remember to include staffId=${staffId} when calling createBooking.` : '';
+  return `Available for ${service.name} on ${date}: ${slotsWithIso.join(', ')}${more}. Which time works for you?${staffNote}`;
 }
 
 // ─── Tool: createBooking ──────────────────────────────────────────────────────
