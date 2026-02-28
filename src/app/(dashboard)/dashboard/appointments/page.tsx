@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface Appointment {
@@ -32,7 +32,6 @@ export default function AppointmentsPage() {
   const [showNewModal, setShowNewModal] = useState(false);
   const queryClient = useQueryClient();
 
-  // Fetch appointments for selected date
   const { data, isLoading } = useQuery({
     queryKey: ['appointments', selectedDate.toISOString().split('T')[0]],
     queryFn: async () => {
@@ -44,102 +43,107 @@ export default function AppointmentsPage() {
 
   const appointments: Appointment[] = data?.appointments || [];
 
+  const isToday = selectedDate.toDateString() === new Date().toDateString();
+
   return (
-    <div className="max-w-7xl">
+    <div className="max-w-4xl">
+      {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Appointments</h1>
-        <button onClick={() => setShowNewModal(true)} className="btn-primary">
-          + New Appointment
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Appointments</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {isToday ? 'Today' : selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            {appointments.length > 0 && ` · ${appointments.length} appointment${appointments.length !== 1 ? 's' : ''}`}
+          </p>
+        </div>
+        <button onClick={() => setShowNewModal(true)} className="btn-primary flex items-center gap-2">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          New Appointment
         </button>
       </div>
 
       {/* Date Navigator */}
-      <div className="card p-4 mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 mb-6">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-1">
             <button
               onClick={() => {
-                const newDate = new Date(selectedDate);
-                newDate.setDate(newDate.getDate() - 1);
-                setSelectedDate(newDate);
+                const d = new Date(selectedDate);
+                d.setDate(d.getDate() - 1);
+                setSelectedDate(d);
               }}
-              className="btn-outline p-2"
+              className="p-2 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-colors"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            
-            <div className="text-center">
-              <h2 className="text-xl font-semibold">
-                {selectedDate.toLocaleDateString('en-US', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}
-              </h2>
+
+            <div className="px-3 text-center">
+              <p className="text-sm font-semibold text-gray-900">
+                {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              </p>
+              <p className="text-xs text-gray-400">{selectedDate.getFullYear()}</p>
             </div>
 
             <button
               onClick={() => {
-                const newDate = new Date(selectedDate);
-                newDate.setDate(newDate.getDate() + 1);
-                setSelectedDate(newDate);
+                const d = new Date(selectedDate);
+                d.setDate(d.getDate() + 1);
+                setSelectedDate(d);
               }}
-              className="btn-outline p-2"
+              className="p-2 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-colors"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
 
-            <button
-              onClick={() => setSelectedDate(new Date())}
-              className="btn-outline"
-            >
-              Today
-            </button>
+            {!isToday && (
+              <button
+                onClick={() => setSelectedDate(new Date())}
+                className="ml-1 text-xs font-medium text-primary px-3 py-1.5 rounded-lg hover:bg-primary/5 transition-colors"
+              >
+                Today
+              </button>
+            )}
           </div>
 
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setView('day')}
-              className={`px-3 py-1 rounded ${view === 'day' ? 'bg-primary text-white' : 'bg-gray-100'}`}
-            >
-              Day
-            </button>
-            <button
-              onClick={() => setView('week')}
-              className={`px-3 py-1 rounded ${view === 'week' ? 'bg-primary text-white' : 'bg-gray-100'}`}
-            >
-              Week
-            </button>
-            <button
-              onClick={() => setView('month')}
-              className={`px-3 py-1 rounded ${view === 'month' ? 'bg-primary text-white' : 'bg-gray-100'}`}
-            >
-              Month
-            </button>
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+            {(['day', 'week', 'month'] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={`px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
+                  view === v ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {v}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Appointments List */}
       {isLoading ? (
-        <div className="card p-8 text-center">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading appointments...</p>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-12 text-center">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-gray-500">Loading appointments…</p>
         </div>
       ) : appointments.length === 0 ? (
-        <div className="card p-8 text-center">
-          <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No appointments scheduled</h3>
-          <p className="text-gray-600 mb-4">Get started by creating a new appointment.</p>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-12 text-center">
+          <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-7 h-7 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <h3 className="text-sm font-semibold text-gray-900 mb-1">No appointments</h3>
+          <p className="text-sm text-gray-400 mb-5">Nothing scheduled for this day.</p>
           <button onClick={() => setShowNewModal(true)} className="btn-primary">
-            + Create Appointment
+            + New Appointment
           </button>
         </div>
       ) : (
@@ -150,12 +154,8 @@ export default function AppointmentsPage() {
         </div>
       )}
 
-      {/* New Appointment Modal */}
       {showNewModal && (
-        <NewAppointmentModal
-          onClose={() => setShowNewModal(false)}
-          selectedDate={selectedDate}
-        />
+        <NewAppointmentModal onClose={() => setShowNewModal(false)} selectedDate={selectedDate} />
       )}
     </div>
   );
@@ -168,16 +168,16 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
   const startTime = new Date(appointment.startTime);
   const endTime = new Date(appointment.endTime);
 
-  const statusColors = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    scheduled: 'bg-blue-100 text-blue-800',
-    confirmed: 'bg-green-100 text-green-800',
-    completed: 'bg-gray-100 text-gray-800',
-    cancelled: 'bg-red-100 text-red-800',
-    no_show: 'bg-orange-100 text-orange-800',
+  const statusConfig: Record<string, { badge: string; bar: string; label: string }> = {
+    pending:   { badge: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',   bar: 'bg-amber-400',  label: 'Pending' },
+    scheduled: { badge: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',      bar: 'bg-blue-500',   label: 'Scheduled' },
+    confirmed: { badge: 'bg-green-50 text-green-700 ring-1 ring-green-200',   bar: 'bg-green-500',  label: 'Confirmed' },
+    completed: { badge: 'bg-gray-100 text-gray-600 ring-1 ring-gray-200',     bar: 'bg-gray-400',   label: 'Completed' },
+    cancelled: { badge: 'bg-red-50 text-red-600 ring-1 ring-red-200',         bar: 'bg-red-400',    label: 'Cancelled' },
+    no_show:   { badge: 'bg-orange-50 text-orange-700 ring-1 ring-orange-200',bar: 'bg-orange-400', label: 'No Show' },
   };
+  const config = statusConfig[appointment.status] ?? statusConfig.scheduled;
 
-  // Cancel appointment mutation
   const cancelMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch(`/api/appointments/${appointment.id}`, {
@@ -185,22 +185,13 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'cancelled' }),
       });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to cancel appointment');
-      }
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Failed'); }
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      setShowCancelConfirm(false);
-    },
-    onError: (error: any) => {
-      alert(error.message || 'Failed to cancel appointment');
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['appointments'] }); setShowCancelConfirm(false); },
+    onError: (e: any) => alert(e.message || 'Failed to cancel appointment'),
   });
 
-  // Confirm appointment mutation
   const confirmMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch(`/api/appointments/${appointment.id}`, {
@@ -208,147 +199,156 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'confirmed' }),
       });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to confirm appointment');
-      }
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Failed'); }
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-    },
-    onError: (error: any) => {
-      alert(error.message || 'Failed to confirm appointment');
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['appointments'] }),
+    onError: (e: any) => alert(e.message || 'Failed to confirm appointment'),
   });
 
   const canConfirm = appointment.status === 'pending';
-  // Check if appointment can be edited/cancelled (pending/scheduled/confirmed)
   const canModify = ['pending', 'scheduled', 'confirmed'].includes(appointment.status);
+
+  const initials = appointment.customer.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
     <>
-      <div className="card p-4 hover:shadow-md transition-shadow">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start space-x-4">
-            <div className="text-center min-w-[80px]">
-              <div className="text-2xl font-bold text-primary">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+        <div className="flex">
+          {/* Status bar */}
+          <div className={`w-1 flex-shrink-0 ${config.bar}`} />
+
+          <div className="flex-1 p-4 flex items-start gap-4">
+            {/* Time */}
+            <div className="flex-shrink-0 w-20 text-center pt-0.5">
+              <p className="text-base font-bold text-gray-900 leading-tight">
                 {startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
-              </div>
-              <div className="text-sm text-gray-600">
-                {appointment.duration} min
-              </div>
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {endTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+              </p>
+              <p className="text-xs text-gray-400">{appointment.duration} min</p>
             </div>
 
-            <div className="flex-1">
-              <div className="flex items-center space-x-2 mb-1">
-                <h3 className="font-semibold text-lg">{appointment.customer.name}</h3>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[appointment.status as keyof typeof statusColors] || statusColors.scheduled}`}>
-                  {appointment.status}
+            {/* Divider */}
+            <div className="w-px bg-gray-100 self-stretch flex-shrink-0" />
+
+            {/* Details */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2.5 mb-2">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-semibold text-primary">{initials}</span>
+                </div>
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900 text-sm truncate">{appointment.customer.name}</p>
+                </div>
+                <span className={`ml-auto flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${config.badge}`}>
+                  {config.label}
                 </span>
               </div>
 
-              {appointment.service && (
-                <p className="text-sm text-gray-600 mb-1">
-                  <span className="font-medium">Service:</span> {appointment.service.name}
-                </p>
-              )}
+              <div className="space-y-1">
+                {appointment.service && (
+                  <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    {appointment.service.name}
+                  </div>
+                )}
+                {appointment.staff && (
+                  <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    {appointment.staff.fullName}
+                  </div>
+                )}
+                {appointment.customer.phone && (
+                  <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    {appointment.customer.phone}
+                  </div>
+                )}
+                {appointment.notes && (
+                  <p className="text-xs text-gray-400 italic mt-1.5 bg-gray-50 rounded-md px-2.5 py-1.5">
+                    {appointment.notes}
+                  </p>
+                )}
+              </div>
+            </div>
 
-              {appointment.staff && (
-                <p className="text-sm text-gray-600 mb-1">
-                  <span className="font-medium">Staff:</span> {appointment.staff.fullName}
-                </p>
-              )}
-
-              {appointment.customer.phone && (
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Phone:</span> {appointment.customer.phone}
-                </p>
-              )}
-
-              {appointment.notes && (
-                <p className="text-sm text-gray-600 mt-2 italic">
-                  {appointment.notes}
-                </p>
+            {/* Actions */}
+            <div className="flex-shrink-0 flex flex-col gap-2">
+              {canConfirm ? (
+                <>
+                  <button
+                    onClick={() => confirmMutation.mutate()}
+                    disabled={confirmMutation.isPending}
+                    className="text-xs font-medium px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+                  >
+                    {confirmMutation.isPending ? '…' : 'Confirm'}
+                  </button>
+                  <button
+                    onClick={() => setShowCancelConfirm(true)}
+                    disabled={cancelMutation.isPending}
+                    className="text-xs font-medium px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
+                  >
+                    Decline
+                  </button>
+                </>
+              ) : canModify && (
+                <>
+                  <button
+                    onClick={() => setShowEditModal(true)}
+                    className="text-xs font-medium px-3 py-1.5 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setShowCancelConfirm(true)}
+                    className="text-xs font-medium px-3 py-1.5 border border-gray-200 text-red-500 rounded-lg hover:bg-red-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </>
               )}
             </div>
           </div>
-
-          {canConfirm ? (
-            <div className="flex space-x-2">
-              <button
-                onClick={() => confirmMutation.mutate()}
-                disabled={confirmMutation.isPending}
-                className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
-              >
-                {confirmMutation.isPending ? 'Confirming...' : 'Confirm'}
-              </button>
-              <button
-                onClick={() => setShowCancelConfirm(true)}
-                disabled={cancelMutation.isPending}
-                className="bg-red-100 text-red-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-red-200 disabled:opacity-50"
-              >
-                Decline
-              </button>
-            </div>
-          ) : canModify && (
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setShowEditModal(true)}
-                className="btn-outline btn-sm"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => setShowCancelConfirm(true)}
-                className="btn-outline btn-sm text-red-600 hover:bg-red-50"
-              >
-                Cancel
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Edit Modal */}
       {showEditModal && (
-        <EditAppointmentModal
-          appointment={appointment}
-          onClose={() => setShowEditModal(false)}
-        />
+        <EditAppointmentModal appointment={appointment} onClose={() => setShowEditModal(false)} />
       )}
 
-      {/* Cancel Confirmation Modal */}
       {showCancelConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold mb-4">Cancel Appointment?</h3>
-            <p className="text-gray-600 mb-2">
-              Are you sure you want to cancel this appointment with <strong>{appointment.customer.name}</strong>?
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-sm w-full p-6 shadow-xl">
+            <h3 className="text-base font-semibold text-gray-900 mb-2">Cancel appointment?</h3>
+            <p className="text-sm text-gray-600 mb-1">
+              This will cancel <strong>{appointment.customer.name}</strong>&apos;s appointment.
             </p>
-            <p className="text-sm text-gray-500 mb-6">
-              {startTime.toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                month: 'long', 
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit'
-              })}
+            <p className="text-xs text-gray-400 mb-5">
+              {startTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} at{' '}
+              {startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
             </p>
-            <div className="flex justify-end space-x-3">
+            <div className="flex gap-2">
               <button
                 onClick={() => setShowCancelConfirm(false)}
-                className="btn-outline"
                 disabled={cancelMutation.isPending}
+                className="flex-1 btn-outline text-sm"
               >
-                Keep Appointment
+                Keep
               </button>
               <button
                 onClick={() => cancelMutation.mutate()}
-                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50"
                 disabled={cancelMutation.isPending}
+                className="flex-1 bg-red-600 text-white text-sm rounded-lg px-4 py-2 hover:bg-red-700 disabled:opacity-50 transition-colors"
               >
-                {cancelMutation.isPending ? 'Cancelling...' : 'Yes, Cancel'}
+                {cancelMutation.isPending ? 'Cancelling…' : 'Yes, Cancel'}
               </button>
             </div>
           </div>
@@ -369,7 +369,6 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
     notes: '',
   });
 
-  // Fetch customers, services, staff
   const { data: customersData } = useQuery({
     queryKey: ['customers'],
     queryFn: async () => {
@@ -383,9 +382,7 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     const startTime = new Date(`${formData.date}T${formData.time}`);
-
     try {
       const res = await fetch('/api/appointments', {
         method: 'POST',
@@ -399,28 +396,19 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
           notes: formData.notes || null,
         }),
       });
-
-      if (res.ok) {
-        onClose();
-        window.location.reload();
-      } else {
-        const error = await res.json();
-        alert(error.error || 'Failed to create appointment');
-      }
-    } catch (error) {
-      console.error('Create appointment error:', error);
-      alert('Failed to create appointment');
-    }
+      if (res.ok) { onClose(); window.location.reload(); }
+      else { const error = await res.json(); alert(error.error || 'Failed to create appointment'); }
+    } catch { alert('Failed to create appointment'); }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl">
         <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">New Appointment</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="flex justify-between items-center mb-5">
+            <h2 className="text-lg font-semibold text-gray-900">New Appointment</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -429,53 +417,26 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="label">Customer *</label>
-              <select
-                value={formData.customerId}
-                onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
-                className="input"
-                required
-              >
+              <select value={formData.customerId} onChange={(e) => setFormData({ ...formData, customerId: e.target.value })} className="input" required>
                 <option value="">Select a customer</option>
-                {customers.map((customer: any) => (
-                  <option key={customer.id} value={customer.id}>
-                    {customer.name}
-                  </option>
-                ))}
+                {customers.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="label">Date *</label>
-                <input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className="input"
-                  required
-                />
+                <input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="input" required />
               </div>
-
               <div>
                 <label className="label">Time *</label>
-                <input
-                  type="time"
-                  value={formData.time}
-                  onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                  className="input"
-                  required
-                />
+                <input type="time" value={formData.time} onChange={(e) => setFormData({ ...formData, time: e.target.value })} className="input" required />
               </div>
             </div>
 
             <div>
-              <label className="label">Duration (minutes) *</label>
-              <select
-                value={formData.duration}
-                onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
-                className="input"
-                required
-              >
+              <label className="label">Duration *</label>
+              <select value={formData.duration} onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })} className="input" required>
                 <option value="15">15 minutes</option>
                 <option value="30">30 minutes</option>
                 <option value="45">45 minutes</option>
@@ -487,22 +448,12 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
 
             <div>
               <label className="label">Notes</label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="input"
-                rows={3}
-                placeholder="Any special requests or notes..."
-              />
+              <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="input" rows={3} placeholder="Any special requests or notes…" />
             </div>
 
-            <div className="flex justify-end space-x-3 pt-4">
-              <button type="button" onClick={onClose} className="btn-outline">
-                Cancel
-              </button>
-              <button type="submit" className="btn-primary">
-                Create Appointment
-              </button>
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={onClose} className="flex-1 btn-outline">Cancel</button>
+              <button type="submit" className="flex-1 btn-primary">Create Appointment</button>
             </div>
           </form>
         </div>
@@ -514,7 +465,7 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
 function EditAppointmentModal({ appointment, onClose }: { appointment: Appointment; onClose: () => void }) {
   const queryClient = useQueryClient();
   const startTime = new Date(appointment.startTime);
-  
+
   const [formData, setFormData] = useState({
     date: startTime.toISOString().split('T')[0],
     time: startTime.toTimeString().slice(0, 5),
@@ -523,7 +474,6 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
     status: appointment.status,
   });
 
-  // Update appointment mutation
   const updateMutation = useMutation({
     mutationFn: async (updates: any) => {
       const res = await fetch(`/api/appointments/${appointment.id}`, {
@@ -531,96 +481,61 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
       });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to update appointment');
-      }
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Failed'); }
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      onClose();
-    },
-    onError: (error: any) => {
-      alert(error.message || 'Failed to update appointment');
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['appointments'] }); onClose(); },
+    onError: (e: any) => alert(e.message || 'Failed to update appointment'),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const newStartTime = new Date(`${formData.date}T${formData.time}`);
-    const newEndTime = new Date(newStartTime.getTime() + formData.duration * 60000);
-
-    updateMutation.mutate({
-      startTime: newStartTime.toISOString(),
-      endTime: newEndTime.toISOString(),
-      duration: formData.duration,
-      notes: formData.notes || null,
-      status: formData.status,
-    });
+    const newStart = new Date(`${formData.date}T${formData.time}`);
+    const newEnd = new Date(newStart.getTime() + formData.duration * 60000);
+    updateMutation.mutate({ startTime: newStart.toISOString(), endTime: newEnd.toISOString(), duration: formData.duration, notes: formData.notes || null, status: formData.status });
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl">
         <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">Edit Appointment</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="flex justify-between items-center mb-5">
+            <h2 className="text-lg font-semibold text-gray-900">Edit Appointment</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
 
-          {/* Customer Info (Read-only) */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <h3 className="font-semibold mb-2">Customer</h3>
-            <p className="text-lg">{appointment.customer.name}</p>
-            {appointment.customer.phone && (
-              <p className="text-sm text-gray-600">{appointment.customer.phone}</p>
-            )}
-            {appointment.service && (
-              <p className="text-sm text-gray-600 mt-2">
-                <span className="font-medium">Service:</span> {appointment.service.name}
-              </p>
-            )}
+          <div className="bg-gray-50 rounded-lg p-3 mb-5 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <span className="text-sm font-semibold text-primary">
+                {appointment.customer.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+              </span>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">{appointment.customer.name}</p>
+              {appointment.customer.phone && <p className="text-xs text-gray-500">{appointment.customer.phone}</p>}
+              {appointment.service && <p className="text-xs text-gray-500">{appointment.service.name}</p>}
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="label">Date *</label>
-                <input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className="input"
-                  required
-                />
+                <input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="input" required />
               </div>
-
               <div>
                 <label className="label">Time *</label>
-                <input
-                  type="time"
-                  value={formData.time}
-                  onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                  className="input"
-                  required
-                />
+                <input type="time" value={formData.time} onChange={(e) => setFormData({ ...formData, time: e.target.value })} className="input" required />
               </div>
             </div>
 
             <div>
-              <label className="label">Duration (minutes) *</label>
-              <select
-                value={formData.duration}
-                onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
-                className="input"
-                required
-              >
+              <label className="label">Duration *</label>
+              <select value={formData.duration} onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })} className="input" required>
                 <option value="15">15 minutes</option>
                 <option value="30">30 minutes</option>
                 <option value="45">45 minutes</option>
@@ -632,11 +547,7 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
 
             <div>
               <label className="label">Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="input"
-              >
+              <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="input">
                 <option value="pending">Pending</option>
                 <option value="scheduled">Scheduled</option>
                 <option value="confirmed">Confirmed</option>
@@ -648,30 +559,13 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
 
             <div>
               <label className="label">Notes</label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="input"
-                rows={3}
-                placeholder="Any special requests or notes..."
-              />
+              <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="input" rows={3} placeholder="Any special requests or notes…" />
             </div>
 
-            <div className="flex justify-end space-x-3 pt-4">
-              <button 
-                type="button" 
-                onClick={onClose} 
-                className="btn-outline"
-                disabled={updateMutation.isPending}
-              >
-                Cancel
-              </button>
-              <button 
-                type="submit" 
-                className="btn-primary"
-                disabled={updateMutation.isPending}
-              >
-                {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={onClose} disabled={updateMutation.isPending} className="flex-1 btn-outline">Cancel</button>
+              <button type="submit" disabled={updateMutation.isPending} className="flex-1 btn-primary">
+                {updateMutation.isPending ? 'Saving…' : 'Save Changes'}
               </button>
             </div>
           </form>
@@ -680,4 +574,3 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
     </div>
   );
 }
-

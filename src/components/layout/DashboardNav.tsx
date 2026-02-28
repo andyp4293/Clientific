@@ -11,7 +11,6 @@ const navigation = [
   { name: 'Services & Staff', href: '/dashboard/services', icon: 'briefcase' },
   { name: 'Customers', href: '/dashboard/customers', icon: 'users' },
   { name: 'Business Hours', href: '/dashboard/business-hours', icon: 'clock' },
-  { name: 'Check-Ins', href: '/dashboard/checkins', icon: 'check' },
   { name: 'Settings', href: '/dashboard/settings', icon: 'settings' },
 ];
 
