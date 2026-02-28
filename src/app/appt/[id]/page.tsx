@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface Appointment {
   id: string;
@@ -10,6 +10,8 @@ interface Appointment {
   startTime: string;
   duration: number;
   notes: string | null;
+  serviceIds: string[];
+  staffId: string | null;
   services: { name: string; price: number | null }[];
   totalPrice: number;
   service: { name: string; price: number | null } | null;
@@ -26,7 +28,13 @@ interface Appointment {
 export default function AppointmentPage() {
   const params = useParams();
   const id = params.id as string;
+  const queryClient = useQueryClient();
+
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showReschedule, setShowReschedule] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleSlot, setRescheduleSlot] = useState<string | null>(null);
+  const [rescheduleDone, setRescheduleDone] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['appointment', id],
@@ -42,6 +50,27 @@ export default function AppointmentPage() {
     },
   });
 
+  // Available slots query for rescheduling
+  const { data: slotsData, isLoading: slotsLoading } = useQuery({
+    queryKey: ['reschedule-slots', data?.appointment?.business?.publicId, rescheduleDate],
+    queryFn: async () => {
+      const appt: Appointment = data.appointment;
+      const serviceId = appt.serviceIds?.[0];
+      if (!serviceId) return { slots: [] };
+      const p = new URLSearchParams({
+        date: rescheduleDate,
+        serviceId,
+        duration: String(appt.duration),
+      });
+      if (appt.staffId) p.set('staffId', appt.staffId);
+      const res = await fetch(
+        `/api/public/business-by-id/${appt.business.publicId}/available-slots?${p}`
+      );
+      return res.json();
+    },
+    enabled: showReschedule && !!rescheduleDate && !!data?.appointment,
+  });
+
   const cancelMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch(`/api/public/appointment/${id}`, {
@@ -54,6 +83,28 @@ export default function AppointmentPage() {
         throw new Error(err.error || 'Failed to cancel');
       }
       return res.json();
+    },
+  });
+
+  const rescheduleMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/public/appointment/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ startTime: rescheduleSlot }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to reschedule');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointment', id] });
+      setShowReschedule(false);
+      setRescheduleDate('');
+      setRescheduleSlot(null);
+      setRescheduleDone(true);
     },
   });
 
@@ -108,9 +159,31 @@ export default function AppointmentPage() {
   const totalPrice = appt.totalPrice ?? servicesList.reduce((sum, s) => sum + (s.price ?? 0), 0);
   const hasPrice = totalPrice > 0;
 
+  // Today's date string for min attribute
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  // Format a slot ISO string as a readable time
+  function formatSlotTime(iso: string) {
+    return new Date(iso).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: appt.business.timezone,
+    });
+  }
+
+  const slots: string[] = slotsData?.slots ?? [];
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
+
+        {/* Success banner after reschedule */}
+        {rescheduleDone && (
+          <div className="mb-6 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-800">
+            Your appointment has been rescheduled!
+          </div>
+        )}
 
         {/* Status icon */}
         <div className="mb-6">
@@ -209,10 +282,7 @@ export default function AppointmentPage() {
         {/* Footer text */}
         {(isConfirmed || (!isPending && !isCancelled)) && (
           <p className="text-sm text-gray-600 mb-6">
-            Please arrive 5–10 minutes early. To reschedule, call us at{' '}
-            <a href={`tel:${appt.business.phone}`} className="text-blue-600 hover:underline">
-              {appt.business.phone}
-            </a>
+            Please arrive 5–10 minutes early.
           </p>
         )}
 
@@ -227,41 +297,142 @@ export default function AppointmentPage() {
 
           {!isCancelled && (
             <>
-              {!showCancelConfirm ? (
+              {/* Reschedule button */}
+              {!showReschedule && (
                 <button
-                  onClick={() => setShowCancelConfirm(true)}
-                  className="w-full border border-red-300 text-red-600 rounded-xl py-3 font-medium hover:bg-red-50 transition-colors"
+                  onClick={() => {
+                    setShowReschedule(true);
+                    setShowCancelConfirm(false);
+                  }}
+                  className="w-full border border-gray-300 text-gray-700 rounded-xl py-3 font-medium hover:bg-gray-50 transition-colors"
                 >
-                  Cancel Appointment
+                  Reschedule Appointment
                 </button>
-              ) : (
-                <div className="border border-red-200 rounded-xl p-4 bg-red-50 text-left">
-                  <p className="text-sm text-gray-700 mb-3 text-center">
-                    Are you sure you want to cancel this appointment?
-                  </p>
-                  <div className="flex gap-2">
+              )}
+
+              {/* Reschedule panel */}
+              {showReschedule && (
+                <div className="border border-gray-200 rounded-xl p-4 text-left">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold text-gray-900">Choose a new date &amp; time</h4>
                     <button
-                      onClick={() => setShowCancelConfirm(false)}
-                      className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors"
+                      onClick={() => {
+                        setShowReschedule(false);
+                        setRescheduleDate('');
+                        setRescheduleSlot(null);
+                      }}
+                      className="text-gray-400 hover:text-gray-600 text-xs"
                     >
-                      Keep it
-                    </button>
-                    <button
-                      onClick={() => cancelMutation.mutate()}
-                      disabled={cancelMutation.isPending}
-                      className="flex-1 py-2 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
-                    >
-                      {cancelMutation.isPending ? 'Cancelling...' : 'Yes, cancel'}
+                      Cancel
                     </button>
                   </div>
-                  {cancelMutation.isError && (
-                    <p className="text-xs text-red-600 mt-2 text-center">
-                      {cancelMutation.error instanceof Error
-                        ? cancelMutation.error.message
-                        : 'Failed to cancel'}
-                    </p>
+
+                  {/* Date input */}
+                  <input
+                    type="date"
+                    min={todayStr}
+                    value={rescheduleDate}
+                    onChange={(e) => {
+                      setRescheduleDate(e.target.value);
+                      setRescheduleSlot(null);
+                    }}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white mb-3"
+                  />
+
+                  {/* Slots */}
+                  {rescheduleDate && (
+                    slotsLoading ? (
+                      <div className="flex justify-center py-4">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+                      </div>
+                    ) : slots.length === 0 ? (
+                      <p className="text-sm text-gray-500 text-center py-2">No available times on this date.</p>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2 mb-3">
+                        {slots.map((slot) => (
+                          <button
+                            key={slot}
+                            onClick={() => setRescheduleSlot(slot)}
+                            className={`py-2 rounded-lg text-sm font-medium transition-colors ${
+                              rescheduleSlot === slot
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            {formatSlotTime(slot)}
+                          </button>
+                        ))}
+                      </div>
+                    )
+                  )}
+
+                  {/* Confirmation */}
+                  {rescheduleSlot && (
+                    <div className="border-t border-gray-100 pt-3">
+                      <p className="text-xs text-gray-600 mb-3">
+                        Change from <span className="font-medium text-gray-900">{timeStr}, {start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: appt.business.timezone })}</span>
+                        {' '}to{' '}
+                        <span className="font-medium text-gray-900">{formatSlotTime(rescheduleSlot)}, {new Date(rescheduleSlot).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: appt.business.timezone })}</span>
+                      </p>
+                      <button
+                        onClick={() => rescheduleMutation.mutate()}
+                        disabled={rescheduleMutation.isPending}
+                        className="w-full bg-blue-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+                      >
+                        {rescheduleMutation.isPending ? 'Rescheduling...' : 'Confirm Reschedule'}
+                      </button>
+                      {rescheduleMutation.isError && (
+                        <p className="text-xs text-red-600 mt-2 text-center">
+                          {rescheduleMutation.error instanceof Error
+                            ? rescheduleMutation.error.message
+                            : 'Failed to reschedule'}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
+              )}
+
+              {/* Cancel button */}
+              {!showReschedule && (
+                <>
+                  {!showCancelConfirm ? (
+                    <button
+                      onClick={() => setShowCancelConfirm(true)}
+                      className="w-full border border-red-300 text-red-600 rounded-xl py-3 font-medium hover:bg-red-50 transition-colors"
+                    >
+                      Cancel Appointment
+                    </button>
+                  ) : (
+                    <div className="border border-red-200 rounded-xl p-4 bg-red-50 text-left">
+                      <p className="text-sm text-gray-700 mb-3 text-center">
+                        Are you sure you want to cancel this appointment?
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setShowCancelConfirm(false)}
+                          className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors"
+                        >
+                          Keep it
+                        </button>
+                        <button
+                          onClick={() => cancelMutation.mutate()}
+                          disabled={cancelMutation.isPending}
+                          className="flex-1 py-2 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+                        >
+                          {cancelMutation.isPending ? 'Cancelling...' : 'Yes, cancel'}
+                        </button>
+                      </div>
+                      {cancelMutation.isError && (
+                        <p className="text-xs text-red-600 mt-2 text-center">
+                          {cancelMutation.error instanceof Error
+                            ? cancelMutation.error.message
+                            : 'Failed to cancel'}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}

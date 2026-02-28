@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sendAppointmentCancellation } from '@/lib/twilio';
+import { sendAppointmentCancellation, sendAppointmentRescheduled } from '@/lib/twilio';
 
 export async function GET(
   _req: NextRequest,
@@ -18,6 +18,7 @@ export async function GET(
       duration: true,
       notes: true,
       serviceIds: true,
+      staffId: true,
       service: { select: { name: true, price: true } },
       staff: { select: { fullName: true } },
       business: {
@@ -56,11 +57,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const { status } = await req.json();
-
-  if (status !== 'cancelled') {
-    return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
-  }
+  const body = await req.json();
+  const { status, startTime } = body;
 
   const existing = await prisma.appointment.findUnique({
     where: { id },
@@ -69,7 +67,9 @@ export async function PATCH(
       startTime: true,
       service: { select: { name: true } },
       customer: { select: { name: true, phone: true } },
-      business: { select: { name: true } },
+      business: { select: { name: true, timezone: true } },
+      businessId: true,
+      duration: true,
     },
   });
 
@@ -79,6 +79,48 @@ export async function PATCH(
 
   if (existing.status === 'cancelled') {
     return NextResponse.json({ error: 'Appointment already cancelled' }, { status: 409 });
+  }
+
+  // Reschedule branch
+  if (startTime) {
+    const newStart = new Date(startTime);
+    const newEnd = new Date(newStart.getTime() + existing.duration * 60 * 1000);
+
+    const conflict = await prisma.appointment.findFirst({
+      where: {
+        businessId: existing.businessId,
+        status: { in: ['pending', 'scheduled', 'confirmed'] },
+        id: { not: id },
+        startTime: { lt: newEnd },
+        endTime: { gt: newStart },
+      },
+    });
+
+    if (conflict) {
+      return NextResponse.json({ error: 'That time slot is no longer available' }, { status: 409 });
+    }
+
+    const appointment = await prisma.appointment.update({
+      where: { id },
+      data: { startTime: newStart, endTime: newEnd },
+    });
+
+    if (existing.customer.phone) {
+      sendAppointmentRescheduled(existing.customer.phone, {
+        customerName: existing.customer.name,
+        serviceName: existing.service?.name || 'Appointment',
+        businessName: existing.business.name,
+        newDateTime: newStart,
+        timezone: existing.business.timezone,
+      }).catch((err) => console.warn('⚠️  Reschedule SMS failed:', err));
+    }
+
+    return NextResponse.json({ appointment });
+  }
+
+  // Cancellation branch
+  if (status !== 'cancelled') {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 
   const appointment = await prisma.appointment.update({

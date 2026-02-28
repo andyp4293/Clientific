@@ -207,3 +207,31 @@ export async function sendAppointmentBusinessConfirmed(
   const message = formatAppointmentBusinessConfirmedSMS(details);
   return sendSMS({ to: phone, message });
 }
+
+// Template: Appointment Rescheduled
+interface RescheduleDetails {
+  customerName: string;
+  serviceName: string;
+  businessName: string;
+  newDateTime: Date;
+  timezone?: string;
+}
+
+export function formatAppointmentRescheduledSMS(details: RescheduleDetails): string {
+  const tz = details.timezone || undefined;
+  const dateStr = details.newDateTime.toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', ...(tz && { timeZone: tz }),
+  });
+  const timeStr = details.newDateTime.toLocaleTimeString('en-US', {
+    hour: 'numeric', minute: '2-digit', hour12: true, ...(tz && { timeZone: tz }),
+  });
+  return `${details.businessName}: Hi ${details.customerName}, your ${details.serviceName} appointment has been rescheduled to ${dateStr} at ${timeStr}. See you then!`;
+}
+
+export async function sendAppointmentRescheduled(
+  phone: string,
+  details: RescheduleDetails
+): Promise<SMSResult> {
+  const message = formatAppointmentRescheduledSMS(details);
+  return sendSMS({ to: phone, message });
+}
