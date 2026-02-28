@@ -120,7 +120,7 @@ Your job:
       `Hi, thank you for calling ${business.name}. How can I help you today?`,
     model: {
       provider: 'openai',
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       temperature: 0.4,
       messages: [{ role: 'system', content: systemPrompt }],
       tools: [
@@ -542,7 +542,18 @@ export async function POST(req: NextRequest) {
         return handleToolCalls(body);
 
       case 'status-update':
+        console.log(`[vapi] status-update status=${body?.message?.status} endedReason=${body?.message?.endedReason ?? '-'}`);
+        return NextResponse.json({ received: true });
+
       case 'end-of-call-report':
+        console.log('[vapi] end-of-call-report', JSON.stringify({
+          endedReason: body?.message?.endedReason,
+          durationSeconds: body?.message?.durationSeconds,
+          error: body?.message?.inboundPhoneCallDebuggingArtifacts?.error,
+          assistantRequestError: body?.message?.inboundPhoneCallDebuggingArtifacts?.assistantRequestError,
+        }));
+        return NextResponse.json({ received: true });
+
       default:
         return NextResponse.json({ received: true });
     }
