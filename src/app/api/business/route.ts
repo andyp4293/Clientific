@@ -147,8 +147,10 @@ export async function PATCH(req: NextRequest) {
 
     if (vapiConfigured && finalEnabled && !current.vapiPhoneNumberId) {
       // Toggling ON — provision phone number with serverUrl (no assistant needed)
+      const areaCode = parseAreaCode(phone ?? current.phone) ?? '800';
       const phoneNumber = await vapiRequest('POST', '/phone-number', {
         provider: 'vapi',
+        numberDesiredAreaCode: areaCode,
         serverUrl,
         ...(process.env.VAPI_WEBHOOK_SECRET && { serverUrlSecret: process.env.VAPI_WEBHOOK_SECRET }),
         name: `${name ?? current.name} Receptionist`,
