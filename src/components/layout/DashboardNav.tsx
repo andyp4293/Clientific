@@ -12,6 +12,7 @@ const navigation = [
   { name: 'Services & Staff', href: '/dashboard/services', icon: 'briefcase' },
   { name: 'Customers', href: '/dashboard/customers', icon: 'users' },
   { name: 'Business Hours', href: '/dashboard/business-hours', icon: 'clock' },
+  { name: 'Billing', href: '/dashboard/settings/billing', icon: 'creditcard' },
   { name: 'Settings', href: '/dashboard/settings', icon: 'settings' },
 ];
 
@@ -69,6 +70,11 @@ const icons: Record<string, ReactElement> = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
+  creditcard: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+    </svg>
+  ),
 };
 
 export function DashboardNav() {
@@ -88,9 +94,10 @@ export function DashboardNav() {
       </div>      {/* Navigation */}
       <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
         {navigation.map((item) => {
-          // For Dashboard, only match exact path. For others, match path and subpaths
-          const isActive = item.href === '/dashboard' 
-            ? pathname === item.href 
+          // Exact match for Dashboard, Settings, and Billing; prefix match for others
+          const exactMatch = ['/dashboard', '/dashboard/settings', '/dashboard/settings/billing'];
+          const isActive = exactMatch.includes(item.href)
+            ? pathname === item.href
             : pathname === item.href || pathname.startsWith(item.href + '/');
           return (
             <Link
