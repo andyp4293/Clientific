@@ -17,15 +17,16 @@ function isSerializationError(err: any): boolean {
   );
 }
 
-// ─── Signature verification ───────────────────────────────────────────────────
+// ─── Secret verification ──────────────────────────────────────────────────────
+// Vapi sends serverUrlSecret as the header x-vapi-secret (plain passthrough,
+// not HMAC). See: https://docs.vapi.ai/server-url/secret
 
-function verifyVapiSignature(rawBody: string, signature: string | null): boolean {
-  const secret = process.env.VAPI_WEBHOOK_SECRET;
-  if (!secret) return true; // not configured → skip verification
-  if (!signature) return false;
-  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+function verifyVapiSecret(secret: string | null): boolean {
+  const expected = process.env.VAPI_WEBHOOK_SECRET;
+  if (!expected) return true; // not configured → skip verification
+  if (!secret) return false;
   try {
-    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+    return crypto.timingSafeEqual(Buffer.from(secret), Buffer.from(expected));
   } catch {
     return false;
   }
@@ -454,11 +455,11 @@ async function handleToolCalls(body: any): Promise<NextResponse> {
 export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.text();
-    const signature = req.headers.get('x-vapi-signature');
+    const secret = req.headers.get('x-vapi-secret');
 
-    if (!verifyVapiSignature(rawBody, signature)) {
-      console.warn('Vapi webhook: invalid signature');
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    if (!verifyVapiSecret(secret)) {
+      console.warn('Vapi webhook: invalid secret');
+      return NextResponse.json({ error: 'Invalid secret' }, { status: 401 });
     }
 
     const body = JSON.parse(rawBody);
