@@ -160,7 +160,7 @@ export default function AppointmentPage() {
         {/* Details card */}
         <div className="bg-gray-50 rounded-xl p-6 mb-6 text-left">
           <h3 className="font-semibold text-gray-900 mb-4">Appointment Details</h3>
-          <div className="space-y-3 text-sm">
+          <div className="space-y-3 text-sm text-gray-900">
             <div className="flex justify-between">
               <span className="text-gray-600">Business:</span>
               <span className="font-medium">{appt.business.name}</span>
