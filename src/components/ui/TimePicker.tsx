@@ -42,6 +42,7 @@ export function TimePicker({ value, onChange, label }: TimePickerProps) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
   useEffect(() => {
     setHours24(parseInt(value.split(':')[0]));
     setMinutes(parseInt(value.split(':')[1]));
@@ -76,24 +77,25 @@ export function TimePicker({ value, onChange, label }: TimePickerProps) {
   };
 
   const displayTime = `${String(hour12).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${period}`;
+
   return (
     <div className="relative" ref={containerRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-left font-medium text-gray-900 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all flex items-center justify-between"
+        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-left font-medium text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all flex items-center justify-between"
       >
         <span>{displayTime}</span>
-        <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-lg border border-gray-200 z-50 p-4 w-64">
+        <div className="absolute top-full left-0 mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50 p-4 w-64">
           <div className="space-y-4">
             {/* Hours with AM/PM toggle */}
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-2">Time</label>
+              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Time</label>
               <div className="flex items-center gap-2">
                 {/* Hours */}
                 <div className="flex items-center gap-1 flex-1">
@@ -102,9 +104,9 @@ export function TimePicker({ value, onChange, label }: TimePickerProps) {
                       const newHour12 = hour12 === 1 ? 12 : hour12 - 1;
                       handleHoursChange(to24Hour(newHour12, period));
                     }}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                   >
-                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                     </svg>
                   </button>
@@ -114,30 +116,30 @@ export function TimePicker({ value, onChange, label }: TimePickerProps) {
                     max="12"
                     value={String(hour12).padStart(2, '0')}
                     onChange={(e) => handleInputChange('hours', e.target.value)}
-                    className="flex-1 text-center px-2 py-2 border border-gray-300 rounded-lg font-semibold text-lg w-16"
+                    className="flex-1 text-center px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg font-semibold text-lg w-16 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                   <button
                     onClick={() => {
                       const newHour12 = hour12 === 12 ? 1 : hour12 + 1;
                       handleHoursChange(to24Hour(newHour12, period));
                     }}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                   >
-                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
                 </div>
 
-                <span className="text-2xl font-bold text-gray-400">:</span>
+                <span className="text-2xl font-bold text-gray-400 dark:text-gray-500">:</span>
 
                 {/* Minutes */}
                 <div className="flex items-center gap-1 flex-1">
                   <button
                     onClick={() => handleMinutesChange(minutes - 15)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                   >
-                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                     </svg>
                   </button>
@@ -147,13 +149,13 @@ export function TimePicker({ value, onChange, label }: TimePickerProps) {
                     max="59"
                     value={String(minutes).padStart(2, '0')}
                     onChange={(e) => handleInputChange('minutes', e.target.value)}
-                    className="flex-1 text-center px-2 py-2 border border-gray-300 rounded-lg font-semibold text-lg w-16"
+                    className="flex-1 text-center px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg font-semibold text-lg w-16 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                   <button
                     onClick={() => handleMinutesChange(minutes + 15)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                   >
-                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
@@ -167,9 +169,11 @@ export function TimePicker({ value, onChange, label }: TimePickerProps) {
                   {period}
                 </button>
               </div>
-            </div>            {/* Quick presets */}
+            </div>
+
+            {/* Quick presets */}
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-2">Quick Set</label>
+              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Quick Set</label>
               <div className="grid grid-cols-3 gap-2">
                 {[
                   { label: '12 AM', value: '00:00' },
@@ -187,7 +191,7 @@ export function TimePicker({ value, onChange, label }: TimePickerProps) {
                       setMinutes(m);
                       onChange(preset.value);
                     }}
-                    className="px-2 py-2 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                    className="px-2 py-2 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   >
                     {preset.label}
                   </button>
@@ -198,7 +202,7 @@ export function TimePicker({ value, onChange, label }: TimePickerProps) {
             {/* Close button */}
             <button
               onClick={() => setIsOpen(false)}
-              className="w-full py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              className="w-full py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
             >
               Done
             </button>

@@ -42,10 +42,10 @@ function formatBusinessHours(hours: any): string {
     return days.map((day, i) => {
       const h = parsed[i.toString()] ?? (Array.isArray(parsed) ? parsed[i] : null);
       if (!h || !h.isOpen) return `${day}: Closed`;
-      return `${day}: ${h.openTime} - ${h.closeTime}`;
+      return `${day}: ${h.openTime} – ${h.closeTime}`;
     }).join('\n');
   } catch {
-    return 'Hours not available.';
+    return 'Hours not available — direct caller to contact the business.';
   }
 }
 
@@ -74,6 +74,7 @@ type BusinessData = {
   aiReceptionistGreeting: string | null;
   aiReceptionistPhone: string | null;
   services: { id: string; name: string; price: number | null; duration: number }[];
+  staff: { id: string; fullName: string; role: string }[];
   businessHours: { hours: any } | null;
 };
 
@@ -81,6 +82,17 @@ type BusinessData = {
 
 function buildAssistantConfig(business: BusinessData) {
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '');
+
+  // Give the AI the actual current date so it doesn't hallucinate past dates
+  const now = new Date();
+  const todayStr = now.toLocaleDateString('en-US', {
+    timeZone: business.timezone,
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  const todayISO = now.toLocaleDateString('en-CA', { timeZone: business.timezone }); // YYYY-MM-DD
 
   const servicesList = business.services.length > 0
     ? business.services.map(s => {
@@ -93,26 +105,40 @@ function buildAssistantConfig(business: BusinessData) {
   const location = [business.street, business.city, business.state].filter(Boolean).join(', ') || 'Location not listed.';
   const bookingUrl = `${appUrl}/book/${business.publicId}`;
 
+  const staffList = business.staff.length > 0
+    ? business.staff.map(s => `- ${s.fullName}${s.role !== 'staff' ? ` (${s.role})` : ''}`).join('\n')
+    : null;
+
   const systemPrompt = `You are the AI receptionist for ${business.name}, a ${business.businessType}.
+
+Today is ${todayStr} (${todayISO}). Always use this date when the caller says "today", "tomorrow", etc.
 
 Business hours:
 ${hoursText}
 
 Services offered (use the ID field when calling tools, never say the ID aloud):
 ${servicesList}
-
+${staffList ? `\nOur team:\n${staffList}\n` : ''}
 Location: ${location}
 Online booking: ${bookingUrl}
 
 Your job:
-- Answer questions about services, prices, hours, and location concisely
-- If the caller wants to book: ask which service and what date, call manage_booking with action "checkAvailability", present the times naturally (e.g. "I have 9 AM, 10:30 AM, and 2 PM open"), then ask which they prefer
-- Once they pick a slot, confirm their name, then call manage_booking with action "createBooking"
+- If asked about hours, location, services, prices, or staff: answer directly from the information above — do NOT call any tools for these questions
+- If the caller wants to book an appointment:
+  1. Ask which service they want
+  2. Ask if they have a preference for a specific staff member (mention staff names if available, otherwise say "any available")
+  3. Ask for their preferred date
+  4. Call manage_booking with action "checkAvailability" (include staffId if they chose someone)
+  5. Present available times naturally (e.g. "I have 9 AM, 10:30 AM, and 2 PM open")
+  6. Once they pick a slot, confirm their name, then call manage_booking with action "createBooking"
+  7. The tool will confirm the booking and ask "Is there anything else I can help you with?" — say that to the caller
+  8. If the caller says no (or "nope", "that's all", "I'm good", etc.), say a warm closing (e.g. "Perfect! We look forward to seeing you. Have a great day — goodbye!") then call end_call
+- If they want to cancel or check their appointments: call manage_booking with action "getAppointments" to show their upcoming bookings, then ask which one to cancel, then call "cancelAppointment" with the appointmentId — never say the appointmentId aloud
 - If they say "talk to a person", "real person", "human", "manager", or similar, say exactly: "Sure, let me connect you with someone now."
 - Keep ALL responses under 2 sentences — this is a phone call, be brief
 - Be warm and professional
 - If you don't know the answer, say "Let me connect you with our team for that."
-- Never read service IDs aloud; they are internal references only`;
+- Never read service IDs or appointment IDs aloud; they are internal references only`;
 
   return {
     name: `${business.name} Receptionist`,
@@ -120,7 +146,7 @@ Your job:
       `Hi, thank you for calling ${business.name}. How can I help you today?`,
     model: {
       provider: 'openai',
-      model: 'gpt-4o',
+      model: 'gpt-5.2',
       temperature: 0.4,
       messages: [{ role: 'system', content: systemPrompt }],
       tools: [
@@ -128,22 +154,26 @@ Your job:
           type: 'function',
           function: {
             name: 'manage_booking',
-            description: 'Check available appointment slots or create a booking for the caller.',
+            description: 'Manage appointments: check availability, book, view existing, or cancel.',
             parameters: {
               type: 'object',
               properties: {
                 action: {
                   type: 'string',
-                  enum: ['checkAvailability', 'createBooking'],
-                  description: 'checkAvailability: list open time slots. createBooking: create the appointment.',
+                  enum: ['checkAvailability', 'createBooking', 'getAppointments', 'cancelAppointment'],
+                  description: 'checkAvailability: list open slots. createBooking: book an appointment. getAppointments: show caller\'s upcoming appointments. cancelAppointment: cancel a specific appointment.',
                 },
                 date: {
                   type: 'string',
-                  description: 'Date in YYYY-MM-DD format',
+                  description: 'Date in YYYY-MM-DD format — required for checkAvailability',
                 },
                 serviceId: {
                   type: 'string',
-                  description: 'Service ID from the services list (not the name)',
+                  description: 'Service ID from the services list — required for checkAvailability and createBooking',
+                },
+                staffId: {
+                  type: 'string',
+                  description: 'Staff member ID if the caller requested a specific person — optional',
                 },
                 slotTime: {
                   type: 'string',
@@ -153,11 +183,16 @@ Your job:
                   type: 'string',
                   description: "Caller's full name — required for createBooking",
                 },
+                appointmentId: {
+                  type: 'string',
+                  description: 'Appointment ID — required for cancelAppointment',
+                },
               },
-              required: ['action', 'serviceId'],
+              required: ['action'],
             },
           },
         },
+        { type: 'endCall' },
       ],
     },
     server: {
@@ -170,7 +205,7 @@ Your job:
     },
     voice: {
       provider: '11labs',
-      voiceId: 'Bella',
+      voiceId: '21m00Tcm4TlvDq8ikWAM', // Rachel — warm, professional American female
       stability: 0.45,
       similarityBoost: 0.75,
     },
@@ -186,6 +221,7 @@ Your job:
       provider: 'vapi',
     },
     voicemailMessage: `Hi, you've reached ${business.name}. We missed your call — please call us back during business hours or book online at ${bookingUrl}.`,
+    silenceTimeoutSeconds: 60,
     ...(business.aiReceptionistPhone && { forwardingPhoneNumber: business.aiReceptionistPhone }),
   };
 }
@@ -270,7 +306,7 @@ async function handleCheckAvailability(business: BusinessData, args: any): Promi
 // ─── Tool: createBooking ──────────────────────────────────────────────────────
 
 async function handleCreateBooking(business: BusinessData, args: any, callerPhone: string): Promise<string> {
-  const { serviceId, slotTime, customerName } = args;
+  const { serviceId, slotTime, customerName, staffId } = args;
   if (!slotTime) return 'I need the appointment time to book. Which slot works for you?';
   if (!serviceId) return 'I need the service to book.';
   if (!customerName) return 'What is your name?';
@@ -351,6 +387,7 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
             duration: service.duration,
             status: 'pending',
             shortId,
+            ...(staffId && { staffId }),
           },
         });
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
@@ -373,7 +410,76 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
     timeZone: business.timezone,
   });
 
-  return `Done! I've submitted a booking request for ${customerName} — ${service.name} on ${formattedTime}. ${business.name} will confirm shortly. Is there anything else I can help with?`;
+  const staffLine = args.staffId
+    ? await prisma.staff.findFirst({ where: { id: args.staffId, businessId: business.id }, select: { fullName: true } })
+    : null;
+  const withWhom = staffLine ? ` with ${staffLine.fullName}` : '';
+
+  return `Booking confirmed! ${customerName}, your ${service.name}${withWhom} is set for ${formattedTime}. ${business.name} will follow up shortly. Is there anything else I can help you with?`;
+}
+
+// ─── Tool: getAppointments ────────────────────────────────────────────────────
+
+async function handleGetAppointments(business: BusinessData, callerPhone: string): Promise<string> {
+  if (!callerPhone) return 'I need your phone number to look up your appointments.';
+
+  const appointments = await prisma.appointment.findMany({
+    where: {
+      businessId: business.id,
+      customer: { phone: callerPhone },
+      status: { in: ['pending', 'scheduled', 'confirmed'] },
+      startTime: { gte: new Date() },
+    },
+    include: {
+      service: { select: { name: true } },
+      staff: { select: { fullName: true } },
+    },
+    orderBy: { startTime: 'asc' },
+    take: 5,
+  });
+
+  if (appointments.length === 0) return 'I don\'t see any upcoming appointments for your number.';
+
+  const list = appointments.map((apt, i) => {
+    const time = new Date(apt.startTime).toLocaleString('en-US', {
+      weekday: 'short', month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit', timeZone: business.timezone,
+    });
+    const staffPart = apt.staff ? ` with ${apt.staff.fullName}` : '';
+    return `${i + 1}. ${apt.service?.name ?? 'Appointment'}${staffPart} on ${time} (ID: ${apt.id})`;
+  }).join('\n');
+
+  return `Here are your upcoming appointments:\n${list}\n\nWhich one would you like to cancel?`;
+}
+
+// ─── Tool: cancelAppointment ──────────────────────────────────────────────────
+
+async function handleCancelAppointment(business: BusinessData, args: any, callerPhone: string): Promise<string> {
+  const { appointmentId } = args;
+  if (!appointmentId) return 'Which appointment would you like to cancel?';
+
+  const appointment = await prisma.appointment.findFirst({
+    where: {
+      id: appointmentId,
+      businessId: business.id,
+      customer: { phone: callerPhone },
+      status: { in: ['pending', 'scheduled', 'confirmed'] },
+    },
+    include: { service: { select: { name: true } } },
+  });
+
+  if (!appointment) return 'I couldn\'t find that appointment on your account.';
+
+  await prisma.appointment.update({
+    where: { id: appointmentId },
+    data: { status: 'cancelled' },
+  });
+
+  const time = new Date(appointment.startTime).toLocaleString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', timeZone: business.timezone,
+  });
+  return `Done — your ${appointment.service?.name ?? 'appointment'} on ${time} has been cancelled.`;
 }
 
 // ─── Tool calls dispatcher ────────────────────────────────────────────────────
@@ -406,6 +512,11 @@ async function handleToolCalls(body: any): Promise<NextResponse> {
             select: { id: true, name: true, price: true, duration: true },
             take: 20,
           },
+          staff: {
+            where: { active: true },
+            select: { id: true, fullName: true, role: true },
+            take: 20,
+          },
           businessHours: { select: { hours: true } },
         },
       })
@@ -431,6 +542,11 @@ async function handleToolCalls(body: any): Promise<NextResponse> {
           } else if (action === 'createBooking') {
             result = await handleCreateBooking(business, parsedArgs, callerPhone);
             outcome = result.startsWith('Done') ? 'booked' : 'conflict';
+          } else if (action === 'getAppointments') {
+            result = await handleGetAppointments(business, callerPhone);
+          } else if (action === 'cancelAppointment') {
+            result = await handleCancelAppointment(business, parsedArgs, callerPhone);
+            outcome = result.startsWith('Done') ? 'cancelled' : 'cancel_failed';
           } else {
             result = 'Unknown action requested.';
             outcome = 'unknown_action';
@@ -518,6 +634,11 @@ export async function POST(req: NextRequest) {
             services: {
               where: { active: true },
               select: { id: true, name: true, price: true, duration: true },
+              take: 20,
+            },
+            staff: {
+              where: { active: true },
+              select: { id: true, fullName: true, role: true },
               take: 20,
             },
             businessHours: { select: { hours: true } },
