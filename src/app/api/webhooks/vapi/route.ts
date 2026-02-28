@@ -127,11 +127,11 @@ Your job:
 - If asked about hours, location, services, prices, or staff: answer directly from the information above — do NOT call any tools for these questions
 - If the caller wants to book an appointment:
   1. Ask which service they want
-  2. Ask if they have a preference for a specific staff member (mention staff names if available, otherwise say "any available")
+  2. Ask if they have a preference for a specific staff member (mention staff names if available, otherwise say "any available"). Remember their choice — you will need it throughout all remaining steps.
   3. Ask for their preferred date
-  4. Call manage_booking with action "checkAvailability" (include staffId if they chose someone)
+  4. Call manage_booking with action "checkAvailability" — always include staffId if they chose someone
   5. Present available times naturally (e.g. "I have 9 AM, 10:30 AM, and 2 PM open")
-  6. Once they pick a slot, say "Can I get your name?" — wait for their response (first name is fine) — then call manage_booking with action "createBooking" including customerName, serviceId, slotTime, AND staffId if the caller chose a staff member. Do NOT call createBooking until you have their name.
+  6. Once they pick a slot, say "Can I get your name?" — wait for their response (first name is fine) — then call manage_booking with action "createBooking". Always include: customerName, serviceId, slotTime. If the caller chose a staff member, you MUST also include staffId — do not omit it. Do NOT call createBooking until you have their name.
   7. The tool will confirm the booking and ask "Is there anything else I can help you with?" — say that to the caller
   8. If the caller says no (or "nope", "that's all", "I'm good", etc.), say a warm closing (e.g. "Perfect! We look forward to seeing you. Have a great day — goodbye!") then call end_call
 - If they want to cancel or check their appointments: call manage_booking with action "getAppointments" to show their upcoming bookings, then ask which one to cancel, then call "cancelAppointment" with the appointmentId — never say the appointmentId aloud
@@ -230,7 +230,7 @@ Your job:
 // ─── Tool: checkAvailability ──────────────────────────────────────────────────
 
 async function handleCheckAvailability(business: BusinessData, args: any): Promise<string> {
-  const { date, serviceId } = args;
+  const { date, serviceId, staffId } = args;
   if (!date) return 'Please specify a date to check availability.';
   if (!serviceId) return 'Please specify a service.';
 
@@ -301,7 +301,8 @@ async function handleCheckAvailability(business: BusinessData, args: any): Promi
   const more = slots.length > 6 ? ` and ${slots.length - 6} more` : '';
   // Return available slots with their ISO times so the AI can pass them to createBooking
   const slotsWithIso = slots.slice(0, 6).map((iso, i) => `${formatted[i]} (${iso})`);
-  return `Available for ${service.name} on ${date}: ${slotsWithIso.join(', ')}${more}. Which time works for you?`;
+  const staffReminder = staffId ? ` [staffId for booking: ${staffId}]` : '';
+  return `Available for ${service.name} on ${date}: ${slotsWithIso.join(', ')}${more}. Which time works for you?${staffReminder}`;
 }
 
 // ─── Tool: createBooking ──────────────────────────────────────────────────────
