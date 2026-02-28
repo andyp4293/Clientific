@@ -228,7 +228,7 @@ function AppointmentRow({ appointment }: { appointment: Appointment }) {
         <div className={`w-1 self-stretch flex-shrink-0 ${config.bar}`} />
 
         {/* Time */}
-        <div className="w-32 flex-shrink-0 px-4 py-4">
+        <div className="w-28 flex-shrink-0 px-4 py-4">
           <p className="text-sm font-bold text-gray-900 dark:text-gray-100 tabular-nums">
             {startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
           </p>
@@ -236,9 +236,6 @@ function AppointmentRow({ appointment }: { appointment: Appointment }) {
             {endTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
           </p>
           <p className="text-xs text-gray-300 dark:text-gray-600 mt-0.5">{appointment.duration} min</p>
-          {appointment.staff && (
-            <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mt-1.5">{appointment.staff.fullName}</p>
-          )}
         </div>
 
         {/* Divider */}
@@ -255,9 +252,15 @@ function AppointmentRow({ appointment }: { appointment: Appointment }) {
               {appointment.service && (
                 <span className="text-xs text-gray-500 dark:text-gray-400">{appointment.service.name}</span>
               )}
-              {appointment.customer.phone && (
+              {appointment.staff && (
                 <>
                   {appointment.service && <span className="text-gray-300 dark:text-gray-600 text-xs">·</span>}
+                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{appointment.staff.fullName}</span>
+                </>
+              )}
+              {appointment.customer.phone && (
+                <>
+                  <span className="text-gray-300 dark:text-gray-600 text-xs">·</span>
                   <span className="text-xs text-gray-400 dark:text-gray-500">{appointment.customer.phone}</span>
                 </>
               )}
