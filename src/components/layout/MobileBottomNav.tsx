@@ -82,8 +82,8 @@ export function MobileBottomNav() {
           <div 
             className="fixed inset-0 bg-black/30 z-40"
             onClick={() => setShowMoreMenu(false)}
-          />          <div className="fixed bottom-16 left-0 right-0 bg-white rounded-t-2xl border-t border-gray-200 shadow-2xl z-50 max-h-80 overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 rounded-t-2xl">
+          />          <div className="fixed bottom-16 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl border-t border-gray-200 dark:border-gray-700 shadow-2xl z-50 max-h-80 overflow-y-auto">
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-4 py-3 rounded-t-2xl">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-gray-900">More Pages</h3>
                 <button
@@ -105,11 +105,11 @@ export function MobileBottomNav() {
                     onClick={() => setShowMoreMenu(false)}
                     className={`flex items-center px-4 py-3 text-sm font-medium transition-colors ${
                       isActive
-                        ? 'bg-primary-50 text-primary border-l-4 border-primary pl-3'
-                        : 'text-gray-700 hover:bg-gray-50'
+                        ? 'bg-primary-50 text-primary border-l-4 border-primary pl-3 dark:bg-primary/10'
+                        : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'
                     }`}
                   >
-                    <span className={`mr-3 ${isActive ? 'text-primary' : 'text-gray-500'}`}>
+                    <span className={`mr-3 ${isActive ? 'text-primary' : 'text-gray-500 dark:text-gray-400'}`}>
                       {page.icon}
                     </span>
                     {page.name}
@@ -135,7 +135,7 @@ export function MobileBottomNav() {
               className={`flex flex-col items-center justify-center min-w-0 flex-1 py-2 px-1 transition-colors ${
                 isActive
                   ? 'text-primary'
-                  : 'text-gray-600 hover:text-gray-900'
+                  : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
               }`}
             >
               <div className={`mb-1 ${isActive ? 'text-primary' : 'text-gray-600'}`}>
@@ -156,7 +156,7 @@ export function MobileBottomNav() {
           className={`flex flex-col items-center justify-center min-w-0 flex-1 py-2 px-1 transition-colors ${
             isOnMorePage || showMoreMenu
               ? 'text-primary'
-              : 'text-gray-600 hover:text-gray-900'
+              : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
           }`}
         >
           <div className={`mb-1 ${isOnMorePage || showMoreMenu ? 'text-primary' : 'text-gray-600'}`}>

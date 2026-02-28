@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { ReactElement } from 'react';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: 'home' },
@@ -75,7 +76,7 @@ export function DashboardNav() {
   const { data: session, status } = useSession();
 
   return (
-    <div className="flex flex-col h-full bg-white border-r border-gray-200">
+    <div className="flex flex-col h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
       {/* Logo */}
       <div className="flex items-center h-16 px-6 border-b border-gray-200">
         <Link href="/dashboard" className="flex items-center space-x-2">
@@ -97,8 +98,8 @@ export function DashboardNav() {
               href={item.href}
               className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                 isActive
-                  ? 'bg-primary-50 text-primary'
-                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-primary-50 text-primary dark:bg-primary/10'
+                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-gray-100'
               }`}
             >
               <span className="mr-3">{icons[item.icon]}</span>
@@ -108,7 +109,7 @@ export function DashboardNav() {
         })}
       </nav>      {/* User Profile */}
       {status !== 'loading' && (
-        <div className="border-t border-gray-200 p-4">
+        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
           <div className="flex items-center mb-3">
             <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
               <span className="text-white font-medium text-sm">
@@ -116,17 +117,18 @@ export function DashboardNav() {
               </span>
             </div>
             <div className="ml-3 flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                 {session?.user?.name || 'User'}
               </p>
-              <p className="text-xs text-gray-500 truncate">
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                 {session?.user?.email || ''}
               </p>
             </div>
           </div>
+          <ThemeToggle />
           <button
             onClick={() => signOut({ callbackUrl: '/login' })}
-            className="w-full btn-outline text-sm py-2"
+            className="w-full btn-outline text-sm py-2 mt-2"
           >
             Sign Out
           </button>

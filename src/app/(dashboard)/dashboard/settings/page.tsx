@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 type Tab = 'profile' | 'branding' | 'integrations' | 'notifications' | 'ai-receptionist';
 
@@ -442,6 +443,18 @@ export default function SettingsPage() {
                     <p className="text-xs text-gray-500">Allow customers to book appointments online</p>
                   </div>
                 </label>
+              </div>
+            </div>
+
+            {/* Appearance */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Appearance</h3>
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Theme</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Switch between light, dark, or system default</p>
+                </div>
+                <ThemeToggle />
               </div>
             </div>
           </div>
