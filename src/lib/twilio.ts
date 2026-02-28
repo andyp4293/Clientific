@@ -132,7 +132,7 @@ export function formatAppointmentConfirmationSMS(details: AppointmentDetails): s
   const staffLine = details.staffName && details.staffName !== 'our team' ? ` with ${details.staffName}` : '';
 
   const base = `${details.businessName}: Hi ${details.customerName}, your ${details.serviceName}${staffLine} appointment has been requested for ${dateStr} at ${timeStr}. We'll send you another text once it's confirmed.`;
-  const msg = details.appointmentUrl ? `${base} You can check your appointment status here:\n${details.appointmentUrl}` : base;
+  const msg = details.appointmentUrl ? `${base} You can check your appointment status here: ${details.appointmentUrl}` : base;
   console.log('📱 SMS body (JSON):', JSON.stringify(msg));
   return msg;
 }
