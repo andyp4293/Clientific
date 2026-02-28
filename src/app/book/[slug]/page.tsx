@@ -482,7 +482,7 @@ export default function PublicBookingPage() {
                     type="text"
                     value={customerInfo.name}
                     onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-400"
                     placeholder="John Doe"
                   />
                 </div>
@@ -495,7 +495,7 @@ export default function PublicBookingPage() {
                     type="tel"
                     value={customerInfo.phone}
                     onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-400"
                     placeholder="(555) 123-4567"
                   />
                 </div>
@@ -508,7 +508,7 @@ export default function PublicBookingPage() {
                     type="email"
                     value={customerInfo.email}
                     onChange={(e) => setCustomerInfo({ ...customerInfo, email: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-400"
                     placeholder="john@example.com"
                   />
                 </div>
@@ -521,7 +521,7 @@ export default function PublicBookingPage() {
                     value={customerInfo.notes}
                     onChange={(e) => setCustomerInfo({ ...customerInfo, notes: e.target.value })}
                     rows={3}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-400"
                     placeholder="Any special requests or notes..."
                   />
                 </div>
