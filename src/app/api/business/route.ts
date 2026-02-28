@@ -146,14 +146,17 @@ export async function PATCH(req: NextRequest) {
     const serverUrl = `${appUrl}/api/webhooks/vapi`;
 
     if (vapiConfigured && finalEnabled && !current.vapiPhoneNumberId) {
-      // Toggling ON — provision phone number with serverUrl (no assistant needed)
+      // Toggling ON — provision phone number with server.url (Vapi's current API structure)
       const areaCode = parseAreaCode(phone ?? current.phone) ?? '800';
       const phoneNumber = await vapiRequest('POST', '/phone-number', {
         provider: 'vapi',
         numberDesiredAreaCode: areaCode,
-        serverUrl,
-        ...(process.env.VAPI_WEBHOOK_SECRET && { serverUrlSecret: process.env.VAPI_WEBHOOK_SECRET }),
         name: `${name ?? current.name} Receptionist`,
+        server: { url: serverUrl },
+      });
+      // Also PATCH to ensure server.url is set (belt-and-suspenders)
+      await vapiRequest('PATCH', `/phone-number/${phoneNumber.id}`, {
+        server: { url: serverUrl },
       });
       vapiUpdates.vapiPhoneNumberId = phoneNumber.id;
       vapiUpdates.vapiPhoneNumber = phoneNumber.number;
