@@ -171,7 +171,6 @@ Your job:
     voice: {
       provider: '11labs',
       voiceId: 'Bella',
-      speed: 0.94,
       stability: 0.45,
       similarityBoost: 0.75,
     },
