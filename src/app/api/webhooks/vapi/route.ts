@@ -80,6 +80,8 @@ type BusinessData = {
 // ─── Assistant config builder ─────────────────────────────────────────────────
 
 function buildAssistantConfig(business: BusinessData) {
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '');
+
   const servicesList = business.services.length > 0
     ? business.services.map(s => {
         const price = s.price ? `$${s.price}` : 'price varies';
@@ -89,7 +91,7 @@ function buildAssistantConfig(business: BusinessData) {
 
   const hoursText = formatBusinessHours(business.businessHours?.hours);
   const location = [business.street, business.city, business.state].filter(Boolean).join(', ') || 'Location not listed.';
-  const bookingUrl = `${process.env.NEXT_PUBLIC_APP_URL}/book/${business.publicId}`;
+  const bookingUrl = `${appUrl}/book/${business.publicId}`;
 
   const systemPrompt = `You are the AI receptionist for ${business.name}, a ${business.businessType}.
 
@@ -159,7 +161,7 @@ Your job:
       ],
     },
     server: {
-      url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/vapi`,
+      url: `${appUrl}/api/webhooks/vapi`,
     },
     transcriber: {
       provider: 'deepgram',
@@ -183,7 +185,6 @@ Your job:
     },
     voicemailDetection: {
       provider: 'vapi',
-      enabled: true,
     },
     voicemailMessage: `Hi, you've reached ${business.name}. We missed your call — please call us back during business hours or book online at ${bookingUrl}.`,
     ...(business.aiReceptionistPhone && { forwardingPhoneNumber: business.aiReceptionistPhone }),
