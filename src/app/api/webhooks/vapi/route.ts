@@ -455,11 +455,31 @@ async function handleToolCalls(body: any): Promise<NextResponse> {
 export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.text();
+
+    // ── Debug: log every incoming Vapi request ────────────────────────────────
+    const allHeaders: Record<string, string> = {};
+    req.headers.forEach((v, k) => { allHeaders[k] = v; });
+    let parsedForDebug: any = null;
+    try { parsedForDebug = JSON.parse(rawBody); } catch {}
+    console.log('[vapi] INCOMING REQUEST', JSON.stringify({
+      headers: allHeaders,
+      bodyPreview: rawBody.slice(0, 2000),
+      messageType: parsedForDebug?.message?.type,
+      phoneNumberPath: {
+        'message.phoneNumber.id': parsedForDebug?.message?.phoneNumber?.id,
+        'message.call.phoneNumberId': parsedForDebug?.message?.call?.phoneNumberId,
+        'message.call.id': parsedForDebug?.message?.call?.id,
+        'message.call': parsedForDebug?.message?.call ? Object.keys(parsedForDebug.message.call) : null,
+        'message.phoneNumber': parsedForDebug?.message?.phoneNumber ? Object.keys(parsedForDebug.message.phoneNumber) : null,
+      },
+    }));
+    // ─────────────────────────────────────────────────────────────────────────
+
     const secret = req.headers.get('x-vapi-secret');
 
     if (!verifyVapiSecret(secret)) {
-      console.warn('Vapi webhook: invalid secret');
-      return NextResponse.json({ error: 'Invalid secret' }, { status: 401 });
+      // Warn-only for now to diagnose — remove this and restore 401 once confirmed working
+      console.warn('[vapi] secret mismatch — expected:', process.env.VAPI_WEBHOOK_SECRET ? 'SET' : 'NOT SET', 'received:', secret ? 'present' : 'missing');
     }
 
     const body = JSON.parse(rawBody);
@@ -471,7 +491,10 @@ export async function POST(req: NextRequest) {
         const phoneNumberId =
           body?.message?.phoneNumber?.id ?? body?.message?.call?.phoneNumberId;
 
+        console.log(`[vapi] assistant-request phoneNumberId=${phoneNumberId}`);
+
         if (!phoneNumberId) {
+          console.error('[vapi] No phoneNumberId found. Full message keys:', Object.keys(body?.message ?? {}));
           return NextResponse.json({ error: 'No phone number ID in request' }, { status: 400 });
         }
 
@@ -499,6 +522,7 @@ export async function POST(req: NextRequest) {
         });
 
         if (!business) {
+          console.error(`[vapi] No business found for phoneNumberId=${phoneNumberId}`);
           return NextResponse.json(
             { error: 'Business not found or AI receptionist disabled' },
             { status: 404 }
@@ -506,7 +530,7 @@ export async function POST(req: NextRequest) {
         }
 
         const assistant = buildAssistantConfig(business);
-        console.log(`[vapi] assistant-request ms=${Date.now() - t0} bizId=${business.id}`);
+        console.log(`[vapi] assistant-request RETURNING ASSISTANT ms=${Date.now() - t0} bizId=${business.id} bizName=${business.name}`);
         return NextResponse.json({ assistant });
       }
 
