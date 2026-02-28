@@ -232,12 +232,12 @@ export default function SettingsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-600 mt-1">Manage your business settings and preferences</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Settings</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Manage your business settings and preferences</p>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 overflow-x-auto">
+      <div className="border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
         <nav className="-mb-px flex space-x-8 min-w-max">
           {tabs.map((tab) => (
             <button
@@ -248,7 +248,7 @@ export default function SettingsPage() {
                 ${
                   activeTab === tab.id
                     ? 'border-primary text-primary'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                 }
               `}
             >
@@ -267,11 +267,11 @@ export default function SettingsPage() {
         {activeTab === 'profile' && (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Business Information</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Business Information</h3>
               
               {/* Business Name */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Business Name *
                 </label>
                 <input
@@ -285,7 +285,7 @@ export default function SettingsPage() {
 
               {/* Business Type */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Business Type *
                 </label>
                 <select
@@ -303,7 +303,7 @@ export default function SettingsPage() {
 
               {/* Phone */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Phone Number *
                 </label>
                 <input
@@ -317,7 +317,7 @@ export default function SettingsPage() {
 
               {/* Business Email */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Business Email
                 </label>
                 <input
@@ -327,12 +327,12 @@ export default function SettingsPage() {
                   className="input"
                   placeholder="contact@yourbusiness.com"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Public email shown to customers (optional)
                 </p>
               </div>              {/* Address */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Street Address
                 </label>
                 <AddressAutocomplete
@@ -344,7 +344,7 @@ export default function SettingsPage() {
               {/* City, State, Zip */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     City
                   </label>
                   <input
@@ -356,7 +356,7 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     State
                   </label>
                   <input
@@ -368,7 +368,7 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     ZIP Code
                   </label>
                   <input
@@ -383,7 +383,7 @@ export default function SettingsPage() {
 
               {/* Timezone */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Timezone
                 </label>
                 <select
@@ -403,15 +403,15 @@ export default function SettingsPage() {
 
               {/* Public ID & Booking URL */}
               {business?.publicId && typeof window !== 'undefined' && (
-                <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <label className="block text-sm font-medium text-blue-900 mb-2">                  Your Booking URL
+                <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <label className="block text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">                  Your Booking URL
                   </label>
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
                       value={`${window.location.origin}/book/${business.publicId}`}
                       readOnly
-                      className="input flex-1 bg-white"
+                      className="input flex-1 bg-white dark:bg-gray-800"
                     />
                     <button
                       onClick={() => {
@@ -423,7 +423,7 @@ export default function SettingsPage() {
                       Copy
                     </button>
                   </div>
-                  <p className="text-xs text-blue-700 mt-2">
+                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
                     Share this link with customers to book appointments
                   </p>
                 </div>
@@ -439,8 +439,8 @@ export default function SettingsPage() {
                     className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary mr-3"
                   />
                   <div>
-                    <span className="text-sm font-medium text-gray-900">Enable Online Booking</span>
-                    <p className="text-xs text-gray-500">Allow customers to book appointments online</p>
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Enable Online Booking</span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Allow customers to book appointments online</p>
                   </div>
                 </label>
               </div>
@@ -464,11 +464,11 @@ export default function SettingsPage() {
         {activeTab === 'branding' && (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Logo & Branding</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Logo & Branding</h3>
               
               {/* Logo Upload */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Business Logo
                 </label>
                 <div className="flex items-start gap-6">
@@ -479,7 +479,7 @@ export default function SettingsPage() {
                         <img
                           src={logoPreview}
                           alt="Logo preview"
-                          className="w-32 h-32 object-cover rounded-lg border-2 border-gray-200"
+                          className="w-32 h-32 object-cover rounded-lg border-2 border-gray-200 dark:border-gray-700"
                         />
                         <button
                           onClick={handleRemoveLogo}
@@ -491,8 +491,8 @@ export default function SettingsPage() {
                         </button>
                       </div>
                     ) : (
-                      <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                        <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-32 h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center">
+                        <svg className="w-12 h-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                       </div>
@@ -516,10 +516,10 @@ export default function SettingsPage() {
                     >
                       {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
                     </label>
-                    <p className="text-xs text-gray-500 mt-2">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                       Recommended: Square image, at least 200x200px, max 2MB
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       Your logo will appear on your booking page and in customer emails
                     </p>
                   </div>
@@ -533,14 +533,14 @@ export default function SettingsPage() {
         {activeTab === 'integrations' && (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Social Media & Review Links</h3>
-              <p className="text-sm text-gray-600 mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Social Media & Review Links</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
                 Add links to your social profiles and review pages. These will be shown on your booking page.
               </p>
 
               {/* Google Reviews */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Google Review URL
                 </label>
                 <input
@@ -554,7 +554,7 @@ export default function SettingsPage() {
 
               {/* Facebook */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Facebook Page URL
                 </label>
                 <input
@@ -568,7 +568,7 @@ export default function SettingsPage() {
 
               {/* Yelp */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Yelp URL
                 </label>
                 <input
@@ -582,7 +582,7 @@ export default function SettingsPage() {
 
               {/* Instagram */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Instagram URL
                 </label>
                 <input
@@ -601,13 +601,13 @@ export default function SettingsPage() {
         {activeTab === 'ai-receptionist' && (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">AI Phone Receptionist</h3>
-              <p className="text-sm text-gray-600 mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">AI Phone Receptionist</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
                 Let AI answer your business calls 24/7. It handles questions about services, hours, and pricing — and transfers to your personal phone if the caller asks to speak with a real person.
               </p>
 
               {/* Enable Toggle */}
-              <div className="mb-6 p-4 border border-gray-200 rounded-lg">
+              <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                 <label className="flex items-center cursor-pointer">
                   <input
                     type="checkbox"
@@ -622,17 +622,18 @@ export default function SettingsPage() {
                     className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary mr-3"
                   />
                   <div>
-                    <span className="text-sm font-medium text-gray-900">Enable AI Receptionist</span>
-                    <p className="text-xs text-gray-500">A dedicated phone number will be set up for your business</p>
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Enable AI Receptionist</span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">A dedicated phone number will be set up for your business</p>
                   </div>
                 </label>
               </div>
 
               {/* Forwarding Phone */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Transfer-to Phone Number
                 </label>
+
                 <input
                   type="tel"
                   value={formData.aiReceptionistPhone || ''}
@@ -640,15 +641,15 @@ export default function SettingsPage() {
                   className="input"
                   placeholder="(555) 123-4567"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   When a caller asks for a real person, the AI will transfer the call here (e.g. your personal cell)
                 </p>
               </div>
 
               {/* Custom Greeting */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Custom Greeting <span className="font-normal text-gray-400">(optional)</span>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Custom Greeting <span className="font-normal text-gray-400 dark:text-gray-500">(optional)</span>
                 </label>
                 <input
                   type="text"
@@ -657,7 +658,7 @@ export default function SettingsPage() {
                   className="input"
                   placeholder={`Hi, thank you for calling ${formData.name || 'us'}. How can I help you today?`}
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Leave blank to use the default greeting above
                 </p>
               </div>
@@ -666,19 +667,19 @@ export default function SettingsPage() {
               {formData.aiReceptionistEnabled && (
                 <div className="mb-6">
                   {formData.vapiPhoneNumber ? (
-                    <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                      <p className="text-sm font-medium text-green-900 mb-1">Your AI Receptionist Number</p>
+                    <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                      <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-1">Your AI Receptionist Number</p>
                       {activatingUntil ? (
                         <div className="flex items-center gap-1.5 mb-2">
                           <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
-                          <p className="text-xs text-yellow-700 font-medium">
+                          <p className="text-xs text-yellow-700 dark:text-yellow-300 font-medium">
                             Activating — ready in {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}
                           </p>
                         </div>
                       ) : (
                         <div className="flex items-center gap-1.5 mb-2">
                           <div className="w-2 h-2 rounded-full bg-green-500" />
-                          <p className="text-xs text-green-700 font-medium">Active — ready to receive calls</p>
+                          <p className="text-xs text-green-700 dark:text-green-300 font-medium">Active — ready to receive calls</p>
                         </div>
                       )}
                       <div className="flex items-center gap-2 mb-3">
@@ -686,7 +687,7 @@ export default function SettingsPage() {
                           type="text"
                           value={formData.vapiPhoneNumber}
                           readOnly
-                          className="input flex-1 bg-white text-sm font-mono"
+                          className="input flex-1 bg-white dark:bg-gray-800 text-sm font-mono"
                         />
                         <button
                           type="button"
@@ -699,14 +700,14 @@ export default function SettingsPage() {
                           Copy
                         </button>
                       </div>
-                      <p className="text-sm text-green-800 font-medium mb-3">
+                      <p className="text-sm text-green-800 dark:text-green-200 font-medium mb-3">
                         → Update your Google Business Profile with this number — that&apos;s all you need to do.
                       </p>
-                      <details className="border border-green-200 rounded-lg bg-white">
-                        <summary className="px-3 py-2 cursor-pointer text-sm text-green-700 hover:bg-green-50 rounded-lg">
+                      <details className="border border-green-200 dark:border-green-800 rounded-lg bg-white dark:bg-gray-800">
+                        <summary className="px-3 py-2 cursor-pointer text-sm text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg">
                           Already have a number? Forward calls to this number
                         </summary>
-                        <div className="px-3 pb-3 pt-2 space-y-1 text-xs text-gray-600">
+                        <div className="px-3 pb-3 pt-2 space-y-1 text-xs text-gray-600 dark:text-gray-400">
                           <p><strong>iPhone:</strong> Settings → Phone → Call Forwarding → enter {formData.vapiPhoneNumber}</p>
                           <p><strong>Android:</strong> Phone app → Settings → Call Forwarding → Always forward → enter {formData.vapiPhoneNumber}</p>
                           <p><strong>Google Voice:</strong> Settings → Calls → Forward calls → Add forwarding number</p>
@@ -715,14 +716,14 @@ export default function SettingsPage() {
                       </details>
                     </div>
                   ) : aiToggleMutation.isPending ? (
-                    <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 flex items-center gap-3">
+                    <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center gap-3">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 flex-shrink-0" />
-                      <p className="text-sm text-gray-600">Setting up your AI receptionist number…</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Setting up your AI receptionist number…</p>
                     </div>
                   ) : (
-                    <div className="p-4 bg-red-50 rounded-lg border border-red-200">
-                      <p className="text-sm text-red-800 font-medium mb-2">Setup didn&apos;t complete.</p>
-                      <p className="text-sm text-red-700 mb-3">
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                      <p className="text-sm text-red-800 dark:text-red-200 font-medium mb-2">Setup didn&apos;t complete.</p>
+                      <p className="text-sm text-red-700 dark:text-red-300 mb-3">
                         {aiToggleMutation.error?.message || 'Your AI receptionist number couldn\'t be created.'}
                       </p>
                       <button
@@ -744,14 +745,14 @@ export default function SettingsPage() {
         {activeTab === 'notifications' && (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Notification Preferences</h3>
-              <p className="text-sm text-gray-600 mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Notification Preferences</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
                 Manage how and when you receive notifications about your business.
               </p>
 
               <div className="space-y-4">
                 {/* Email Notifications */}
-                <div className="p-4 border border-gray-200 rounded-lg">
+                <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                   <label className="flex items-start cursor-pointer">
                     <input
                       type="checkbox"
@@ -759,13 +760,13 @@ export default function SettingsPage() {
                       className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary mr-3 mt-0.5"
                     />
                     <div className="flex-1">
-                      <span className="text-sm font-medium text-gray-900">New Appointment Notifications</span>
-                      <p className="text-xs text-gray-500 mt-1">Receive an email when someone books an appointment</p>
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">New Appointment Notifications</span>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Receive an email when someone books an appointment</p>
                     </div>
                   </label>
                 </div>
 
-                <div className="p-4 border border-gray-200 rounded-lg">
+                <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                   <label className="flex items-start cursor-pointer">
                     <input
                       type="checkbox"
@@ -773,13 +774,13 @@ export default function SettingsPage() {
                       className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary mr-3 mt-0.5"
                     />
                     <div className="flex-1">
-                      <span className="text-sm font-medium text-gray-900">Customer Review Notifications</span>
-                      <p className="text-xs text-gray-500 mt-1">Get notified when customers leave reviews</p>
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Customer Review Notifications</span>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Get notified when customers leave reviews</p>
                     </div>
                   </label>
                 </div>
 
-                <div className="p-4 border border-gray-200 rounded-lg">
+                <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                   <label className="flex items-start cursor-pointer">
                     <input
                       type="checkbox"
@@ -787,13 +788,13 @@ export default function SettingsPage() {
                       className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary mr-3 mt-0.5"
                     />
                     <div className="flex-1">
-                      <span className="text-sm font-medium text-gray-900">Weekly Summary</span>
-                      <p className="text-xs text-gray-500 mt-1">Receive a weekly digest of your business activity</p>
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Weekly Summary</span>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Receive a weekly digest of your business activity</p>
                     </div>
                   </label>
                 </div>
 
-                <div className="p-4 border border-gray-200 rounded-lg">
+                <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                   <label className="flex items-start cursor-pointer">
                     <input
                       type="checkbox"
@@ -801,15 +802,15 @@ export default function SettingsPage() {
                       className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary mr-3 mt-0.5"
                     />
                     <div className="flex-1">
-                      <span className="text-sm font-medium text-gray-900">Marketing Tips</span>
-                      <p className="text-xs text-gray-500 mt-1">Get occasional tips and best practices for growing your business</p>
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Marketing Tips</span>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Get occasional tips and best practices for growing your business</p>
                     </div>
                   </label>
                 </div>
               </div>
 
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-700">
+              <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <p className="text-sm text-gray-700 dark:text-gray-300">
                   <strong>Note:</strong> These settings are coming soon. For now, you'll receive email notifications for critical events like new bookings and payments.
                 </p>
               </div>
@@ -820,8 +821,8 @@ export default function SettingsPage() {
 
       {/* Error Message */}
       {updateMutation.isError && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-600">
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-sm text-red-600 dark:text-red-400">
             {updateMutation.error?.message || 'Failed to update settings'}
           </p>
         </div>
@@ -829,22 +830,22 @@ export default function SettingsPage() {
 
       {/* Success Message */}
       {updateMutation.isSuccess && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-sm text-green-600">Settings saved successfully!</p>
+        <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+          <p className="text-sm text-green-600 dark:text-green-400">Settings saved successfully!</p>
         </div>
       )}      {/* Enable AI Receptionist Modal */}
       {showEnableModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">Enable AI Receptionist</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Enable AI Receptionist</h3>
             </div>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               You&apos;re about to set up an AI phone receptionist for <strong>{formData.name}</strong>.
             </p>
             <ul className="space-y-2 mb-4">
@@ -854,7 +855,7 @@ export default function SettingsPage() {
                 'Callers can book appointments directly over the phone',
                 'Transfers to your personal number when someone asks for a real person',
               ].map((item) => (
-                <li key={item} className="flex items-start gap-2 text-sm text-gray-600">
+                <li key={item} className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
                   <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                   </svg>
@@ -862,11 +863,11 @@ export default function SettingsPage() {
                 </li>
               ))}
             </ul>
-            <p className="text-xs text-gray-500 bg-gray-50 rounded-lg p-3 mb-6">
+            <p className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 mb-6">
               Once enabled, update your Google Business Profile with the new number — that&apos;s all you need to do.
             </p>
             {aiToggleMutation.isError && (
-              <p className="text-sm text-red-600 mb-4">{aiToggleMutation.error?.message}</p>
+              <p className="text-sm text-red-600 dark:text-red-400 mb-4">{aiToggleMutation.error?.message}</p>
             )}
             <div className="flex gap-3">
               <button onClick={() => setShowEnableModal(false)} className="btn-outline flex-1">Cancel</button>
@@ -881,16 +882,16 @@ export default function SettingsPage() {
       {/* Disable AI Receptionist Modal */}
       {showDisableModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Disable AI Receptionist?</h3>
-            <p className="text-sm text-gray-600 mb-2">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Disable AI Receptionist?</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
               This will release your dedicated number{formData.vapiPhoneNumber ? <> <strong>{formData.vapiPhoneNumber}</strong></> : ''}.
             </p>
-            <p className="text-sm text-gray-600 mb-6">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
               Any customers who have this number saved will no longer reach your AI receptionist.
             </p>
             {aiToggleMutation.isError && (
-              <p className="text-sm text-red-600 mb-4">{aiToggleMutation.error?.message}</p>
+              <p className="text-sm text-red-600 dark:text-red-400 mb-4">{aiToggleMutation.error?.message}</p>
             )}
             <div className="flex gap-3">
               <button onClick={() => setShowDisableModal(false)} className="btn-outline flex-1">Keep it enabled</button>

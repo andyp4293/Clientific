@@ -51,11 +51,11 @@ type Customer = {
 };
 
 const segmentColors: Record<string, string> = {
-  NEW: "bg-blue-100 text-blue-800",
-  REGULAR: "bg-green-100 text-green-800",
-  VIP: "bg-purple-100 text-purple-800",
-  AT_RISK: "bg-orange-100 text-orange-800",
-  CHURNED: "bg-red-100 text-red-800",
+  NEW: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200",
+  REGULAR: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200",
+  VIP: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200",
+  AT_RISK: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200",
+  CHURNED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200",
 };
 
 const segmentLabels: Record<string, string> = {
@@ -81,7 +81,7 @@ export default function CustomerDetail({ customer }: { customer: Customer }) {
             <div className="flex items-center gap-3 mb-2">
               <Link
                 href="/dashboard/customers"
-                className="text-gray-600 hover:text-gray-900"
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
               >
                 ← Back to Customers
               </Link>
@@ -98,7 +98,7 @@ export default function CustomerDetail({ customer }: { customer: Customer }) {
                 </span>
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                   {customer.name}
                 </h1>
                 <div className="flex items-center gap-3 mt-1">
@@ -109,7 +109,7 @@ export default function CustomerDetail({ customer }: { customer: Customer }) {
                   >
                     {segmentLabels[customer.segment]}
                   </span>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
                     Customer since {format(new Date(customer.createdAt), "MMM d, yyyy")}
                   </span>
                 </div>
@@ -126,34 +126,34 @@ export default function CustomerDetail({ customer }: { customer: Customer }) {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="text-sm font-medium text-gray-600 mb-1">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
               Total Visits
             </div>
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               {customer._count.checkIns}
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="text-sm font-medium text-gray-600 mb-1">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
               Total Spent
             </div>
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               ${customer.totalSpent.toFixed(2)}
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="text-sm font-medium text-gray-600 mb-1">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
               Loyalty Points
             </div>            <div className="text-2xl font-bold text-purple-600">
               {customer.points.toLocaleString()}
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="text-sm font-medium text-gray-600 mb-1">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
               Total Visits
             </div>
             <div className="text-2xl font-bold text-blue-600">
@@ -163,34 +163,34 @@ export default function CustomerDetail({ customer }: { customer: Customer }) {
         </div>
 
         {/* Contact Information */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
             Contact Information
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <div className="text-sm font-medium text-gray-600">Email</div>
-              <div className="text-gray-900 mt-1">
+              <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Email</div>
+              <div className="text-gray-900 dark:text-gray-100 mt-1">
                 {customer.email || "Not provided"}
               </div>
             </div>
             <div>
-              <div className="text-sm font-medium text-gray-600">Phone</div>
-              <div className="text-gray-900 mt-1">
+              <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Phone</div>
+              <div className="text-gray-900 dark:text-gray-100 mt-1">
                 {customer.phone || "Not provided"}
               </div>
             </div>
             <div>
-              <div className="text-sm font-medium text-gray-600">Birthday</div>
-              <div className="text-gray-900 mt-1">
+              <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Birthday</div>
+              <div className="text-gray-900 dark:text-gray-100 mt-1">
                 {customer.birthday
                   ? format(new Date(customer.birthday), "MMMM d, yyyy")
                   : "Not provided"}
               </div>
             </div>
             <div>
-              <div className="text-sm font-medium text-gray-600">Last Visit</div>
-              <div className="text-gray-900 mt-1">
+              <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Last Visit</div>
+              <div className="text-gray-900 dark:text-gray-100 mt-1">
                 {customer.lastVisit
                   ? format(new Date(customer.lastVisit), "MMM d, yyyy")
                   : "Never"}
@@ -199,22 +199,22 @@ export default function CustomerDetail({ customer }: { customer: Customer }) {
           </div>
           {customer.notes && (
             <div className="mt-4">
-              <div className="text-sm font-medium text-gray-600">Notes</div>
-              <div className="text-gray-900 mt-1">{customer.notes}</div>
+              <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Notes</div>
+              <div className="text-gray-900 dark:text-gray-100 mt-1">{customer.notes}</div>
             </div>
           )}
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="border-b border-gray-200">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="border-b border-gray-200 dark:border-gray-700">
             <nav className="flex -mb-px">
               <button
                 onClick={() => setActiveTab("overview")}
                 className={`px-6 py-3 text-sm font-medium border-b-2 ${
                   activeTab === "overview"
                     ? "border-primary text-primary"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
                 }`}
               >
                 Overview
@@ -224,7 +224,7 @@ export default function CustomerDetail({ customer }: { customer: Customer }) {
                 className={`px-6 py-3 text-sm font-medium border-b-2 ${
                   activeTab === "history"
                     ? "border-primary text-primary"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
                 }`}
               >
                 Visit History
@@ -234,7 +234,7 @@ export default function CustomerDetail({ customer }: { customer: Customer }) {
                 className={`px-6 py-3 text-sm font-medium border-b-2 ${
                   activeTab === "points"
                     ? "border-primary text-primary"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
                 }`}
               >
                 Points & Rewards
@@ -247,23 +247,23 @@ export default function CustomerDetail({ customer }: { customer: Customer }) {
               <div className="space-y-6">
                 {/* Recent Check-Ins */}
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
                     Recent Check-Ins
                   </h3>
                   {customer.checkIns.length === 0 ? (
-                    <p className="text-gray-500">No check-ins yet</p>
+                    <p className="text-gray-500 dark:text-gray-400">No check-ins yet</p>
                   ) : (
                     <div className="space-y-2">
                       {customer.checkIns.map((checkIn) => (
                         <div
                           key={checkIn.id}
-                          className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
+                          className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                         >
                           <div>
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                               {format(new Date(checkIn.createdAt), "MMM d, yyyy h:mm a")}
                             </div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
                               Spent: ${checkIn.amountSpent?.toFixed(2) || "0.00"} • Earned: {checkIn.pointsEarned} pts
                             </div>
                           </div>
@@ -279,19 +279,19 @@ export default function CustomerDetail({ customer }: { customer: Customer }) {
             {activeTab === "history" && (
               <div className="space-y-4">
                 {customer.appointments.length === 0 ? (
-                  <p className="text-gray-500">No appointments yet</p>
+                  <p className="text-gray-500 dark:text-gray-400">No appointments yet</p>
                 ) : (
                   customer.appointments.map((appointment) => (
                     <div
                       key={appointment.id}
-                      className="p-4 bg-gray-50 rounded-lg"
+                      className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
                     >
                       <div className="flex justify-between items-start">
                         <div>
-                          <div className="font-medium text-gray-900">
+                          <div className="font-medium text-gray-900 dark:text-gray-100">
                             {appointment.service?.name || "General Appointment"}
                           </div>
-                          <div className="text-sm text-gray-500 mt-1">
+                          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                             {format(new Date(appointment.startTime), "MMM d, yyyy h:mm a")}
                             {appointment.staff && ` • with ${appointment.staff.fullName}`}
                           </div>
@@ -299,12 +299,12 @@ export default function CustomerDetail({ customer }: { customer: Customer }) {
                         <span
                           className={`px-2 py-1 text-xs font-medium rounded-full ${
                             appointment.status === "COMPLETED"
-                              ? "bg-green-100 text-green-800"
+                              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200"
                               : appointment.status === "CONFIRMED"
-                              ? "bg-blue-100 text-blue-800"
+                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
                               : appointment.status === "CANCELLED"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-gray-100 text-gray-800"
+                              ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200"
+                              : "bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200"
                           }`}
                         >
                           {appointment.status}
@@ -320,22 +320,22 @@ export default function CustomerDetail({ customer }: { customer: Customer }) {
               <div className="space-y-6">
                 {/* Redemptions */}
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
                     Reward Redemptions
                   </h3>
                   {customer.redemptions.length === 0 ? (
-                    <p className="text-gray-500">No redemptions yet</p>
+                    <p className="text-gray-500 dark:text-gray-400">No redemptions yet</p>
                   ) : (
                     <div className="space-y-2">
                       {customer.redemptions.map((redemption) => (
                         <div
                           key={redemption.id}
-                          className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
+                          className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                         >                          <div>
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                               {redemption.reward.name}
                             </div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
                               {format(new Date(redemption.createdAt), "MMM d, yyyy")}
                             </div>
                           </div>
@@ -350,30 +350,30 @@ export default function CustomerDetail({ customer }: { customer: Customer }) {
 
                 {/* Points History */}
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
                     Points History
                   </h3>
                   {customer.pointsTransactions.length === 0 ? (
-                    <p className="text-gray-500">No points transactions yet</p>
+                    <p className="text-gray-500 dark:text-gray-400">No points transactions yet</p>
                   ) : (
                     <div className="space-y-2">                      {customer.pointsTransactions.map((transaction) => (
                         <div
                           key={transaction.id}
-                          className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
+                          className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                         >
                           <div>
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                               {transaction.description}
                             </div>
-                            <div className="text-xs text-gray-400 mt-1">
+                            <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                               {format(new Date(transaction.createdAt), "MMM d, yyyy h:mm a")}
                             </div>
                           </div>
                           <div
                             className={`text-sm font-medium ${
                               transaction.amount > 0
-                                ? "text-green-600"
-                                : "text-red-600"
+                                ? "text-green-600 dark:text-green-400"
+                                : "text-red-600 dark:text-red-400"
                             }`}
                           >
                             {transaction.amount > 0 ? "+" : ""}

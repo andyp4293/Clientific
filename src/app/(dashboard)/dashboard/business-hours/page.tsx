@@ -120,29 +120,29 @@ export default function BusinessHoursPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Business Hours</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Business Hours</h1>
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-1">
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-400">
             Set your operating hours for online bookings
           </p>
           {timezone && (
-            <div className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200">
+            <div className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
               <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="text-gray-500 mr-1">Timezone:</span>
+              <span className="text-gray-500 dark:text-gray-400 mr-1">Timezone:</span>
               {timezone.replace(/_/g, ' ')}
             </div>          )}
         </div>
       </div>      {/* Timezone Info Banner */}
       {timezone && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
-          <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-start gap-3">
+          <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div className="flex-1">
-            <p className="text-sm text-blue-900 font-medium">All times are shown in your business timezone</p>
-            <p className="text-sm text-blue-700 mt-1">
+            <p className="text-sm text-blue-900 dark:text-blue-100 font-medium">All times are shown in your business timezone</p>
+            <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
               Your timezone is set to <span className="font-semibold">{timezone.replace(/_/g, ' ')}</span>. 
               You can change this in <a href="/dashboard/settings" className="underline hover:text-blue-800">Settings</a> if needed.
             </p>
@@ -152,13 +152,13 @@ export default function BusinessHoursPage() {
 
       {/* Warning Banner for No Saved Hours */}
       {hasNoSavedHours && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
-          <svg className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 flex items-start gap-3">
+          <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <div className="flex-1">
-            <p className="text-sm text-amber-900 font-medium">⚠️ No business hours configured</p>
-            <p className="text-sm text-amber-700 mt-1">
+            <p className="text-sm text-amber-900 dark:text-amber-100 font-medium">⚠️ No business hours configured</p>
+            <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
               Your online booking is currently unavailable. Set your hours below and click "Save Changes" to enable bookings.
             </p>
           </div>
@@ -168,13 +168,13 @@ export default function BusinessHoursPage() {
       {/* Business Hours Card */}
       <div className="card">{localHours.length === 0 ? (
           <div className="p-8 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full mb-4">
+              <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Business Hours Set</h3>
-            <p className="text-gray-600 mb-4">Set up your weekly schedule to enable online bookings</p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No Business Hours Set</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">Set up your weekly schedule to enable online bookings</p>
             <button
               onClick={() => {
                 // Initialize default hours (Monday-Friday 9 AM - 5 PM)
@@ -194,7 +194,7 @@ export default function BusinessHoursPage() {
             </button>
           </div>
         ) : (
-        <div className="divide-y divide-gray-200">{localHours.map((hour) => {
+        <div className="divide-y divide-gray-200 dark:divide-gray-700">{localHours.map((hour) => {
             const dayName = DAYS[hour.dayOfWeek];
             return (
               <div key={hour.dayOfWeek} className="p-4 sm:p-6">
@@ -206,12 +206,12 @@ export default function BusinessHoursPage() {
                       id={`day-${hour.dayOfWeek}`}
                       checked={hour.isOpen}
                       onChange={() => handleToggleDay(hour.dayOfWeek)}
-                      className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary mr-3"
+                      className="w-5 h-5 text-primary border-gray-300 dark:border-gray-600 rounded focus:ring-primary mr-3"
                     />
                     <label
                       htmlFor={`day-${hour.dayOfWeek}`}
                       className={`text-base font-medium cursor-pointer select-none ${
-                        hour.isOpen ? 'text-gray-900' : 'text-gray-400'
+                        hour.isOpen ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'
                       }`}
                     >
                       {dayName}
@@ -225,7 +225,7 @@ export default function BusinessHoursPage() {
                           onChange={(time) => handleTimeChange(hour.dayOfWeek, 'openTime', time)}
                         />
                       </div>
-                      <span className="text-gray-500 hidden sm:inline">to</span>
+                      <span className="text-gray-500 dark:text-gray-400 hidden sm:inline">to</span>
                       <div className="w-full sm:w-32">
                         <TimePicker
                           value={hour.closeTime || '17:00'}
@@ -234,7 +234,7 @@ export default function BusinessHoursPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="text-gray-400 text-sm sm:ml-auto">Closed</div>
+                    <div className="text-gray-400 dark:text-gray-500 text-sm sm:ml-auto">Closed</div>
                   )}
                 </div>
               </div>            );
@@ -246,7 +246,7 @@ export default function BusinessHoursPage() {
       {/* Quick Actions */}
       {localHours.length > 0 && (
       <div className="card p-4 sm:p-6">
-        <h3 className="font-semibold text-gray-900 mb-3">Quick Actions</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Quick Actions</h3>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => {
@@ -259,7 +259,7 @@ export default function BusinessHoursPage() {
               setLocalHours(weekdayHours);
               setHasChanges(true);
             }}
-            className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             Mon-Fri 9-5
           </button>
@@ -274,7 +274,7 @@ export default function BusinessHoursPage() {
               setLocalHours(allDayHours);
               setHasChanges(true);
             }}
-            className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             24/7
           </button>
@@ -289,7 +289,7 @@ export default function BusinessHoursPage() {
               setLocalHours(closedHours);
               setHasChanges(true);
             }}
-            className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             Close All
           </button>        </div>
@@ -298,8 +298,8 @@ export default function BusinessHoursPage() {
 
       {/* Error Message */}
       {updateMutation.isError && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-600">
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-sm text-red-600 dark:text-red-400">
             {updateMutation.error?.message || 'Failed to update business hours'}
           </p>
         </div>
@@ -308,7 +308,7 @@ export default function BusinessHoursPage() {
       {/* Action Buttons */}
       {localHours.length > 0 && (
       <div className="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">{hasNoSavedHours && (
-          <div className="text-sm text-amber-600 flex items-center gap-2 mr-auto">
+          <div className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-2 mr-auto">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
@@ -318,7 +318,7 @@ export default function BusinessHoursPage() {
         <button
           onClick={handleReset}
           disabled={!hasChanges || updateMutation.isPending}
-          className="px-6 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Reset
         </button>

@@ -27,12 +27,12 @@ interface Appointment {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; badge: string; bar: string }> = {
-  pending:   { label: 'Pending',   badge: 'bg-amber-50 text-amber-700 border border-amber-200',   bar: 'bg-amber-400' },
-  scheduled: { label: 'Scheduled', badge: 'bg-blue-50 text-blue-700 border border-blue-200',      bar: 'bg-blue-500' },
-  confirmed: { label: 'Confirmed', badge: 'bg-emerald-50 text-emerald-700 border border-emerald-200', bar: 'bg-emerald-500' },
-  completed: { label: 'Completed', badge: 'bg-gray-100 text-gray-500 border border-gray-200',     bar: 'bg-gray-300' },
-  cancelled: { label: 'Cancelled', badge: 'bg-red-50 text-red-600 border border-red-200',         bar: 'bg-red-400' },
-  no_show:   { label: 'No Show',   badge: 'bg-orange-50 text-orange-700 border border-orange-200',bar: 'bg-orange-400' },
+  pending:   { label: 'Pending',   badge: 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800',   bar: 'bg-amber-400' },
+  scheduled: { label: 'Scheduled', badge: 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800',      bar: 'bg-blue-500' },
+  confirmed: { label: 'Confirmed', badge: 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800', bar: 'bg-emerald-500' },
+  completed: { label: 'Completed', badge: 'bg-gray-100 text-gray-500 border border-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600',     bar: 'bg-gray-300' },
+  cancelled: { label: 'Cancelled', badge: 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800',         bar: 'bg-red-400' },
+  no_show:   { label: 'No Show',   badge: 'bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800', bar: 'bg-orange-400' },
 };
 
 export default function AppointmentsPage() {
@@ -64,8 +64,8 @@ export default function AppointmentsPage() {
       {/* Header */}
       <div className="flex justify-between items-start mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Appointments</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Appointments</h1>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">
             {isToday ? 'Today' : selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
           </p>
         </div>
@@ -81,25 +81,25 @@ export default function AppointmentsPage() {
       </div>
 
       {/* Date Navigator + Stats */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 mb-5 flex items-center justify-between flex-wrap gap-4">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-5 flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-1">
           <button
             onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(d); }}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-50 hover:text-gray-700 transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
           <div className="px-4 text-center min-w-[180px]">
-            <p className="text-sm font-semibold text-gray-900">
+            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
               {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </p>
-            <p className="text-xs text-gray-400">{selectedDate.getFullYear()}</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">{selectedDate.getFullYear()}</p>
           </div>
           <button
             onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(d); }}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-50 hover:text-gray-700 transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -118,28 +118,28 @@ export default function AppointmentsPage() {
         <div className="flex items-center gap-3">
           {/* Quick stats */}
           {appointments.length > 0 && (
-            <div className="flex items-center gap-2 text-xs text-gray-500 border-r border-gray-100 pr-4 mr-1">
-              <span className="font-semibold text-gray-900">{appointments.length}</span> total
+            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 border-r border-gray-100 dark:border-gray-700 pr-4 mr-1">
+              <span className="font-semibold text-gray-900 dark:text-gray-100">{appointments.length}</span> total
               {counts.pending > 0 && (
-                <span className="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-medium">
+                <span className="bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800 px-2 py-0.5 rounded-full font-medium">
                   {counts.pending} pending
                 </span>
               )}
               {counts.confirmed > 0 && (
-                <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-medium">
+                <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800 px-2 py-0.5 rounded-full font-medium">
                   {counts.confirmed} confirmed
                 </span>
               )}
             </div>
           )}
 
-          <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+          <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
             {(['day', 'week', 'month'] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
                 className={`px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
-                  view === v ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-50'
+                  view === v ? 'bg-primary text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               >
                 {v}
@@ -151,23 +151,23 @@ export default function AppointmentsPage() {
 
       {/* Appointments */}
       {isLoading ? (
-        <div className="bg-white border border-gray-200 rounded-xl p-16 text-center">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-16 text-center">
           <div className="w-7 h-7 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-400">Loading appointments…</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500">Loading appointments…</p>
         </div>
       ) : appointments.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-xl p-16 text-center">
-          <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-16 text-center">
+          <div className="w-12 h-12 bg-gray-50 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-6 h-6 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           </div>
-          <p className="text-sm font-medium text-gray-700 mb-1">No appointments scheduled</p>
-          <p className="text-xs text-gray-400 mb-5">Nothing booked for this day yet.</p>
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">No appointments scheduled</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">Nothing booked for this day yet.</p>
           <button onClick={() => setShowNewModal(true)} className="btn-primary text-sm">+ New Appointment</button>
         </div>
       ) : (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden divide-y divide-gray-100 dark:divide-gray-700">
           {appointments.map((appointment) => (
             <AppointmentRow key={appointment.id} appointment={appointment} />
           ))}
@@ -223,23 +223,23 @@ function AppointmentRow({ appointment }: { appointment: Appointment }) {
 
   return (
     <>
-      <div className="flex items-center gap-0 hover:bg-gray-50/60 transition-colors group">
+      <div className="flex items-center gap-0 hover:bg-gray-50/60 dark:hover:bg-gray-700/60 transition-colors group">
         {/* Status bar */}
         <div className={`w-1 self-stretch flex-shrink-0 ${config.bar}`} />
 
         {/* Time */}
         <div className="w-28 flex-shrink-0 px-4 py-4">
-          <p className="text-sm font-bold text-gray-900 tabular-nums">
+          <p className="text-sm font-bold text-gray-900 dark:text-gray-100 tabular-nums">
             {startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
           </p>
-          <p className="text-xs text-gray-400 tabular-nums mt-0.5">
+          <p className="text-xs text-gray-400 dark:text-gray-500 tabular-nums mt-0.5">
             {endTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
           </p>
-          <p className="text-xs text-gray-300 mt-0.5">{appointment.duration} min</p>
+          <p className="text-xs text-gray-300 dark:text-gray-600 mt-0.5">{appointment.duration} min</p>
         </div>
 
         {/* Divider */}
-        <div className="w-px h-12 bg-gray-100 flex-shrink-0" />
+        <div className="w-px h-12 bg-gray-100 dark:bg-gray-700 flex-shrink-0" />
 
         {/* Customer + Service */}
         <div className="flex-1 min-w-0 px-5 py-4 flex items-center gap-3">
@@ -247,26 +247,26 @@ function AppointmentRow({ appointment }: { appointment: Appointment }) {
             <span className="text-xs font-bold text-primary">{initials}</span>
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">{appointment.customer.name}</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{appointment.customer.name}</p>
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               {appointment.service && (
-                <span className="text-xs text-gray-500">{appointment.service.name}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{appointment.service.name}</span>
               )}
               {appointment.service && appointment.staff && (
-                <span className="text-gray-300 text-xs">·</span>
+                <span className="text-gray-300 dark:text-gray-600 text-xs">·</span>
               )}
               {appointment.staff && (
-                <span className="text-xs text-gray-400">{appointment.staff.fullName}</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">{appointment.staff.fullName}</span>
               )}
               {appointment.customer.phone && (
                 <>
-                  <span className="text-gray-300 text-xs">·</span>
-                  <span className="text-xs text-gray-400">{appointment.customer.phone}</span>
+                  <span className="text-gray-300 dark:text-gray-600 text-xs">·</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">{appointment.customer.phone}</span>
                 </>
               )}
             </div>
             {appointment.notes && (
-              <p className="text-xs text-gray-400 italic mt-1 truncate max-w-xs">{appointment.notes}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 italic mt-1 truncate max-w-xs">{appointment.notes}</p>
             )}
           </div>
         </div>
@@ -289,7 +289,7 @@ function AppointmentRow({ appointment }: { appointment: Appointment }) {
               <button
                 onClick={() => setShowCancelConfirm(true)}
                 disabled={cancelMutation.isPending}
-                className="text-xs font-medium px-3 py-1.5 border border-gray-200 text-gray-500 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                className="text-xs font-medium px-3 py-1.5 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
               >
                 Decline
               </button>
@@ -298,13 +298,13 @@ function AppointmentRow({ appointment }: { appointment: Appointment }) {
             <div className="flex gap-1.5 ml-2">
               <button
                 onClick={() => setShowEditModal(true)}
-                className="text-xs font-medium px-3 py-1.5 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+                className="text-xs font-medium px-3 py-1.5 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 Edit
               </button>
               <button
                 onClick={() => setShowCancelConfirm(true)}
-                className="text-xs font-medium px-3 py-1.5 border border-gray-200 text-red-500 rounded-lg hover:bg-red-50 hover:border-red-200 transition-colors"
+                className="text-xs font-medium px-3 py-1.5 border border-gray-200 dark:border-gray-700 text-red-500 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800 transition-colors"
               >
                 Cancel
               </button>
@@ -319,14 +319,14 @@ function AppointmentRow({ appointment }: { appointment: Appointment }) {
 
       {showCancelConfirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-sm w-full p-6 shadow-2xl border border-gray-100">
-            <h3 className="text-base font-semibold text-gray-900 mb-1">Cancel appointment?</h3>
-            <p className="text-sm text-gray-500 mb-1">
-              <strong className="text-gray-700">{appointment.customer.name}</strong> on{' '}
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-sm w-full p-6 shadow-2xl border border-gray-100 dark:border-gray-700">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">Cancel appointment?</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+              <strong className="text-gray-700 dark:text-gray-300">{appointment.customer.name}</strong> on{' '}
               {startTime.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })} at{' '}
               {startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
             </p>
-            <p className="text-xs text-gray-400 mb-5">This action cannot be undone.</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">This action cannot be undone.</p>
             <div className="flex gap-2">
               <button onClick={() => setShowCancelConfirm(false)} disabled={cancelMutation.isPending} className="flex-1 btn-outline text-sm">
                 Keep
@@ -391,11 +391,11 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100">
+      <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100 dark:border-gray-700">
         <div className="p-6">
           <div className="flex justify-between items-center mb-5">
-            <h2 className="text-lg font-semibold text-gray-900">New Appointment</h2>
-            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">New Appointment</h2>
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-400 transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -483,24 +483,24 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100">
+      <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100 dark:border-gray-700">
         <div className="p-6">
           <div className="flex justify-between items-center mb-5">
-            <h2 className="text-lg font-semibold text-gray-900">Edit Appointment</h2>
-            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Edit Appointment</h2>
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-400 transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
 
-          <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3 mb-5 border border-gray-100">
+          <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-700 rounded-lg p-3 mb-5 border border-gray-100 dark:border-gray-700">
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
               <span className="text-sm font-bold text-primary">{initials}</span>
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900">{appointment.customer.name}</p>
-              <p className="text-xs text-gray-500">
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{appointment.customer.name}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 {[appointment.service?.name, appointment.customer.phone].filter(Boolean).join(' · ')}
               </p>
             </div>

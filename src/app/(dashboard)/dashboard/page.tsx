@@ -160,19 +160,19 @@ export default async function DashboardPage({
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600">Welcome back, {business.name}!</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
+        <p className="text-gray-600 dark:text-gray-400">Welcome back, {business.name}!</p>
       </div>
 
       {/* Checkout success toast */}
       {checkoutSuccess && (
-        <div className="rounded-lg bg-green-50 border border-green-200 p-4 flex items-start gap-3">
-          <svg className="w-5 h-5 text-green-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 flex items-start gap-3">
+          <svg className="w-5 h-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div>
-            <p className="text-sm font-semibold text-green-800">You&apos;re subscribed!</p>
-            <p className="text-sm text-green-700">Your plan is now active. You&apos;re all set.</p>
+            <p className="text-sm font-semibold text-green-800 dark:text-green-200">You&apos;re subscribed!</p>
+            <p className="text-sm text-green-700 dark:text-green-300">Your plan is now active. You&apos;re all set.</p>
           </div>
         </div>
       )}
@@ -184,20 +184,20 @@ export default async function DashboardPage({
           {business.subscriptionStatus === 'trialing' && trialDaysRemaining !== null && (
             <div className={`rounded-lg border p-4 flex items-center justify-between gap-4 ${
               isTrialUrgent
-                ? 'bg-red-50 border-red-200'
-                : 'bg-yellow-50 border-yellow-200'
+                ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
             }`}>
               <div className="flex items-start gap-3">
-                <svg className={`w-5 h-5 shrink-0 mt-0.5 ${isTrialUrgent ? 'text-red-500' : 'text-yellow-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className={`w-5 h-5 shrink-0 mt-0.5 ${isTrialUrgent ? 'text-red-500' : 'text-yellow-500 dark:text-yellow-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div>
-                  <p className={`text-sm font-semibold ${isTrialUrgent ? 'text-red-800' : 'text-yellow-800'}`}>
+                  <p className={`text-sm font-semibold ${isTrialUrgent ? 'text-red-800 dark:text-red-200' : 'text-yellow-800 dark:text-yellow-200'}`}>
                     {isTrialUrgent
                       ? `Trial expires in ${trialDaysRemaining} day${trialDaysRemaining === 1 ? '' : 's'}`
                       : `${trialDaysRemaining} days left in your free trial`}
                   </p>
-                  <p className={`text-sm ${isTrialUrgent ? 'text-red-700' : 'text-yellow-700'}`}>
+                  <p className={`text-sm ${isTrialUrgent ? 'text-red-700 dark:text-red-300' : 'text-yellow-700 dark:text-yellow-300'}`}>
                     Subscribe now to keep your data and stay uninterrupted.
                   </p>
                 </div>
@@ -217,14 +217,14 @@ export default async function DashboardPage({
 
           {/* Past due banner */}
           {business.subscriptionStatus === 'past_due' && (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-4 flex items-center justify-between gap-4">
+            <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 flex items-center justify-between gap-4">
               <div className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 <div>
-                  <p className="text-sm font-semibold text-red-800">Payment failed</p>
-                  <p className="text-sm text-red-700">Please update your payment method to avoid service interruption.</p>
+                  <p className="text-sm font-semibold text-red-800 dark:text-red-200">Payment failed</p>
+                  <p className="text-sm text-red-700 dark:text-red-300">Please update your payment method to avoid service interruption.</p>
                 </div>
               </div>
               <Link href="/dashboard/settings/billing" className="shrink-0 text-sm font-medium px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">
@@ -235,14 +235,14 @@ export default async function DashboardPage({
 
           {/* Canceled banner */}
           {business.subscriptionStatus === 'canceled' && (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-4 flex items-center justify-between gap-4">
+            <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 flex items-center justify-between gap-4">
               <div className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                 </svg>
                 <div>
-                  <p className="text-sm font-semibold text-red-800">Subscription canceled</p>
-                  <p className="text-sm text-red-700">Your subscription has ended. Reactivate to continue using ClientFlow.</p>
+                  <p className="text-sm font-semibold text-red-800 dark:text-red-200">Subscription canceled</p>
+                  <p className="text-sm text-red-700 dark:text-red-300">Your subscription has ended. Reactivate to continue using ClientFlow.</p>
                 </div>
               </div>
               <Link href="/pricing" className="shrink-0 text-sm font-medium px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">
@@ -257,35 +257,35 @@ export default async function DashboardPage({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card p-6">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-600">Total Customers</p>
-            <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Customers</p>
+            <svg className="w-5 h-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{stats.totalCustomers}</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.totalCustomers}</p>
           <p className="text-sm text-success mt-1">+{stats.newCustomersThisMonth} this month</p>
         </div>
 
         <div className="card p-6">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-600">Check-Ins</p>
-            <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Check-Ins</p>
+            <svg className="w-5 h-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
             </svg>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{stats.checkInsToday}</p>
-          <p className="text-sm text-gray-500 mt-1">Today • {stats.checkInsThisWeek} this week</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.checkInsToday}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Today • {stats.checkInsThisWeek} this week</p>
         </div>
 
         <div className="card p-6">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-600">Points Issued</p>
-            <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Points Issued</p>
+            <svg className="w-5 h-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
             </svg>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{stats.pointsThisMonth}</p>
-          <p className="text-sm text-gray-500 mt-1">This month</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.pointsThisMonth}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">This month</p>
         </div>
       </div>      {/* Quick Actions */}
       <div className="card p-6">
@@ -317,24 +317,24 @@ export default async function DashboardPage({
             <div className="space-y-3">
               {Object.entries(stats.segments).map(([segment, count]: [string, number]) => {
                 const colors: Record<string, string> = {
-                  NEW: 'bg-blue-100 text-blue-800',
-                  REGULAR: 'bg-green-100 text-green-800',
-                  VIP: 'bg-yellow-100 text-yellow-800',
-                  AT_RISK: 'bg-orange-100 text-orange-800',
-                  CHURNED: 'bg-red-100 text-red-800',
+                  NEW: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
+                  REGULAR: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
+                  VIP: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200',
+                  AT_RISK: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200',
+                  CHURNED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
                 };
                 return (
                   <div key={segment} className="flex items-center justify-between">
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${colors[segment]}`}>
                       {segment.replace('_', ' ')}
                     </span>
-                    <span className="text-lg font-semibold text-gray-900">{count}</span>
+                    <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">{count}</span>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-8">No customer data yet</p>
+            <p className="text-gray-500 dark:text-gray-400 text-center py-8">No customer data yet</p>
           )}
         </div>
 
@@ -343,22 +343,22 @@ export default async function DashboardPage({
           <h2 className="text-lg font-semibold mb-4">Today's Appointments</h2>          {stats.upcomingAppointments.length > 0 ? (
             <div className="space-y-3">
               {stats.upcomingAppointments.map((apt: any) => (
-                <div key={apt.id} className="flex items-start justify-between border-b border-gray-100 pb-3 last:border-0">                          <div>
-                            <p className="font-medium text-gray-900">
+                <div key={apt.id} className="flex items-start justify-between border-b border-gray-100 dark:border-gray-700 pb-3 last:border-0">                          <div>
+                            <p className="font-medium text-gray-900 dark:text-gray-100">
                               {apt.customer.name}
                             </p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
                               {apt.service?.name || 'No service'}
                             </p>
                           </div>
-                  <span className="text-sm font-medium text-gray-700">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     {new Date(apt.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: business.timezone })}
                   </span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-8">No appointments today</p>
+            <p className="text-gray-500 dark:text-gray-400 text-center py-8">No appointments today</p>
           )}
         </div>
 
@@ -367,22 +367,22 @@ export default async function DashboardPage({
           <h2 className="text-lg font-semibold mb-4">Recent Check-Ins</h2>          {stats.recentCheckIns.length > 0 ? (
             <div className="space-y-3">
               {stats.recentCheckIns.map((checkin: any) => (
-                <div key={checkin.id} className="flex items-start justify-between border-b border-gray-100 pb-3 last:border-0">                          <div>
-                            <p className="font-medium text-gray-900">
+                <div key={checkin.id} className="flex items-start justify-between border-b border-gray-100 dark:border-gray-700 pb-3 last:border-0">                          <div>
+                            <p className="font-medium text-gray-900 dark:text-gray-100">
                               {checkin.customer.name}
                             </p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
                               {checkin.service?.name || 'Walk-in'} • {checkin.pointsEarned} points
                             </p>
                           </div>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
                     {new Date(checkin.checkInTime).toLocaleDateString()}
                   </span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-8">No check-ins yet</p>
+            <p className="text-gray-500 dark:text-gray-400 text-center py-8">No check-ins yet</p>
           )}
         </div>
 

@@ -46,20 +46,20 @@ export default function BookingLinkCard() {
     <div className="card p-4 sm:p-6">
       <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-0 mb-4">
         <div className="flex-1 min-w-0">
-          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
             Your Booking Page
           </h3>
-          <p className="text-xs sm:text-sm text-gray-600">
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
             Share this link with customers to let them book appointments online
           </p>
           {business.publicId && (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Business ID: <span className="font-mono font-semibold text-primary">{business.publicId}</span>
             </p>
           )}
         </div>
-        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-          <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
+          <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
         </div>
@@ -70,7 +70,7 @@ export default function BookingLinkCard() {
           type="text"
           value={bookingUrl}
           readOnly
-          className="flex-1 px-3 sm:px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-xs sm:text-sm text-gray-700 focus:outline-none truncate"
+          className="flex-1 px-3 sm:px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-xs sm:text-sm text-gray-700 dark:text-gray-300 focus:outline-none truncate"
         />
         <button
           onClick={handleCopy}
@@ -99,7 +99,7 @@ export default function BookingLinkCard() {
           href={bookingUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-1 text-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+          className="flex-1 text-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
         >
           Preview
         </a>        <button
@@ -108,7 +108,7 @@ export default function BookingLinkCard() {
             const body = encodeURIComponent(`Book your appointment here: ${bookingUrl}`);
             window.location.href = `mailto:?subject=${subject}&body=${body}`;
           }}
-          className="flex-1 text-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+          className="flex-1 text-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
         >
           Email
         </button>
@@ -117,7 +117,7 @@ export default function BookingLinkCard() {
             const text = encodeURIComponent(`Book your appointment here: ${bookingUrl}`);
             window.open(`https://wa.me/?text=${text}`, '_blank');
           }}
-          className="flex-1 text-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+          className="flex-1 text-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
         >
           WhatsApp
         </button>

@@ -158,6 +158,9 @@ Your job:
         },
       ],
     },
+    server: {
+      url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/vapi`,
+    },
     transcriber: {
       provider: 'deepgram',
       model: 'nova-2',

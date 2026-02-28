@@ -154,8 +154,9 @@ export async function PATCH(req: NextRequest) {
         name: `${name ?? current.name} Receptionist`,
         server: { url: serverUrl },
       });
-      // Also PATCH to ensure server.url is set (belt-and-suspenders)
+      // Also PATCH to ensure server.url is set and any stale assistantId is cleared
       await vapiRequest('PATCH', `/phone-number/${phoneNumber.id}`, {
+        assistantId: null,
         server: { url: serverUrl },
       });
       vapiUpdates.vapiPhoneNumberId = phoneNumber.id;
@@ -165,9 +166,13 @@ export async function PATCH(req: NextRequest) {
       await vapiRequest('DELETE', `/phone-number/${current.vapiPhoneNumberId}`);
       vapiUpdates.vapiPhoneNumberId = null;
       vapiUpdates.vapiPhoneNumber = null;
+    } else if (vapiConfigured && finalEnabled && current.vapiPhoneNumberId) {
+      // Already enabled — sync server.url and clear any stale assistantId
+      await vapiRequest('PATCH', `/phone-number/${current.vapiPhoneNumberId}`, {
+        assistantId: null,
+        server: { url: serverUrl },
+      }).catch((e: any) => console.error('[vapi] Failed to sync phone number server URL:', e));
     }
-    // When already enabled and saving changes — nothing to update in Vapi,
-    // the webhook fetches fresh business data on every call automatically.
 
     const business = await prisma.business.update({
       where: { id: session.user.id },
