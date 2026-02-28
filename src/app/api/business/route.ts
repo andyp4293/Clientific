@@ -154,11 +154,11 @@ export async function PATCH(req: NextRequest) {
         name: `${name ?? current.name} Receptionist`,
         server: { url: serverUrl },
       });
-      // Also PATCH to ensure server.url is set and any stale assistantId is cleared
-      await vapiRequest('PATCH', `/phone-number/${phoneNumber.id}`, {
-        assistantId: null,
+      // Also PATCH to ensure server.url is set (belt-and-suspenders)
+      const patchResult = await vapiRequest('PATCH', `/phone-number/${phoneNumber.id}`, {
         server: { url: serverUrl },
       });
+      console.log('[vapi] provisioned phone number, server.url confirmed:', patchResult?.server?.url);
       vapiUpdates.vapiPhoneNumberId = phoneNumber.id;
       vapiUpdates.vapiPhoneNumber = phoneNumber.number;
     } else if (vapiConfigured && !finalEnabled && current.vapiPhoneNumberId) {
@@ -167,11 +167,11 @@ export async function PATCH(req: NextRequest) {
       vapiUpdates.vapiPhoneNumberId = null;
       vapiUpdates.vapiPhoneNumber = null;
     } else if (vapiConfigured && finalEnabled && current.vapiPhoneNumberId) {
-      // Already enabled — sync server.url and clear any stale assistantId
-      await vapiRequest('PATCH', `/phone-number/${current.vapiPhoneNumberId}`, {
-        assistantId: null,
+      // Already enabled — sync server.url on every save
+      const syncResult = await vapiRequest('PATCH', `/phone-number/${current.vapiPhoneNumberId}`, {
         server: { url: serverUrl },
-      }).catch((e: any) => console.error('[vapi] Failed to sync phone number server URL:', e));
+      }).catch((e: any) => { console.error('[vapi] Failed to sync phone number server URL:', e); return null; });
+      console.log('[vapi] synced phone number server.url:', syncResult?.server?.url ?? 'error');
     }
 
     const business = await prisma.business.update({
