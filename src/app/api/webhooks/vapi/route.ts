@@ -107,7 +107,7 @@ function buildAssistantConfig(business: BusinessData) {
   const bookingUrl = `${appUrl}/book/${business.publicId}`;
 
   const staffList = business.staff.length > 0
-    ? business.staff.map(s => `- ${s.fullName}${s.role !== 'staff' ? ` (${s.role})` : ''}`).join('\n')
+    ? business.staff.map(s => `- ${s.fullName} (ID: ${s.id}${s.role !== 'staff' ? `, ${s.role}` : ''})`).join('\n')
     : null;
 
   const systemPrompt = `You are the AI receptionist for ${business.name}, a ${business.businessType}.
@@ -119,7 +119,7 @@ ${hoursText}
 
 Services offered (use the ID field when calling tools, never say the ID aloud):
 ${servicesList}
-${staffList ? `\nOur team:\n${staffList}\n` : ''}
+${staffList ? `\nOur team (use the ID field when calling tools, never say the ID aloud):\n${staffList}\n` : ''}
 Location: ${location}
 Online booking: ${bookingUrl}
 
@@ -230,7 +230,7 @@ Your job:
 // ─── Tool: checkAvailability ──────────────────────────────────────────────────
 
 async function handleCheckAvailability(business: BusinessData, args: any): Promise<string> {
-  const { date, serviceId } = args;
+  const { date, serviceId, staffId } = args;
   if (!date) return 'Please specify a date to check availability.';
   if (!serviceId) return 'Please specify a service.';
 
@@ -259,6 +259,7 @@ async function handleCheckAvailability(business: BusinessData, args: any): Promi
       businessId: business.id,
       status: { in: ['pending', 'scheduled', 'confirmed'] },
       startTime: { gte: startOfDay, lte: endOfDay },
+      ...(staffId && { staffId }),
     },
     select: { startTime: true, endTime: true },
   });
