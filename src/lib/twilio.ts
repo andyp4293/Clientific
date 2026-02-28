@@ -20,6 +20,7 @@ interface AppointmentDetails {
   businessName: string;
   duration?: number;
   appointmentUrl?: string;
+  timezone?: string; // IANA timezone, e.g. "America/New_York"
 }
 
 interface CancellationDetails {
@@ -66,16 +67,6 @@ export function isValidPhoneNumber(phone: string): boolean {
   if (!phone) return false;
   const cleaned = phone.replace(/\D/g, '');
   return cleaned.length >= 10 && cleaned.length <= 15;
-}
-
-// Utility: Format date for SMS
-function formatDate(date: Date): string {
-  return date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
 }
 
 // Utility: Format time for SMS
@@ -131,17 +122,17 @@ export const twilioClient = null;
 
 // Template: Appointment Request Received (pending confirmation)
 export function formatAppointmentConfirmationSMS(details: AppointmentDetails): string {
+  const tz = details.timezone || undefined;
   const dateStr = details.dateTime.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
+    weekday: 'long', month: 'long', day: 'numeric', ...(tz && { timeZone: tz }),
   });
-  const timeStr = formatTime(details.dateTime);
+  const timeStr = details.dateTime.toLocaleTimeString('en-US', {
+    hour: 'numeric', minute: '2-digit', hour12: true, ...(tz && { timeZone: tz }),
+  });
+  const staffLine = details.staffName && details.staffName !== 'our team' ? ` with ${details.staffName}` : '';
 
-  const base = `${details.businessName}: Appt request received for ${dateStr} at ${timeStr}. ${details.serviceName}. Awaiting confirmation.`;
-  const msg = details.appointmentUrl
-    ? `${base} Check status: ${details.appointmentUrl}`
-    : base;
+  const base = `${details.businessName}: Hi ${details.customerName}, your ${details.serviceName}${staffLine} appointment has been requested for ${dateStr} at ${timeStr}. We'll send you another text once it's confirmed.`;
+  const msg = details.appointmentUrl ? `${base} You can check your appointment status here:\n${details.appointmentUrl}` : base;
   console.log('📱 SMS body (JSON):', JSON.stringify(msg));
   return msg;
 }
@@ -164,7 +155,6 @@ export function formatAppointmentBusinessConfirmedSMS(details: BusinessConfirmed
 
 // Template: Appointment Reminder (24 hours before) - shortened
 export function formatAppointmentReminderSMS(details: ReminderDetails): string {
-  const dateStr = formatDate(details.dateTime);
   const timeStr = formatTime(details.dateTime);
 
   return `Reminder: Appointment tomorrow at ${details.businessName}. ${details.serviceName} with ${details.staffName} at ${timeStr}.`;

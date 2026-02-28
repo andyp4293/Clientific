@@ -527,20 +527,26 @@ export default function PublicBookingPage() {
                 </div>
 
                 {/* SMS Consent Checkbox */}
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <button
+                  type="button"
+                  onClick={() => setCustomerInfo({ ...customerInfo, smsConsent: !customerInfo.smsConsent })}
+                  className="w-full text-left bg-blue-50 border border-blue-200 rounded-xl p-4"
+                >
                   <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      id="smsConsent"
-                      checked={customerInfo.smsConsent || false}
-                      onChange={(e) => setCustomerInfo({ ...customerInfo, smsConsent: e.target.checked })}
-                      className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                    />
-                    <label htmlFor="smsConsent" className="text-sm text-gray-700 flex-1">
+                    <div className={`mt-0.5 w-5 h-5 flex-shrink-0 rounded border-2 flex items-center justify-center ${
+                      customerInfo.smsConsent ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-400'
+                    }`}>
+                      {customerInfo.smsConsent && (
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-sm text-gray-700 flex-1">
                       <span className="font-medium">Yes, send me SMS appointment reminders and updates.</span> Message and data rates may apply. Message frequency varies. Reply STOP to cancel, HELP for help. This is optional — you can still book without SMS.
-                    </label>
+                    </span>
                   </div>
-                </div>
+                </button>
               </div>
 
               {bookingMutation.isError && (

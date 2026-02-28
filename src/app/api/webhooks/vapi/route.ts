@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { sendSMS } from '@/lib/twilio';
+import { sendAppointmentConfirmation } from '@/lib/twilio';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -416,13 +416,18 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
     : null;
   const withWhom = staffLine ? ` with ${staffLine.fullName}` : '';
 
-  // Send SMS confirmation non-blocking
+  // Send SMS confirmation non-blocking (same template as web booking)
   if (callerPhone) {
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').trim();
     const apptUrl = `${appUrl}/a/${shortId}`;
-    sendSMS({
-      to: callerPhone,
-      message: `${business.name}: Your ${service.name}${withWhom} appointment is booked for ${formattedTime}. View details:\n${apptUrl}`,
+    sendAppointmentConfirmation(callerPhone, {
+      customerName,
+      serviceName: service.name,
+      staffName: staffLine?.fullName || 'our team',
+      dateTime: start,
+      businessName: business.name,
+      timezone: business.timezone,
+      appointmentUrl: apptUrl,
     }).catch((err) => console.error('[vapi] SMS send failed:', err));
   }
 
