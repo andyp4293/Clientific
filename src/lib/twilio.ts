@@ -82,9 +82,10 @@ function formatTime(date: Date): string {
 export async function sendSMS({ to, message }: SendSMSParams): Promise<SMSResult> {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
   const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
 
-  if (!accountSid || !authToken || !twilioPhoneNumber) {
+  if (!accountSid || !authToken || (!messagingServiceSid && !twilioPhoneNumber)) {
     console.log('📱 SMS disabled (Twilio not configured)');
     console.log('Would have sent to:', to);
     console.log('Message:', message);
@@ -102,7 +103,9 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SMSResult
   try {
     const result = await client.messages.create({
       body: message,
-      from: twilioPhoneNumber,
+      ...(messagingServiceSid
+        ? { messagingServiceSid }
+        : { from: twilioPhoneNumber! }),
       to: formattedPhone,
     });
 
@@ -132,8 +135,8 @@ export function formatAppointmentConfirmationSMS(details: AppointmentDetails): s
   const staffLine = details.staffName && details.staffName !== 'our team' ? ` with ${details.staffName}` : '';
 
   const base = `${details.businessName}: Hi ${details.customerName}, your ${details.serviceName}${staffLine} appointment has been requested for ${dateStr} at ${timeStr}. We'll send you another text once it's confirmed.`;
-  const msg = details.appointmentUrl ? `${base} You can check your appointment status here: ${details.appointmentUrl}` : base;
-  console.log('📱 SMS body (JSON):', JSON.stringify(msg));
+  const urlPart = details.appointmentUrl ? ` Check status: ${details.appointmentUrl}` : '';
+  const msg = `${base}${urlPart} Reply STOP to opt out.`;
   return msg;
 }
 

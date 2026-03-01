@@ -150,7 +150,7 @@ Your job:
   - If the requested time is available, say the time back and ask "Can I get your name?"
     If the time is taken, present the 3 closest alternatives and ask which they prefer, then get their name
     If no specific time was given, present the options and ask which they'd like, then get their name
-  - Once you have service, time, and name: call manage_booking with action "createBooking" with serviceId, slotTime (exact ISO from checkAvailability result, the value in parentheses), customerName, and staffId if applicable. Do NOT call createBooking until you have all three.
+  - Once you have service, time, and name: call manage_booking with action "createBooking" with serviceId, slotTime (exact ISO from checkAvailability result, the value in parentheses), customerName, and staffId if applicable. If the caller mentioned anything special at any point (e.g. "it's my birthday", "I'm allergic to lavender", "please have soft music"), include it as the notes field — do not ask for it. Do NOT call createBooking until you have service, time, and name.
   - The tool confirms the booking — relay the confirmation to the caller and always ask "Is there anything else I can help you with?"
   - Wait for their response before ending the call. If they say no (or "nope", "that's all", "I'm good", etc.), say the exact phrase: "Happy to help! Have a wonderful day — goodbye!" then call end_call
 - If they want to VIEW or CANCEL an existing appointment (phrases like "check my appointment", "what's my appointment", "I need to cancel", "cancel my booking"): call manage_booking with action "getAppointments" to show their upcoming bookings, then ask which one to cancel, then call "cancelAppointment" with the appointmentId — never say the appointmentId aloud
@@ -209,6 +209,10 @@ Your job:
                 customerName: {
                   type: 'string',
                   description: "Caller's name — first name is fine — required for createBooking",
+                },
+                notes: {
+                  type: 'string',
+                  description: "Any special requests or notes from the caller — OPTIONAL for createBooking, e.g. 'birthday celebration', 'first time visitor', 'allergic to lavender'",
                 },
                 appointmentId: {
                   type: 'string',
@@ -273,6 +277,17 @@ async function handleCheckAvailability(business: BusinessData, args: any): Promi
   const hours = hoursData?.[dayOfWeek.toString()] ?? (Array.isArray(hoursData) ? hoursData[dayOfWeek] : null);
 
   if (!hours?.isOpen) return `We're closed on that day.`;
+
+  // Check staff working days if a specific staff member was requested
+  if (staffId) {
+    const staffMember = await prisma.staff.findFirst({
+      where: { id: staffId, businessId: business.id },
+      select: { workDays: true, fullName: true },
+    });
+    if (staffMember && !staffMember.workDays.includes(dayOfWeek)) {
+      return `${staffMember.fullName} doesn't work on that day. Would you like to pick a different day or a different staff member?`;
+    }
+  }
 
   const [openHour, openMinute] = hours.openTime.split(':').map(Number);
   const [closeHour, closeMinute] = hours.closeTime.split(':').map(Number);
@@ -360,7 +375,7 @@ async function handleCheckAvailability(business: BusinessData, args: any): Promi
 // ─── Tool: createBooking ──────────────────────────────────────────────────────
 
 async function handleCreateBooking(business: BusinessData, args: any, callerPhone: string): Promise<string> {
-  const { serviceId, slotTime, customerName, staffId } = args;
+  const { serviceId, slotTime, customerName, staffId, notes } = args;
   if (!slotTime) return 'I need the appointment time to book. Which slot works for you?';
   if (!serviceId) return 'I need the service to book.';
   if (!customerName) return 'What is your name?';
@@ -449,6 +464,7 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
             status: 'pending',
             shortId,
             ...(staffId && { staffId }),
+            ...(notes && { notes }),
           },
         });
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });

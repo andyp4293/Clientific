@@ -20,7 +20,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { fullName, email, phone, role, bio, isActive } = body;
+    const { fullName, email, phone, role, bio, isActive, workDays } = body;
 
     // Verify staff belongs to this business
     const existingStaff = await prisma.staff.findUnique({
@@ -40,6 +40,7 @@ export async function PATCH(
         phone,
         role,
         active: isActive,
+        ...(Array.isArray(workDays) && { workDays }),
       },
     });
 

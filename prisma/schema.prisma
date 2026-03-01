@@ -178,6 +178,7 @@ model Staff {
   phone        String?
   role         String        @default("staff")
   active       Boolean       @default(true)
+  workDays     Int[]         @default([0, 1, 2, 3, 4, 5, 6])
   appointments Appointment[]
   checkIns     CheckIn[]
   business     Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)

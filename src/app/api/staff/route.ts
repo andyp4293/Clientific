@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { fullName, email, phone, role, bio } = body;
+    const { fullName, email, phone, role, bio, workDays } = body;
 
     if (!fullName) {
       return NextResponse.json(
@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
         phone: phone || null,
         role: role || null,
         active: true,
+        workDays: Array.isArray(workDays) ? workDays : [0, 1, 2, 3, 4, 5, 6],
       },
     });
 

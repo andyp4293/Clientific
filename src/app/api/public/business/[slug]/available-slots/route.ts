@@ -90,6 +90,17 @@ export async function GET(
 
     console.log('🔍 Checking appointments between:', startOfDay.toISOString(), 'and', endOfDay.toISOString());
 
+    // If a specific staff member is requested, check their working days
+    if (staffId && staffId !== 'anyone') {
+      const staffMember = await prisma.staff.findUnique({
+        where: { id: staffId },
+        select: { workDays: true },
+      });
+      if (staffMember && !staffMember.workDays.includes(dayOfWeek)) {
+        return NextResponse.json({ slots: [], message: 'Staff member is not available on this day' });
+      }
+    }
+
     // Only load appointments for conflict checking when a specific staff member is requested
     const existingAppointments = (staffId && staffId !== 'anyone')
       ? await prisma.appointment.findMany({

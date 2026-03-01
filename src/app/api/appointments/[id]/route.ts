@@ -221,7 +221,7 @@ export async function DELETE(
     }
 
     // Send cancellation SMS
-    if (appointment.customer.phone) {
+    if (appointment.customer.phone && appointment.customer.smsConsent && !appointment.customer.smsOptedOut) {
       await sendAppointmentCancellation(appointment.customer.phone, {
         customerName: appointment.customer.name,
         serviceName: appointment.service?.name || 'Appointment',

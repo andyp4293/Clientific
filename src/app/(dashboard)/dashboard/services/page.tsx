@@ -12,6 +12,9 @@ interface Service {
   isActive: boolean;
 }
 
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
+
 interface Staff {
   id: string;
   fullName: string;
@@ -20,6 +23,7 @@ interface Staff {
   role: string | null;
   bio: string | null;
   isActive: boolean;
+  workDays: number[];
 }
 
 type Tab = 'services' | 'staff';
@@ -182,6 +186,23 @@ function StaffTab({
             )}
           </div>
 
+          {member.workDays && member.workDays.length < 7 && (
+            <div className="flex flex-wrap gap-1 mb-3">
+              {DAY_LABELS.map((label, i) => (
+                <span
+                  key={i}
+                  className={`px-1.5 py-0.5 text-xs rounded font-medium ${
+                    member.workDays.includes(i)
+                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+                      : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500 line-through'
+                  }`}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          )}
+
           <div className="flex gap-2">
             <button
               onClick={() => onEdit(member)}
@@ -230,6 +251,7 @@ export default function ServicesPage() {
     role: '',
     bio: '',
     isActive: true,
+    workDays: ALL_DAYS,
   });
 
   // Fetch services
@@ -369,6 +391,7 @@ export default function ServicesPage() {
         role: staffMember.role || '',
         bio: staffMember.bio || '',
         isActive: staffMember.isActive,
+        workDays: staffMember.workDays ?? ALL_DAYS,
       });
     } else {
       setEditingStaff(null);
@@ -379,6 +402,7 @@ export default function ServicesPage() {
         role: '',
         bio: '',
         isActive: true,
+        workDays: ALL_DAYS,
       });
     }
     setModalType('staff');
@@ -703,6 +727,32 @@ export default function ServicesPage() {
                   rows={3}
                   placeholder="Brief description about this staff member..."
                 />
+              </div>
+
+              <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Working Days</p>
+                <div className="flex flex-wrap gap-2">
+                  {DAY_LABELS.map((label, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => {
+                        const current = staffFormData.workDays;
+                        const next = current.includes(i)
+                          ? current.filter(d => d !== i)
+                          : [...current, i].sort((a, b) => a - b);
+                        setStaffFormData({ ...staffFormData, workDays: next });
+                      }}
+                      className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors ${
+                        staffFormData.workDays.includes(i)
+                          ? 'bg-primary text-white border-primary'
+                          : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:border-gray-400'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">

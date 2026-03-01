@@ -196,7 +196,7 @@ export async function POST(
     const appointmentUrl = `${appBase}/a/${shortId}`;
     const serviceName = services.map(s => s.name).join(', ');
     let smsResult = null;
-    if (customer.phone && smsConsent) {
+    if (customer.phone && smsConsent && !customer.smsOptedOut) {
       smsResult = await sendAppointmentConfirmation(customer.phone, {
         customerName: customer.name,
         serviceName,

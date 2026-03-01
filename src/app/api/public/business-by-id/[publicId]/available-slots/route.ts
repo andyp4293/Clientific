@@ -95,7 +95,18 @@ export async function GET(
 
     // Get existing appointments for this day (in business timezone)
     const startOfDay = businessTimeToUTC(date, 0, 0, business.timezone);
-    const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1);    // Only load appointments for conflict checking when a specific staff member is requested
+    const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1);    // If a specific staff member is requested, check their working days
+    if (staffId && staffId !== 'anyone') {
+      const staffMember = await prisma.staff.findUnique({
+        where: { id: staffId },
+        select: { workDays: true },
+      });
+      if (staffMember && !staffMember.workDays.includes(dayOfWeek)) {
+        return NextResponse.json({ slots: [], message: 'Staff member is not available on this day' });
+      }
+    }
+
+    // Only load appointments for conflict checking when a specific staff member is requested
     const existingAppointments = (staffId && staffId !== 'anyone')
       ? await prisma.appointment.findMany({
           where: {

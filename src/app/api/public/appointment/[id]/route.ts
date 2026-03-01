@@ -66,7 +66,7 @@ export async function PATCH(
       status: true,
       startTime: true,
       service: { select: { name: true } },
-      customer: { select: { name: true, phone: true } },
+      customer: { select: { name: true, phone: true, smsConsent: true, smsOptedOut: true } },
       business: { select: { name: true, timezone: true } },
       businessId: true,
       duration: true,
@@ -105,7 +105,7 @@ export async function PATCH(
       data: { startTime: newStart, endTime: newEnd },
     });
 
-    if (existing.customer.phone) {
+    if (existing.customer.phone && existing.customer.smsConsent && !existing.customer.smsOptedOut) {
       sendAppointmentRescheduled(existing.customer.phone, {
         customerName: existing.customer.name,
         serviceName: existing.service?.name || 'Appointment',
@@ -129,7 +129,7 @@ export async function PATCH(
   });
 
   // Send cancellation SMS to customer
-  if (existing.customer.phone) {
+  if (existing.customer.phone && existing.customer.smsConsent && !existing.customer.smsOptedOut) {
     sendAppointmentCancellation(existing.customer.phone, {
       customerName: existing.customer.name,
       serviceName: existing.service?.name || 'Appointment',
