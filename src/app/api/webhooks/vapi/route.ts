@@ -147,7 +147,7 @@ Your job:
       `Hi, thank you for calling ${business.name}. How can I help you today?`,
     model: {
       provider: 'anthropic',
-      model: 'claude-sonnet-4-5',
+      model: 'claude-3-5-sonnet-20241022',
       temperature: 0.4,
       messages: [{ role: 'system', content: systemPrompt }],
       tools: [
