@@ -92,42 +92,44 @@ export async function POST(
     const start = new Date(startTime);
     const end = new Date(start.getTime() + duration * 60000);
 
-    // Check for conflicts (including pending appointments)
-    const conflicts = await prisma.appointment.findMany({
-      where: {
-        businessId: business.id,
-        status: {
-          in: ['pending', 'scheduled', 'confirmed'],
+    // Check for conflicts — only when a specific staff member is requested
+    if (staffId && staffId !== 'anyone') {
+      const conflicts = await prisma.appointment.findMany({
+        where: {
+          businessId: business.id,
+          staffId,
+          status: {
+            in: ['pending', 'scheduled', 'confirmed'],
+          },
+          OR: [
+            {
+              AND: [
+                { startTime: { lte: start } },
+                { endTime: { gt: start } },
+              ],
+            },
+            {
+              AND: [
+                { startTime: { lt: end } },
+                { endTime: { gte: end } },
+              ],
+            },
+            {
+              AND: [
+                { startTime: { gte: start } },
+                { endTime: { lte: end } },
+              ],
+            },
+          ],
         },
-        ...(staffId && staffId !== 'anyone' && { staffId }),
-        OR: [
-          {
-            AND: [
-              { startTime: { lte: start } },
-              { endTime: { gt: start } },
-            ],
-          },
-          {
-            AND: [
-              { startTime: { lt: end } },
-              { endTime: { gte: end } },
-            ],
-          },
-          {
-            AND: [
-              { startTime: { gte: start } },
-              { endTime: { lte: end } },
-            ],
-          },
-        ],
-      },
-    });
+      });
 
-    if (conflicts.length > 0) {
-      return NextResponse.json(
-        { error: 'Time slot is no longer available' },
-        { status: 409 }
-      );
+      if (conflicts.length > 0) {
+        return NextResponse.json(
+          { error: 'Time slot is no longer available' },
+          { status: 409 }
+        );
+      }
     }
 
     // Find or create customer

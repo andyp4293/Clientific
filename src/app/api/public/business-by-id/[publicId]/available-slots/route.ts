@@ -95,19 +95,22 @@ export async function GET(
 
     // Get existing appointments for this day (in business timezone)
     const startOfDay = businessTimeToUTC(date, 0, 0, business.timezone);
-    const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1);    const existingAppointments = await prisma.appointment.findMany({
-      where: {
-        businessId: business.id,
-        status: {
-          in: ['pending', 'scheduled', 'confirmed'],
-        },
-        startTime: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
-        ...(staffId && staffId !== 'anyone' && { staffId }),
-      },
-    });
+    const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1);    // Only load appointments for conflict checking when a specific staff member is requested
+    const existingAppointments = (staffId && staffId !== 'anyone')
+      ? await prisma.appointment.findMany({
+          where: {
+            businessId: business.id,
+            staffId,
+            status: {
+              in: ['pending', 'scheduled', 'confirmed'],
+            },
+            startTime: {
+              gte: startOfDay,
+              lte: endOfDay,
+            },
+          },
+        })
+      : [];
 
     console.log('Existing appointments:', existingAppointments.length);
 

@@ -90,19 +90,22 @@ export async function GET(
 
     console.log('🔍 Checking appointments between:', startOfDay.toISOString(), 'and', endOfDay.toISOString());
 
-    const existingAppointments = await prisma.appointment.findMany({
-      where: {
-        businessId: business.id,
-        status: {
-          in: ['pending', 'scheduled', 'confirmed'],
-        },
-        startTime: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
-        ...(staffId && staffId !== 'anyone' && { staffId }),
-      },
-    });    console.log('📋 Existing appointments:', existingAppointments.length);
+    // Only load appointments for conflict checking when a specific staff member is requested
+    const existingAppointments = (staffId && staffId !== 'anyone')
+      ? await prisma.appointment.findMany({
+          where: {
+            businessId: business.id,
+            staffId,
+            status: {
+              in: ['pending', 'scheduled', 'confirmed'],
+            },
+            startTime: {
+              gte: startOfDay,
+              lte: endOfDay,
+            },
+          },
+        })
+      : [];    console.log('📋 Existing appointments:', existingAppointments.length);
 
     // Generate time slots
     const slots: string[] = [];

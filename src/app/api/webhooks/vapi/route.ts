@@ -276,7 +276,8 @@ async function handleCheckAvailability(business: BusinessData, args: any): Promi
       if (slotEndTime > closeTime) continue;
       if (slotTime < now) continue;
 
-      const hasConflict = existingAppointments.some(apt => {
+      // Only filter by conflicts when a specific staff member was requested
+      const hasConflict = staffId && existingAppointments.some(apt => {
         const aptStart = new Date(apt.startTime);
         const aptEnd = new Date(apt.endTime);
         return (
@@ -323,19 +324,22 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
   if (isNaN(start.getTime())) return 'Invalid time slot. Please check availability again.';
   const end = new Date(start.getTime() + service.duration * 60000);
 
-  // Conflict check
-  const conflicts = await prisma.appointment.count({
-    where: {
-      businessId: business.id,
-      status: { in: ['pending', 'scheduled', 'confirmed'] },
-      OR: [
-        { AND: [{ startTime: { lte: start } }, { endTime: { gt: start } }] },
-        { AND: [{ startTime: { lt: end } }, { endTime: { gte: end } }] },
-        { AND: [{ startTime: { gte: start } }, { endTime: { lte: end } }] },
-      ],
-    },
-  });
-  if (conflicts > 0) return 'That time was just taken — let me check what else is open. What date works for you?';
+  // Conflict check — only when a specific staff member was requested
+  if (staffId) {
+    const conflicts = await prisma.appointment.count({
+      where: {
+        businessId: business.id,
+        staffId,
+        status: { in: ['pending', 'scheduled', 'confirmed'] },
+        OR: [
+          { AND: [{ startTime: { lte: start } }, { endTime: { gt: start } }] },
+          { AND: [{ startTime: { lt: end } }, { endTime: { gte: end } }] },
+          { AND: [{ startTime: { gte: start } }, { endTime: { lte: end } }] },
+        ],
+      },
+    });
+    if (conflicts > 0) return 'That time was just taken — let me check what else is open. What date works for you?';
+  }
 
   // Find or create customer first (outside the booking transaction — not race-sensitive)
   const phone = callerPhone || null;
@@ -365,18 +369,22 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       await prisma.$transaction(async (tx) => {
-        const txConflicts = await tx.appointment.count({
-          where: {
-            businessId: business.id,
-            status: { in: ['pending', 'scheduled', 'confirmed'] },
-            OR: [
-              { AND: [{ startTime: { lte: start } }, { endTime: { gt: start } }] },
-              { AND: [{ startTime: { lt: end } }, { endTime: { gte: end } }] },
-              { AND: [{ startTime: { gte: start } }, { endTime: { lte: end } }] },
-            ],
-          },
-        });
-        if (txConflicts > 0) throw new Error('SLOT_TAKEN');
+        // Only check for conflicts when a specific staff member was requested
+        if (staffId) {
+          const txConflicts = await tx.appointment.count({
+            where: {
+              businessId: business.id,
+              staffId,
+              status: { in: ['pending', 'scheduled', 'confirmed'] },
+              OR: [
+                { AND: [{ startTime: { lte: start } }, { endTime: { gt: start } }] },
+                { AND: [{ startTime: { lt: end } }, { endTime: { gte: end } }] },
+                { AND: [{ startTime: { gte: start } }, { endTime: { lte: end } }] },
+              ],
+            },
+          });
+          if (txConflicts > 0) throw new Error('SLOT_TAKEN');
+        }
 
         await tx.appointment.create({
           data: {

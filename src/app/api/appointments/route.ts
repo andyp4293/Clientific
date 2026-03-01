@@ -112,42 +112,44 @@ export async function POST(req: NextRequest) {
     const start = new Date(startTime);
     const end = new Date(start.getTime() + duration * 60000);
 
-    // Check for conflicts
-    const conflicts = await prisma.appointment.findMany({
-      where: {
-        businessId: business.id,
-        status: {
-          in: ['scheduled', 'confirmed'],
+    // Check for conflicts — only when a specific staff member is assigned
+    if (staffId) {
+      const conflicts = await prisma.appointment.findMany({
+        where: {
+          businessId: business.id,
+          staffId,
+          status: {
+            in: ['scheduled', 'confirmed'],
+          },
+          OR: [
+            {
+              AND: [
+                { startTime: { lte: start } },
+                { endTime: { gt: start } },
+              ],
+            },
+            {
+              AND: [
+                { startTime: { lt: end } },
+                { endTime: { gte: end } },
+              ],
+            },
+            {
+              AND: [
+                { startTime: { gte: start } },
+                { endTime: { lte: end } },
+              ],
+            },
+          ],
         },
-        ...(staffId && { staffId }),
-        OR: [
-          {
-            AND: [
-              { startTime: { lte: start } },
-              { endTime: { gt: start } },
-            ],
-          },
-          {
-            AND: [
-              { startTime: { lt: end } },
-              { endTime: { gte: end } },
-            ],
-          },
-          {
-            AND: [
-              { startTime: { gte: start } },
-              { endTime: { lte: end } },
-            ],
-          },
-        ],
-      },
-    });
+      });
 
-    if (conflicts.length > 0) {
-      return NextResponse.json(
-        { error: 'Time slot is not available' },
-        { status: 409 }
-      );
+      if (conflicts.length > 0) {
+        return NextResponse.json(
+          { error: 'Time slot is not available' },
+          { status: 409 }
+        );
+      }
     }    const appointment = await prisma.appointment.create({
       data: {
         businessId: business.id,
