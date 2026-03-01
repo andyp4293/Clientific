@@ -56,16 +56,16 @@ function PricingContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-100">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-100 dark:from-gray-900 dark:to-gray-800">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-xl">C</span>
               </div>
-              <span className="text-xl font-bold text-gray-900">ClientFlow</span>
+              <span className="text-xl font-bold text-gray-900 dark:text-white">ClientFlow</span>
             </Link>
             <div className="flex items-center space-x-4">
               {isAuthenticated ? (
@@ -86,22 +86,22 @@ function PricingContent() {
       {/* Pricing Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         <div className="text-center mb-8 sm:mb-12">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">
             Simple, Transparent Pricing
           </h1>
-          <p className="text-lg sm:text-xl text-gray-600 mb-6 sm:mb-8">
+          <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-6 sm:mb-8">
             Choose the plan that&apos;s right for your business. Start with a 14-day free trial.
           </p>
 
           {/* Billing Toggle */}
           <div className="flex items-center justify-center space-x-4">
-            <span className={`text-sm font-medium ${billingPeriod === 'monthly' ? 'text-gray-900' : 'text-gray-500'}`}>
+            <span className={`text-sm font-medium ${billingPeriod === 'monthly' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
               Monthly
             </span>
             <button
               onClick={() => setBillingPeriod(billingPeriod === 'monthly' ? 'yearly' : 'monthly')}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
-                billingPeriod === 'yearly' ? 'bg-primary' : 'bg-gray-200'
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
+                billingPeriod === 'yearly' ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-600'
               }`}
             >
               <span
@@ -110,7 +110,7 @@ function PricingContent() {
                 }`}
               />
             </button>
-            <span className={`text-sm font-medium ${billingPeriod === 'yearly' ? 'text-gray-900' : 'text-gray-500'}`}>
+            <span className={`text-sm font-medium ${billingPeriod === 'yearly' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
               Yearly
               <span className="ml-1 text-xs text-success font-semibold">(Save 20%)</span>
             </span>
@@ -139,13 +139,13 @@ function PricingContent() {
                 )}
 
                 <div className="text-center mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{plan.name}</h3>
                   <div className="flex items-baseline justify-center mb-1">
-                    <span className="text-4xl font-bold text-gray-900">${displayPrice}</span>
-                    <span className="text-gray-600 ml-2">/month</span>
+                    <span className="text-4xl font-bold text-gray-900 dark:text-white">${displayPrice}</span>
+                    <span className="text-gray-600 dark:text-gray-300 ml-2">/month</span>
                   </div>
                   {billingPeriod === 'yearly' && (
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       Billed ${displayPrice * 12}/year
                     </p>
                   )}
@@ -165,7 +165,7 @@ function PricingContent() {
                           clipRule="evenodd"
                         />
                       </svg>
-                      <span className="text-sm text-gray-700">{feature}</span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{feature}</span>
                     </li>
                   ))}
                 </ul>
@@ -176,7 +176,7 @@ function PricingContent() {
                   className={`block w-full text-center py-3 px-4 rounded-lg font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
                     plan.popular
                       ? 'bg-primary text-white hover:bg-primary-700'
-                      : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                      : 'bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600'
                   }`}
                 >
                   {isLoading
@@ -192,10 +192,10 @@ function PricingContent() {
 
         {/* Footer note */}
         <div className="mt-16 text-center">
-          <p className="text-gray-600 mb-2">
+          <p className="text-gray-600 dark:text-gray-300 mb-2">
             All plans include a 14-day free trial. No credit card required to start.
           </p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             Need a custom plan?{' '}
             <a href="mailto:sales@clientflow.com" className="text-primary hover:underline">
               Contact sales
