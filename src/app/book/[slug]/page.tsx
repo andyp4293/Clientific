@@ -591,7 +591,7 @@ export default function PublicBookingPage() {
               {selectedServices.length === 1 ? (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Service:</span>
-                  <span className="font-medium">{selectedServices[0].name}</span>
+                  <span className="font-medium text-gray-900">{selectedServices[0].name}</span>
                 </div>
               ) : (
                 <div>
@@ -599,7 +599,7 @@ export default function PublicBookingPage() {
                   <ul className="space-y-1">
                     {selectedServices.map(s => (
                       <li key={s.id} className="flex justify-between">
-                        <span className="font-medium ml-2">{s.name}</span>
+                        <span className="font-medium text-gray-900 ml-2">{s.name}</span>
                         {s.price != null && s.price > 0 && (
                           <span className="text-gray-600">${s.price.toFixed(2)}</span>
                         )}
@@ -612,7 +612,7 @@ export default function PublicBookingPage() {
               {step >= 3 && selectedStaff && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Staff:</span>
-                  <span className="font-medium">
+                  <span className="font-medium text-gray-900">
                     {selectedStaff === 'anyone'
                       ? 'Anyone Available'
                       : staff.find(s => s.id === selectedStaff)?.fullName}
@@ -624,7 +624,7 @@ export default function PublicBookingPage() {
                 <>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Date:</span>
-                    <span className="font-medium">
+                    <span className="font-medium text-gray-900">
                       {new Date(selectedTime).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
@@ -633,7 +633,7 @@ export default function PublicBookingPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Time:</span>
-                    <span className="font-medium">
+                    <span className="font-medium text-gray-900">
                       {new Date(selectedTime).toLocaleTimeString('en-US', {
                         hour: 'numeric',
                         minute: '2-digit',
@@ -646,7 +646,7 @@ export default function PublicBookingPage() {
 
               <div className="flex justify-between">
                 <span className="text-gray-600">Duration:</span>
-                <span className="font-medium">{totalDuration} min</span>
+                <span className="font-medium text-gray-900">{totalDuration} min</span>
               </div>
 
               {hasPrices && (
