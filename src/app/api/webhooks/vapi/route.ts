@@ -50,6 +50,22 @@ function formatBusinessHours(hours: any): string {
   }
 }
 
+// ─── Time string parser ───────────────────────────────────────────────────────
+// Parses human-readable times like "3 PM", "3:30 PM", "15:00", "10am"
+
+function parseTimeString(timeStr: string): { hour: number; minute: number } | null {
+  const normalized = timeStr.trim().toUpperCase().replace(/\./g, '');
+  const match = normalized.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/);
+  if (!match) return null;
+  let hour = parseInt(match[1], 10);
+  const minute = parseInt(match[2] ?? '0', 10);
+  const meridiem = match[3];
+  if (meridiem === 'PM' && hour !== 12) hour += 12;
+  if (meridiem === 'AM' && hour === 12) hour = 0;
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+  return { hour, minute };
+}
+
 // ─── Timezone-aware slot conversion ──────────────────────────────────────────
 
 function businessTimeToUTC(dateStr: string, hour: number, minute: number, timezone: string): Date {
@@ -128,10 +144,14 @@ Your job:
 - If the caller wants to book an appointment:
   1. Ask which service they want
   2. Ask if they have a preference for a specific staff member (mention staff names if available, otherwise say "any available")
-  3. Ask for their preferred date
-  4. Call manage_booking with action "checkAvailability" (include staffId if they chose someone)
-  5. Present available times naturally (e.g. "I have 9 AM, 10:30 AM, and 2 PM open")
-  6. Once they pick a slot, say "Can I get your name?" — wait for their response — then call manage_booking with action "createBooking" with: slotTime set to the exact ISO datetime string from the checkAvailability result (the value in parentheses), customerName, and staffId (if the caller chose a staff member in step 2). Do NOT call createBooking until you have their name.
+  3. Ask for their preferred date and time
+  4. Call manage_booking with action "checkAvailability" — include the date, serviceId, and:
+     - If they named a specific time (e.g. "3 PM", "10:30 AM"), include it as requestedTime
+     - If they named a staff member, include staffId
+  5. If the requested time is available, the tool confirms it — say the time back and ask "Can I get your name?"
+     If the time is taken, the tool returns 3 closest alternatives — present those and ask which they prefer, then get their name
+     If no specific time was given, present the options naturally and ask which they'd like, then get their name
+  6. Once you have a confirmed time slot and the caller's name, call manage_booking with action "createBooking" with: slotTime set to the exact ISO datetime string from the checkAvailability result (the value in parentheses), customerName, and staffId (if applicable). Do NOT call createBooking until you have their name.
   7. The tool will confirm the booking and ask "Is there anything else I can help you with?" — say that to the caller
   8. If the caller says no (or "nope", "that's all", "I'm good", etc.), say a warm closing (e.g. "Perfect! We look forward to seeing you. Have a great day — goodbye!") then call end_call
 - If they want to cancel or check their appointments: call manage_booking with action "getAppointments" to show their upcoming bookings, then ask which one to cancel, then call "cancelAppointment" with the appointmentId — never say the appointmentId aloud
@@ -167,6 +187,10 @@ Your job:
                 date: {
                   type: 'string',
                   description: 'Date in YYYY-MM-DD format — required for checkAvailability',
+                },
+                requestedTime: {
+                  type: 'string',
+                  description: 'Specific time the caller asked for, e.g. "3 PM" or "10:30 AM" — optional for checkAvailability. If provided, checks that exact slot and returns 3 closest alternatives if taken.',
                 },
                 serviceId: {
                   type: 'string',
@@ -293,18 +317,42 @@ async function handleCheckAvailability(business: BusinessData, args: any): Promi
 
   if (slots.length === 0) return `No available slots on ${date} for ${service.name}.`;
 
-  // Build label+ISO for every slot so the AI has all ISOs when the caller names any time
-  const allSlotsWithIso = slots.map(iso => {
-    const label = new Date(iso).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      timeZone: business.timezone,
+  function slotLabel(iso: string) {
+    return new Date(iso).toLocaleTimeString('en-US', {
+      hour: 'numeric', minute: '2-digit', timeZone: business.timezone,
     });
-    return `${label} (${iso})`;
-  });
-  const spokenTimes = allSlotsWithIso.slice(0, 4).map(s => s.split(' (')[0]);
-  const extraCount = slots.length > 4 ? ` and ${slots.length - 4} more` : '';
-  return `Available for ${service.name} on ${date}: ${spokenTimes.join(', ')}${extraCount}. All slots: ${allSlotsWithIso.join(', ')}. Which time works for you?`;
+  }
+
+  const { requestedTime } = args;
+
+  if (requestedTime) {
+    const parsed = parseTimeString(requestedTime);
+    if (!parsed) return `I didn't catch that time — what time were you thinking?`;
+
+    const requestedSlot = businessTimeToUTC(date, parsed.hour, parsed.minute, business.timezone);
+    const requestedISO = requestedSlot.toISOString();
+
+    if (slots.includes(requestedISO)) {
+      const label = slotLabel(requestedISO);
+      return `${label} is available for ${service.name}. Slot: ${label} (${requestedISO}). What is your name?`;
+    }
+
+    // Not available — return 3 closest available times
+    const closest = slots
+      .map(iso => ({ iso, diff: Math.abs(new Date(iso).getTime() - requestedSlot.getTime()) }))
+      .sort((a, b) => a.diff - b.diff)
+      .slice(0, 3)
+      .map(({ iso }) => `${slotLabel(iso)} (${iso})`);
+
+    const requestedLabel = slotLabel(requestedISO);
+    return `Sorry, ${requestedLabel} isn't available. The closest times I have are: ${closest.join(', ')}. Which works for you?`;
+  }
+
+  // No specific time — return first 4 with ISOs for the AI
+  const firstFour = slots.slice(0, 4).map(iso => `${slotLabel(iso)} (${iso})`);
+  const extra = slots.length > 4 ? ` and ${slots.length - 4} more` : '';
+  const spokenTimes = firstFour.map(s => s.split(' (')[0]);
+  return `Available for ${service.name} on ${date}: ${spokenTimes.join(', ')}${extra}. All slots: ${firstFour.join(', ')}. Which time works for you?`;
 }
 
 // ─── Tool: createBooking ──────────────────────────────────────────────────────
