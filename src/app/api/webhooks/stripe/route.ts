@@ -5,7 +5,9 @@ import { stripe, PRICING_PLANS } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
 
 function getPlanFromPriceId(priceId: string): string | null {
-  const entry = Object.entries(PRICING_PLANS).find(([, plan]) => plan.priceId === priceId);
+  const entry = Object.entries(PRICING_PLANS).find(
+    ([, plan]) => plan.priceId === priceId || plan.yearlyPriceId === priceId
+  );
   return entry ? entry[0].toLowerCase() : null;
 }
 
@@ -169,22 +171,35 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   });
 
   if (!business) return;
-  // Save payment record
-  await prisma.payment.create({
-    data: {
-      businessId: business.id,
-      amount: invoice.amount_paid,
-      currency: invoice.currency,
-      status: 'succeeded',
-      stripePaymentId: (invoice as any).payment_intent as string || invoice.id,
-      stripeInvoiceId: invoice.id,
-      description: invoice.lines.data[0]?.description || 'Subscription payment',
-      receiptUrl: invoice.hosted_invoice_url || null,
-    },
-  });
-  // Save invoice
-  await prisma.invoice.create({
-    data: {
+
+  const paymentIntentId = (invoice as any).payment_intent as string | null;
+
+  // Only save a payment record for non-zero invoices with a payment intent
+  if (invoice.amount_paid > 0 && paymentIntentId) {
+    await prisma.payment.upsert({
+      where: { stripePaymentId: paymentIntentId },
+      create: {
+        businessId: business.id,
+        amount: invoice.amount_paid,
+        currency: invoice.currency,
+        status: 'succeeded',
+        stripePaymentId: paymentIntentId,
+        stripeInvoiceId: invoice.id,
+        description: invoice.lines.data[0]?.description || 'Subscription payment',
+        receiptUrl: invoice.hosted_invoice_url || null,
+      },
+      update: {},
+    });
+  }
+
+  // Save invoice record (upsert to handle webhook retries)
+  const paidAt = invoice.status_transitions.paid_at
+    ? new Date(invoice.status_transitions.paid_at * 1000)
+    : new Date();
+
+  await prisma.invoice.upsert({
+    where: { stripeInvoiceId: invoice.id },
+    create: {
       businessId: business.id,
       stripeInvoiceId: invoice.id,
       amount: invoice.amount_paid,
@@ -194,8 +209,9 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
       periodEnd: new Date(invoice.lines.data[0]?.period?.end ? invoice.lines.data[0].period.end * 1000 : Date.now()),
       invoicePdf: invoice.invoice_pdf || null,
       hostedInvoiceUrl: invoice.hosted_invoice_url || null,
-      paidAt: new Date(invoice.status_transitions.paid_at! * 1000),
+      paidAt,
     },
+    update: {},
   });
 }
 

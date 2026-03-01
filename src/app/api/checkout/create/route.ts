@@ -59,6 +59,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Only give trial to first-time subscribers; returning customers pay immediately
+    // to prevent exploitation of multiple free trials.
+    const isFirstTime = !business.stripeSubscriptionId;
+
     // Create Checkout Session
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -71,7 +75,7 @@ export async function POST(req: NextRequest) {
         },
       ],
       subscription_data: {
-        trial_period_days: 14,
+        ...(isFirstTime && { trial_period_days: 14 }),
         metadata: {
           businessId: business.id,
           plan,
