@@ -293,17 +293,18 @@ async function handleCheckAvailability(business: BusinessData, args: any): Promi
 
   if (slots.length === 0) return `No available slots on ${date} for ${service.name}.`;
 
-  const formatted = slots.slice(0, 6).map(iso =>
-    new Date(iso).toLocaleTimeString('en-US', {
+  // Build label+ISO for every slot so the AI has all ISOs when the caller names any time
+  const allSlotsWithIso = slots.map(iso => {
+    const label = new Date(iso).toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
       timeZone: business.timezone,
-    })
-  );
-  const more = slots.length > 6 ? ` and ${slots.length - 6} more` : '';
-  // Return available slots with their ISO times so the AI can pass them to createBooking
-  const slotsWithIso = slots.slice(0, 6).map((iso, i) => `${formatted[i]} (${iso})`);
-  return `Available for ${service.name} on ${date}: ${slotsWithIso.join(', ')}${more}. Which time works for you?`;
+    });
+    return `${label} (${iso})`;
+  });
+  const spokenTimes = allSlotsWithIso.slice(0, 4).map(s => s.split(' (')[0]);
+  const extraCount = slots.length > 4 ? ` and ${slots.length - 4} more` : '';
+  return `Available for ${service.name} on ${date}: ${spokenTimes.join(', ')}${extraCount}. All slots: ${allSlotsWithIso.join(', ')}. Which time works for you?`;
 }
 
 // ─── Tool: createBooking ──────────────────────────────────────────────────────
