@@ -186,19 +186,19 @@ Your job:
                 },
                 date: {
                   type: 'string',
-                  description: 'Date in YYYY-MM-DD format — required for checkAvailability',
+                  description: 'Date in YYYY-MM-DD format — REQUIRED for checkAvailability; omit for other actions',
                 },
                 requestedTime: {
                   type: 'string',
-                  description: 'Specific time the caller asked for, e.g. "3 PM" or "10:30 AM" — optional for checkAvailability. If provided, checks that exact slot and returns 3 closest alternatives if taken.',
+                  description: 'Specific time the caller asked for, e.g. "3 PM" or "10:30 AM" — OPTIONAL for checkAvailability. If provided, checks that exact slot and returns the 3 closest alternatives if taken.',
                 },
                 serviceId: {
                   type: 'string',
-                  description: 'Service ID from the services list — required for checkAvailability and createBooking',
+                  description: 'Service ID from the services list — REQUIRED for checkAvailability and createBooking; omit for other actions',
                 },
                 staffId: {
                   type: 'string',
-                  description: 'Staff member ID if the caller requested a specific person — optional',
+                  description: 'Staff member ID — OPTIONAL for checkAvailability and createBooking; only include if the caller requested a specific staff member',
                 },
                 slotTime: {
                   type: 'string',
