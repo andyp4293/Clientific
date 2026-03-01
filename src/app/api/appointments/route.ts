@@ -4,6 +4,14 @@ import { authOptions } from '../auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { sendAppointmentConfirmation } from '@/lib/twilio';
 
+function businessMidnightUTC(dateStr: string, timezone: string): Date {
+  const localStr = `${dateStr}T00:00:00`;
+  const naiveUTC = new Date(localStr + 'Z');
+  const inBizTz = new Date(naiveUTC.toLocaleString('en-US', { timeZone: timezone }));
+  const offsetMs = naiveUTC.getTime() - inBizTz.getTime();
+  return new Date(naiveUTC.getTime() + offsetMs);
+}
+
 // GET - List appointments
 export async function GET(req: NextRequest) {
   try {
@@ -29,12 +37,8 @@ export async function GET(req: NextRequest) {
     const where: any = { businessId: business.id };
 
     if (date) {
-      const selectedDate = new Date(date);
-      const startOfDay = new Date(selectedDate);
-      startOfDay.setHours(0, 0, 0, 0);
-      
-      const endOfDay = new Date(selectedDate);
-      endOfDay.setHours(23, 59, 59, 999);
+      const startOfDay = businessMidnightUTC(date, business.timezone);
+      const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1);
 
       where.startTime = {
         gte: startOfDay,

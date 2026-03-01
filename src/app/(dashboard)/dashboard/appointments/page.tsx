@@ -41,10 +41,12 @@ export default function AppointmentsPage() {
   const [showNewModal, setShowNewModal] = useState(false);
   const queryClient = useQueryClient();
 
+  const localDateStr = selectedDate.toLocaleDateString('en-CA'); // YYYY-MM-DD in local timezone
+
   const { data, isLoading } = useQuery({
-    queryKey: ['appointments', selectedDate.toISOString().split('T')[0]],
+    queryKey: ['appointments', localDateStr],
     queryFn: async () => {
-      const res = await fetch(`/api/appointments?date=${selectedDate.toISOString().split('T')[0]}`);
+      const res = await fetch(`/api/appointments?date=${localDateStr}`);
       if (!res.ok) throw new Error('Failed to fetch appointments');
       return res.json();
     },
@@ -351,7 +353,7 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
     customerId: '',
     serviceId: '',
     staffId: '',
-    date: selectedDate.toISOString().split('T')[0],
+    date: selectedDate.toLocaleDateString('en-CA'),
     time: '',
     duration: 60,
     notes: '',
@@ -451,8 +453,8 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
   const startTime = new Date(appointment.startTime);
 
   const [formData, setFormData] = useState({
-    date: startTime.toISOString().split('T')[0],
-    time: startTime.toTimeString().slice(0, 5),
+    date: startTime.toLocaleDateString('en-CA'),
+    time: `${String(startTime.getHours()).padStart(2, '0')}:${String(startTime.getMinutes()).padStart(2, '0')}`,
     duration: appointment.duration,
     notes: appointment.notes || '',
     status: appointment.status,
