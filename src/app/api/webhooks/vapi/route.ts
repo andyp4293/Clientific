@@ -146,8 +146,8 @@ Your job:
     firstMessage: business.aiReceptionistGreeting ||
       `Hi, thank you for calling ${business.name}. How can I help you today?`,
     model: {
-      provider: 'openai',
-      model: 'gpt-5.2',
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-5',
       temperature: 0.4,
       messages: [{ role: 'system', content: systemPrompt }],
       tools: [
