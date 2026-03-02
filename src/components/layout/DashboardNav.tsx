@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { ReactElement } from 'react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: 'home' },
@@ -114,7 +115,14 @@ export function DashboardNav() {
             </Link>
           );
         })}
-      </nav>      {/* User Profile */}
+      </nav>
+
+      {/* Notification Bell */}
+      <div className="px-4 pb-2 flex justify-end">
+        <NotificationBell />
+      </div>
+
+      {/* User Profile */}
       {status !== 'loading' && (
         <div className="border-t border-gray-200 dark:border-gray-700 p-4">
           <div className="flex items-center mb-3">

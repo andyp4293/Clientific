@@ -3,13 +3,25 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import Link from "next/link";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
 import EditCustomerModal from "./EditCustomerModal";
+
+type SmsLog = {
+  id: string;
+  createdAt: string;
+  messageType: string;
+  status: string;
+  message: string;
+};
 
 type Customer = {
   id: string;
   name: string;
   email: string | null;
   phone: string | null;
+  smsConsent: boolean;
+  smsOptedOut: boolean;
   segment: string;
   points: number;
   totalSpent: number;
@@ -66,11 +78,59 @@ const segmentLabels: Record<string, string> = {
   CHURNED: "Churned",
 };
 
-export default function CustomerDetail({ customer }: { customer: Customer }) {
+const messageTypeLabels: Record<string, string> = {
+  confirmation: 'Booking Confirmed',
+  reminder: 'Reminder',
+  cancellation: 'Cancellation',
+  reschedule: 'Reschedule',
+  review_request: 'Review Request',
+};
+
+export default function CustomerDetail({
+  customer,
+  googleReviewUrl,
+  yelpUrl,
+}: {
+  customer: Customer;
+  googleReviewUrl?: string | null;
+  yelpUrl?: string | null;
+}) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "history" | "points">(
+  const [activeTab, setActiveTab] = useState<"overview" | "history" | "points" | "messages">(
     "overview"
   );
+
+  const { data: smsData, isLoading: smsLoading } = useQuery({
+    queryKey: ['sms-logs', customer.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/customers/${customer.id}/sms-logs`);
+      if (!res.ok) return { logs: [] };
+      return res.json();
+    },
+    enabled: activeTab === 'messages',
+  });
+
+  const smsLogs: SmsLog[] = smsData?.logs ?? [];
+
+  const reviewMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/reviews/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerId: customer.id }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to send review request');
+      }
+      return res.json();
+    },
+    onSuccess: () => toast.success('Review request sent!'),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const canRequestReview =
+    customer.phone && customer.smsConsent && !customer.smsOptedOut && (googleReviewUrl || yelpUrl);
 
   return (
     <>
@@ -116,12 +176,23 @@ export default function CustomerDetail({ customer }: { customer: Customer }) {
               </div>
             </div>
           </div>
-          <button
-            onClick={() => setIsEditModalOpen(true)}
-            className="btn-primary"
-          >
-            Edit Customer
-          </button>
+          <div className="flex gap-2">
+            {canRequestReview && (
+              <button
+                onClick={() => reviewMutation.mutate()}
+                disabled={reviewMutation.isPending}
+                className="btn-outline text-sm"
+              >
+                {reviewMutation.isPending ? 'Sending…' : 'Request Review'}
+              </button>
+            )}
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="btn-primary"
+            >
+              Edit Customer
+            </button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -238,6 +309,16 @@ export default function CustomerDetail({ customer }: { customer: Customer }) {
                 }`}
               >
                 Points & Rewards
+              </button>
+              <button
+                onClick={() => setActiveTab("messages")}
+                className={`px-6 py-3 text-sm font-medium border-b-2 ${
+                  activeTab === "messages"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
+                }`}
+              >
+                Messages
               </button>
             </nav>
           </div>
@@ -384,6 +465,58 @@ export default function CustomerDetail({ customer }: { customer: Customer }) {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+            {activeTab === "messages" && (
+              <div>
+                {!customer.phone ? (
+                  <p className="text-gray-500 dark:text-gray-400">No phone number on file — SMS history unavailable.</p>
+                ) : smsLoading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+                  </div>
+                ) : smsLogs.length === 0 ? (
+                  <p className="text-gray-500 dark:text-gray-400">No messages sent to this customer yet.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                          <th className="pb-2 pr-4 font-medium">Date</th>
+                          <th className="pb-2 pr-4 font-medium">Type</th>
+                          <th className="pb-2 pr-4 font-medium">Status</th>
+                          <th className="pb-2 font-medium">Message</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {smsLogs.map((log) => (
+                          <tr key={log.id} className="align-top">
+                            <td className="py-2 pr-4 text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                              {format(new Date(log.createdAt), "MMM d, yyyy h:mm a")}
+                            </td>
+                            <td className="py-2 pr-4 text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                              {messageTypeLabels[log.messageType] ?? log.messageType}
+                            </td>
+                            <td className="py-2 pr-4">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                log.status === 'delivered'
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200'
+                                  : log.status === 'failed'
+                                  ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200'
+                                  : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                              }`}>
+                                {log.status}
+                              </span>
+                            </td>
+                            <td className="py-2 text-gray-600 dark:text-gray-400 max-w-xs truncate">
+                              {log.message}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
           </div>

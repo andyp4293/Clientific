@@ -1,5 +1,78 @@
 import { Resend } from 'resend';
 
+interface NewBookingDetails {
+  businessName: string;
+  customerName: string;
+  customerPhone: string | null;
+  serviceName: string;
+  staffName: string | null;
+  dateTime: Date;
+  duration: number;
+  notes: string | null;
+  appointmentUrl: string;
+  timezone: string;
+}
+
+export async function sendNewBookingEmail(businessEmail: string, details: NewBookingDetails): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const FROM = process.env.RESEND_FROM_EMAIL || 'noreply@clientflow.com';
+
+  const dateStr = details.dateTime.toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    timeZone: details.timezone,
+  });
+  const timeStr = details.dateTime.toLocaleTimeString('en-US', {
+    hour: 'numeric', minute: '2-digit', timeZone: details.timezone,
+  });
+
+  const rows = [
+    ['Customer', details.customerName],
+    ['Phone', details.customerPhone || '—'],
+    ['Service', details.serviceName],
+    ['Staff', details.staffName || 'Anyone available'],
+    ['Date', dateStr],
+    ['Time', timeStr],
+    ['Duration', `${details.duration} min`],
+    ...(details.notes ? [['Notes', details.notes] as [string, string]] : []),
+  ];
+
+  const tableRows = rows.map(([label, value]) => `
+    <tr>
+      <td style="padding: 8px 12px; color: #6b7280; font-size: 14px; white-space: nowrap;">${label}</td>
+      <td style="padding: 8px 12px; color: #111827; font-size: 14px;">${value}</td>
+    </tr>`).join('');
+
+  await resend.emails.send({
+    from: `ClientFlow <${FROM}>`,
+    to: businessEmail,
+    subject: `New booking request — ${details.customerName}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px;">
+        <div style="margin-bottom: 24px;">
+          <span style="font-size: 22px; font-weight: 700; color: #111827;">ClientFlow</span>
+        </div>
+        <h1 style="font-size: 20px; font-weight: 700; color: #111827; margin: 0 0 8px;">New Appointment Request</h1>
+        <p style="color: #6b7280; margin: 0 0 24px;">
+          A new appointment has been requested at <strong>${details.businessName}</strong>.
+        </p>
+        <table style="width: 100%; border-collapse: collapse; background: #f9fafb; border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
+          <tbody>${tableRows}</tbody>
+        </table>
+        <a href="${details.appointmentUrl}"
+           style="display: inline-block; background: #2563eb; color: #fff; font-weight: 600;
+                  padding: 12px 24px; border-radius: 6px; text-decoration: none; margin-bottom: 24px;">
+          View in Dashboard
+        </a>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+        <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+          You're receiving this because new appointment notifications are enabled for ${details.businessName}.
+          You can turn this off in Settings → Notifications.
+        </p>
+      </div>
+    `,
+  });
+}
+
 export async function sendPasswordResetEmail(email: string, token: string) {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const FROM = process.env.RESEND_FROM_EMAIL || 'noreply@clientflow.com';

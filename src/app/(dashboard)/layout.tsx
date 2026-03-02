@@ -5,6 +5,7 @@ import { DashboardNav } from '@/components/layout/DashboardNav';
 import { DashboardHeader } from '@/components/layout/DashboardHeader';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { SubscriptionBanner } from '@/components/billing/SubscriptionBanner';
+import { Toaster } from 'sonner';
 
 export default async function DashboardLayout({
   children,
@@ -39,6 +40,8 @@ export default async function DashboardLayout({
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg z-50">
         <MobileBottomNav />
       </div>
+
+      <Toaster richColors position="top-right" />
     </div>
   );
 }

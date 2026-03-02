@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { sendAppointmentConfirmation } from '@/lib/twilio';
+import { sendNewBookingEmail } from '@/lib/email';
 
 function businessMidnightUTC(dateStr: string, timezone: string): Date {
   const localStr = `${dateStr}T00:00:00`;
@@ -80,13 +81,14 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const business = await prisma.business.findUnique({
       where: { email: session.user.email },
+      select: { id: true, name: true, email: true, timezone: true, notifyNewBookingEmail: true },
     });
 
     if (!business) {
@@ -199,6 +201,23 @@ export async function POST(req: NextRequest) {
         link: `/dashboard/appointments`,
       },
     });
+
+    // Send email to business owner (non-blocking)
+    if (business.notifyNewBookingEmail !== false) {
+      const appBase = (process.env.NEXT_PUBLIC_APP_URL || 'https://clientflow-theta.vercel.app').trim().replace(/\/$/, '');
+      sendNewBookingEmail(business.email, {
+        businessName: business.name,
+        customerName: appointment.customer.name,
+        customerPhone: appointment.customer.phone,
+        serviceName: appointment.service?.name || 'Appointment',
+        staffName: appointment.staff?.fullName || null,
+        dateTime: appointment.startTime,
+        duration: appointment.duration,
+        notes: appointment.notes,
+        appointmentUrl: `${appBase}/dashboard/appointments`,
+        timezone: business.timezone,
+      }).catch(() => {});
+    }
 
     return NextResponse.json({ 
       appointment,

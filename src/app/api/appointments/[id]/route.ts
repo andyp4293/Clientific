@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { sendAppointmentCancellation, sendAppointmentBusinessConfirmed } from '@/lib/twilio';
+import { updateCustomerSegment } from '@/lib/segment';
 
 // GET - Get single appointment
 export async function GET(
@@ -168,6 +169,11 @@ export async function PATCH(
         businessName: business.name,
         appointmentUrl,
       }).catch(err => console.warn('⚠️  Confirmed SMS failed:', err));
+    }
+
+    // Update customer segment when appointment is completed
+    if (updates.status === 'completed') {
+      updateCustomerSegment(updatedAppointment.customerId).catch(console.error);
     }
 
     return NextResponse.json({ appointment: updatedAppointment });

@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { PRICING_PLANS } from '@/lib/stripe';
 
 interface SubscriptionInfo {
@@ -121,7 +122,7 @@ export default function BillingPage() {
       const data = await res.json();
       if (data.url) window.location.href = data.url;
     } catch {
-      alert('Failed to open billing portal. Please try again.');
+      toast.error('Failed to open billing portal. Please try again.');
       setPortalLoading(false);
     }
   };

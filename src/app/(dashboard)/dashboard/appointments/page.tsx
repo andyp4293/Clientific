@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 interface Appointment {
   id: string;
@@ -203,7 +204,7 @@ function AppointmentRow({ appointment }: { appointment: Appointment }) {
       return res.json();
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['appointments'] }); setShowCancelConfirm(false); },
-    onError: (e: any) => alert(e.message || 'Failed to cancel'),
+    onError: (e: any) => toast.error(e.message || 'Failed to cancel'),
   });
 
   const confirmMutation = useMutation({
@@ -217,7 +218,7 @@ function AppointmentRow({ appointment }: { appointment: Appointment }) {
       return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['appointments'] }),
-    onError: (e: any) => alert(e.message || 'Failed to confirm'),
+    onError: (e: any) => toast.error(e.message || 'Failed to confirm'),
   });
 
   const canConfirm = appointment.status === 'pending';
@@ -387,8 +388,8 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
         }),
       });
       if (res.ok) { onClose(); window.location.reload(); }
-      else { const error = await res.json(); alert(error.error || 'Failed to create appointment'); }
-    } catch { alert('Failed to create appointment'); }
+      else { const error = await res.json(); toast.error(error.error || 'Failed to create appointment'); }
+    } catch { toast.error('Failed to create appointment'); }
   };
 
   return (
@@ -471,7 +472,7 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
       return res.json();
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['appointments'] }); onClose(); },
-    onError: (e: any) => alert(e.message || 'Failed to update appointment'),
+    onError: (e: any) => toast.error(e.message || 'Failed to update appointment'),
   });
 
   const handleSubmit = (e: React.FormEvent) => {

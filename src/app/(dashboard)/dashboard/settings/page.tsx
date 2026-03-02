@@ -5,8 +5,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { toast } from 'sonner';
 
-type Tab = 'profile' | 'branding' | 'integrations' | 'notifications' | 'ai-receptionist';
+type Tab = 'profile' | 'branding' | 'integrations' | 'notifications' | 'loyalty' | 'ai-receptionist';
 
 interface Business {
   id: string;
@@ -33,6 +34,9 @@ interface Business {
   aiReceptionistPhone: string | null;
   aiReceptionistGreeting: string | null;
   vapiPhoneNumber: string | null;
+  notifyNewBookingEmail: boolean;
+  pointsPerDollar: number;
+  pointsPerVisit: number;
 }
 
 export default function SettingsPage() {
@@ -94,6 +98,10 @@ export default function SettingsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['business-info'] });
+      toast.success('Settings saved!');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to save settings');
     },
   });
 
@@ -161,13 +169,13 @@ export default function SettingsPage() {
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file');
+      toast.error('Please upload an image file');
       return;
     }
 
     // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
-      alert('Image must be less than 2MB');
+      toast.error('Image must be less than 2MB');
       return;
     }
 
@@ -185,7 +193,7 @@ export default function SettingsPage() {
       reader.readAsDataURL(file);
     } catch (error) {
       console.error('Error uploading logo:', error);
-      alert('Failed to upload logo');
+      toast.error('Failed to upload logo');
     } finally {
       setUploadingLogo(false);
     }
@@ -226,6 +234,7 @@ export default function SettingsPage() {
     { id: 'integrations', label: 'Integrations', icon: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1' },
     { id: 'notifications', label: 'Notifications', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' },
     { id: 'ai-receptionist', label: 'AI Receptionist', icon: 'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z' },
+    { id: 'loyalty', label: 'Loyalty Points', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
   ];
 
   return (
@@ -416,7 +425,7 @@ export default function SettingsPage() {
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(`${window.location.origin}/book/${business.publicId}`);
-                        alert('Copied to clipboard!');
+                        toast.success('Copied to clipboard!');
                       }}
                       className="btn-outline"
                     >
@@ -693,7 +702,7 @@ export default function SettingsPage() {
                           type="button"
                           onClick={() => {
                             navigator.clipboard.writeText(formData.vapiPhoneNumber!);
-                            alert('Copied to clipboard!');
+                            toast.success('Copied to clipboard!');
                           }}
                           className="btn-outline whitespace-nowrap"
                         >
@@ -741,6 +750,56 @@ export default function SettingsPage() {
           </div>
         )}
 
+        {/* Loyalty Tab */}
+        {activeTab === 'loyalty' && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Points Earning Rules</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                Customers earn points automatically on each check-in. Adjust the rates below to match your business.
+              </p>
+
+              <div className="space-y-4">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Points per visit
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={formData.pointsPerVisit ?? 10}
+                    onChange={(e) => handleInputChange('pointsPerVisit', Math.max(0, Math.round(Number(e.target.value))))}
+                    className="input w-40"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Flat points awarded for each check-in</p>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Points per dollar spent
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.1}
+                    value={formData.pointsPerDollar ?? 1}
+                    onChange={(e) => handleInputChange('pointsPerDollar', Math.max(0, Number(e.target.value)))}
+                    className="input w-40"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Points awarded per dollar of spend at check-in</p>
+                </div>
+              </div>
+
+              <div className="mt-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  <strong>Referral bonus:</strong> 50 points per successful referral (fixed — configurable in a future update).
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Notifications Tab */}
         {activeTab === 'notifications' && (
           <div className="space-y-6">
@@ -751,89 +810,56 @@ export default function SettingsPage() {
               </p>
 
               <div className="space-y-4">
-                {/* Email Notifications */}
+                {/* New Appointment Notifications — functional */}
                 <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                   <label className="flex items-start cursor-pointer">
                     <input
                       type="checkbox"
-                      defaultChecked
+                      checked={formData.notifyNewBookingEmail ?? true}
+                      onChange={(e) => handleInputChange('notifyNewBookingEmail', e.target.checked)}
                       className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary mr-3 mt-0.5"
                     />
                     <div className="flex-1">
                       <span className="text-sm font-medium text-gray-900 dark:text-gray-100">New Appointment Notifications</span>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Receive an email when someone books an appointment</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Receive an email when someone books an appointment online or via your AI receptionist</p>
                     </div>
                   </label>
                 </div>
 
-                <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                  <label className="flex items-start cursor-pointer">
+                <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg opacity-60">
+                  <label className="flex items-start">
                     <input
                       type="checkbox"
-                      defaultChecked
+                      disabled
                       className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary mr-3 mt-0.5"
                     />
                     <div className="flex-1">
                       <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Customer Review Notifications</span>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Get notified when customers leave reviews</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Get notified when customers leave reviews — coming soon</p>
                     </div>
                   </label>
                 </div>
 
-                <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                  <label className="flex items-start cursor-pointer">
+                <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg opacity-60">
+                  <label className="flex items-start">
                     <input
                       type="checkbox"
-                      defaultChecked
+                      disabled
                       className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary mr-3 mt-0.5"
                     />
                     <div className="flex-1">
                       <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Weekly Summary</span>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Receive a weekly digest of your business activity</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Receive a weekly digest of your business activity — coming soon</p>
                     </div>
                   </label>
                 </div>
-
-                <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                  <label className="flex items-start cursor-pointer">
-                    <input
-                      type="checkbox"
-                      defaultChecked
-                      className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary mr-3 mt-0.5"
-                    />
-                    <div className="flex-1">
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Marketing Tips</span>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Get occasional tips and best practices for growing your business</p>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <p className="text-sm text-gray-700 dark:text-gray-300">
-                  <strong>Note:</strong> These settings are coming soon. For now, you'll receive email notifications for critical events like new bookings and payments.
-                </p>
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Error Message */}
-      {updateMutation.isError && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-sm text-red-600 dark:text-red-400">
-            {updateMutation.error?.message || 'Failed to update settings'}
-          </p>
-        </div>
-      )}
-
-      {/* Success Message */}
-      {updateMutation.isSuccess && (
-        <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-          <p className="text-sm text-green-600 dark:text-green-400">Settings saved successfully!</p>
-        </div>
-      )}      {/* Enable AI Receptionist Modal */}
+      {/* Enable AI Receptionist Modal */}
       {showEnableModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">

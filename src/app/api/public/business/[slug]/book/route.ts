@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendAppointmentConfirmation } from '@/lib/twilio';
+import { sendNewBookingEmail } from '@/lib/email';
 
 // POST - Create public booking (no auth required)
 export async function POST(
@@ -12,7 +13,7 @@ export async function POST(
 
     const business = await prisma.business.findUnique({
       where: { slug },
-      select: { id: true, enableOnlineBooking: true },
+      select: { id: true, enableOnlineBooking: true, email: true, name: true, timezone: true, notifyNewBookingEmail: true },
     });
 
     if (!business) {
@@ -212,6 +213,23 @@ export async function POST(
       } else {
         console.warn('⚠️  SMS failed:', smsResult.error);
       }
+    }
+
+    // Send email to business owner (non-blocking)
+    if (business.notifyNewBookingEmail !== false) {
+      const appBase = (process.env.NEXT_PUBLIC_APP_URL || 'https://clientflow-theta.vercel.app').trim().replace(/\/$/, '');
+      sendNewBookingEmail(business.email, {
+        businessName: business.name,
+        customerName: customer.name,
+        customerPhone: customer.phone,
+        serviceName,
+        staffName: appointment.staff?.fullName || null,
+        dateTime: appointment.startTime,
+        duration: appointment.duration,
+        notes: appointment.notes,
+        appointmentUrl: `${appBase}/dashboard/appointments`,
+        timezone: business.timezone,
+      }).catch(() => {});
     }
 
     return NextResponse.json({

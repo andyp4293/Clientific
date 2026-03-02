@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { updateCustomerSegment } from '@/lib/segment';
 
 export async function GET(req: Request) {
   try {
@@ -112,6 +113,9 @@ export async function POST(req: Request) {
         balanceAfter: updatedCustomer.points,
       },
     });
+
+    // Update customer segment based on new visit/spend data
+    updateCustomerSegment(customerId).catch(console.error);
 
     return NextResponse.json({ checkIn });
   } catch (error) {

@@ -69,6 +69,9 @@ export async function GET(req: NextRequest) {
         aiReceptionistPhone: true,
         aiReceptionistGreeting: true,
         vapiPhoneNumber: true,
+        notifyNewBookingEmail: true,
+        pointsPerDollar: true,
+        pointsPerVisit: true,
       },
     });
 
@@ -117,6 +120,9 @@ export async function PATCH(req: NextRequest) {
       aiReceptionistEnabled,
       aiReceptionistPhone,
       aiReceptionistGreeting,
+      notifyNewBookingEmail,
+      pointsPerDollar,
+      pointsPerVisit,
     } = body;
 
     // Fetch current business to detect Vapi state changes
@@ -196,6 +202,9 @@ export async function PATCH(req: NextRequest) {
         ...(aiReceptionistEnabled !== undefined && { aiReceptionistEnabled }),
         ...(aiReceptionistPhone !== undefined && { aiReceptionistPhone }),
         ...(aiReceptionistGreeting !== undefined && { aiReceptionistGreeting }),
+        ...(notifyNewBookingEmail !== undefined && { notifyNewBookingEmail }),
+        ...(pointsPerDollar !== undefined && { pointsPerDollar: Number(pointsPerDollar) }),
+        ...(pointsPerVisit !== undefined && { pointsPerVisit: Math.round(Number(pointsPerVisit)) }),
         ...('vapiPhoneNumberId' in vapiUpdates && { vapiPhoneNumberId: vapiUpdates.vapiPhoneNumberId }),
         ...('vapiPhoneNumber' in vapiUpdates && { vapiPhoneNumber: vapiUpdates.vapiPhoneNumber }),
       },

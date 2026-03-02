@@ -50,6 +50,7 @@ model Business {
   pointsPerDollar        Float          @default(1.0)
   pointsPerVisit         Int            @default(10)
   referralBonusPoints    Int            @default(50)
+  notifyNewBookingEmail  Boolean        @default(true)
   appointments           Appointment[]
   businessHours          BusinessHours?
   campaigns              Campaign[]

@@ -238,3 +238,24 @@ export async function sendAppointmentRescheduled(
   const message = formatAppointmentRescheduledSMS(details);
   return sendSMS({ to: phone, message });
 }
+
+// Template: Review Request
+interface ReviewRequestDetails {
+  businessName: string;
+  customerName: string;
+  googleReviewUrl?: string | null;
+  yelpUrl?: string | null;
+}
+
+export function formatReviewRequestSMS(details: ReviewRequestDetails): string {
+  const link = details.googleReviewUrl || details.yelpUrl || '';
+  return `${details.businessName}: Hi ${details.customerName}, thank you for your visit! We'd love your feedback — it means a lot to us. ${link} Reply STOP to opt out.`;
+}
+
+export async function sendReviewRequest(
+  phone: string,
+  details: ReviewRequestDetails
+): Promise<SMSResult> {
+  const message = formatReviewRequestSMS(details);
+  return sendSMS({ to: phone, message });
+}
