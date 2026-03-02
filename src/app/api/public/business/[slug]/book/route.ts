@@ -179,6 +179,7 @@ export async function POST(
         notes: notes || null,
         status: 'pending',
         shortId,
+        source: 'online',
       },
       include: {
         customer: true,

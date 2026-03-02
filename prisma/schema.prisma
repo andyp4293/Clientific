@@ -140,6 +140,7 @@ model Appointment {
   duration         Int
   notes            String?
   status           String   @default("scheduled")
+  source           String   @default("dashboard")
   confirmationSent Boolean  @default(false)
   reminderSent     Boolean  @default(false)
   business         Business @relation(fields: [businessId], references: [id], onDelete: Cascade)

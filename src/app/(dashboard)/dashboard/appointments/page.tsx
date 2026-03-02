@@ -10,6 +10,7 @@ interface Appointment {
   endTime: string;
   duration: number;
   status: string;
+  source: string;
   notes: string | null;
   customer: {
     id: string;
@@ -309,6 +310,16 @@ function AppointmentRow({ appointment }: { appointment: Appointment }) {
 
         {/* Status + Actions */}
         <div className="flex items-center gap-2 px-4 py-4 flex-shrink-0">
+          {appointment.source === 'ai' && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+              AI
+            </span>
+          )}
+          {appointment.source === 'online' && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+              Online
+            </span>
+          )}
           <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${config.badge}`}>
             {config.label}
           </span>

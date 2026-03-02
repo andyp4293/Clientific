@@ -163,6 +163,7 @@ export async function POST(req: NextRequest) {
         duration,
         notes: notes || null,
         status: 'scheduled',
+        source: 'dashboard',
       },
       include: {
         customer: true,

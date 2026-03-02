@@ -70,10 +70,10 @@ const features = [
   },
   {
     icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
     ),
-    title: 'Loyalty Program',
-    desc: 'Reward repeat customers with points on every visit and dollar spent. Keep them coming back with a built-in loyalty program.',
+    title: 'Walk-In Check-In',
+    desc: 'Digital check-in for walk-in customers. Track visits and spending without any paper or manual entry.',
   },
 ];
 
@@ -179,7 +179,7 @@ export default function HomePage() {
                     {[
                       { label: "Today's Appts", val: '8', color: 'bg-blue-50' },
                       { label: 'New Customers', val: '3', color: 'bg-green-50' },
-                      { label: 'Loyalty Pts', val: '240', color: 'bg-purple-50' },
+                      { label: 'AI Calls Today', val: '5', color: 'bg-purple-50' },
                     ].map(stat => (
                       <div key={stat.label} className={`${stat.color} rounded-lg p-3`}>
                         <div className="text-xl font-bold text-gray-900">{stat.val}</div>
@@ -336,7 +336,7 @@ export default function HomePage() {
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">For growing businesses</p>
               <p className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6">$79<span className="text-lg text-gray-400 font-normal">/mo</span></p>
               <ul className="space-y-3 mb-8 flex-1">
-                {['Up to 1,000 customers', '10 staff members', 'Everything in Starter', 'Loyalty rewards program', 'Analytics dashboard', 'Walk-in check-in', 'Priority support'].map(f => (
+                {['Up to 1,000 customers', '10 staff members', 'Everything in Starter', 'Analytics dashboard', 'Walk-in check-in', 'Priority support'].map(f => (
                   <li key={f} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <CheckIcon />{f}
                   </li>

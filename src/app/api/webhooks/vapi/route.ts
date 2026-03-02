@@ -463,6 +463,7 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
             duration: service.duration,
             status: 'pending',
             shortId,
+            source: 'ai',
             ...(staffId && { staffId }),
             ...(notes && { notes }),
           },
