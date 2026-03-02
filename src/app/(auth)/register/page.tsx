@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense, useEffect, useMemo } from 'react';
+import React, { useState, Suspense, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
@@ -323,33 +323,37 @@ function RegisterForm() {
 
         {/* Progress Steps */}
         <div className="mb-6 sm:mb-8">
-          <div className="flex justify-between items-center">
-            {[1, 2, 3, 4].map((step) => (
-              <div key={step} className="flex items-center flex-1">
-                <div
-                  className={`w-8 sm:w-10 h-8 sm:h-10 rounded-full flex items-center justify-center font-medium text-sm sm:text-base ${
-                    step <= currentStep
-                      ? 'bg-primary text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-                  }`}
-                >
-                  {step}
-                </div>
-                {step < 4 && (
+          <div className="flex items-start">
+            {[
+              { num: 1, label: 'Account' },
+              { num: 2, label: 'Business' },
+              { num: 3, label: 'Details' },
+              { num: 4, label: 'Complete' },
+            ].map((item, idx) => (
+              <React.Fragment key={item.num}>
+                {idx > 0 && (
                   <div
-                    className={`flex-1 h-0.5 sm:h-1 mx-1 sm:mx-2 ${
-                      step < currentStep ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'
+                    className={`flex-1 h-0.5 sm:h-1 mx-1 sm:mx-2 mt-4 sm:mt-5 ${
+                      currentStep > item.num - 1 ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'
                     }`}
                   />
                 )}
-              </div>
+                <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                  <div
+                    className={`w-8 sm:w-10 h-8 sm:h-10 rounded-full flex items-center justify-center font-medium text-sm sm:text-base ${
+                      item.num <= currentStep
+                        ? 'bg-primary text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                    }`}
+                  >
+                    {item.num}
+                  </div>
+                  <span className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                    {item.label}
+                  </span>
+                </div>
+              </React.Fragment>
             ))}
-          </div>
-          <div className="flex justify-between mt-2 text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">
-            <span>Account</span>
-            <span>Business</span>
-            <span>Details</span>
-            <span>Complete</span>
           </div>
         </div>        {/* Registration Card */}
         <div className="card p-4 sm:p-6 lg:p-8">
