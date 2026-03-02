@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import Link from "next/link";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import EditCustomerModal from "./EditCustomerModal";
 
@@ -88,12 +88,8 @@ const messageTypeLabels: Record<string, string> = {
 
 export default function CustomerDetail({
   customer,
-  googleReviewUrl,
-  yelpUrl,
 }: {
   customer: Customer;
-  googleReviewUrl?: string | null;
-  yelpUrl?: string | null;
 }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "history" | "points" | "messages">(
@@ -111,26 +107,6 @@ export default function CustomerDetail({
   });
 
   const smsLogs: SmsLog[] = smsData?.logs ?? [];
-
-  const reviewMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch('/api/reviews/request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerId: customer.id }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to send review request');
-      }
-      return res.json();
-    },
-    onSuccess: () => toast.success('Review request sent!'),
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const canRequestReview =
-    customer.phone && customer.smsConsent && !customer.smsOptedOut && (googleReviewUrl || yelpUrl);
 
   return (
     <>
@@ -177,15 +153,6 @@ export default function CustomerDetail({
             </div>
           </div>
           <div className="flex gap-2">
-            {canRequestReview && (
-              <button
-                onClick={() => reviewMutation.mutate()}
-                disabled={reviewMutation.isPending}
-                className="btn-outline text-sm"
-              >
-                {reviewMutation.isPending ? 'Sending…' : 'Request Review'}
-              </button>
-            )}
             <button
               onClick={() => setIsEditModalOpen(true)}
               className="btn-primary"

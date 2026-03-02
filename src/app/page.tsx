@@ -31,26 +31,6 @@ const faqs = [
   },
 ];
 
-const testimonials = [
-  {
-    text: 'The AI receptionist is unreal. Customers call after hours, the AI books them, and I wake up to new appointments in my calendar. I haven\'t missed a call-in booking since.',
-    name: 'Marcus T.',
-    business: 'Cut & Style Barbershop',
-    initials: 'MT',
-  },
-  {
-    text: 'The loyalty program keeps my regulars coming back. Customers actually ask about their points now. It\'s become a real part of my business.',
-    name: 'Jessica L.',
-    business: 'Serenity Nail Studio',
-    initials: 'JL',
-  },
-  {
-    text: 'I was running everything on paper before. Now I have online booking, a full client database, loyalty points, and I can see my revenue trends at a glance.',
-    name: 'Carlos R.',
-    business: 'Elite Auto Detailing',
-    initials: 'CR',
-  },
-];
 
 const features = [
   {
@@ -97,11 +77,6 @@ const features = [
   },
 ];
 
-const StarIcon = () => (
-  <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-  </svg>
-);
 
 const CheckIcon = () => (
   <svg className="w-4 h-4 text-success shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -179,15 +154,6 @@ export default function HomePage() {
                   <p className="text-sm text-gray-500 dark:text-gray-400">No credit card required</p>
                 </div>
               )}
-              {/* Trust signals */}
-              <div className="flex items-center gap-5 mt-8 flex-wrap">
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map(i => <StarIcon key={i} />)}
-                  <span className="text-sm text-gray-600 dark:text-gray-400 ml-1">4.9/5 rating</span>
-                </div>
-                <span className="text-gray-300 dark:text-gray-600 hidden sm:block">|</span>
-                <span className="text-sm text-gray-600 dark:text-gray-400">500+ businesses trust Clientell</span>
-              </div>
             </div>
 
             {/* Dashboard mockup */}
@@ -213,7 +179,7 @@ export default function HomePage() {
                     {[
                       { label: "Today's Appts", val: '8', color: 'bg-blue-50' },
                       { label: 'New Customers', val: '3', color: 'bg-green-50' },
-                      { label: 'AI Calls', val: '5', color: 'bg-purple-50' },
+                      { label: 'Loyalty Pts', val: '240', color: 'bg-purple-50' },
                     ].map(stat => (
                       <div key={stat.label} className={`${stat.color} rounded-lg p-3`}>
                         <div className="text-xl font-bold text-gray-900">{stat.val}</div>
@@ -258,9 +224,9 @@ export default function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[
               { val: '24/7', label: 'AI answers your calls' },
-              { val: '50k+', label: 'Appointments booked' },
+              { val: '< 3 min', label: 'Average setup time' },
               { val: '99.9%', label: 'Platform uptime' },
-              { val: '3 min', label: 'Average setup time' },
+              { val: '0', label: 'Credit cards needed to start' },
             ].map(stat => (
               <div key={stat.label}>
                 <div className="text-3xl font-bold text-primary mb-1">{stat.val}</div>
@@ -327,35 +293,6 @@ export default function HomePage() {
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">{step.title}</h3>
                 <p className="text-gray-500 dark:text-gray-400 max-w-xs mx-auto leading-relaxed">{step.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Testimonials ── */}
-      <section className="bg-primary-50 dark:bg-gray-800 py-20 sm:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">Loved by service businesses</h2>
-            <p className="text-lg text-gray-600 dark:text-gray-400">Real results from real business owners.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6 sm:gap-8">
-            {testimonials.map(t => (
-              <div key={t.name} className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col">
-                <div className="flex mb-3">
-                  {[1, 2, 3, 4, 5].map(i => <StarIcon key={i} />)}
-                </div>
-                <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed mb-5 flex-1">&ldquo;{t.text}&rdquo;</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center shrink-0">
-                    <span className="text-white text-sm font-bold">{t.initials}</span>
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t.name}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{t.business}</div>
-                  </div>
-                </div>
               </div>
             ))}
           </div>
