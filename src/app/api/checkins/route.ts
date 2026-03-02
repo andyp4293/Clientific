@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { updateCustomerSegment } from '@/lib/segment';
+import { businessDayStart } from '@/lib/timezone';
 
 export async function GET(req: Request) {
   try {
@@ -11,21 +12,21 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const business = await prisma.business.findUnique({
+      where: { id: session.user.businessId },
+      select: { timezone: true },
+    });
+    const timezone = business?.timezone ?? 'America/New_York';
+
     const { searchParams } = new URL(req.url);
     const date = searchParams.get('date');
 
     const where: any = { businessId: session.user.businessId };
 
     if (date) {
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
-
-      where.checkInTime = {
-        gte: startOfDay,
-        lte: endOfDay,
-      };
+      const startOfDay = businessDayStart(date, timezone);
+      const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1);
+      where.checkInTime = { gte: startOfDay, lte: endOfDay };
     }
 
     const checkIns = await prisma.checkIn.findMany({
@@ -38,7 +39,7 @@ export async function GET(req: Request) {
       orderBy: { checkInTime: 'desc' },
     });
 
-    return NextResponse.json({ checkIns });
+    return NextResponse.json({ checkIns, timezone });
   } catch (error) {
     console.error('GET /api/checkins error:', error);
     return NextResponse.json({ error: 'Failed to fetch check-ins' }, { status: 500 });

@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { sendAppointmentConfirmation } from '@/lib/twilio';
+import { localToUTC } from '@/lib/timezone';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -68,13 +69,7 @@ function parseTimeString(timeStr: string): { hour: number; minute: number } | nu
 
 // ─── Timezone-aware slot conversion ──────────────────────────────────────────
 
-function businessTimeToUTC(dateStr: string, hour: number, minute: number, timezone: string): Date {
-  const localStr = `${dateStr}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
-  const naiveUTC = new Date(localStr + 'Z');
-  const inBizTz = new Date(naiveUTC.toLocaleString('en-US', { timeZone: timezone }));
-  const offsetMs = naiveUTC.getTime() - inBizTz.getTime();
-  return new Date(naiveUTC.getTime() + offsetMs);
-}
+const businessTimeToUTC = localToUTC;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

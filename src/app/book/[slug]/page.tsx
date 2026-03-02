@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { DatePicker } from '@/components/ui/DatePicker';
@@ -107,13 +107,17 @@ export default function PublicBookingPage() {
     enabled: !!businessData,
   });
 
+  // Format date as YYYY-MM-DD using local date parts (avoids UTC offset shifting the date)
+  const formatDateLocal = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
   // Fetch available slots — use first service's id + combined duration
   const { data: slotsData, isLoading: isLoadingSlots } = useQuery({
-    queryKey: ['slots', slugOrPublicId, selectedDate.toISOString().split('T')[0], selectedServices.map(s => s.id).join(','), selectedStaff],
+    queryKey: ['slots', slugOrPublicId, formatDateLocal(selectedDate), selectedServices.map(s => s.id).join(','), selectedStaff],
     queryFn: async () => {
       if (!selectedServices.length) return { slots: [] };
       const qp = new URLSearchParams({
-        date: selectedDate.toISOString().split('T')[0],
+        date: formatDateLocal(selectedDate),
         serviceId: selectedServices[0].id,
         duration: String(totalDuration),
         ...(selectedStaff && selectedStaff !== 'anyone' && { staffId: selectedStaff }),
@@ -226,17 +230,24 @@ export default function PublicBookingPage() {
       {/* Progress Bar */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center">
             {[
               { num: 1, label: 'Services' },
               { num: 2, label: 'Staff' },
               { num: 3, label: 'Date & Time' },
               { num: 4, label: 'Your Info' },
             ].map((item, idx) => (
-              <div key={item.num} className="flex items-center flex-1">
-                <div className="flex items-center">
+              <React.Fragment key={item.num}>
+                {/* Connector line between steps */}
+                {idx > 0 && (
+                  <div className={`flex-1 h-0.5 sm:h-1 mx-1 sm:mx-2 ${
+                    step > item.num - 1 ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+                  }`} />
+                )}
+                {/* Step circle + label */}
+                <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                   <div
-                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium flex-shrink-0 ${
                       step >= item.num
                         ? 'bg-blue-600 text-white'
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
@@ -244,18 +255,13 @@ export default function PublicBookingPage() {
                   >
                     {item.num}
                   </div>
-                  <span className={`ml-1 sm:ml-2 text-xs sm:text-sm font-medium hidden md:inline ${
+                  <span className={`text-xs sm:text-sm font-medium hidden md:inline whitespace-nowrap ${
                     step >= item.num ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'
                   }`}>
                     {item.label}
                   </span>
                 </div>
-                {idx < 3 && (
-                  <div className={`flex-1 h-0.5 sm:h-1 mx-1 sm:mx-2 ${
-                    step > item.num ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
-                  }`} />
-                )}
-              </div>
+              </React.Fragment>
             ))}
           </div>
         </div>

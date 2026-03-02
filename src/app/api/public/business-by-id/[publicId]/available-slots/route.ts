@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { localToUTC } from '@/lib/timezone';
 
-// Convert a local business-timezone time to its correct UTC equivalent
-function businessTimeToUTC(dateStr: string, hour: number, minute: number, timezone: string): Date {
-  const localStr = `${dateStr}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
-  const naiveUTC = new Date(localStr + 'Z');
-  const inBizTz = new Date(naiveUTC.toLocaleString('en-US', { timeZone: timezone }));
-  const offsetMs = naiveUTC.getTime() - inBizTz.getTime();
-  return new Date(naiveUTC.getTime() + offsetMs);
-}
+const businessTimeToUTC = localToUTC;
 
 // GET - Get available time slots (public)
 export async function GET(

@@ -5,8 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { MapPin, Phone, Mail, Clock, Globe, ArrowLeft } from 'lucide-react';
 
-interface BusinessHour {
-  dayOfWeek: number;
+interface DayHours {
   isOpen: boolean;
   openTime: string | null;
   closeTime: string | null;
@@ -26,7 +25,7 @@ interface Business {
   zipCode: string | null;
   logoUrl: string | null;
   timezone: string;
-  businessHours: BusinessHour[];
+  businessHours: { hours: Record<string, DayHours> } | null;
 }
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -76,6 +75,7 @@ export default function BusinessInfoPage() {
   }
 
   const hasAddress = business.street && business.city && business.state;
+  const hoursData: Record<string, DayHours> = (business.businessHours?.hours as Record<string, DayHours>) || {};
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -185,7 +185,7 @@ export default function BusinessInfoPage() {
               </h2>
               <div className="space-y-3">
                 {DAYS.map((day, index) => {
-                  const hours = business.businessHours?.find(h => h.dayOfWeek === index);
+                  const hours = hoursData[index.toString()];
                   const isToday = new Date().getDay() === index;
 
                   return (

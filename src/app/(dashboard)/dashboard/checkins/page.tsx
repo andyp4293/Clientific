@@ -45,11 +45,14 @@ export default function CheckInsPage() {
     amountSpent: '',
   });
 
+  const formatDateLocal = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
   // Fetch check-ins for selected date
   const { data: checkInsData, isLoading: isLoadingCheckIns } = useQuery({
-    queryKey: ['checkins', selectedDate.toISOString().split('T')[0]],
+    queryKey: ['checkins', formatDateLocal(selectedDate)],
     queryFn: async () => {
-      const res = await fetch(`/api/checkins?date=${selectedDate.toISOString().split('T')[0]}`);
+      const res = await fetch(`/api/checkins?date=${formatDateLocal(selectedDate)}`);
       if (!res.ok) throw new Error('Failed to fetch check-ins');
       return res.json();
     },
@@ -112,6 +115,7 @@ export default function CheckInsPage() {
   });
 
   const checkIns: CheckIn[] = checkInsData?.checkIns || [];
+  const timezone: string = checkInsData?.timezone || 'America/New_York';
   const customers: Customer[] = customersData?.customers || [];
   const services: Service[] = servicesData?.services || [];
   const staff: Staff[] = staffData?.staff || [];
@@ -216,6 +220,7 @@ export default function CheckInsPage() {
                       {new Date(checkIn.checkInTime).toLocaleTimeString('en-US', {
                         hour: 'numeric',
                         minute: '2-digit',
+                        timeZone: timezone,
                       })}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

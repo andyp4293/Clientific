@@ -5,18 +5,12 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { startOfMonth, startOfWeek, startOfToday, subDays } from 'date-fns';
 import BookingLinkCard from '@/components/booking/BookingLinkCard';
+import { localToUTC } from '@/lib/timezone';
 
 // Enable Next.js ISR with 60 second revalidation
 export const revalidate = 60;
 
-// Convert a local business-timezone date string + hour/minute to UTC
-function bizDayBoundary(dateStr: string, hour: number, minute: number, timezone: string): Date {
-  const localStr = `${dateStr}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
-  const naiveUTC = new Date(localStr + 'Z');
-  const inBizTz = new Date(naiveUTC.toLocaleString('en-US', { timeZone: timezone }));
-  const offsetMs = naiveUTC.getTime() - inBizTz.getTime();
-  return new Date(naiveUTC.getTime() + offsetMs);
-}
+const bizDayBoundary = localToUTC;
 
 async function getDashboardStats(businessId: string, timezone: string) {
   const today = startOfToday();
@@ -376,7 +370,7 @@ export default async function DashboardPage({
                             </p>
                           </div>
                   <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {new Date(checkin.checkInTime).toLocaleDateString()}
+                    {new Date(checkin.checkInTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: business.timezone })}
                   </span>
                 </div>
               ))}

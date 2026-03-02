@@ -54,10 +54,10 @@ function getMonthEnd(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth() + 1, 1); // exclusive
 }
 
-function groupByDay(appointments: Appointment[]): Record<string, Appointment[]> {
+function groupByDay(appointments: Appointment[], timezone: string): Record<string, Appointment[]> {
   const groups: Record<string, Appointment[]> = {};
   for (const appt of appointments) {
-    const key = toDateStr(new Date(appt.startTime));
+    const key = new Date(appt.startTime).toLocaleDateString('en-CA', { timeZone: timezone });
     if (!groups[key]) groups[key] = [];
     groups[key].push(appt);
   }
@@ -113,6 +113,7 @@ export default function AppointmentsPage() {
   });
 
   const appointments: Appointment[] = data?.appointments || [];
+  const timezone: string = data?.timezone || 'America/New_York';
   const staffList: { id: string; fullName: string }[] = staffData?.staff || [];
   const isToday = selectedDate.toDateString() === new Date().toDateString();
 
@@ -270,7 +271,7 @@ export default function AppointmentsPage() {
         ) : (
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden divide-y divide-gray-100 dark:divide-gray-700">
             {filteredAppointments.map((appointment) => (
-              <AppointmentRow key={appointment.id} appointment={appointment} />
+              <AppointmentRow key={appointment.id} appointment={appointment} timezone={timezone} />
             ))}
           </div>
         )
@@ -279,6 +280,7 @@ export default function AppointmentsPage() {
           selectedDate={selectedDate}
           appointments={filteredAppointments}
           selectedStaffId={selectedStaffId}
+          timezone={timezone}
           onNewAppointment={() => setShowNewModal(true)}
           onDayClick={(d) => { setSelectedDate(d); setView('day'); }}
         />
@@ -286,6 +288,7 @@ export default function AppointmentsPage() {
         <MonthView
           selectedDate={selectedDate}
           appointments={filteredAppointments}
+          timezone={timezone}
           onDayClick={(d) => { setSelectedDate(d); setView('day'); }}
         />
       )}
@@ -301,18 +304,20 @@ function WeekView({
   selectedDate,
   appointments,
   selectedStaffId,
+  timezone,
   onNewAppointment,
   onDayClick,
 }: {
   selectedDate: Date;
   appointments: Appointment[];
   selectedStaffId: string;
+  timezone: string;
   onNewAppointment: () => void;
   onDayClick: (d: Date) => void;
 }) {
   const weekStart = getWeekStart(selectedDate);
-  const grouped = groupByDay(appointments);
-  const todayStr = toDateStr(new Date());
+  const grouped = groupByDay(appointments, timezone);
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: timezone });
 
   return (
     <div className="space-y-3">
@@ -339,7 +344,7 @@ function WeekView({
             </div>
             {dayAppts.length > 0 ? (
               <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden divide-y divide-gray-100 dark:divide-gray-700">
-                {dayAppts.map(a => <AppointmentRow key={a.id} appointment={a} />)}
+                {dayAppts.map(a => <AppointmentRow key={a.id} appointment={a} timezone={timezone} />)}
               </div>
             ) : (
               <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 flex items-center justify-between">
@@ -359,18 +364,20 @@ function WeekView({
 function MonthView({
   selectedDate,
   appointments,
+  timezone,
   onDayClick,
 }: {
   selectedDate: Date;
   appointments: Appointment[];
+  timezone: string;
   onDayClick: (d: Date) => void;
 }) {
   const year = selectedDate.getFullYear();
   const month = selectedDate.getMonth();
   const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0=Sun
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const grouped = groupByDay(appointments);
-  const todayStr = toDateStr(new Date());
+  const grouped = groupByDay(appointments, timezone);
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: timezone });
 
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
@@ -410,7 +417,7 @@ function MonthView({
                 <div className="mt-1 space-y-0.5">
                   {dayAppts.slice(0, 2).map(a => {
                     const c = STATUS_CONFIG[a.status] ?? STATUS_CONFIG.scheduled;
-                    const timeStr = new Date(a.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                    const timeStr = new Date(a.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: timezone });
                     return (
                       <div key={a.id} className={`text-xs px-1 py-0.5 rounded truncate ${c.badge}`}>
                         {timeStr} {a.customer.name}
@@ -430,7 +437,7 @@ function MonthView({
   );
 }
 
-function AppointmentRow({ appointment }: { appointment: Appointment }) {
+function AppointmentRow({ appointment, timezone }: { appointment: Appointment; timezone: string }) {
   const queryClient = useQueryClient();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -479,10 +486,10 @@ function AppointmentRow({ appointment }: { appointment: Appointment }) {
         {/* Time */}
         <div className="w-28 flex-shrink-0 px-4 py-4">
           <p className="text-sm font-bold text-gray-900 dark:text-gray-100 tabular-nums">
-            {startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+            {startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: timezone })}
           </p>
           <p className="text-xs text-gray-400 dark:text-gray-500 tabular-nums mt-0.5">
-            {endTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+            {endTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: timezone })}
           </p>
           <p className="text-xs text-gray-300 dark:text-gray-600 mt-0.5">{appointment.duration} min</p>
         </div>
@@ -582,8 +589,8 @@ function AppointmentRow({ appointment }: { appointment: Appointment }) {
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">Cancel appointment?</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
               <strong className="text-gray-700 dark:text-gray-300">{appointment.customer.name}</strong> on{' '}
-              {startTime.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })} at{' '}
-              {startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+              {startTime.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: timezone })} at{' '}
+              {startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: timezone })}
             </p>
             <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">This action cannot be undone.</p>
             <div className="flex gap-2">

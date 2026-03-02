@@ -56,8 +56,14 @@ export function DatePicker({
   const isDateDisabled = (day: number | null) => {
     if (!day) return false;
     const date = new Date(displayMonth.getFullYear(), displayMonth.getMonth(), day);
-    if (minDate && date < minDate) return true;
-    if (maxDate && date > maxDate) return true;
+    if (minDate) {
+      const minDay = new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate());
+      if (date < minDay) return true;
+    }
+    if (maxDate) {
+      const maxDay = new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate());
+      if (date > maxDay) return true;
+    }
     return false;
   };
 
