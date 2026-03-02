@@ -36,7 +36,9 @@ export async function GET(
       );
     }
 
-    if (!business.enableOnlineBooking) {
+    const infoOnly = req.nextUrl.searchParams.get('infoOnly') === 'true';
+
+    if (!business.enableOnlineBooking && !infoOnly) {
       return NextResponse.json(
         { error: 'Online booking is not enabled for this business' },
         { status: 403 }

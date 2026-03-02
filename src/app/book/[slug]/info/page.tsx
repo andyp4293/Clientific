@@ -41,15 +41,12 @@ export default function BusinessInfoPage() {
     ? `/api/public/business-by-id/${slugOrPublicId}`
     : `/api/public/business/${slugOrPublicId}`;
 
-  // Fetch business info
+  // Fetch business info — append infoOnly=true to bypass the enableOnlineBooking gate
   const { data: businessData, isLoading } = useQuery({
     queryKey: ['business-info', slugOrPublicId],
     queryFn: async () => {
-      const res = await fetch(apiBase);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to fetch business');
-      }
+      const res = await fetch(`${apiBase}?infoOnly=true`);
+      if (!res.ok) return null;
       return res.json();
     },
   });
