@@ -402,6 +402,7 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
     time: '',
     duration: 60,
     notes: '',
+    source: 'dashboard',
   });
 
   const { data: customersData } = useQuery({
@@ -429,6 +430,7 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
           startTime: startTime.toISOString(),
           duration: formData.duration,
           notes: formData.notes || null,
+          source: formData.source,
         }),
       });
       if (res.ok) { onClose(); window.location.reload(); }
@@ -479,6 +481,14 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
               </select>
             </div>
             <div>
+              <label className="label">Booked via</label>
+              <select value={formData.source} onChange={(e) => setFormData({ ...formData, source: e.target.value })} className="input">
+                <option value="dashboard">Dashboard (manual)</option>
+                <option value="online">Online booking</option>
+                <option value="ai">AI receptionist</option>
+              </select>
+            </div>
+            <div>
               <label className="label">Notes</label>
               <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="input" rows={3} placeholder="Any special requests or notes…" />
             </div>
@@ -503,6 +513,7 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
     duration: appointment.duration,
     notes: appointment.notes || '',
     status: appointment.status,
+    source: appointment.source || 'dashboard',
   });
 
   const updateMutation = useMutation({
@@ -523,7 +534,7 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
     e.preventDefault();
     const newStart = new Date(`${formData.date}T${formData.time}`);
     const newEnd = new Date(newStart.getTime() + formData.duration * 60000);
-    updateMutation.mutate({ startTime: newStart.toISOString(), endTime: newEnd.toISOString(), duration: formData.duration, notes: formData.notes || null, status: formData.status });
+    updateMutation.mutate({ startTime: newStart.toISOString(), endTime: newEnd.toISOString(), duration: formData.duration, notes: formData.notes || null, status: formData.status, source: formData.source });
   };
 
   const initials = appointment.customer.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
@@ -584,6 +595,14 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
                 <option value="completed">Completed</option>
                 <option value="no_show">No Show</option>
                 <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Booked via</label>
+              <select value={formData.source} onChange={(e) => setFormData({ ...formData, source: e.target.value })} className="input">
+                <option value="dashboard">Dashboard (manual)</option>
+                <option value="online">Online booking</option>
+                <option value="ai">AI receptionist</option>
               </select>
             </div>
             <div>
