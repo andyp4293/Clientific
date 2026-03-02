@@ -39,7 +39,6 @@ const STATUS_CONFIG: Record<string, { label: string; badge: string; bar: string 
 
 export default function AppointmentsPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [view, setView] = useState<'day' | 'week' | 'month'>('day');
   const [showNewModal, setShowNewModal] = useState(false);
   const [selectedStaffId, setSelectedStaffId] = useState('');
   const queryClient = useQueryClient();
@@ -166,19 +165,6 @@ export default function AppointmentsPage() {
             </select>
           )}
 
-          <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-            {(['day', 'week', 'month'] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={`px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
-                  view === v ? 'bg-primary text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
-              >
-                {v}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 
