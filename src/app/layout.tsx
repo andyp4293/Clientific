@@ -9,13 +9,13 @@ import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'ClientFlow - Customer Management Platform',
+  title: 'Clientell - Customer Management Platform',
   description: 'Manage customers, appointments, and loyalty programs for your service business',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'ClientFlow',
+    title: 'Clientell',
   },
   icons: {
     icon: [

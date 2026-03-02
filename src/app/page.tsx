@@ -18,18 +18,18 @@ const faqs = [
     a: 'No. Customers book directly through your booking link — no account needed.',
   },
   {
-    q: 'What types of businesses is ClientFlow for?',
+    q: 'What types of businesses is Clientell for?',
     a: 'Any service-based business — barbershops, salons, spas, auto detailers, pet groomers, tutors, and more.',
   },
   {
     q: 'How do SMS reminders work?',
-    a: 'ClientFlow sends automated appointment confirmations and reminders via SMS. Your monthly SMS limit depends on your plan.',
+    a: 'Clientell sends automated appointment confirmations and reminders via SMS. Your monthly SMS limit depends on your plan.',
   },
 ];
 
 const testimonials = [
   {
-    text: 'ClientFlow completely changed how we run our barbershop. Customers book online, get reminders, and we hardly ever see no-shows anymore.',
+    text: 'Clientell completely changed how we run our barbershop. Customers book online, get reminders, and we hardly ever see no-shows anymore.',
     name: 'Marcus T.',
     business: 'Cut & Style Barbershop',
     initials: 'MT',
@@ -111,22 +111,22 @@ export default function HomePage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-gray-900">
 
       {/* ── Header ── */}
-      <header className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-gray-100 z-50">
+      <header className="sticky top-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xl">C</span>
             </div>
-            <span className="text-xl font-bold text-gray-900">ClientFlow</span>
+            <span className="text-xl font-bold text-gray-900 dark:text-gray-100">Clientell</span>
           </div>
           <nav className="hidden md:flex items-center space-x-8">
-            <a href="#features" className="text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors">Features</a>
-            <a href="#how-it-works" className="text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors">How It Works</a>
-            <a href="#pricing" className="text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors">Pricing</a>
-            <a href="#faq" className="text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors">FAQ</a>
+            <a href="#features" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">Features</a>
+            <a href="#how-it-works" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">How It Works</a>
+            <a href="#pricing" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">Pricing</a>
+            <a href="#faq" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">FAQ</a>
           </nav>
           <div className="flex items-center gap-3">
             {isAuthenticated ? (
@@ -135,7 +135,7 @@ export default function HomePage() {
               </Link>
             ) : (
               <>
-                <Link href="/login" className="text-gray-600 hover:text-gray-900 font-medium text-sm hidden sm:block">
+                <Link href="/login" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 font-medium text-sm hidden sm:block">
                   Log In
                 </Link>
                 <Link href="/register" className="btn-primary text-sm px-4 py-2 whitespace-nowrap">
@@ -148,19 +148,19 @@ export default function HomePage() {
       </header>
 
       {/* ── Hero ── */}
-      <section className="bg-gradient-to-br from-primary-50 via-blue-50 to-white">
+      <section className="bg-gradient-to-br from-primary-50 via-blue-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 lg:py-32">
           <div className="lg:grid lg:grid-cols-2 lg:gap-16 items-center">
             {/* Copy */}
             <div>
-              <div className="inline-flex items-center bg-primary-100 text-primary text-xs font-semibold px-3 py-1 rounded-full mb-6">
+              <div className="inline-flex items-center bg-primary-100 dark:bg-primary/20 text-primary text-xs font-semibold px-3 py-1 rounded-full mb-6">
                 Built for service businesses
               </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-gray-100 mb-6 leading-tight">
                 Run your business,<br />
                 <span className="text-primary">not paperwork</span>
               </h1>
-              <p className="text-lg text-gray-600 mb-8 max-w-lg">
+              <p className="text-lg text-gray-600 dark:text-gray-400 mb-8 max-w-lg">
                 Online booking, customer tracking, automated reminders, and review management — all in one platform built for salons, barbershops, and service pros.
               </p>
               {isAuthenticated ? (
@@ -172,31 +172,29 @@ export default function HomePage() {
                   <Link href="/register" className="btn-primary text-base px-8 py-3 inline-block">
                     Start Free — 14 Days
                   </Link>
-                  <p className="text-sm text-gray-500">No credit card required</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No credit card required</p>
                 </div>
               )}
               {/* Trust signals */}
               <div className="flex items-center gap-5 mt-8 flex-wrap">
                 <div className="flex items-center gap-1">
                   {[1, 2, 3, 4, 5].map(i => <StarIcon key={i} />)}
-                  <span className="text-sm text-gray-600 ml-1">4.9/5 rating</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400 ml-1">4.9/5 rating</span>
                 </div>
-                <span className="text-gray-300 hidden sm:block">|</span>
-                <span className="text-sm text-gray-600">500+ businesses trust ClientFlow</span>
+                <span className="text-gray-300 dark:text-gray-600 hidden sm:block">|</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">500+ businesses trust Clientell</span>
               </div>
             </div>
 
             {/* Dashboard mockup */}
             <div className="hidden lg:block mt-12 lg:mt-0">
               <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
-                {/* Fake browser bar */}
                 <div className="bg-gray-50 border-b border-gray-100 px-4 py-3 flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-red-400"></div>
                   <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
                   <div className="w-3 h-3 rounded-full bg-green-400"></div>
                   <div className="flex-1 mx-4 bg-gray-200 rounded h-5"></div>
                 </div>
-                {/* Dashboard content */}
                 <div className="p-5">
                   <div className="flex items-center justify-between mb-5">
                     <div>
@@ -207,7 +205,6 @@ export default function HomePage() {
                       <span className="text-white text-xs font-bold">J</span>
                     </div>
                   </div>
-                  {/* Stat cards */}
                   <div className="grid grid-cols-3 gap-3 mb-5">
                     {[
                       { label: "Today's Appts", val: '8', color: 'bg-blue-50' },
@@ -220,7 +217,6 @@ export default function HomePage() {
                       </div>
                     ))}
                   </div>
-                  {/* Mini appointment list */}
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Today&apos;s Schedule</p>
                   <div className="space-y-2">
                     {[
@@ -250,18 +246,18 @@ export default function HomePage() {
       </section>
 
       {/* ── Stats Strip ── */}
-      <section className="border-y border-gray-100 bg-white">
+      <section className="border-y border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[
-              { val: '500+', label: 'Businesses using ClientFlow' },
+              { val: '500+', label: 'Businesses using Clientell' },
               { val: '50k+', label: 'Appointments booked' },
               { val: '99.9%', label: 'Platform uptime' },
               { val: '3 min', label: 'Average setup time' },
             ].map(stat => (
               <div key={stat.label}>
                 <div className="text-3xl font-bold text-primary mb-1">{stat.val}</div>
-                <div className="text-sm text-gray-500">{stat.label}</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -269,24 +265,24 @@ export default function HomePage() {
       </section>
 
       {/* ── Features ── */}
-      <section id="features" className="bg-gray-50 py-20 sm:py-28">
+      <section id="features" className="bg-gray-50 dark:bg-gray-800 py-20 sm:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Everything you need to grow</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Stop juggling multiple tools. ClientFlow brings everything together so you can focus on your customers.
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">Everything you need to grow</h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              Stop juggling multiple tools. Clientell brings everything together so you can focus on your customers.
             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {features.map(feat => (
-              <div key={feat.title} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center mb-4">
+              <div key={feat.title} className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+                <div className="w-12 h-12 bg-primary-100 dark:bg-primary/20 rounded-xl flex items-center justify-center mb-4">
                   <svg className="w-6 h-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     {feat.icon}
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{feat.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{feat.desc}</p>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{feat.title}</h3>
+                <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">{feat.desc}</p>
               </div>
             ))}
           </div>
@@ -294,11 +290,11 @@ export default function HomePage() {
       </section>
 
       {/* ── How It Works ── */}
-      <section id="how-it-works" className="bg-white py-20 sm:py-28">
+      <section id="how-it-works" className="bg-white dark:bg-gray-900 py-20 sm:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Up and running in minutes</h2>
-            <p className="text-lg text-gray-600">Three simple steps to transform how you run your business.</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">Up and running in minutes</h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400">Three simple steps to transform how you run your business.</p>
           </div>
           <div className="grid md:grid-cols-3 gap-12 md:gap-8">
             {[
@@ -322,8 +318,8 @@ export default function HomePage() {
                 <div className="w-20 h-20 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg" style={{ boxShadow: '0 8px 24px rgba(59,130,246,0.25)' }}>
                   <span className="text-3xl font-bold text-white">{step.step}</span>
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">{step.title}</h3>
-                <p className="text-gray-500 max-w-xs mx-auto leading-relaxed">{step.desc}</p>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">{step.title}</h3>
+                <p className="text-gray-500 dark:text-gray-400 max-w-xs mx-auto leading-relaxed">{step.desc}</p>
               </div>
             ))}
           </div>
@@ -331,26 +327,26 @@ export default function HomePage() {
       </section>
 
       {/* ── Testimonials ── */}
-      <section className="bg-primary-50 py-20 sm:py-28">
+      <section className="bg-primary-50 dark:bg-gray-800 py-20 sm:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Loved by service businesses</h2>
-            <p className="text-lg text-gray-600">Real results from real business owners.</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">Loved by service businesses</h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400">Real results from real business owners.</p>
           </div>
           <div className="grid md:grid-cols-3 gap-6 sm:gap-8">
             {testimonials.map(t => (
-              <div key={t.name} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 flex flex-col">
+              <div key={t.name} className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col">
                 <div className="flex mb-3">
                   {[1, 2, 3, 4, 5].map(i => <StarIcon key={i} />)}
                 </div>
-                <p className="text-gray-700 text-sm leading-relaxed mb-5 flex-1">&ldquo;{t.text}&rdquo;</p>
+                <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed mb-5 flex-1">&ldquo;{t.text}&rdquo;</p>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center shrink-0">
                     <span className="text-white text-sm font-bold">{t.initials}</span>
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-gray-900">{t.name}</div>
-                    <div className="text-xs text-gray-500">{t.business}</div>
+                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t.name}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{t.business}</div>
                   </div>
                 </div>
               </div>
@@ -360,22 +356,22 @@ export default function HomePage() {
       </section>
 
       {/* ── Pricing ── */}
-      <section id="pricing" className="bg-white py-20 sm:py-28">
+      <section id="pricing" className="bg-white dark:bg-gray-900 py-20 sm:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Simple, transparent pricing</h2>
-            <p className="text-lg text-gray-600">Start free for 14 days. No credit card required.</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">Simple, transparent pricing</h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400">Start free for 14 days. No credit card required.</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
 
             {/* Starter */}
-            <div className="rounded-2xl border border-gray-200 p-8 flex flex-col">
-              <h3 className="text-xl font-bold text-gray-900 mb-1">Starter</h3>
-              <p className="text-sm text-gray-500 mb-4">Great for solo operators</p>
-              <p className="text-4xl font-bold text-gray-900 mb-6">$29<span className="text-lg text-gray-400 font-normal">/mo</span></p>
+            <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-8 flex flex-col bg-white dark:bg-gray-800">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">Starter</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Great for solo operators</p>
+              <p className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6">$29<span className="text-lg text-gray-400 font-normal">/mo</span></p>
               <ul className="space-y-3 mb-8 flex-1">
                 {['Up to 100 customers', '2 staff members', 'Online booking', 'Review management', 'Walk-in check-in'].map(f => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-gray-700">
+                  <li key={f} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <CheckIcon />{f}
                   </li>
                 ))}
@@ -388,16 +384,16 @@ export default function HomePage() {
             </div>
 
             {/* Pro */}
-            <div className="rounded-2xl border-2 border-primary p-8 flex flex-col relative bg-primary-50">
+            <div className="rounded-2xl border-2 border-primary p-8 flex flex-col relative bg-primary-50 dark:bg-primary/10">
               <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                 <span className="bg-primary text-white px-4 py-1 rounded-full text-xs font-semibold">Most Popular</span>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-1">Pro</h3>
-              <p className="text-sm text-gray-500 mb-4">For growing businesses</p>
-              <p className="text-4xl font-bold text-gray-900 mb-6">$79<span className="text-lg text-gray-400 font-normal">/mo</span></p>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">Pro</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">For growing businesses</p>
+              <p className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6">$79<span className="text-lg text-gray-400 font-normal">/mo</span></p>
               <ul className="space-y-3 mb-8 flex-1">
                 {['Up to 1,000 customers', '10 staff members', 'Everything in Starter', 'Loyalty program', 'SMS campaigns', 'Priority support'].map(f => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-gray-700">
+                  <li key={f} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <CheckIcon />{f}
                   </li>
                 ))}
@@ -410,13 +406,13 @@ export default function HomePage() {
             </div>
 
             {/* Premium */}
-            <div className="rounded-2xl border border-gray-200 p-8 flex flex-col">
-              <h3 className="text-xl font-bold text-gray-900 mb-1">Premium</h3>
-              <p className="text-sm text-gray-500 mb-4">For multi-location businesses</p>
-              <p className="text-4xl font-bold text-gray-900 mb-6">$149<span className="text-lg text-gray-400 font-normal">/mo</span></p>
+            <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-8 flex flex-col bg-white dark:bg-gray-800">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">Premium</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">For multi-location businesses</p>
+              <p className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6">$149<span className="text-lg text-gray-400 font-normal">/mo</span></p>
               <ul className="space-y-3 mb-8 flex-1">
                 {['Unlimited customers', 'Unlimited staff', 'Everything in Pro', 'Advanced analytics', 'Custom integrations', 'Dedicated support'].map(f => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-gray-700">
+                  <li key={f} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <CheckIcon />{f}
                   </li>
                 ))}
@@ -433,16 +429,16 @@ export default function HomePage() {
       </section>
 
       {/* ── FAQ ── */}
-      <section id="faq" className="bg-gray-50 py-20 sm:py-28">
+      <section id="faq" className="bg-gray-50 dark:bg-gray-800 py-20 sm:py-28">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Frequently asked questions</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">Frequently asked questions</h2>
           </div>
           <div className="space-y-3">
             {faqs.map((faq, i) => (
-              <div key={i} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+              <div key={i} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
                 <button
-                  className="w-full text-left px-6 py-4 flex items-center justify-between font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+                  className="w-full text-left px-6 py-4 flex items-center justify-between font-medium text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
                 >
                   <span>{faq.q}</span>
@@ -454,7 +450,7 @@ export default function HomePage() {
                   </svg>
                 </button>
                 {openFaq === i && (
-                  <div className="px-6 pb-5 text-gray-600 text-sm leading-relaxed">{faq.a}</div>
+                  <div className="px-6 pb-5 text-gray-600 dark:text-gray-400 text-sm leading-relaxed">{faq.a}</div>
                 )}
               </div>
             ))}
@@ -480,7 +476,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Footer ── */}
-      <footer className="bg-white border-t border-gray-100">
+      <footer className="bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="col-span-2 md:col-span-1">
@@ -488,37 +484,37 @@ export default function HomePage() {
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold text-xl">C</span>
                 </div>
-                <span className="text-xl font-bold text-gray-900">ClientFlow</span>
+                <span className="text-xl font-bold text-gray-900 dark:text-gray-100">Clientell</span>
               </div>
-              <p className="text-gray-500 text-sm leading-relaxed">
+              <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
                 The all-in-one platform for service businesses to manage customers, bookings, and reviews.
               </p>
             </div>
             <div>
-              <h4 className="font-semibold text-gray-900 mb-4 text-sm">Product</h4>
-              <ul className="space-y-2 text-sm text-gray-500">
-                <li><a href="#features" className="hover:text-gray-900 transition-colors">Features</a></li>
-                <li><a href="#pricing" className="hover:text-gray-900 transition-colors">Pricing</a></li>
-                <li><a href="#faq" className="hover:text-gray-900 transition-colors">FAQ</a></li>
+              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 text-sm">Product</h4>
+              <ul className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
+                <li><a href="#features" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">Features</a></li>
+                <li><a href="#pricing" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">Pricing</a></li>
+                <li><a href="#faq" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">FAQ</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold text-gray-900 mb-4 text-sm">Company</h4>
-              <ul className="space-y-2 text-sm text-gray-500">
-                <li><a href="#" className="hover:text-gray-900 transition-colors">About</a></li>
-                <li><a href="#" className="hover:text-gray-900 transition-colors">Contact</a></li>
+              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 text-sm">Company</h4>
+              <ul className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
+                <li><a href="#" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">About</a></li>
+                <li><a href="#" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">Contact</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold text-gray-900 mb-4 text-sm">Legal</h4>
-              <ul className="space-y-2 text-sm text-gray-500">
-                <li><a href="#" className="hover:text-gray-900 transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-gray-900 transition-colors">Terms of Service</a></li>
+              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 text-sm">Legal</h4>
+              <ul className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
+                <li><Link href="/privacy" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">Terms of Service</Link></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-gray-100 mt-10 pt-8 text-center text-sm text-gray-400">
-            © 2026 ClientFlow by Andy Pham. All rights reserved.
+          <div className="border-t border-gray-100 dark:border-gray-800 mt-10 pt-8 text-center text-sm text-gray-400 dark:text-gray-500">
+            © 2026 Clientell by Andy Pham. All rights reserved.
           </div>
         </div>
       </footer>

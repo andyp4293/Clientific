@@ -300,8 +300,8 @@ export default async function DashboardPage({
           <Link href="/dashboard/appointments" className="btn-outline text-center">
             View Appointments
           </Link>
-          <Link href="/dashboard/campaigns" className="btn-outline text-center">
-            Send Campaign
+          <Link href="/dashboard/analytics" className="btn-outline text-center">
+            View Analytics
           </Link>
         </div>
       </div>
