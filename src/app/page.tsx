@@ -6,42 +6,46 @@ import { useState } from 'react';
 
 const faqs = [
   {
+    q: 'How does the AI receptionist work?',
+    a: 'Clientell connects an AI-powered phone assistant to your business number. When a customer calls, the AI picks up, answers questions about your services and hours, and books appointments directly — all without you lifting a finger.',
+  },
+  {
     q: 'How long is the free trial?',
     a: 'Your free trial lasts 14 days with full access to all features. No credit card required to start.',
   },
   {
-    q: 'Can I cancel anytime?',
-    a: 'Yes, you can cancel at any time. No long-term contracts or cancellation fees.',
-  },
-  {
     q: 'Do my customers need an account to book?',
-    a: 'No. Customers book directly through your booking link — no account needed.',
+    a: 'No. Customers book through your public booking link or by calling your number — no app or account needed on their end.',
   },
   {
     q: 'What types of businesses is Clientell for?',
-    a: 'Any service-based business — barbershops, salons, spas, auto detailers, pet groomers, tutors, and more.',
+    a: 'Any service-based business — barbershops, salons, spas, nail studios, auto detailers, pet groomers, and more.',
   },
   {
     q: 'How do SMS reminders work?',
-    a: 'Clientell sends automated appointment confirmations and reminders via SMS. Your monthly SMS limit depends on your plan.',
+    a: 'After a booking is made (online or via AI call), Clientell automatically sends a confirmation text and a reminder before the appointment. No manual follow-up needed.',
+  },
+  {
+    q: 'Can I cancel anytime?',
+    a: 'Yes. No long-term contracts or cancellation fees — cancel anytime from your billing settings.',
   },
 ];
 
 const testimonials = [
   {
-    text: 'Clientell completely changed how we run our barbershop. Customers book online, get reminders, and we hardly ever see no-shows anymore.',
+    text: 'The AI receptionist is unreal. Customers call after hours, the AI books them, and I wake up to new appointments in my calendar. I haven\'t missed a call-in booking since.',
     name: 'Marcus T.',
     business: 'Cut & Style Barbershop',
     initials: 'MT',
   },
   {
-    text: 'The automated review requests alone are worth the price. Our Google reviews went from 12 to over 80 in just a few months.',
+    text: 'The loyalty program keeps my regulars coming back. Customers actually ask about their points now. It\'s become a real part of my business.',
     name: 'Jessica L.',
     business: 'Serenity Nail Studio',
     initials: 'JL',
   },
   {
-    text: 'I was running everything on paper before. Now I have a full client database, online booking, and I can see everything at a glance.',
+    text: 'I was running everything on paper before. Now I have online booking, a full client database, loyalty points, and I can see my revenue trends at a glance.',
     name: 'Carlos R.',
     business: 'Elite Auto Detailing',
     initials: 'CR',
@@ -51,45 +55,45 @@ const testimonials = [
 const features = [
   {
     icon: (
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+    ),
+    title: 'AI Phone Receptionist',
+    desc: 'An AI assistant answers your business calls 24/7, books appointments, and answers customer questions — automatically, in your name.',
+  },
+  {
+    icon: (
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
     ),
     title: 'Online Booking',
-    desc: 'Customers book 24/7 through your branded page. Automated confirmations and reminders reduce no-shows.',
+    desc: 'Customers book 24/7 through your branded page. Automated confirmations and reminders drastically reduce no-shows.',
   },
   {
     icon: (
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
     ),
-    title: 'Customer Tracking',
-    desc: 'Full customer history — visits, spending, notes. Automatic VIP, Regular, and At-Risk segmentation.',
-  },
-  {
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-    ),
-    title: 'Review Management',
-    desc: 'Automatically request reviews after every visit. Route 5-star reviews to Google, handle feedback privately.',
+    title: 'Customer Intelligence',
+    desc: 'Full client history — visits, spending, notes. Clientell automatically segments customers into VIP, Regular, At-Risk, and more.',
   },
   {
     icon: (
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
     ),
-    title: 'SMS Reminders',
-    desc: 'Reduce no-shows with automated appointment reminders sent directly to your customers\' phones.',
-  },
-  {
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-    ),
-    title: 'Walk-In Check-In',
-    desc: 'Digital check-in for walk-in customers. Clean queue management, no paper needed.',
+    title: 'SMS Automation',
+    desc: 'Booking confirmations, appointment reminders, and review requests — all sent automatically to your customers\' phones.',
   },
   {
     icon: (
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
     ),
-    title: 'Business Insights',
-    desc: 'See your busiest days, top services, and customer trends at a glance. Make smarter decisions.',
+    title: 'Analytics & Insights',
+    desc: 'Track revenue trends, busiest days, top services, and customer segments. Make smarter decisions with real data.',
+  },
+  {
+    icon: (
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    ),
+    title: 'Loyalty Program',
+    desc: 'Reward repeat customers with points on every visit and dollar spent. Keep them coming back with a built-in loyalty program.',
   },
 ];
 
@@ -106,7 +110,7 @@ const CheckIcon = () => (
 );
 
 export default function HomePage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const isAuthenticated = status === 'authenticated';
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
@@ -154,14 +158,14 @@ export default function HomePage() {
             {/* Copy */}
             <div>
               <div className="inline-flex items-center bg-primary-100 dark:bg-primary/20 text-primary text-xs font-semibold px-3 py-1 rounded-full mb-6">
-                Built for service businesses
+                AI-powered · Built for service businesses
               </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-gray-100 mb-6 leading-tight">
-                Run your business,<br />
-                <span className="text-primary">not paperwork</span>
+                Your business,<br />
+                <span className="text-primary">on autopilot</span>
               </h1>
               <p className="text-lg text-gray-600 dark:text-gray-400 mb-8 max-w-lg">
-                Online booking, customer tracking, automated reminders, and review management — all in one platform built for salons, barbershops, and service pros.
+                Clientell answers your calls, books appointments, sends reminders, collects reviews, and tracks every customer — so you can focus on doing the work.
               </p>
               {isAuthenticated ? (
                 <Link href="/dashboard" className="btn-primary text-base px-8 py-3 inline-block">
@@ -209,7 +213,7 @@ export default function HomePage() {
                     {[
                       { label: "Today's Appts", val: '8', color: 'bg-blue-50' },
                       { label: 'New Customers', val: '3', color: 'bg-green-50' },
-                      { label: 'Reviews', val: '24', color: 'bg-yellow-50' },
+                      { label: 'AI Calls', val: '5', color: 'bg-purple-50' },
                     ].map(stat => (
                       <div key={stat.label} className={`${stat.color} rounded-lg p-3`}>
                         <div className="text-xl font-bold text-gray-900">{stat.val}</div>
@@ -220,9 +224,9 @@ export default function HomePage() {
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Today&apos;s Schedule</p>
                   <div className="space-y-2">
                     {[
-                      { name: 'Alex M.', time: '9:00 AM', service: 'Haircut' },
-                      { name: 'Sarah K.', time: '10:30 AM', service: 'Highlights' },
-                      { name: 'James R.', time: '12:00 PM', service: 'Trim & Style' },
+                      { name: 'Alex M.', time: '9:00 AM', service: 'Haircut', source: 'AI' },
+                      { name: 'Sarah K.', time: '10:30 AM', service: 'Highlights', source: 'Online' },
+                      { name: 'James R.', time: '12:00 PM', service: 'Trim & Style', source: 'AI' },
                     ].map(appt => (
                       <div key={appt.name} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
                         <div className="flex items-center gap-2">
@@ -234,7 +238,10 @@ export default function HomePage() {
                             <div className="text-[10px] text-gray-500">{appt.service}</div>
                           </div>
                         </div>
-                        <span className="text-[10px] font-medium text-primary bg-primary-50 px-2 py-0.5 rounded-full">{appt.time}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${appt.source === 'AI' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>{appt.source}</span>
+                          <span className="text-[10px] font-medium text-primary bg-primary-50 px-2 py-0.5 rounded-full">{appt.time}</span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -250,7 +257,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[
-              { val: '500+', label: 'Businesses using Clientell' },
+              { val: '24/7', label: 'AI answers your calls' },
               { val: '50k+', label: 'Appointments booked' },
               { val: '99.9%', label: 'Platform uptime' },
               { val: '3 min', label: 'Average setup time' },
@@ -268,9 +275,9 @@ export default function HomePage() {
       <section id="features" className="bg-gray-50 dark:bg-gray-800 py-20 sm:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">Everything you need to grow</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">Everything you need, all in one place</h2>
             <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-              Stop juggling multiple tools. Clientell brings everything together so you can focus on your customers.
+              Stop juggling multiple tools. Clientell brings your booking, customers, AI, and marketing together in one platform.
             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -294,24 +301,24 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">Up and running in minutes</h2>
-            <p className="text-lg text-gray-600 dark:text-gray-400">Three simple steps to transform how you run your business.</p>
+            <p className="text-lg text-gray-600 dark:text-gray-400">Three simple steps to put your business on autopilot.</p>
           </div>
           <div className="grid md:grid-cols-3 gap-12 md:gap-8">
             {[
               {
                 step: '1',
                 title: 'Set up your profile',
-                desc: 'Add your services, staff, and business hours. Customize your booking page in minutes.',
+                desc: 'Add your services, staff, hours, and business info. Your AI receptionist and booking page are ready in minutes.',
               },
               {
                 step: '2',
                 title: 'Share your booking link',
-                desc: 'Drop your link on Instagram, Google, or your website — customers can book instantly.',
+                desc: 'Drop your link on Instagram, Google, or your website. Customers can book online or just call — your AI handles both.',
               },
               {
                 step: '3',
-                title: 'Watch your business grow',
-                desc: 'Manage your schedule, collect reviews automatically, and track every customer — all in one place.',
+                title: 'Watch your business run itself',
+                desc: 'Clientell books appointments, sends reminders, collects reviews, tracks customers, and reports on your growth — automatically.',
               },
             ].map(step => (
               <div key={step.step} className="text-center">
@@ -370,7 +377,7 @@ export default function HomePage() {
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Great for solo operators</p>
               <p className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6">$29<span className="text-lg text-gray-400 font-normal">/mo</span></p>
               <ul className="space-y-3 mb-8 flex-1">
-                {['Up to 100 customers', '2 staff members', 'Online booking', 'Review management', 'Walk-in check-in'].map(f => (
+                {['Up to 100 customers', '2 staff members', 'Online booking page', 'AI phone receptionist', 'SMS reminders', 'Walk-in check-in'].map(f => (
                   <li key={f} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <CheckIcon />{f}
                   </li>
@@ -392,7 +399,7 @@ export default function HomePage() {
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">For growing businesses</p>
               <p className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6">$79<span className="text-lg text-gray-400 font-normal">/mo</span></p>
               <ul className="space-y-3 mb-8 flex-1">
-                {['Up to 1,000 customers', '10 staff members', 'Everything in Starter', 'Loyalty program', 'SMS campaigns', 'Priority support'].map(f => (
+                {['Up to 1,000 customers', '10 staff members', 'Everything in Starter', 'Loyalty rewards program', 'Analytics dashboard', 'Walk-in check-in', 'Priority support'].map(f => (
                   <li key={f} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <CheckIcon />{f}
                   </li>
@@ -461,7 +468,7 @@ export default function HomePage() {
       {/* ── CTA ── */}
       <section className="bg-primary py-16 sm:py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Ready to grow your business?</h2>
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Ready to put your business on autopilot?</h2>
           <p className="text-lg text-primary-200 mb-8">Start your free 14-day trial. No credit card required.</p>
           {isAuthenticated ? (
             <Link href="/dashboard" className="bg-white text-primary font-semibold px-8 py-3 rounded-lg hover:bg-primary-50 transition-colors inline-block">
@@ -487,7 +494,7 @@ export default function HomePage() {
                 <span className="text-xl font-bold text-gray-900 dark:text-gray-100">Clientell</span>
               </div>
               <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                The all-in-one platform for service businesses to manage customers, bookings, and reviews.
+                The AI-powered platform for service businesses to manage bookings, customers, and growth.
               </p>
             </div>
             <div>

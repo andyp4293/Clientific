@@ -40,6 +40,7 @@ export default function AppointmentsPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [view, setView] = useState<'day' | 'week' | 'month'>('day');
   const [showNewModal, setShowNewModal] = useState(false);
+  const [selectedStaffId, setSelectedStaffId] = useState('');
   const queryClient = useQueryClient();
 
   const localDateStr = selectedDate.toLocaleDateString('en-CA'); // YYYY-MM-DD in local timezone
@@ -53,13 +54,27 @@ export default function AppointmentsPage() {
     },
   });
 
+  const { data: staffData } = useQuery({
+    queryKey: ['staff'],
+    queryFn: async () => {
+      const res = await fetch('/api/staff');
+      if (!res.ok) throw new Error('Failed to fetch staff');
+      return res.json();
+    },
+  });
+
   const appointments: Appointment[] = data?.appointments || [];
+  const staffList: { id: string; fullName: string }[] = staffData?.staff || [];
   const isToday = selectedDate.toDateString() === new Date().toDateString();
 
+  const filteredAppointments = selectedStaffId
+    ? appointments.filter(a => a.staff?.id === selectedStaffId)
+    : appointments;
+
   const counts = {
-    confirmed: appointments.filter(a => a.status === 'confirmed').length,
-    pending: appointments.filter(a => a.status === 'pending').length,
-    scheduled: appointments.filter(a => a.status === 'scheduled').length,
+    confirmed: filteredAppointments.filter(a => a.status === 'confirmed').length,
+    pending: filteredAppointments.filter(a => a.status === 'pending').length,
+    scheduled: filteredAppointments.filter(a => a.status === 'scheduled').length,
   };
 
   return (
@@ -118,11 +133,11 @@ export default function AppointmentsPage() {
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           {/* Quick stats */}
           {appointments.length > 0 && (
             <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 border-r border-gray-100 dark:border-gray-700 pr-4 mr-1">
-              <span className="font-semibold text-gray-900 dark:text-gray-100">{appointments.length}</span> total
+              <span className="font-semibold text-gray-900 dark:text-gray-100">{filteredAppointments.length}</span> total
               {counts.pending > 0 && (
                 <span className="bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800 px-2 py-0.5 rounded-full font-medium">
                   {counts.pending} pending
@@ -134,6 +149,20 @@ export default function AppointmentsPage() {
                 </span>
               )}
             </div>
+          )}
+
+          {/* Staff filter */}
+          {staffList.length > 0 && (
+            <select
+              value={selectedStaffId}
+              onChange={(e) => setSelectedStaffId(e.target.value)}
+              className="text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">All Staff</option>
+              {staffList.map(s => (
+                <option key={s.id} value={s.id}>{s.fullName}</option>
+              ))}
+            </select>
           )}
 
           <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -158,20 +187,24 @@ export default function AppointmentsPage() {
           <div className="w-7 h-7 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-gray-400 dark:text-gray-500">Loading appointments…</p>
         </div>
-      ) : appointments.length === 0 ? (
+      ) : filteredAppointments.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-16 text-center">
           <div className="w-12 h-12 bg-gray-50 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-6 h-6 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           </div>
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">No appointments scheduled</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">Nothing booked for this day yet.</p>
-          <button onClick={() => setShowNewModal(true)} className="btn-primary text-sm">+ New Appointment</button>
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            {selectedStaffId ? 'No appointments for this staff member' : 'No appointments scheduled'}
+          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">
+            {selectedStaffId ? 'Try selecting a different staff member or clearing the filter.' : 'Nothing booked for this day yet.'}
+          </p>
+          {!selectedStaffId && <button onClick={() => setShowNewModal(true)} className="btn-primary text-sm">+ New Appointment</button>}
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden divide-y divide-gray-100 dark:divide-gray-700">
-          {appointments.map((appointment) => (
+          {filteredAppointments.map((appointment) => (
             <AppointmentRow key={appointment.id} appointment={appointment} />
           ))}
         </div>
