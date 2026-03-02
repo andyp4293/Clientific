@@ -32,12 +32,18 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const date = searchParams.get('date');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
     const status = searchParams.get('status');
     const customerId = searchParams.get('customerId');
 
     const where: any = { businessId: business.id };
 
-    if (date) {
+    if (startDate && endDate) {
+      const start = businessMidnightUTC(startDate, business.timezone);
+      const end = businessMidnightUTC(endDate, business.timezone);
+      where.startTime = { gte: start, lt: end };
+    } else if (date) {
       const startOfDay = businessMidnightUTC(date, business.timezone);
       const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1);
 

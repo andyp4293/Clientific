@@ -16,12 +16,12 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="card p-8 text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-8 text-center">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg
-              className="w-8 h-8 text-red-600"
+              className="w-8 h-8 text-red-600 dark:text-red-400"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -34,15 +34,15 @@ export default function Error({
               />
             </svg>
           </div>
-          
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
             Oops! Something went wrong
           </h1>
-          
-          <p className="text-gray-600 mb-6">
-            We're experiencing technical difficulties. Please try again.
+
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            We&apos;re experiencing technical difficulties. Please try again.
           </p>
-          
+
           <div className="space-y-3">
             <button
               onClick={reset}
@@ -50,13 +50,13 @@ export default function Error({
             >
               Try Again
             </button>
-            
+
             <Link href="/" className="btn-outline w-full block">
               Go to Homepage
             </Link>
           </div>
-          
-          <p className="text-xs text-gray-500 mt-6">
+
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-6">
             If the problem persists, please contact support.
           </p>
         </div>

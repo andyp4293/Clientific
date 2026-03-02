@@ -28,6 +28,42 @@ interface Appointment {
   } | null;
 }
 
+function toDateStr(d: Date) {
+  return d.toLocaleDateString('en-CA'); // YYYY-MM-DD
+}
+
+function getWeekStart(date: Date): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() - d.getDay()); // back to Sunday
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function getWeekEnd(date: Date): Date {
+  const start = getWeekStart(date);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 7); // exclusive (next Sunday)
+  return end;
+}
+
+function getMonthStart(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function getMonthEnd(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 1); // exclusive
+}
+
+function groupByDay(appointments: Appointment[]): Record<string, Appointment[]> {
+  const groups: Record<string, Appointment[]> = {};
+  for (const appt of appointments) {
+    const key = toDateStr(new Date(appt.startTime));
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(appt);
+  }
+  return groups;
+}
+
 const STATUS_CONFIG: Record<string, { label: string; badge: string; bar: string }> = {
   pending:   { label: 'Pending',   badge: 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800',   bar: 'bg-amber-400' },
   scheduled: { label: 'Scheduled', badge: 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800',      bar: 'bg-blue-500' },
@@ -39,16 +75,29 @@ const STATUS_CONFIG: Record<string, { label: string; badge: string; bar: string 
 
 export default function AppointmentsPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [view, setView] = useState<'day' | 'week' | 'month'>('day');
   const [showNewModal, setShowNewModal] = useState(false);
   const [selectedStaffId, setSelectedStaffId] = useState('');
   const queryClient = useQueryClient();
 
-  const localDateStr = selectedDate.toLocaleDateString('en-CA'); // YYYY-MM-DD in local timezone
+  const localDateStr = toDateStr(selectedDate);
+  const weekStartStr = toDateStr(getWeekStart(selectedDate));
+  const weekEndStr = toDateStr(getWeekEnd(selectedDate));
+  const monthStartStr = toDateStr(getMonthStart(selectedDate));
+  const monthEndStr = toDateStr(getMonthEnd(selectedDate));
 
   const { data, isLoading } = useQuery({
-    queryKey: ['appointments', localDateStr],
+    queryKey: ['appointments', view, view === 'day' ? localDateStr : view === 'week' ? weekStartStr : monthStartStr],
     queryFn: async () => {
-      const res = await fetch(`/api/appointments?date=${localDateStr}`);
+      let url: string;
+      if (view === 'day') {
+        url = `/api/appointments?date=${localDateStr}`;
+      } else if (view === 'week') {
+        url = `/api/appointments?startDate=${weekStartStr}&endDate=${weekEndStr}`;
+      } else {
+        url = `/api/appointments?startDate=${monthStartStr}&endDate=${monthEndStr}`;
+      }
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch appointments');
       return res.json();
     },
@@ -77,15 +126,31 @@ export default function AppointmentsPage() {
     scheduled: filteredAppointments.filter(a => a.status === 'scheduled').length,
   };
 
+  const headerSubtitle = view === 'day'
+    ? (isToday ? 'Today' : selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }))
+    : view === 'week'
+    ? (() => {
+        const ws = getWeekStart(selectedDate);
+        const we = new Date(ws); we.setDate(ws.getDate() + 6);
+        return `${ws.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${we.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      })()
+    : selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const navigate = (dir: 1 | -1) => {
+    const d = new Date(selectedDate);
+    if (view === 'day') d.setDate(d.getDate() + dir);
+    else if (view === 'week') d.setDate(d.getDate() + dir * 7);
+    else d.setMonth(d.getMonth() + dir);
+    setSelectedDate(d);
+  };
+
   return (
     <div className="w-full">
       {/* Header */}
       <div className="flex justify-between items-start mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Appointments</h1>
-          <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">
-            {isToday ? 'Today' : selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-          </p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">{headerSubtitle}</p>
         </div>
         <button
           onClick={() => setShowNewModal(true)}
@@ -102,28 +167,25 @@ export default function AppointmentsPage() {
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-5 flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-1">
           <button
-            onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(d); }}
+            onClick={() => navigate(-1)}
             className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <div className="px-4 text-center min-w-[180px]">
-            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-              {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500">{selectedDate.getFullYear()}</p>
+          <div className="px-4 text-center min-w-[220px]">
+            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{headerSubtitle}</p>
           </div>
           <button
-            onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(d); }}
+            onClick={() => navigate(1)}
             className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>
-          {!isToday && (
+          {!isToday && view === 'day' && (
             <button
               onClick={() => setSelectedDate(new Date())}
               className="ml-2 text-xs font-medium text-primary px-3 py-1.5 rounded-lg hover:bg-primary/5 border border-primary/20 transition-colors"
@@ -165,6 +227,21 @@ export default function AppointmentsPage() {
             </select>
           )}
 
+          {/* View toggle */}
+          <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+            {(['day', 'week', 'month'] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={`px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
+                  view === v ? 'bg-primary text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+
         </div>
       </div>
 
@@ -174,32 +251,181 @@ export default function AppointmentsPage() {
           <div className="w-7 h-7 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-gray-400 dark:text-gray-500">Loading appointments…</p>
         </div>
-      ) : filteredAppointments.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-16 text-center">
-          <div className="w-12 h-12 bg-gray-50 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-6 h-6 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
+      ) : view === 'day' ? (
+        filteredAppointments.length === 0 ? (
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-16 text-center">
+            <div className="w-12 h-12 bg-gray-50 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {selectedStaffId ? 'No appointments for this staff member' : 'No appointments scheduled'}
+            </p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">
+              {selectedStaffId ? 'Try selecting a different staff member or clearing the filter.' : 'Nothing booked for this day yet.'}
+            </p>
+            {!selectedStaffId && <button onClick={() => setShowNewModal(true)} className="btn-primary text-sm">+ New Appointment</button>}
           </div>
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {selectedStaffId ? 'No appointments for this staff member' : 'No appointments scheduled'}
-          </p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">
-            {selectedStaffId ? 'Try selecting a different staff member or clearing the filter.' : 'Nothing booked for this day yet.'}
-          </p>
-          {!selectedStaffId && <button onClick={() => setShowNewModal(true)} className="btn-primary text-sm">+ New Appointment</button>}
-        </div>
+        ) : (
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden divide-y divide-gray-100 dark:divide-gray-700">
+            {filteredAppointments.map((appointment) => (
+              <AppointmentRow key={appointment.id} appointment={appointment} />
+            ))}
+          </div>
+        )
+      ) : view === 'week' ? (
+        <WeekView
+          selectedDate={selectedDate}
+          appointments={filteredAppointments}
+          selectedStaffId={selectedStaffId}
+          onNewAppointment={() => setShowNewModal(true)}
+          onDayClick={(d) => { setSelectedDate(d); setView('day'); }}
+        />
       ) : (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden divide-y divide-gray-100 dark:divide-gray-700">
-          {filteredAppointments.map((appointment) => (
-            <AppointmentRow key={appointment.id} appointment={appointment} />
-          ))}
-        </div>
+        <MonthView
+          selectedDate={selectedDate}
+          appointments={filteredAppointments}
+          onDayClick={(d) => { setSelectedDate(d); setView('day'); }}
+        />
       )}
 
       {showNewModal && (
         <NewAppointmentModal onClose={() => setShowNewModal(false)} selectedDate={selectedDate} />
       )}
+    </div>
+  );
+}
+
+function WeekView({
+  selectedDate,
+  appointments,
+  selectedStaffId,
+  onNewAppointment,
+  onDayClick,
+}: {
+  selectedDate: Date;
+  appointments: Appointment[];
+  selectedStaffId: string;
+  onNewAppointment: () => void;
+  onDayClick: (d: Date) => void;
+}) {
+  const weekStart = getWeekStart(selectedDate);
+  const grouped = groupByDay(appointments);
+  const todayStr = toDateStr(new Date());
+
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 7 }, (_, i) => {
+        const day = new Date(weekStart);
+        day.setDate(weekStart.getDate() + i);
+        const dayStr = toDateStr(day);
+        const dayAppts = grouped[dayStr] || [];
+        const isToday = dayStr === todayStr;
+
+        return (
+          <div key={dayStr}>
+            <div className="flex items-center gap-2 mb-2">
+              <button
+                onClick={() => onDayClick(day)}
+                className={`text-sm font-semibold hover:underline ${isToday ? 'text-primary' : 'text-gray-700 dark:text-gray-300'}`}
+              >
+                {day.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+              </button>
+              {isToday && <span className="text-xs bg-primary text-white px-1.5 py-0.5 rounded-full">Today</span>}
+              {dayAppts.length > 0 && (
+                <span className="text-xs text-gray-400 dark:text-gray-500">{dayAppts.length} appointment{dayAppts.length > 1 ? 's' : ''}</span>
+              )}
+            </div>
+            {dayAppts.length > 0 ? (
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden divide-y divide-gray-100 dark:divide-gray-700">
+                {dayAppts.map(a => <AppointmentRow key={a.id} appointment={a} />)}
+              </div>
+            ) : (
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 flex items-center justify-between">
+                <p className="text-xs text-gray-400 dark:text-gray-500">No appointments</p>
+                {isToday && !selectedStaffId && (
+                  <button onClick={onNewAppointment} className="text-xs text-primary hover:underline font-medium">+ Add</button>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MonthView({
+  selectedDate,
+  appointments,
+  onDayClick,
+}: {
+  selectedDate: Date;
+  appointments: Appointment[];
+  onDayClick: (d: Date) => void;
+}) {
+  const year = selectedDate.getFullYear();
+  const month = selectedDate.getMonth();
+  const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const grouped = groupByDay(appointments);
+  const todayStr = toDateStr(new Date());
+
+  return (
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+      {/* Day-of-week header */}
+      <div className="grid grid-cols-7 border-b border-gray-100 dark:border-gray-700">
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+          <div key={d} className="py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400">{d}</div>
+        ))}
+      </div>
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7">
+        {/* Leading empty cells */}
+        {Array.from({ length: firstDayOfMonth }, (_, i) => (
+          <div key={`e${i}`} className="min-h-[80px] border-b border-r border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/20" />
+        ))}
+        {/* Day cells */}
+        {Array.from({ length: daysInMonth }, (_, i) => {
+          const day = new Date(year, month, i + 1);
+          const dayStr = toDateStr(day);
+          const dayAppts = grouped[dayStr] || [];
+          const isToday = dayStr === todayStr;
+
+          return (
+            <div
+              key={dayStr}
+              onClick={() => onDayClick(day)}
+              className={`min-h-[80px] border-b border-r border-gray-100 dark:border-gray-700 p-2 cursor-pointer transition-colors ${
+                isToday ? 'bg-primary/5 dark:bg-primary/10' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+              }`}
+            >
+              <span className={`inline-flex w-6 h-6 items-center justify-center rounded-full text-sm font-medium ${
+                isToday ? 'bg-primary text-white' : 'text-gray-700 dark:text-gray-300'
+              }`}>
+                {i + 1}
+              </span>
+              {dayAppts.length > 0 && (
+                <div className="mt-1 space-y-0.5">
+                  {dayAppts.slice(0, 2).map(a => {
+                    const c = STATUS_CONFIG[a.status] ?? STATUS_CONFIG.scheduled;
+                    const timeStr = new Date(a.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                    return (
+                      <div key={a.id} className={`text-xs px-1 py-0.5 rounded truncate ${c.badge}`}>
+                        {timeStr} {a.customer.name}
+                      </div>
+                    );
+                  })}
+                  {dayAppts.length > 2 && (
+                    <div className="text-xs text-gray-400 dark:text-gray-500 pl-1">+{dayAppts.length - 2} more</div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
