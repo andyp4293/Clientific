@@ -186,6 +186,7 @@ export async function POST(req: NextRequest) {
         dateTime: appointment.startTime,
         businessName: appointment.business.name,
         duration: appointment.duration,
+        timezone: business.timezone,
       });
 
       if (smsResult.success) {

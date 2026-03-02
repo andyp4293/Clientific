@@ -28,6 +28,7 @@ interface CancellationDetails {
   serviceName: string;
   dateTime: Date;
   businessName: string;
+  timezone?: string;
 }
 
 interface BusinessConfirmedDetails {
@@ -36,6 +37,7 @@ interface BusinessConfirmedDetails {
   dateTime: Date;
   businessName: string;
   appointmentUrl?: string;
+  timezone?: string;
 }
 
 interface ReminderDetails {
@@ -45,6 +47,7 @@ interface ReminderDetails {
   dateTime: Date;
   businessName: string;
   businessPhone?: string;
+  timezone?: string;
 }
 
 // Utility: Format phone number to E.164
@@ -70,11 +73,12 @@ export function isValidPhoneNumber(phone: string): boolean {
 }
 
 // Utility: Format time for SMS
-function formatTime(date: Date): string {
+function formatTime(date: Date, timezone?: string): string {
   return date.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
+    ...(timezone && { timeZone: timezone }),
   });
 }
 
@@ -142,12 +146,14 @@ export function formatAppointmentConfirmationSMS(details: AppointmentDetails): s
 
 // Template: Appointment Confirmed by Business
 export function formatAppointmentBusinessConfirmedSMS(details: BusinessConfirmedDetails): string {
+  const tz = details.timezone || undefined;
   const dateStr = details.dateTime.toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
+    ...(tz && { timeZone: tz }),
   });
-  const timeStr = formatTime(details.dateTime);
+  const timeStr = formatTime(details.dateTime, tz);
 
   const base = `${details.businessName}: Your ${details.serviceName} appointment on ${dateStr} at ${timeStr} is CONFIRMED. See you then!`;
   const msg = details.appointmentUrl
@@ -158,19 +164,21 @@ export function formatAppointmentBusinessConfirmedSMS(details: BusinessConfirmed
 
 // Template: Appointment Reminder (24 hours before) - shortened
 export function formatAppointmentReminderSMS(details: ReminderDetails): string {
-  const timeStr = formatTime(details.dateTime);
+  const timeStr = formatTime(details.dateTime, details.timezone);
 
   return `Reminder: Appointment tomorrow at ${details.businessName}. ${details.serviceName} with ${details.staffName} at ${timeStr}.`;
 }
 
 // Template: Appointment Cancellation
 export function formatAppointmentCancellationSMS(details: CancellationDetails): string {
+  const tz = details.timezone || undefined;
   const dateStr = details.dateTime.toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
+    ...(tz && { timeZone: tz }),
   });
-  const timeStr = formatTime(details.dateTime);
+  const timeStr = formatTime(details.dateTime, tz);
 
   return `Hi ${details.customerName}, your ${details.serviceName} appointment at ${details.businessName} on ${dateStr} at ${timeStr} has been cancelled. We truly appreciate your time and hope to have the pleasure of welcoming you back in the future. You're always welcome! — ${details.businessName}`;
 }

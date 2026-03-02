@@ -447,11 +447,9 @@ export default function PublicBookingPage() {
                         return (
                           <div
                             key={slot}
-                            title="Already booked"
-                            className="p-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-gray-700/50 text-gray-400 dark:text-gray-500 cursor-not-allowed relative overflow-hidden"
+                            className="p-3 rounded-lg text-sm font-medium text-center bg-gray-100 dark:bg-gray-700/50 text-gray-300 dark:text-gray-600 cursor-not-allowed"
                           >
-                            <span className="line-through">{timeStr}</span>
-                            <span className="block text-[9px] font-normal text-gray-400 dark:text-gray-500 mt-0.5">Booked</span>
+                            {timeStr}
                           </div>
                         );
                       }

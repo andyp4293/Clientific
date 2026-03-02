@@ -110,7 +110,7 @@ export default function AppointmentPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
       </div>
     );
@@ -118,10 +118,10 @@ export default function AppointmentPage() {
 
   if (error || !data?.appointment) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Appointment not found</h1>
-          <p className="text-gray-600">This link may be invalid or expired.</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Appointment not found</h1>
+          <p className="text-gray-600 dark:text-gray-400">This link may be invalid or expired.</p>
         </div>
       </div>
     );
@@ -175,12 +175,12 @@ export default function AppointmentPage() {
   const slots: string[] = slotsData?.slots ?? [];
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+      <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 text-center">
 
         {/* Success banner after reschedule */}
         {rescheduleDone && (
-          <div className="mb-6 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-800">
+          <div className="mb-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-4 py-3 text-sm text-green-800 dark:text-green-300">
             Your appointment has been rescheduled!
           </div>
         )}
@@ -188,18 +188,18 @@ export default function AppointmentPage() {
         {/* Status icon */}
         <div className="mb-6">
           <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center ${
-            isCancelled ? 'bg-red-100' : isPending ? 'bg-yellow-100' : 'bg-green-100'
+            isCancelled ? 'bg-red-100 dark:bg-red-900/30' : isPending ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-green-100 dark:bg-green-900/30'
           }`}>
             {isCancelled ? (
-              <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             ) : isPending ? (
-              <svg className="w-8 h-8 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-8 h-8 text-yellow-600 dark:text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             ) : (
-              <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             )}
@@ -209,69 +209,69 @@ export default function AppointmentPage() {
         {/* Heading */}
         {isCancelled ? (
           <>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Appointment Cancelled</h1>
-            <p className="text-gray-600 mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Appointment Cancelled</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
               Your appointment has been cancelled. We hope to see you again soon!
             </p>
           </>
         ) : isPending ? (
           <>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Request Received!</h1>
-            <p className="text-gray-600 mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Request Received!</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
               Your appointment request has been submitted. Check back here — this page will update automatically once the business confirms your booking.
             </p>
           </>
         ) : (
           <>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Booking Confirmed!</h1>
-            <p className="text-gray-600 mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Booking Confirmed!</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
               Your appointment is confirmed. We&apos;ve sent a confirmation to your phone.
             </p>
           </>
         )}
 
         {/* Details card */}
-        <div className="bg-gray-50 rounded-xl p-6 mb-6 text-left">
-          <h3 className="font-semibold text-gray-900 mb-4">Appointment Details</h3>
-          <div className="space-y-3 text-sm text-gray-900">
+        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6 mb-6 text-left">
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Appointment Details</h3>
+          <div className="space-y-3 text-sm text-gray-900 dark:text-gray-100">
             <div className="flex justify-between">
-              <span className="text-gray-600">Business:</span>
+              <span className="text-gray-600 dark:text-gray-400">Business:</span>
               <span className="font-medium">{appt.business.name}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">{servicesList.length > 1 ? 'Services:' : 'Service:'}</span>
+              <span className="text-gray-600 dark:text-gray-400">{servicesList.length > 1 ? 'Services:' : 'Service:'}</span>
               <span className="font-medium text-right max-w-[60%]">{servicesLabel}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Date:</span>
+              <span className="text-gray-600 dark:text-gray-400">Date:</span>
               <span className="font-medium">{dateStr}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Time:</span>
+              <span className="text-gray-600 dark:text-gray-400">Time:</span>
               <span className="font-medium">{timeStr}</span>
             </div>
             {appt.staff && (
               <div className="flex justify-between">
-                <span className="text-gray-600">Staff:</span>
+                <span className="text-gray-600 dark:text-gray-400">Staff:</span>
                 <span className="font-medium">{appt.staff.fullName}</span>
               </div>
             )}
             <div className="flex justify-between">
-              <span className="text-gray-600">Duration:</span>
+              <span className="text-gray-600 dark:text-gray-400">Duration:</span>
               <span className="font-medium">{appt.duration} minutes</span>
             </div>
             {hasPrice && (
               <div className="flex justify-between">
-                <span className="text-gray-600">Total:</span>
+                <span className="text-gray-600 dark:text-gray-400">Total:</span>
                 <span className="font-medium">${totalPrice.toFixed(2)}</span>
               </div>
             )}
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">Status:</span>
+              <span className="text-gray-600 dark:text-gray-400">Status:</span>
               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                isCancelled ? 'bg-red-100 text-red-800' :
-                isPending ? 'bg-yellow-100 text-yellow-800' :
-                'bg-green-100 text-green-800'
+                isCancelled ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
+                isPending ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
               }`}>
                 {appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}
               </span>
@@ -281,7 +281,7 @@ export default function AppointmentPage() {
 
         {/* Footer text */}
         {(isConfirmed || (!isPending && !isCancelled)) && (
-          <p className="text-sm text-gray-600 mb-6">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
             Please arrive 5–10 minutes early.
           </p>
         )}
@@ -304,7 +304,7 @@ export default function AppointmentPage() {
                     setShowReschedule(true);
                     setShowCancelConfirm(false);
                   }}
-                  className="w-full border border-gray-300 text-gray-700 rounded-xl py-3 font-medium hover:bg-gray-50 transition-colors"
+                  className="w-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl py-3 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   Reschedule Appointment
                 </button>
@@ -312,16 +312,16 @@ export default function AppointmentPage() {
 
               {/* Reschedule panel */}
               {showReschedule && (
-                <div className="border border-gray-200 rounded-xl p-4 text-left">
+                <div className="border border-gray-200 dark:border-gray-600 rounded-xl p-4 text-left">
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-semibold text-gray-900">Choose a new date &amp; time</h4>
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Choose a new date &amp; time</h4>
                     <button
                       onClick={() => {
                         setShowReschedule(false);
                         setRescheduleDate('');
                         setRescheduleSlot(null);
                       }}
-                      className="text-gray-400 hover:text-gray-600 text-xs"
+                      className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xs"
                     >
                       Cancel
                     </button>
@@ -336,7 +336,7 @@ export default function AppointmentPage() {
                       setRescheduleDate(e.target.value);
                       setRescheduleSlot(null);
                     }}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white mb-3"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 mb-3"
                   />
 
                   {/* Slots */}
@@ -346,7 +346,7 @@ export default function AppointmentPage() {
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
                       </div>
                     ) : slots.length === 0 ? (
-                      <p className="text-sm text-gray-500 text-center py-2">No available times on this date.</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-2">No available times on this date.</p>
                     ) : (
                       <div className="grid grid-cols-3 gap-2 mb-3">
                         {slots.map((slot) => (
@@ -356,7 +356,7 @@ export default function AppointmentPage() {
                             className={`py-2 rounded-lg text-sm font-medium transition-colors ${
                               rescheduleSlot === slot
                                 ? 'bg-blue-600 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-500'
                             }`}
                           >
                             {formatSlotTime(slot)}
@@ -368,11 +368,11 @@ export default function AppointmentPage() {
 
                   {/* Confirmation */}
                   {rescheduleSlot && (
-                    <div className="border-t border-gray-100 pt-3">
-                      <p className="text-xs text-gray-600 mb-3">
-                        Change from <span className="font-medium text-gray-900">{timeStr}, {start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: appt.business.timezone })}</span>
+                    <div className="border-t border-gray-100 dark:border-gray-600 pt-3">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                        Change from <span className="font-medium text-gray-900 dark:text-gray-100">{timeStr}, {start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: appt.business.timezone })}</span>
                         {' '}to{' '}
-                        <span className="font-medium text-gray-900">{formatSlotTime(rescheduleSlot)}, {new Date(rescheduleSlot).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: appt.business.timezone })}</span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{formatSlotTime(rescheduleSlot)}, {new Date(rescheduleSlot).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: appt.business.timezone })}</span>
                       </p>
                       <button
                         onClick={() => rescheduleMutation.mutate()}
@@ -382,7 +382,7 @@ export default function AppointmentPage() {
                         {rescheduleMutation.isPending ? 'Rescheduling...' : 'Confirm Reschedule'}
                       </button>
                       {rescheduleMutation.isError && (
-                        <p className="text-xs text-red-600 mt-2 text-center">
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-2 text-center">
                           {rescheduleMutation.error instanceof Error
                             ? rescheduleMutation.error.message
                             : 'Failed to reschedule'}
@@ -399,19 +399,19 @@ export default function AppointmentPage() {
                   {!showCancelConfirm ? (
                     <button
                       onClick={() => setShowCancelConfirm(true)}
-                      className="w-full border border-red-300 text-red-600 rounded-xl py-3 font-medium hover:bg-red-50 transition-colors"
+                      className="w-full border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 rounded-xl py-3 font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                     >
                       Cancel Appointment
                     </button>
                   ) : (
-                    <div className="border border-red-200 rounded-xl p-4 bg-red-50 text-left">
-                      <p className="text-sm text-gray-700 mb-3 text-center">
+                    <div className="border border-red-200 dark:border-red-800 rounded-xl p-4 bg-red-50 dark:bg-red-900/20 text-left">
+                      <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 text-center">
                         Are you sure you want to cancel this appointment?
                       </p>
                       <div className="flex gap-2">
                         <button
                           onClick={() => setShowCancelConfirm(false)}
-                          className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors"
+                          className="flex-1 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                         >
                           Keep it
                         </button>
@@ -424,7 +424,7 @@ export default function AppointmentPage() {
                         </button>
                       </div>
                       {cancelMutation.isError && (
-                        <p className="text-xs text-red-600 mt-2 text-center">
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-2 text-center">
                           {cancelMutation.error instanceof Error
                             ? cancelMutation.error.message
                             : 'Failed to cancel'}

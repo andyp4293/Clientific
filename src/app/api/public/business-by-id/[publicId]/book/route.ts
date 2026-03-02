@@ -207,6 +207,7 @@ export async function POST(
         businessName: appointment.business.name,
         duration: appointment.duration,
         appointmentUrl,
+        timezone: business.timezone ?? undefined,
       });
 
       if (smsResult.success) {

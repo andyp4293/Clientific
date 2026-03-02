@@ -168,6 +168,7 @@ export async function PATCH(
         dateTime: appointment.startTime,
         businessName: business.name,
         appointmentUrl,
+        timezone: business.timezone ?? undefined,
       }).catch(err => console.warn('⚠️  Confirmed SMS failed:', err));
     }
 
@@ -217,6 +218,7 @@ export async function DELETE(
         business: {
           select: {
             name: true,
+            timezone: true,
           },
         },
       },
@@ -233,6 +235,7 @@ export async function DELETE(
         serviceName: appointment.service?.name || 'Appointment',
         dateTime: appointment.startTime,
         businessName: appointment.business.name,
+        timezone: appointment.business.timezone ?? undefined,
       });
     }
 

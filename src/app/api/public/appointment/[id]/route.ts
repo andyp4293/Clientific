@@ -135,6 +135,7 @@ export async function PATCH(
       serviceName: existing.service?.name || 'Appointment',
       dateTime: existing.startTime,
       businessName: existing.business.name,
+      timezone: existing.business.timezone ?? undefined,
     }).catch((err) => console.warn('⚠️  Cancellation SMS failed:', err));
   }
 

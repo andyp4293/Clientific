@@ -5,11 +5,12 @@ import { useEffect } from 'react';
 export default function ApptLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const html = document.documentElement;
-    const hadDark = html.classList.contains('dark');
-    html.classList.remove('dark');
-    return () => {
-      if (hadDark) html.classList.add('dark');
-    };
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (prefersDark) {
+      html.classList.add('dark');
+    } else {
+      html.classList.remove('dark');
+    }
   }, []);
 
   return <>{children}</>;

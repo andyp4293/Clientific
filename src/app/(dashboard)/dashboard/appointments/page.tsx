@@ -441,6 +441,7 @@ function AppointmentRow({ appointment, timezone }: { appointment: Appointment; t
   const queryClient = useQueryClient();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showNotesModal, setShowNotesModal] = useState(false);
   const startTime = new Date(appointment.startTime);
   const endTime = new Date(appointment.endTime);
   const config = STATUS_CONFIG[appointment.status] ?? STATUS_CONFIG.scheduled;
@@ -521,14 +522,22 @@ function AppointmentRow({ appointment, timezone }: { appointment: Appointment; t
                 </>
               )}
             </div>
-            {appointment.notes && (
-              <p className="text-xs text-gray-400 dark:text-gray-500 italic mt-1 truncate max-w-xs">{appointment.notes}</p>
-            )}
           </div>
         </div>
 
         {/* Status + Actions */}
         <div className="flex items-center gap-2 px-4 py-4 flex-shrink-0">
+          {appointment.notes && (
+            <button
+              onClick={() => setShowNotesModal(true)}
+              title="View notes"
+              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors px-1"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </button>
+          )}
           {appointment.source === 'ai' && (
             <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
               AI
@@ -582,6 +591,22 @@ function AppointmentRow({ appointment, timezone }: { appointment: Appointment; t
       </div>
 
       {showEditModal && <EditAppointmentModal appointment={appointment} onClose={() => setShowEditModal(false)} />}
+
+      {showNotesModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowNotesModal(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-sm w-full p-5 shadow-2xl border border-gray-100 dark:border-gray-700" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Notes</h3>
+              <button onClick={() => setShowNotesModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{appointment.notes}</p>
+          </div>
+        </div>
+      )}
 
       {showCancelConfirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
