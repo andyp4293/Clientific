@@ -86,10 +86,10 @@ function RegisterForm() {
   // Show loading while checking auth status
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-sm text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading...</p>
         </div>
       </div>
     );
@@ -308,7 +308,7 @@ function RegisterForm() {
     return 'Unable to create account. Please check your information and try again.';
   };
 
-  return (    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-100 py-8 sm:py-12 px-4">
+  return (    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 sm:py-12 px-4">
       <div className="w-full max-w-2xl mx-auto">
         {/* Logo */}
         <div className="text-center mb-6 sm:mb-8">
@@ -316,9 +316,9 @@ function RegisterForm() {
             <div className="w-8 sm:w-10 h-8 sm:h-10 bg-primary rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xl sm:text-2xl">C</span>
             </div>
-            <span className="text-xl sm:text-2xl font-bold text-gray-900">ClientFlow</span>
+            <span className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Clientell</span>
           </Link>
-          <p className="text-sm sm:text-base text-gray-600 mt-2">Start your 14-day free trial</p>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2">Start your 14-day free trial</p>
         </div>
 
         {/* Progress Steps */}
@@ -330,7 +330,7 @@ function RegisterForm() {
                   className={`w-8 sm:w-10 h-8 sm:h-10 rounded-full flex items-center justify-center font-medium text-sm sm:text-base ${
                     step <= currentStep
                       ? 'bg-primary text-white'
-                      : 'bg-gray-200 text-gray-500'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
                   }`}
                 >
                   {step}
@@ -338,14 +338,14 @@ function RegisterForm() {
                 {step < 4 && (
                   <div
                     className={`flex-1 h-0.5 sm:h-1 mx-1 sm:mx-2 ${
-                      step < currentStep ? 'bg-primary' : 'bg-gray-200'
+                      step < currentStep ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'
                     }`}
                   />
                 )}
               </div>
             ))}
           </div>
-          <div className="flex justify-between mt-2 text-[10px] sm:text-xs text-gray-600">
+          <div className="flex justify-between mt-2 text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">
             <span>Account</span>
             <span>Business</span>
             <span>Details</span>
@@ -360,7 +360,7 @@ function RegisterForm() {
           )}          {/* Step 1: Account Creation */}
           {currentStep === 1 && (
             <div className="space-y-3 sm:space-y-4">
-              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Create Your Account</h2>
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-900 dark:text-gray-100">Create Your Account</h2>
               
               <div>
                 <label htmlFor="email" className="label">
@@ -475,7 +475,7 @@ function RegisterForm() {
                   onChange={(e) => updateFormData({ acceptTerms: e.target.checked })}
                   className="rounded border-gray-300 text-primary focus:ring-primary mr-3 mt-1"
                 />
-                <label htmlFor="acceptTerms" className="text-sm text-gray-600">
+                <label htmlFor="acceptTerms" className="text-sm text-gray-600 dark:text-gray-400">
                   I accept the{' '}
                   <Link href="/terms" target="_blank" className="text-primary hover:underline">
                     Terms of Service
@@ -490,7 +490,7 @@ function RegisterForm() {
           )}          {/* Step 2: Business Information */}
           {currentStep === 2 && (
             <div className="space-y-3 sm:space-y-4">
-              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Tell Us About Your Business</h2>
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-900 dark:text-gray-100">Tell Us About Your Business</h2>
 
               <div>
                 <label htmlFor="businessName" className="label">
@@ -560,8 +560,8 @@ function RegisterForm() {
           {/* Step 3: Business Details */}
           {currentStep === 3 && (
             <div className="space-y-4">
-              <h2 className="text-2xl font-bold mb-6">Business Location</h2>
-              <p className="text-sm text-gray-600 mb-4">
+              <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">Business Location</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                 This information will be shown to customers booking appointments.
               </p>              <div>
                 <label htmlFor="street" className="label">
@@ -654,7 +654,7 @@ function RegisterForm() {
                   className="input"
                   readOnly
                 />
-                <p className="text-xs text-gray-500 mt-1">Auto-detected from your browser</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Auto-detected from your browser</p>
               </div>
             </div>
           )}
@@ -678,14 +678,14 @@ function RegisterForm() {
                 </svg>
               </div>
               
-              <h2 className="text-3xl font-bold mb-4">You're All Set!</h2>
-              <p className="text-gray-600 mb-8">
+              <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-gray-100">You're All Set!</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-8">
                 Your account has been created. Your 14-day free trial starts now.
               </p>
 
               <div className="card bg-primary-50 p-6 text-left mb-8">
                 <h3 className="font-semibold mb-4">What's Next?</h3>
-                <ul className="space-y-2 text-sm text-gray-700">
+                <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
                   <li className="flex items-start">
                     <svg className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -727,7 +727,7 @@ function RegisterForm() {
 
           {/* Navigation Buttons */}
           {currentStep < 4 && (
-            <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">              {currentStep > 1 ? (
+            <div className="flex justify-between mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">              {currentStep > 1 ? (
                 <button onClick={prevStep} className="btn-secondary" disabled={isLoading}>
                   ← Previous
                 </button>
@@ -740,7 +740,7 @@ function RegisterForm() {
             </div>
           )}
         </div>        {/* Login Link */}
-        <div className="text-center mt-6 text-sm text-gray-600">
+        <div className="text-center mt-6 text-sm text-gray-600 dark:text-gray-400">
           Already have an account?{' '}
           <Link href="/login" className="text-primary hover:text-primary-700 font-medium">
             Log in

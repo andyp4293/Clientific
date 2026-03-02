@@ -23,10 +23,10 @@ export default function LoginPage() {
   // Show loading while checking auth status
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-sm text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading...</p>
         </div>
       </div>
     );
@@ -87,7 +87,7 @@ export default function LoginPage() {
     return 'Login failed. Please check your credentials and try again.';
   };
 
-  return (    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-100 flex items-center justify-center p-4">
+  return (    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-6 sm:mb-8">
@@ -95,13 +95,13 @@ export default function LoginPage() {
             <div className="w-8 sm:w-10 h-8 sm:h-10 bg-primary rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xl sm:text-2xl">C</span>
             </div>
-            <span className="text-xl sm:text-2xl font-bold text-gray-900">ClientFlow</span>
+            <span className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Clientell</span>
           </Link>
         </div>
 
         {/* Login Card */}
         <div className="card p-6 sm:p-8">
-          <h1 className="text-xl sm:text-2xl font-bold text-center mb-4 sm:mb-6">Welcome Back</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-center mb-4 sm:mb-6 text-gray-900 dark:text-gray-100">Welcome Back</h1>
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4 text-sm">
@@ -148,7 +148,7 @@ export default function LoginPage() {
                   type="checkbox"
                   className="rounded border-gray-300 text-primary focus:ring-primary mr-2"
                 />
-                <span className="text-gray-600">Remember me</span>
+                <span className="text-gray-600 dark:text-gray-400">Remember me</span>
               </label>
               <Link href="/forgot-password" className="text-primary hover:text-primary-700">
                 Forgot password?
@@ -164,7 +164,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-600">
+          <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
             Don't have an account?{' '}
             <Link href="/register" className="text-primary hover:text-primary-700 font-medium">
               Start your free trial
