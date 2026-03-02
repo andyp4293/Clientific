@@ -826,33 +826,6 @@ export default function SettingsPage() {
                   </label>
                 </div>
 
-                <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg opacity-60">
-                  <label className="flex items-start">
-                    <input
-                      type="checkbox"
-                      disabled
-                      className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary mr-3 mt-0.5"
-                    />
-                    <div className="flex-1">
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Customer Review Notifications</span>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Get notified when customers leave reviews — coming soon</p>
-                    </div>
-                  </label>
-                </div>
-
-                <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg opacity-60">
-                  <label className="flex items-start">
-                    <input
-                      type="checkbox"
-                      disabled
-                      className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary mr-3 mt-0.5"
-                    />
-                    <div className="flex-1">
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Weekly Summary</span>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Receive a weekly digest of your business activity — coming soon</p>
-                    </div>
-                  </label>
-                </div>
               </div>
             </div>
           </div>

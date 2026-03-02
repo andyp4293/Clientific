@@ -57,9 +57,16 @@ export default async function CustomerDetailPage({
     notFound();
   }
 
+  const business = await prisma.business.findUnique({
+    where: { id: session.user.businessId },
+    select: { googleReviewUrl: true, yelpUrl: true },
+  });
+
   return (
     <CustomerDetail
       customer={customer}
+      googleReviewUrl={business?.googleReviewUrl}
+      yelpUrl={business?.yelpUrl}
     />
   );
 }

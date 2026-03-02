@@ -152,6 +152,10 @@ export default function PublicBookingPage() {
   const services: Service[] = servicesData?.services || [];
   const staff: Staff[] = staffData?.staff || [];
   const availableSlots: string[] = slotsData?.slots || [];
+  const unavailableSlots: string[] = slotsData?.unavailableSlots || [];
+  // All slots sorted by time for display
+  const allSlots = [...availableSlots, ...unavailableSlots].sort();
+  const unavailableSet = new Set(unavailableSlots);
 
   const toggleService = (service: Service) => {
     setSelectedServices(prev =>
@@ -424,19 +428,33 @@ export default function PublicBookingPage() {
                   <div className="text-center py-8">
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                   </div>
-                ) : availableSlots.length === 0 ? (
+                ) : allSlots.length === 0 ? (
                   <div className="text-center py-8">
                     <p className="text-gray-600 dark:text-gray-400">No available times for this date. Please select another date.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-96 overflow-y-auto">
-                    {availableSlots.map((slot) => {
+                    {allSlots.map((slot) => {
                       const slotDate = new Date(slot);
                       const timeStr = slotDate.toLocaleTimeString('en-US', {
                         hour: 'numeric',
                         minute: '2-digit',
                         timeZone: business.timezone,
                       });
+                      const isBooked = unavailableSet.has(slot);
+
+                      if (isBooked) {
+                        return (
+                          <div
+                            key={slot}
+                            title="Already booked"
+                            className="p-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-gray-700/50 text-gray-400 dark:text-gray-500 cursor-not-allowed relative overflow-hidden"
+                          >
+                            <span className="line-through">{timeStr}</span>
+                            <span className="block text-[9px] font-normal text-gray-400 dark:text-gray-500 mt-0.5">Booked</span>
+                          </div>
+                        );
+                      }
 
                       return (
                         <button

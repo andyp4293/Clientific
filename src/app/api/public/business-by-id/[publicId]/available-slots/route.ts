@@ -121,49 +121,32 @@ export async function GET(
 
     // Generate time slots
     const slots: string[] = [];
+    const unavailableSlots: string[] = [];
     const slotInterval = 30; // 30-minute intervals
     const duration = durationOverride ? parseInt(durationOverride) : service.duration;
 
-    let totalSlotsGenerated = 0;
-    let slotsPastFiltered = 0;
-    let slotsConflictFiltered = 0;
-    let slotsTimeFiltered = 0;    for (let hour = openHour; hour < closeHour; hour++) {
+    for (let hour = openHour; hour < closeHour; hour++) {
       for (let minute = 0; minute < 60; minute += slotInterval) {
-        totalSlotsGenerated++;
-        
         // Skip if we're at closing time or would go past closing
-        if (hour === closeHour && minute >= closeMinute) {
-          slotsTimeFiltered++;
-          break;
-        }
-        if (hour === closeHour - 1 && minute + duration > 60 && closeMinute === 0) {
-          slotsTimeFiltered++;
-          break;
-        }
+        if (hour === closeHour && minute >= closeMinute) break;
+        if (hour === closeHour - 1 && minute + duration > 60 && closeMinute === 0) break;
 
         const slotTime = businessTimeToUTC(date, hour, minute, business.timezone);
-
         const slotEndTime = new Date(slotTime.getTime() + duration * 60000);
 
         // Check if slot end time exceeds business closing time
         const closeTime = businessTimeToUTC(date, closeHour, closeMinute, business.timezone);
-        
-        if (slotEndTime > closeTime) {
-          slotsTimeFiltered++;
-          continue;
-        }
+
+        if (slotEndTime > closeTime) continue;
 
         // Check if slot is in the past
-        if (slotTime < new Date()) {
-          slotsPastFiltered++;
-          continue;
-        }
+        if (slotTime < new Date()) continue;
 
         // Check if slot conflicts with existing appointments
         const hasConflict = existingAppointments.some(apt => {
           const aptStart = new Date(apt.startTime);
           const aptEnd = new Date(apt.endTime);
-          
+
           return (
             (slotTime >= aptStart && slotTime < aptEnd) ||
             (slotEndTime > aptStart && slotEndTime <= aptEnd) ||
@@ -174,19 +157,15 @@ export async function GET(
         if (!hasConflict) {
           slots.push(slotTime.toISOString());
         } else {
-          slotsConflictFiltered++;
+          unavailableSlots.push(slotTime.toISOString());
         }
       }
     }
 
-    console.log('Total slots generated:', totalSlotsGenerated);
-    console.log('Slots filtered (time constraints):', slotsTimeFiltered);
-    console.log('Slots filtered (in past):', slotsPastFiltered);
-    console.log('Slots filtered (conflicts):', slotsConflictFiltered);
-    console.log('Available slots:', slots.length);
+    console.log('Available slots:', slots.length, '| Unavailable:', unavailableSlots.length);
     console.log('=== END DEBUG ===');
 
-    return NextResponse.json({ slots });
+    return NextResponse.json({ slots, unavailableSlots });
   } catch (error: any) {
     console.error('Fetch available slots error:', error);
     return NextResponse.json(

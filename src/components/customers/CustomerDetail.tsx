@@ -88,13 +88,18 @@ const messageTypeLabels: Record<string, string> = {
 
 export default function CustomerDetail({
   customer,
+  googleReviewUrl,
+  yelpUrl,
 }: {
   customer: Customer;
+  googleReviewUrl?: string | null;
+  yelpUrl?: string | null;
 }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "history" | "messages">(
+  const [activeTab, setActiveTab] = useState<"overview" | "history" | "messages" | "points">(
     "overview"
   );
+  const [requestingReview, setRequestingReview] = useState(false);
 
   const { data: smsData, isLoading: smsLoading } = useQuery({
     queryKey: ['sms-logs', customer.id],
@@ -153,6 +158,30 @@ export default function CustomerDetail({
             </div>
           </div>
           <div className="flex gap-2">
+            {customer.phone && customer.smsConsent && !customer.smsOptedOut && (googleReviewUrl || yelpUrl) && (
+              <button
+                onClick={async () => {
+                  setRequestingReview(true);
+                  try {
+                    const res = await fetch('/api/reviews/request', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ customerId: customer.id }),
+                    });
+                    if (!res.ok) throw new Error();
+                    toast.success('Review request sent!');
+                  } catch {
+                    toast.error('Failed to send review request');
+                  } finally {
+                    setRequestingReview(false);
+                  }
+                }}
+                disabled={requestingReview}
+                className="btn-outline text-sm"
+              >
+                {requestingReview ? 'Sending…' : 'Request Review'}
+              </button>
+            )}
             <button
               onClick={() => setIsEditModalOpen(true)}
               className="btn-primary"
@@ -269,6 +298,16 @@ export default function CustomerDetail({
               >
                 Messages
               </button>
+              <button
+                onClick={() => setActiveTab("points")}
+                className={`px-6 py-3 text-sm font-medium border-b-2 ${
+                  activeTab === "points"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
+                }`}
+              >
+                Points & Rewards
+              </button>
             </nav>
           </div>
 
@@ -343,6 +382,74 @@ export default function CustomerDetail({
                     </div>
                   ))
                 )}
+              </div>
+            )}
+
+            {activeTab === "points" && (
+              <div className="space-y-6">
+                {/* Points Balance */}
+                <div className="flex items-center gap-4 p-4 bg-primary-50 dark:bg-primary/10 rounded-lg">
+                  <div className="text-4xl font-bold text-primary">{customer.points}</div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">Points Balance</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Available to redeem</div>
+                  </div>
+                </div>
+
+                {/* Points Transactions */}
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">Points History</h3>
+                  {customer.pointsTransactions.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">No points activity yet.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                            <th className="pb-2 pr-4 font-medium">Date</th>
+                            <th className="pb-2 pr-4 font-medium">Description</th>
+                            <th className="pb-2 font-medium text-right">Points</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                          {customer.pointsTransactions.map((tx) => (
+                            <tr key={tx.id}>
+                              <td className="py-2 pr-4 text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                {format(new Date(tx.createdAt), 'MMM d, yyyy')}
+                              </td>
+                              <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">{tx.description}</td>
+                              <td className={`py-2 text-right font-medium whitespace-nowrap ${tx.amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                {tx.amount >= 0 ? '+' : ''}{tx.amount}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Redemptions */}
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">Rewards Redeemed</h3>
+                  {customer.redemptions.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">No rewards redeemed yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {customer.redemptions.map((r) => (
+                        <div key={r.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{r.reward.name}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                              {format(new Date(r.createdAt), 'MMM d, yyyy')} · Code: <span className="font-mono">{r.code}</span>
+                            </div>
+                          </div>
+                          <div className="text-sm font-medium text-red-600 dark:text-red-400">−{r.pointsSpent} pts</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
