@@ -33,7 +33,7 @@ export default async function DashboardLayout({
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
             <span className="text-white font-bold text-xl">C</span>
           </div>
-          <span className="text-xl font-bold text-gray-900 dark:text-gray-100">ClientFlow</span>
+          <span className="text-xl font-bold text-gray-900 dark:text-gray-100">Clientell</span>
         </Link>
         <NotificationBell />
       </div>
