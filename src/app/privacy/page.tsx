@@ -18,7 +18,7 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">1. Introduction</h2>
             <p className="text-gray-700 leading-relaxed">
-              ClientFlow ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy 
+              Clientell ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy 
               explains how we collect, use, disclose, and safeguard your information when you use our Service.
             </p>
           </section>
@@ -28,7 +28,7 @@ export default function PrivacyPolicyPage() {
             
             <h3 className="text-xl font-semibold text-gray-800 mb-3 mt-4">2.1 Account Information</h3>
             <div className="text-gray-700 leading-relaxed space-y-2">
-              <p>When you register for ClientFlow, we collect:</p>
+              <p>When you register for Clientell, we collect:</p>
               <ul className="list-disc pl-6 space-y-1">
                 <li>Business name and contact information</li>
                 <li>Email address</li>
@@ -151,8 +151,8 @@ export default function PrivacyPolicyPage() {
               </ul>
               <p className="mt-2">
                 To exercise these rights, please contact us at{' '}
-                <a href="mailto:privacy@clientflow.com" className="text-primary hover:text-primary-700">
-                  privacy@clientflow.com
+                <a href="mailto:privacy@clientell.io" className="text-primary hover:text-primary-700">
+                  privacy@clientell.io
                 </a>
               </p>
             </div>
@@ -223,8 +223,8 @@ export default function PrivacyPolicyPage() {
               If you have any questions about this Privacy Policy, please contact us:
             </p>
             <div className="text-gray-700 leading-relaxed mt-2">
-              <p>Email: <a href="mailto:privacy@clientflow.com" className="text-primary hover:text-primary-700">privacy@clientflow.com</a></p>
-              <p>Support: <a href="mailto:support@clientflow.com" className="text-primary hover:text-primary-700">support@clientflow.com</a></p>
+              <p>Email: <a href="mailto:privacy@clientell.io" className="text-primary hover:text-primary-700">privacy@clientell.io</a></p>
+              <p>Support: <a href="mailto:support@clientell.io" className="text-primary hover:text-primary-700">support@clientell.io</a></p>
             </div>
           </section>
         </div>
