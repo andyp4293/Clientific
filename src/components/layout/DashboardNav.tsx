@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { ReactElement } from 'react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { NotificationBell } from '@/components/layout/NotificationBell';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: 'home' },
@@ -84,15 +83,7 @@ export function DashboardNav() {
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
-      {/* Logo */}
-      <div className="flex items-center h-16 px-6 border-b border-gray-200 dark:border-gray-700">
-        <Link href="/dashboard" className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-xl">C</span>
-          </div>
-          <span className="text-xl font-bold text-gray-900 dark:text-gray-100">ClientFlow</span>
-        </Link>
-      </div>      {/* Navigation */}
+      {/* Navigation */}
       <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
         {navigation.map((item) => {
           // Exact match for Dashboard, Settings, and Billing; prefix match for others
@@ -116,11 +107,6 @@ export function DashboardNav() {
           );
         })}
       </nav>
-
-      {/* Notification Bell */}
-      <div className="px-4 pb-2 flex justify-end">
-        <NotificationBell />
-      </div>
 
       {/* User Profile */}
       {status !== 'loading' && (
