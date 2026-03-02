@@ -37,3 +37,6 @@ next-env.d.ts
 /prisma/migrations
 
 /generated/prisma
+
+# Claude Code local settings (may contain API keys / tool permissions)
+.claude/settings.local.json
