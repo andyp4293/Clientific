@@ -17,16 +17,29 @@ export async function POST(req: NextRequest) {
       where: { email: session.user.email },
     });
 
-    if (!business || !business.stripeCustomerId) {
-      return NextResponse.json(
-        { error: 'No subscription found' },
-        { status: 404 }
-      );
+    if (!business) {
+      return NextResponse.json({ error: 'Business not found' }, { status: 404 });
+    }
+
+    let stripeCustomerId = business.stripeCustomerId;
+
+    // Create a Stripe customer on-the-fly if none exists (trial users)
+    if (!stripeCustomerId) {
+      const customer = await stripe.customers.create({
+        email: business.email,
+        name: business.name,
+        metadata: { businessId: business.id },
+      });
+      stripeCustomerId = customer.id;
+      await prisma.business.update({
+        where: { id: business.id },
+        data: { stripeCustomerId },
+      });
     }
 
     // Create portal session
     const portalSession = await stripe.billingPortal.sessions.create({
-      customer: business.stripeCustomerId,
+      customer: stripeCustomerId,
       return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/billing`,
     });
 

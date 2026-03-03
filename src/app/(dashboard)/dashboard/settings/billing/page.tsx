@@ -120,7 +120,12 @@ export default function BillingPage() {
     try {
       const res = await fetch('/api/billing/portal', { method: 'POST' });
       const data = await res.json();
-      if (data.url) window.location.href = data.url;
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error(data.error || 'Failed to open billing portal.');
+        setPortalLoading(false);
+      }
     } catch {
       toast.error('Failed to open billing portal. Please try again.');
       setPortalLoading(false);
