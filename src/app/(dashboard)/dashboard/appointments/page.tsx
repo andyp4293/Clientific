@@ -638,110 +638,285 @@ function AppointmentRow({ appointment, timezone }: { appointment: Appointment; t
 }
 
 function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; selectedDate: Date }) {
+  const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing');
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     customerId: '',
+    newCustomerName: '',
+    newCustomerPhone: '',
     serviceId: '',
     staffId: '',
     date: selectedDate.toLocaleDateString('en-CA'),
     time: '',
     duration: 60,
     notes: '',
-    source: 'dashboard',
   });
 
   const { data: customersData } = useQuery({
     queryKey: ['customers'],
-    queryFn: async () => {
-      const res = await fetch('/api/customers');
-      if (!res.ok) throw new Error('Failed to fetch customers');
-      return res.json();
-    },
+    queryFn: async () => { const res = await fetch('/api/customers'); if (!res.ok) throw new Error(); return res.json(); },
+  });
+  const { data: servicesData } = useQuery({
+    queryKey: ['services'],
+    queryFn: async () => { const res = await fetch('/api/services'); if (!res.ok) throw new Error(); return res.json(); },
+  });
+  const { data: staffQueryData } = useQuery({
+    queryKey: ['staff'],
+    queryFn: async () => { const res = await fetch('/api/staff'); if (!res.ok) throw new Error(); return res.json(); },
   });
 
-  const customers = customersData?.customers || [];
+  const customers: any[] = customersData?.customers || [];
+  const services: any[] = servicesData?.services || [];
+  const staffList: any[] = staffQueryData?.staff || [];
+
+  // Time slots: 7am–9pm in 30-min steps
+  const timeSlots: string[] = [];
+  for (let h = 7; h <= 21; h++) {
+    timeSlots.push(`${String(h).padStart(2, '0')}:00`);
+    if (h < 21) timeSlots.push(`${String(h).padStart(2, '0')}:30`);
+  }
+  const formatSlot = (slot: string) => {
+    const [h, m] = slot.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hour = h > 12 ? h - 12 : h === 0 ? 12 : h;
+    return `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
+  };
+
+  const todayStr = new Date().toLocaleDateString('en-CA');
+  const tomorrowStr = (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toLocaleDateString('en-CA'); })();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const startTime = new Date(`${formData.date}T${formData.time}`);
+    if (!formData.time) { toast.error('Please select a time'); return; }
+    setSubmitting(true);
     try {
+      let customerId = formData.customerId;
+      if (customerMode === 'new') {
+        if (!formData.newCustomerName.trim()) { toast.error('Customer name is required'); setSubmitting(false); return; }
+        const custRes = await fetch('/api/customers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: formData.newCustomerName.trim(), phone: formData.newCustomerPhone.trim() || null }),
+        });
+        if (!custRes.ok) { const e = await custRes.json(); toast.error(e.error || 'Failed to create customer'); setSubmitting(false); return; }
+        const custData = await custRes.json();
+        customerId = custData.customer.id;
+      }
+      const startTime = new Date(`${formData.date}T${formData.time}`);
       const res = await fetch('/api/appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerId: formData.customerId,
+          customerId,
           serviceId: formData.serviceId || null,
           staffId: formData.staffId || null,
           startTime: startTime.toISOString(),
           duration: formData.duration,
           notes: formData.notes || null,
-          source: formData.source,
+          source: 'dashboard',
         }),
       });
-      if (res.ok) { onClose(); window.location.reload(); }
+      if (res.ok) { toast.success('Appointment created'); onClose(); window.location.reload(); }
       else { const error = await res.json(); toast.error(error.error || 'Failed to create appointment'); }
     } catch { toast.error('Failed to create appointment'); }
+    finally { setSubmitting(false); }
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100 dark:border-gray-700">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-5">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">New Appointment</h2>
-            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-400 transition-colors">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+  const labelClass = 'block text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5';
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="label">Customer *</label>
-              <select value={formData.customerId} onChange={(e) => setFormData({ ...formData, customerId: e.target.value })} className="input" required>
-                <option value="">Select a customer</option>
-                {customers.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="label">Date *</label>
-                <input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="input" required />
-              </div>
-              <div>
-                <label className="label">Time *</label>
-                <input type="time" value={formData.time} onChange={(e) => setFormData({ ...formData, time: e.target.value })} className="input" required />
-              </div>
-            </div>
-            <div>
-              <label className="label">Duration *</label>
-              <select value={formData.duration} onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })} className="input" required>
-                <option value="15">15 minutes</option>
-                <option value="30">30 minutes</option>
-                <option value="45">45 minutes</option>
-                <option value="60">1 hour</option>
-                <option value="90">1.5 hours</option>
-                <option value="120">2 hours</option>
-              </select>
-            </div>
-            <div>
-              <label className="label">Booked via</label>
-              <select value={formData.source} onChange={(e) => setFormData({ ...formData, source: e.target.value })} className="input">
-                <option value="dashboard">Dashboard (manual)</option>
-                <option value="online">Online booking</option>
-                <option value="ai">AI receptionist</option>
-              </select>
-            </div>
-            <div>
-              <label className="label">Notes</label>
-              <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="input" rows={3} placeholder="Any special requests or notes…" />
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button type="button" onClick={onClose} className="flex-1 btn-outline">Cancel</button>
-              <button type="submit" className="flex-1 btn-primary">Create Appointment</button>
-            </div>
-          </form>
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl shadow-2xl border border-gray-100 dark:border-gray-700 flex flex-col max-h-[90vh]">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">New Appointment</h2>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
         </div>
+
+        {/* Body */}
+        <form id="new-appt-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+          <div className="grid grid-cols-2 min-h-0">
+
+            {/* Left: Date & Time */}
+            <div className="p-5 space-y-5 border-r border-gray-100 dark:border-gray-700">
+
+              {/* Date */}
+              <div>
+                <label className={labelClass}>Date</label>
+                <input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  className="input text-sm"
+                  required
+                />
+                <div className="flex gap-1.5 mt-2">
+                  {[{ label: 'Today', val: todayStr }, { label: 'Tomorrow', val: tomorrowStr }].map(({ label, val }) => (
+                    <button
+                      key={label} type="button"
+                      onClick={() => setFormData({ ...formData, date: val })}
+                      className={`text-xs px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+                        formData.date === val
+                          ? 'bg-primary text-white border-primary'
+                          : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-primary/40 hover:text-primary'
+                      }`}
+                    >{label}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Time slots */}
+              <div>
+                <label className={labelClass}>
+                  Time
+                  {formData.time && (
+                    <span className="normal-case font-semibold text-primary ml-1">— {formatSlot(formData.time)}</span>
+                  )}
+                </label>
+                <div className="grid grid-cols-3 gap-1 max-h-[210px] overflow-y-auto pr-0.5">
+                  {timeSlots.map(slot => (
+                    <button
+                      key={slot} type="button"
+                      onClick={() => setFormData({ ...formData, time: slot })}
+                      className={`text-xs py-2 rounded-lg border font-medium transition-colors ${
+                        formData.time === slot
+                          ? 'bg-primary text-white border-primary shadow-sm'
+                          : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-primary/40 hover:text-primary dark:hover:text-primary hover:bg-primary/5'
+                      }`}
+                    >
+                      {formatSlot(slot)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Duration */}
+              <div>
+                <label className={labelClass}>Duration</label>
+                <select
+                  value={formData.duration}
+                  onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
+                  className="input text-sm"
+                >
+                  <option value="15">15 min</option>
+                  <option value="30">30 min</option>
+                  <option value="45">45 min</option>
+                  <option value="60">1 hour</option>
+                  <option value="90">1.5 hours</option>
+                  <option value="120">2 hours</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Right: Details */}
+            <div className="p-5 space-y-4">
+
+              {/* Customer */}
+              <div>
+                <label className={labelClass}>Customer</label>
+                <div className="flex rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden mb-2.5 text-xs">
+                  {(['existing', 'new'] as const).map((mode) => (
+                    <button
+                      key={mode} type="button"
+                      onClick={() => setCustomerMode(mode)}
+                      className={`flex-1 py-1.5 font-medium capitalize transition-colors ${
+                        customerMode === mode
+                          ? 'bg-primary text-white'
+                          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {mode === 'existing' ? 'Existing' : 'New'}
+                    </button>
+                  ))}
+                </div>
+                {customerMode === 'existing' ? (
+                  <select
+                    value={formData.customerId}
+                    onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
+                    className="input text-sm"
+                    required={customerMode === 'existing'}
+                  >
+                    <option value="">Select customer…</option>
+                    {customers.map((c: any) => (
+                      <option key={c.id} value={c.id}>{c.name}{c.phone ? `  ·  ${c.phone}` : ''}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="space-y-2">
+                    <input
+                      type="text" placeholder="Full name *"
+                      value={formData.newCustomerName}
+                      onChange={(e) => setFormData({ ...formData, newCustomerName: e.target.value })}
+                      className="input text-sm"
+                      required={customerMode === 'new'}
+                    />
+                    <input
+                      type="tel" placeholder="Phone (optional)"
+                      value={formData.newCustomerPhone}
+                      onChange={(e) => setFormData({ ...formData, newCustomerPhone: e.target.value })}
+                      className="input text-sm"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Service */}
+              <div>
+                <label className={labelClass}>Service</label>
+                <select
+                  value={formData.serviceId}
+                  onChange={(e) => setFormData({ ...formData, serviceId: e.target.value })}
+                  className="input text-sm"
+                >
+                  <option value="">No service</option>
+                  {services.map((s: any) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Staff */}
+              <div>
+                <label className={labelClass}>Staff</label>
+                <select
+                  value={formData.staffId}
+                  onChange={(e) => setFormData({ ...formData, staffId: e.target.value })}
+                  className="input text-sm"
+                >
+                  <option value="">Any available</option>
+                  {staffList.map((s: any) => (
+                    <option key={s.id} value={s.id}>{s.fullName}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className={labelClass}>Notes <span className="normal-case font-normal text-gray-400">(optional)</span></label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  className="input text-sm resize-none"
+                  rows={3}
+                  placeholder="Special requests or notes…"
+                />
+              </div>
+            </div>
+
+          </div>
+        </form>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex-shrink-0">
+          <button type="button" onClick={onClose} className="btn-outline text-sm px-5">Cancel</button>
+          <button type="submit" form="new-appt-form" disabled={submitting} className="btn-primary text-sm px-6 disabled:opacity-60">
+            {submitting ? 'Creating…' : 'Create Appointment'}
+          </button>
+        </div>
+
       </div>
     </div>
   );
