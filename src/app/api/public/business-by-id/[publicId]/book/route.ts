@@ -233,6 +233,17 @@ export async function POST(
       }).catch(() => {});
     }
 
+    // Create in-app notification for business
+    await prisma.notification.create({
+      data: {
+        businessId: business.id,
+        type: 'new_appointment',
+        title: 'New Booking Request',
+        message: `${customer.name} booked ${serviceName} for ${new Date(appointment.startTime).toLocaleString('en-US', { timeZone: business.timezone ?? undefined })}`,
+        link: `/dashboard/appointments`,
+      },
+    });
+
     return NextResponse.json({
       success: true,
       appointment,
