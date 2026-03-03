@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { DatePicker } from '@/components/ui/DatePicker';
 
 interface Appointment {
   id: string;
@@ -32,7 +33,10 @@ export default function AppointmentPage() {
 
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showReschedule, setShowReschedule] = useState(false);
-  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleDate, setRescheduleDate] = useState<Date | null>(null);
+  const formatDateLocal = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const rescheduleDateStr = rescheduleDate ? formatDateLocal(rescheduleDate) : '';
   const [rescheduleSlot, setRescheduleSlot] = useState<string | null>(null);
   const [rescheduleDone, setRescheduleDone] = useState(false);
 
@@ -52,13 +56,13 @@ export default function AppointmentPage() {
 
   // Available slots query for rescheduling
   const { data: slotsData, isLoading: slotsLoading } = useQuery({
-    queryKey: ['reschedule-slots', data?.appointment?.business?.publicId, rescheduleDate],
+    queryKey: ['reschedule-slots', data?.appointment?.business?.publicId, rescheduleDateStr],
     queryFn: async () => {
       const appt: Appointment = data.appointment;
       const serviceId = appt.serviceIds?.[0];
       if (!serviceId) return { slots: [] };
       const p = new URLSearchParams({
-        date: rescheduleDate,
+        date: rescheduleDateStr,
         serviceId,
         duration: String(appt.duration),
       });
@@ -68,7 +72,7 @@ export default function AppointmentPage() {
       );
       return res.json();
     },
-    enabled: showReschedule && !!rescheduleDate && !!data?.appointment,
+    enabled: showReschedule && !!rescheduleDateStr && !!data?.appointment,
   });
 
   const cancelMutation = useMutation({
@@ -102,7 +106,7 @@ export default function AppointmentPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointment', id] });
       setShowReschedule(false);
-      setRescheduleDate('');
+      setRescheduleDate(null);
       setRescheduleSlot(null);
       setRescheduleDone(true);
     },
@@ -158,9 +162,6 @@ export default function AppointmentPage() {
   const servicesLabel = servicesList.map(s => s.name).join(', ') || 'Appointment';
   const totalPrice = appt.totalPrice ?? servicesList.reduce((sum, s) => sum + (s.price ?? 0), 0);
   const hasPrice = totalPrice > 0;
-
-  // Today's date string for min attribute
-  const todayStr = new Date().toISOString().slice(0, 10);
 
   // Format a slot ISO string as a readable time
   function formatSlotTime(iso: string) {
@@ -318,7 +319,7 @@ export default function AppointmentPage() {
                     <button
                       onClick={() => {
                         setShowReschedule(false);
-                        setRescheduleDate('');
+                        setRescheduleDate(null);
                         setRescheduleSlot(null);
                       }}
                       className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xs"
@@ -327,17 +328,17 @@ export default function AppointmentPage() {
                     </button>
                   </div>
 
-                  {/* Date input */}
-                  <input
-                    type="date"
-                    min={todayStr}
-                    value={rescheduleDate}
-                    onChange={(e) => {
-                      setRescheduleDate(e.target.value);
-                      setRescheduleSlot(null);
-                    }}
-                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 mb-3"
-                  />
+                  {/* Date picker */}
+                  <div className="mb-3">
+                    <DatePicker
+                      value={rescheduleDate ?? new Date()}
+                      onChange={(date) => {
+                        setRescheduleDate(date);
+                        setRescheduleSlot(null);
+                      }}
+                      minDate={new Date()}
+                    />
+                  </div>
 
                   {/* Slots */}
                   {rescheduleDate && (
