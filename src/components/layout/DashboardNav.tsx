@@ -11,6 +11,7 @@ const navigation = [
   { name: 'Appointments', href: '/dashboard/appointments', icon: 'calendar' },
   { name: 'Services & Staff', href: '/dashboard/services', icon: 'briefcase' },
   { name: 'Customers', href: '/dashboard/customers', icon: 'users' },
+  { name: 'Deals', href: '/dashboard/campaigns', icon: 'tag' },
   { name: 'Business Hours', href: '/dashboard/business-hours', icon: 'clock' },
   { name: 'Billing', href: '/dashboard/settings/billing', icon: 'creditcard' },
   { name: 'Settings', href: '/dashboard/settings', icon: 'settings' },
@@ -73,6 +74,11 @@ const icons: Record<string, ReactElement> = {
   creditcard: (
     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+    </svg>
+  ),
+  tag: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 8V5a2 2 0 012-2h2z" />
     </svg>
   ),
 };

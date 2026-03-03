@@ -41,6 +41,15 @@ interface Staff {
   fullName: string;
 }
 
+interface Deal {
+  id: string;
+  title: string;
+  discountType: string;
+  discountValue: number;
+  expiresAt: string;
+  service: { name: string } | null;
+}
+
 export default function PublicBookingPage() {
   const params = useParams();
   const router = useRouter();
@@ -60,6 +69,8 @@ export default function PublicBookingPage() {
     notes: '',
     smsConsent: false,
   });
+  const [claimedCodes, setClaimedCodes] = useState<Record<string, string>>({});
+  const [claimingDealId, setClaimingDealId] = useState<string | null>(null);
 
   // Derived totals
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration, 0);
@@ -91,6 +102,17 @@ export default function PublicBookingPage() {
     queryFn: async () => {
       const res = await fetch(`${apiBase}/services`);
       if (!res.ok) throw new Error('Failed to fetch services');
+      return res.json();
+    },
+    enabled: !!businessData,
+  });
+
+  // Fetch active deals
+  const { data: dealsData } = useQuery({
+    queryKey: ['public-deals', slugOrPublicId],
+    queryFn: async () => {
+      const res = await fetch(`${apiBase}/deals`);
+      if (!res.ok) throw new Error('Failed to fetch deals');
       return res.json();
     },
     enabled: !!businessData,
@@ -148,9 +170,28 @@ export default function PublicBookingPage() {
     },
   });
 
+  const claimDeal = async (dealId: string) => {
+    setClaimingDealId(dealId);
+    try {
+      const res = await fetch(`/api/public/deals/${dealId}/claim`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerPhone: customerInfo.phone || undefined }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setClaimedCodes(prev => ({ ...prev, [dealId]: data.code }));
+    } catch {
+      // silently fail — deal may have run out
+    } finally {
+      setClaimingDealId(null);
+    }
+  };
+
   const business: Business | null = businessData?.business;
   const services: Service[] = servicesData?.services || [];
   const staff: Staff[] = staffData?.staff || [];
+  const deals: Deal[] = dealsData?.deals || [];
   const availableSlots: string[] = slotsData?.slots || [];
   const unavailableSlots: string[] = slotsData?.unavailableSlots || [];
   // All slots sorted by time for display
@@ -273,6 +314,39 @@ export default function PublicBookingPage() {
 
       {/* Main Content */}
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+        {/* Current Deals Banner */}
+        {deals.length > 0 && (
+          <div className="mb-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-amber-200 dark:border-amber-700 p-4">
+            <h3 className="text-sm font-semibold text-amber-700 dark:text-amber-400 mb-3">Current Deals</h3>
+            <div className="space-y-3">
+              {deals.map(deal => (
+                <div key={deal.id} className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{deal.title}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {deal.service?.name ?? 'Any service'} · Expires {new Date(deal.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </p>
+                  </div>
+                  {claimedCodes[deal.id] ? (
+                    <span className="text-xs font-mono bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 px-2 py-1 rounded font-bold flex-shrink-0">
+                      {claimedCodes[deal.id]}
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => claimDeal(deal.id)}
+                      disabled={claimingDealId === deal.id}
+                      className="text-xs font-medium bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
+                    >
+                      {claimingDealId === deal.id ? '...' : 'Claim'}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-sm p-4 sm:p-6">
 
           {/* Step 1: Select Services (multi-select) */}
