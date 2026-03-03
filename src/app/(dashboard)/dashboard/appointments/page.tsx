@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -665,16 +665,40 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
     queryFn: async () => { const res = await fetch('/api/staff'); if (!res.ok) throw new Error(); return res.json(); },
   });
 
+  const { data: businessHoursData } = useQuery({
+    queryKey: ['business-hours'],
+    queryFn: async () => { const res = await fetch('/api/business-hours'); if (!res.ok) throw new Error(); return res.json(); },
+  });
+
   const customers: any[] = customersData?.customers || [];
   const services: any[] = servicesData?.services || [];
   const staffList: any[] = staffQueryData?.staff || [];
+  const businessHours: any[] = businessHoursData?.businessHours || [];
 
-  // Time slots: 7am–9pm in 30-min steps
-  const timeSlots: string[] = [];
-  for (let h = 7; h <= 21; h++) {
-    timeSlots.push(`${String(h).padStart(2, '0')}:00`);
-    if (h < 21) timeSlots.push(`${String(h).padStart(2, '0')}:30`);
-  }
+  // Derive time slots from business hours for the selected date
+  const { timeSlots, isClosed } = useMemo(() => {
+    if (!businessHours.length || !formData.date) return { timeSlots: [], isClosed: false };
+    const [year, month, day] = formData.date.split('-').map(Number);
+    const dayOfWeek = new Date(year, month - 1, day).getDay();
+    const dayHours = businessHours.find((h: any) => h.dayOfWeek === dayOfWeek);
+    if (!dayHours?.isOpen || !dayHours.openTime || !dayHours.closeTime) return { timeSlots: [], isClosed: true };
+    const [openH, openM] = dayHours.openTime.split(':').map(Number);
+    const [closeH, closeM] = dayHours.closeTime.split(':').map(Number);
+    const slots: string[] = [];
+    let h = openH, m = openM;
+    while (h < closeH || (h === closeH && m < closeM)) {
+      slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+      m += 30;
+      if (m >= 60) { m -= 60; h++; }
+    }
+    return { timeSlots: slots, isClosed: false };
+  }, [businessHours, formData.date]);
+
+  // Clear selected time when date changes so stale slot isn't kept
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, time: '' }));
+  }, [formData.date]);
+
   const formatSlot = (slot: string) => {
     const [h, m] = slot.split(':').map(Number);
     const ampm = h >= 12 ? 'PM' : 'AM';
@@ -776,21 +800,27 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
                     <span className="normal-case font-semibold text-primary ml-1">— {formatSlot(formData.time)}</span>
                   )}
                 </label>
-                <div className="grid grid-cols-3 gap-1 max-h-[210px] overflow-y-auto pr-0.5">
-                  {timeSlots.map(slot => (
-                    <button
-                      key={slot} type="button"
-                      onClick={() => setFormData({ ...formData, time: slot })}
-                      className={`text-xs py-2 rounded-lg border font-medium transition-colors ${
-                        formData.time === slot
-                          ? 'bg-primary text-white border-primary shadow-sm'
-                          : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-primary/40 hover:text-primary dark:hover:text-primary hover:bg-primary/5'
-                      }`}
-                    >
-                      {formatSlot(slot)}
-                    </button>
-                  ))}
-                </div>
+                {isClosed ? (
+                  <p className="text-xs text-gray-400 dark:text-gray-500 py-4 text-center">Closed on this day</p>
+                ) : timeSlots.length === 0 ? (
+                  <p className="text-xs text-gray-400 dark:text-gray-500 py-4 text-center">Loading hours…</p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-1 max-h-[210px] overflow-y-auto pr-0.5">
+                    {timeSlots.map(slot => (
+                      <button
+                        key={slot} type="button"
+                        onClick={() => setFormData({ ...formData, time: slot })}
+                        className={`text-xs py-2 rounded-lg border font-medium transition-colors ${
+                          formData.time === slot
+                            ? 'bg-primary text-white border-primary shadow-sm'
+                            : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-primary/40 hover:text-primary dark:hover:text-primary hover:bg-primary/5'
+                        }`}
+                      >
+                        {formatSlot(slot)}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Duration */}
