@@ -488,6 +488,17 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
     : null;
   const withWhom = staffLine ? ` with ${staffLine.fullName}` : '';
 
+  // Create in-app notification for business
+  await prisma.notification.create({
+    data: {
+      businessId: business.id,
+      type: 'new_appointment',
+      title: 'New Booking via AI Receptionist',
+      message: `${customerName} booked ${service.name}${withWhom} for ${formattedTime}`,
+      link: `/dashboard/appointments`,
+    },
+  });
+
   // Send SMS confirmation non-blocking (same template as web booking)
   if (callerPhone) {
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').trim();
@@ -567,6 +578,18 @@ async function handleCancelAppointment(business: BusinessData, args: any, caller
     weekday: 'short', month: 'short', day: 'numeric',
     hour: 'numeric', minute: '2-digit', timeZone: business.timezone,
   });
+
+  // Create in-app notification for business
+  await prisma.notification.create({
+    data: {
+      businessId: business.id,
+      type: 'appointment_cancelled',
+      title: 'Appointment Cancelled via AI Receptionist',
+      message: `${appointment.service?.name ?? 'Appointment'} on ${time} was cancelled by caller`,
+      link: `/dashboard/appointments`,
+    },
+  });
+
   return `Done — your ${appointment.service?.name ?? 'appointment'} on ${time} has been cancelled.`;
 }
 
