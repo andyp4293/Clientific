@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
+import { APP_NAME } from '@/lib/brand';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -316,7 +317,7 @@ function RegisterForm() {
             <div className="w-8 sm:w-10 h-8 sm:h-10 bg-primary rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xl sm:text-2xl">C</span>
             </div>
-            <span className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Clientell</span>
+            <span className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">{APP_NAME}</span>
           </Link>
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2">Start your 14-day free trial</p>
         </div>

@@ -1,5 +1,6 @@
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
+import { APP_NAME } from '@/lib/brand';
 import Link from 'next/link';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { DashboardNav } from '@/components/layout/DashboardNav';
@@ -33,7 +34,7 @@ export default async function DashboardLayout({
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
             <span className="text-white font-bold text-xl">C</span>
           </div>
-          <span className="text-xl font-bold text-gray-900 dark:text-gray-100">Clientell</span>
+          <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{APP_NAME}</span>
         </Link>
         <NotificationBell />
       </div>

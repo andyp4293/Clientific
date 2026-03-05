@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useState } from 'react';
+import { APP_NAME, APP_DOMAIN } from '@/lib/brand';
 
 const faqs = [
   {
     q: 'How does the AI receptionist work?',
-    a: 'Clientell connects an AI-powered phone assistant to your business number. When a customer calls, the AI picks up, answers questions about your services and hours, and books appointments directly — all without you lifting a finger.',
+    a: `${APP_NAME} connects an AI-powered phone assistant to your business number. When a customer calls, the AI picks up, answers questions about your services and hours, and books appointments directly — all without you lifting a finger.`,
   },
   {
     q: 'How long is the free trial?',
@@ -18,12 +19,12 @@ const faqs = [
     a: 'No. Customers book through your public booking link or by calling your number — no app or account needed on their end.',
   },
   {
-    q: 'What types of businesses is Clientell for?',
+    q: `What types of businesses is ${APP_NAME} for?`,
     a: 'Any service-based business — barbershops, salons, spas, nail studios, auto detailers, pet groomers, and more.',
   },
   {
     q: 'How do SMS reminders work?',
-    a: 'After a booking is made (online or via AI call), Clientell automatically sends a confirmation text and a reminder before the appointment. No manual follow-up needed.',
+    a: `After a booking is made (online or via AI call), ${APP_NAME} automatically sends a confirmation text and a reminder before the appointment. No manual follow-up needed.`,
   },
   {
     q: 'Can I cancel anytime?',
@@ -51,7 +52,7 @@ const features = [
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
     ),
     title: 'Customer Intelligence',
-    desc: 'Full client history — visits, spending, notes. Clientell automatically segments customers into VIP, Regular, At-Risk, and more.',
+    desc: `Full client history — visits, spending, notes. ${APP_NAME} automatically segments customers into VIP, Regular, At-Risk, and more.`,
   },
   {
     icon: (
@@ -109,7 +110,7 @@ export default function HomePage() {
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-sm">
               <span className="text-white font-bold text-xl">C</span>
             </div>
-            <span className="text-xl font-bold text-gray-900 dark:text-gray-100">Clientell</span>
+            <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{APP_NAME}</span>
           </div>
           <nav className="hidden md:flex items-center space-x-8">
             <a href="#features" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">Features</a>
@@ -164,7 +165,7 @@ export default function HomePage() {
                 </span>
               </h1>
               <p className="text-lg text-gray-400 mb-9 max-w-lg leading-relaxed">
-                Clientell answers your calls, books appointments, sends reminders, collects reviews, and tracks every customer — so you can focus on doing the work.
+                {APP_NAME} answers your calls, books appointments, sends reminders, collects reviews, and tracks every customer — so you can focus on doing the work.
               </p>
               {isAuthenticated ? (
                 <Link
@@ -199,7 +200,7 @@ export default function HomePage() {
                     <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
                     <div className="w-3 h-3 rounded-full bg-emerald-500/60" />
                     <div className="flex-1 mx-4 bg-gray-700/50 rounded-md h-5 flex items-center px-3">
-                      <span className="text-[10px] text-gray-500">clientell.io/dashboard</span>
+                      <span className="text-[10px] text-gray-500">{APP_DOMAIN}/dashboard</span>
                     </div>
                   </div>
                   <div className="p-5">
@@ -287,7 +288,7 @@ export default function HomePage() {
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">Everything you need, all in one place</h2>
             <p className="text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">
-              Stop juggling multiple tools. Clientell brings your booking, customers, AI, and marketing together in one platform.
+              Stop juggling multiple tools. {APP_NAME} brings your booking, customers, AI, and marketing together in one platform.
             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -336,7 +337,7 @@ export default function HomePage() {
               {
                 step: '3',
                 title: 'Watch your business run itself',
-                desc: 'Clientell books appointments, sends reminders, collects reviews, tracks customers, and reports on your growth — automatically.',
+                desc: `${APP_NAME} books appointments, sends reminders, collects reviews, tracks customers, and reports on your growth — automatically.`,
               },
             ].map(step => (
               <div key={step.step} className="text-center relative">
@@ -512,7 +513,7 @@ export default function HomePage() {
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold text-xl">C</span>
                 </div>
-                <span className="text-xl font-bold text-gray-900 dark:text-gray-100">Clientell</span>
+                <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{APP_NAME}</span>
               </div>
               <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
                 The AI-powered platform for service businesses to manage bookings, customers, and growth.
@@ -542,7 +543,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="border-t border-gray-100 dark:border-gray-800 mt-10 pt-8 text-center text-sm text-gray-400 dark:text-gray-500">
-            © 2026 Clientell by Andy Pham. All rights reserved.
+            © 2026 {APP_NAME} by Andy Pham. All rights reserved.
           </div>
         </div>
       </footer>

@@ -56,6 +56,7 @@ model Business {
   campaigns              Campaign[]
   checkIns               CheckIn[]
   customers              Customer[]
+  deals                  Deal[]
   invoices               Invoice[]
   notifications          Notification[]
   payments               Payment[]
@@ -95,6 +96,7 @@ model Customer {
   smsOptedOutAt      DateTime?
   appointments       Appointment[]
   checkIns           CheckIn[]
+  dealRedemptions    DealRedemption[]
   business           Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
   pointsTransactions PointsTransaction[]
   redemptions        Redemption[]
@@ -165,6 +167,7 @@ model Service {
   sortOrder    Int           @default(0)
   appointments Appointment[]
   checkIns     CheckIn[]
+  deals        Deal[]
   business     Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId, active])
@@ -320,4 +323,39 @@ model Invoice {
 
   @@index([businessId, createdAt])
   @@index([businessId, status])
+}
+
+model Deal {
+  id              String           @id @default(cuid())
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  businessId      String
+  title           String
+  description     String?
+  discountType    String           // "percent_off" | "amount_off" | "free_service"
+  discountValue   Float            @default(0)
+  serviceId       String?
+  startsAt        DateTime
+  expiresAt       DateTime
+  maxRedemptions  Int?
+  redemptionCount Int              @default(0)
+  active          Boolean          @default(true)
+  business        Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  service         Service?         @relation(fields: [serviceId], references: [id])
+  redemptions     DealRedemption[]
+
+  @@index([businessId, active])
+}
+
+model DealRedemption {
+  id         String    @id @default(cuid())
+  createdAt  DateTime  @default(now())
+  dealId     String
+  customerId String?
+  code       String    @unique
+  usedAt     DateTime?
+  deal       Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  @@index([dealId, createdAt])
 }

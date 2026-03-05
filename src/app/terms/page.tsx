@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { APP_NAME, APP_SUPPORT_EMAIL } from '@/lib/brand';
 
 export default function TermsOfServicePage() {
   return (
@@ -18,7 +19,7 @@ export default function TermsOfServicePage() {
           <section>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">1. Acceptance of Terms</h2>
             <p className="text-gray-700 leading-relaxed">
-              By accessing and using Clientell ("Service"), you accept and agree to be bound by the terms and 
+              By accessing and using {APP_NAME} (&quot;Service&quot;), you accept and agree to be bound by the terms and
               provision of this agreement. If you do not agree to these terms, please do not use our Service.
             </p>
           </section>
@@ -26,8 +27,8 @@ export default function TermsOfServicePage() {
           <section>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">2. Description of Service</h2>
             <p className="text-gray-700 leading-relaxed">
-              Clientell provides a SaaS platform for review management, customer tracking, and booking services 
-              for service-based businesses. We reserve the right to modify, suspend, or discontinue the Service 
+              {APP_NAME} provides a SaaS platform for review management, customer tracking, and booking services
+              for service-based businesses. We reserve the right to modify, suspend, or discontinue the Service
               at any time without notice.
             </p>
           </section>
@@ -48,7 +49,7 @@ export default function TermsOfServicePage() {
           <section>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">4. Free Trial</h2>
             <p className="text-gray-700 leading-relaxed">
-              Clientell offers a 14-day free trial. After the trial period, you must choose a paid subscription 
+              {APP_NAME} offers a 14-day free trial. After the trial period, you must choose a paid subscription
               plan to continue using the Service. We reserve the right to modify or cancel free trials at any time.
             </p>
           </section>
@@ -69,8 +70,8 @@ export default function TermsOfServicePage() {
           <section>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">6. Data Usage</h2>
             <p className="text-gray-700 leading-relaxed">
-              You retain all rights to the data you input into Clientell. We will not sell, share, or use your 
-              customer data for any purpose other than providing the Service. See our Privacy Policy for details 
+              You retain all rights to the data you input into {APP_NAME}. We will not sell, share, or use your
+              customer data for any purpose other than providing the Service. See our Privacy Policy for details
               on how we handle your data.
             </p>
           </section>
@@ -92,7 +93,7 @@ export default function TermsOfServicePage() {
           <section>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">8. Intellectual Property</h2>
             <p className="text-gray-700 leading-relaxed">
-              The Service and its original content, features, and functionality are owned by Clientell and are 
+              The Service and its original content, features, and functionality are owned by {APP_NAME} and are
               protected by international copyright, trademark, and other intellectual property laws.
             </p>
           </section>
@@ -109,8 +110,8 @@ export default function TermsOfServicePage() {
           <section>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">10. Limitation of Liability</h2>
             <p className="text-gray-700 leading-relaxed">
-              Clientell shall not be liable for any indirect, incidental, special, consequential, or punitive 
-              damages resulting from your use or inability to use the Service. Our total liability shall not 
+              {APP_NAME} shall not be liable for any indirect, incidental, special, consequential, or punitive
+              damages resulting from your use or inability to use the Service. Our total liability shall not
               exceed the amount you paid us in the last 12 months.
             </p>
           </section>          <section>
@@ -119,8 +120,8 @@ export default function TermsOfServicePage() {
               <h3 className="font-semibold text-gray-900 mt-4">Consent to Receive SMS Messages</h3>
               <p>
                 By providing your mobile phone number and checking the SMS consent box when booking an appointment, 
-                you expressly consent to receive automated text messages from Clientell and the business you are 
-                booking with regarding your appointment. This includes appointment confirmations, reminders, and 
+                you expressly consent to receive automated text messages from {APP_NAME} and the business you are
+                booking with regarding your appointment. This includes appointment confirmations, reminders, and
                 cancellation notifications.
               </p>
 
@@ -157,8 +158,8 @@ export default function TermsOfServicePage() {
               <p>
                 If you need help or have questions about SMS notifications, reply <strong>HELP</strong> to any 
                 message or contact us at{' '}
-                <a href="mailto:support@clientell.io" className="text-primary hover:text-primary-700">
-                  support@clientell.io
+                <a href={`mailto:${APP_SUPPORT_EMAIL}`} className="text-primary hover:text-primary-700">
+                  {APP_SUPPORT_EMAIL}
                 </a>
               </p>
 
@@ -197,8 +198,8 @@ export default function TermsOfServicePage() {
             <p className="text-gray-700 leading-relaxed">
               If you have any questions about these Terms, please contact us at:
               <br />
-              <a href="mailto:support@clientell.io" className="text-primary hover:text-primary-700">
-                support@clientell.io
+              <a href={`mailto:${APP_SUPPORT_EMAIL}`} className="text-primary hover:text-primary-700">
+                {APP_SUPPORT_EMAIL}
               </a>
             </p>
           </section>

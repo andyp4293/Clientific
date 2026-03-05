@@ -6,6 +6,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { DatePicker } from '@/components/ui/DatePicker';
 import Link from 'next/link';
 import { Info } from 'lucide-react';
+import { APP_NAME } from '@/lib/brand';
 
 interface Business {
   id: string;
@@ -760,7 +761,7 @@ export default function PublicBookingPage() {
       {business && (
         <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            By booking, I agree to {business.name}&apos;s cancellation policy and Clientell&apos;s{' '}
+            By booking, I agree to {business.name}&apos;s cancellation policy and {APP_NAME}&apos;s{' '}
             <Link
               href="/terms"
               target="_blank"

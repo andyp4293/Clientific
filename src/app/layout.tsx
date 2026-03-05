@@ -1,6 +1,7 @@
 ﻿import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import { APP_NAME } from '@/lib/brand';
 import { AuthProvider } from '@/components/providers/AuthProvider';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
@@ -9,13 +10,13 @@ import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Clientell - Customer Management Platform',
+  title: `${APP_NAME} - Customer Management Platform`,
   description: 'Manage customers, appointments, and loyalty programs for your service business',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Clientell',
+    title: APP_NAME,
   },
   icons: {
     icon: [
