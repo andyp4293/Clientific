@@ -67,16 +67,6 @@ async function getDashboardStats(businessId: string, timezone: string) {
     _count: true,
   });
 
-  // Recent check-ins
-  const recentCheckIns = await prisma.checkIn.findMany({
-    where: { businessId },
-    orderBy: { checkInTime: 'desc' },
-    take: 5,
-    include: {
-      customer: true,
-      service: true,
-    },  });
-
   // All appointments today (full business-timezone day, including pending)
   const upcomingAppointments = await prisma.appointment.findMany({
     where: {
@@ -115,7 +105,6 @@ async function getDashboardStats(businessId: string, timezone: string) {
       acc[s.segment] = s._count;
       return acc;
     }, {} as Record<string, number>),
-    recentCheckIns,
     upcomingAppointments,
   };
 }
@@ -356,29 +345,6 @@ export default async function DashboardPage({
           )}
         </div>
 
-        {/* Recent Check-Ins */}
-        <div className="card p-6">
-          <h2 className="text-lg font-semibold mb-4">Recent Check-Ins</h2>          {stats.recentCheckIns.length > 0 ? (
-            <div className="space-y-3">
-              {stats.recentCheckIns.map((checkin: any) => (
-                <div key={checkin.id} className="flex items-start justify-between border-b border-gray-100 dark:border-gray-700 pb-3 last:border-0">                          <div>
-                            <p className="font-medium text-gray-900 dark:text-gray-100">
-                              {checkin.customer.name}
-                            </p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              {checkin.service?.name || 'Walk-in'} • {checkin.pointsEarned} points
-                            </p>
-                          </div>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {new Date(checkin.checkInTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: business.timezone })}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500 dark:text-gray-400 text-center py-8">No check-ins yet</p>
-          )}
-        </div>
 
       </div>
     </div>
