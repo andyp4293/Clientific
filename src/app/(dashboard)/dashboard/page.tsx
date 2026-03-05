@@ -273,14 +273,8 @@ export default async function DashboardPage({
       </div>      {/* Quick Actions */}
       <div className="card p-6">
         <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Link href="/dashboard/checkins" className="btn-primary text-center">
-            Check In Customer
-          </Link>
-          <Link href="/dashboard/customers" className="btn-outline text-center">
-            Add Customer
-          </Link>
-          <Link href="/dashboard/appointments" className="btn-outline text-center">
+        <div className="grid grid-cols-2 gap-3">
+          <Link href="/dashboard/appointments" className="btn-primary text-center">
             View Appointments
           </Link>
           <Link href="/dashboard/analytics" className="btn-outline text-center">
