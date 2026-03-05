@@ -149,6 +149,7 @@ Your job:
   - The tool confirms the booking — relay the confirmation to the caller and always ask "Is there anything else I can help you with?"
   - Wait for their response before ending the call. If they say no (or "nope", "that's all", "I'm good", etc.), say the exact phrase: "Happy to help! Have a wonderful day — goodbye!" then call end_call
 - If they want to VIEW or CANCEL an existing appointment (phrases like "check my appointment", "what's my appointment", "I need to cancel", "cancel my booking"): call manage_booking with action "getAppointments" to show their upcoming bookings, then ask which one to cancel, then call "cancelAppointment" with the appointmentId — never say the appointmentId aloud
+- If they want to UPDATE an existing appointment (e.g. "change my name", "update my name to Jimmy", "add a note"): call manage_booking with action "getAppointments" first if you don't already have the appointmentId, then call "updateAppointment" with the appointmentId and the field(s) to change (customerName and/or notes) — never say the appointmentId aloud
 - If they say "talk to a person", "real person", "human", "manager", or similar, say exactly: "Sure, let me connect you with someone now."
 - When the caller signals they are done (says "goodbye", "bye", "that's all", "I'm good", "no", "nope", "nothing else", or similar), you MUST say the exact phrase: "Happy to help! Have a wonderful day — goodbye!" — then immediately call end_call. Do NOT just say "Goodbye!" alone.
 - Never end the call without first saying that exact closing phrase.
@@ -178,8 +179,8 @@ Your job:
               properties: {
                 action: {
                   type: 'string',
-                  enum: ['checkAvailability', 'createBooking', 'getAppointments', 'cancelAppointment'],
-                  description: 'checkAvailability: list open slots. createBooking: book an appointment. getAppointments: show caller\'s upcoming appointments. cancelAppointment: cancel a specific appointment.',
+                  enum: ['checkAvailability', 'createBooking', 'getAppointments', 'cancelAppointment', 'updateAppointment'],
+                  description: 'checkAvailability: list open slots. createBooking: book an appointment. getAppointments: show caller\'s upcoming appointments. cancelAppointment: cancel a specific appointment. updateAppointment: update details on an existing appointment (e.g. name, notes).',
                 },
                 date: {
                   type: 'string',
@@ -551,6 +552,46 @@ async function handleGetAppointments(business: BusinessData, callerPhone: string
   return `Here are your upcoming appointments:\n${list}\n\nWhich one would you like to cancel?`;
 }
 
+// ─── Tool: updateAppointment ──────────────────────────────────────────────────
+
+async function handleUpdateAppointment(business: BusinessData, args: any, callerPhone: string): Promise<string> {
+  const { appointmentId, customerName, notes } = args;
+  if (!appointmentId) return 'Which appointment would you like to update?';
+  if (!customerName && notes === undefined) return 'What would you like to change?';
+
+  const appointment = await prisma.appointment.findFirst({
+    where: {
+      id: appointmentId,
+      businessId: business.id,
+      customer: { phone: callerPhone },
+      status: { in: ['pending', 'scheduled', 'confirmed'] },
+    },
+    include: { service: { select: { name: true } }, customer: { select: { id: true } } },
+  });
+
+  if (!appointment) return "I couldn't find that appointment on your account.";
+
+  const updates: string[] = [];
+
+  if (customerName) {
+    await prisma.customer.update({
+      where: { id: appointment.customer!.id },
+      data: { name: customerName },
+    });
+    updates.push(`name updated to ${customerName}`);
+  }
+
+  if (notes !== undefined) {
+    await prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { notes },
+    });
+    updates.push('notes updated');
+  }
+
+  return `Done — your appointment has been updated: ${updates.join(', ')}. Is there anything else I can help you with?`;
+}
+
 // ─── Tool: cancelAppointment ──────────────────────────────────────────────────
 
 async function handleCancelAppointment(business: BusinessData, args: any, callerPhone: string): Promise<string> {
@@ -658,6 +699,9 @@ async function handleToolCalls(body: any): Promise<NextResponse> {
           } else if (action === 'cancelAppointment') {
             result = await handleCancelAppointment(business, parsedArgs, callerPhone);
             outcome = result.startsWith('Done') ? 'cancelled' : 'cancel_failed';
+          } else if (action === 'updateAppointment') {
+            result = await handleUpdateAppointment(business, parsedArgs, callerPhone);
+            outcome = result.startsWith('Done') ? 'updated' : 'update_failed';
           } else {
             result = 'Unknown action requested.';
             outcome = 'unknown_action';
