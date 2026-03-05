@@ -4,6 +4,7 @@ import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { APP_NAME } from '@/lib/brand';
 
 export function DashboardHeader() {
   const { data: session, status } = useSession();
@@ -17,7 +18,7 @@ export function DashboardHeader() {
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
             <span className="text-white font-bold text-xl">C</span>
           </div>
-          <span className="text-xl font-bold text-gray-900 dark:text-gray-100">ClientFlow</span>
+          <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{APP_NAME}</span>
         </Link>
 
         {/* Right side: bell + hamburger */}

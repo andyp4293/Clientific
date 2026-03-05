@@ -125,7 +125,7 @@ export default function HomePage() {
               </Link>
             ) : (
               <>
-                <Link href="/login" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 font-medium text-sm hidden sm:block transition-colors">
+                <Link href="/login" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 font-medium text-sm transition-colors">
                   Log In
                 </Link>
                 <Link href="/register" className="btn-primary text-sm px-4 py-2 whitespace-nowrap">
@@ -543,7 +543,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="border-t border-gray-100 dark:border-gray-800 mt-10 pt-8 text-center text-sm text-gray-400 dark:text-gray-500">
-            © 2026 {APP_NAME} by Andy Pham. All rights reserved.
+            © 2026 {APP_NAME}. All rights reserved.
           </div>
         </div>
       </footer>
