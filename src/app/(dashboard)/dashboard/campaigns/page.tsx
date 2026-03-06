@@ -122,13 +122,22 @@ export default function DealsPage() {
 
   return (
     <div className="p-6 max-w-4xl space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Deals</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Create time-limited promotions that appear on your booking page.</p>
         </div>
-        <button onClick={() => setShowForm(v => !v)} className="btn-primary text-sm">
-          {showForm ? 'Cancel' : '+ New Deal'}
+        <button onClick={() => setShowForm(v => !v)} className="btn-primary text-sm shrink-0">
+          {showForm ? 'Cancel' : (
+            <>
+              <span className="hidden sm:inline">+ New Deal</span>
+              <span className="sm:hidden">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </span>
+            </>
+          )}
         </button>
       </div>
 
