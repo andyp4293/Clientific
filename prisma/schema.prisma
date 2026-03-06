@@ -45,6 +45,7 @@ model Business {
   aiReceptionistEnabled  Boolean        @default(false)
   aiReceptionistPhone    String?
   aiReceptionistGreeting String?
+  aiReceptionistFaq      Json?
   vapiPhoneNumberId      String?
   vapiPhoneNumber        String?
   pointsPerDollar        Float          @default(1.0)

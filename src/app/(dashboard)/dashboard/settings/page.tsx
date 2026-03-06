@@ -52,6 +52,7 @@ interface Business {
   aiReceptionistEnabled: boolean;
   aiReceptionistPhone: string | null;
   aiReceptionistGreeting: string | null;
+  aiReceptionistFaq: { question: string; answer: string }[] | null;
   vapiPhoneNumber: string | null;
   notifyNewBookingEmail: boolean;
   pointsPerDollar: number;
@@ -702,6 +703,84 @@ export default function SettingsPage() {
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Leave blank to use the default greeting above
                 </p>
+              </div>
+
+              {/* FAQ Section */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      FAQ <span className="font-normal text-gray-400 dark:text-gray-500">(optional)</span>
+                    </label>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Common questions the AI will answer on calls
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const faq = formData.aiReceptionistFaq ?? [];
+                      setFormData(prev => ({
+                        ...prev,
+                        aiReceptionistFaq: [...faq, { question: '', answer: '' }],
+                      }));
+                    }}
+                    className="btn-outline text-xs py-1.5 px-3 flex items-center gap-1"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add
+                  </button>
+                </div>
+                {(formData.aiReceptionistFaq ?? []).length === 0 ? (
+                  <p className="text-xs text-gray-400 dark:text-gray-500 italic">No FAQ entries yet. Click &quot;Add&quot; to create one.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {(formData.aiReceptionistFaq ?? []).map((item, i) => (
+                      <div key={i} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg space-y-2">
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1 space-y-2">
+                            <input
+                              type="text"
+                              value={item.question}
+                              onChange={(e) => {
+                                const faq = [...(formData.aiReceptionistFaq ?? [])];
+                                faq[i] = { ...faq[i], question: e.target.value };
+                                setFormData(prev => ({ ...prev, aiReceptionistFaq: faq }));
+                              }}
+                              className="input text-sm"
+                              placeholder="Question (e.g. Do you accept walk-ins?)"
+                            />
+                            <textarea
+                              value={item.answer}
+                              onChange={(e) => {
+                                const faq = [...(formData.aiReceptionistFaq ?? [])];
+                                faq[i] = { ...faq[i], answer: e.target.value };
+                                setFormData(prev => ({ ...prev, aiReceptionistFaq: faq }));
+                              }}
+                              className="input text-sm resize-none"
+                              rows={2}
+                              placeholder="Answer (e.g. Yes, walk-ins are welcome when we have availability.)"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const faq = (formData.aiReceptionistFaq ?? []).filter((_, idx) => idx !== i);
+                              setFormData(prev => ({ ...prev, aiReceptionistFaq: faq }));
+                            }}
+                            className="mt-0.5 p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Vapi phone number */}

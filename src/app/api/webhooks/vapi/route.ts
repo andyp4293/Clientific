@@ -85,6 +85,7 @@ type BusinessData = {
   timezone: string;
   aiReceptionistGreeting: string | null;
   aiReceptionistPhone: string | null;
+  aiReceptionistFaq: unknown;
   services: { id: string; name: string; price: number | null; duration: number }[];
   staff: { id: string; fullName: string; role: string }[];
   businessHours: { hours: any } | null;
@@ -121,6 +122,11 @@ function buildAssistantConfig(business: BusinessData) {
     ? business.staff.map(s => `- ${s.fullName} (ID: ${s.id}${s.role !== 'staff' ? `, ${s.role}` : ''})`).join('\n')
     : null;
 
+  const faqList = (Array.isArray(business.aiReceptionistFaq) ? business.aiReceptionistFaq as { question: string; answer: string }[] : []).filter(f => f.question && f.answer);
+  const faqText = faqList.length > 0
+    ? '\nFrequently asked questions:\n' + faqList.map(f => `Q: ${f.question}\nA: ${f.answer}`).join('\n\n')
+    : '';
+
   const systemPrompt = `You are the AI receptionist for ${business.name}, a ${business.businessType}.
 
 Today is ${todayStr} (${todayISO}). Always use this date when the caller says "today", "tomorrow", etc.
@@ -132,7 +138,7 @@ Services offered (use the ID field when calling tools, never say the ID aloud):
 ${servicesList}
 ${staffList ? `\nOur team (use the ID field when calling tools, never say the ID aloud):\n${staffList}\n` : ''}
 Location: ${location}
-Online booking: ${bookingUrl}
+Online booking: ${bookingUrl}${faqText}
 
 Your job:
 - If asked about hours, location, services, prices, or staff: answer directly from the information above — do NOT call any tools for these questions
@@ -660,6 +666,7 @@ async function handleToolCalls(body: any): Promise<NextResponse> {
           timezone: true,
           aiReceptionistGreeting: true,
           aiReceptionistPhone: true,
+          aiReceptionistFaq: true,
           services: {
             where: { active: true },
             select: { id: true, name: true, price: true, duration: true },
@@ -787,6 +794,7 @@ export async function POST(req: NextRequest) {
             timezone: true,
             aiReceptionistGreeting: true,
             aiReceptionistPhone: true,
+            aiReceptionistFaq: true,
             services: {
               where: { active: true },
               select: { id: true, name: true, price: true, duration: true },

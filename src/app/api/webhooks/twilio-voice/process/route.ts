@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
       publicId: true,
       aiReceptionistEnabled: true,
       aiReceptionistPhone: true,
+      aiReceptionistFaq: true,
       services: {
         where: { active: true },
         select: { name: true, price: true, duration: true, description: true },
@@ -113,6 +114,12 @@ export async function POST(req: NextRequest) {
   // Build booking URL
   const bookingUrl = `${process.env.NEXT_PUBLIC_APP_URL}/book/${business.publicId}`;
 
+  // FAQ
+  const faqItems = (business.aiReceptionistFaq as { question: string; answer: string }[] | null ?? []).filter(f => f.question && f.answer);
+  const faqText = faqItems.length > 0
+    ? '\n\nFrequently asked questions:\n' + faqItems.map(f => `Q: ${f.question}\nA: ${f.answer}`).join('\n\n')
+    : '';
+
   // System prompt
   const systemPrompt = `You are the AI receptionist for ${business.name}, a ${business.businessType}.
 
@@ -124,7 +131,7 @@ ${servicesList}
 
 Location: ${location}
 
-Online booking: ${bookingUrl}
+Online booking: ${bookingUrl}${faqText}
 
 Your job:
 - Answer questions about services, prices, hours, and location concisely
