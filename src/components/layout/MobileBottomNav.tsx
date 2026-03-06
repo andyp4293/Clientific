@@ -94,7 +94,7 @@ export function MobileBottomNav() {
             className="fixed inset-0 bg-black/30 z-40"
             onClick={() => setShowMoreMenu(false)}
           />
-          <div className="fixed left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl border-t border-gray-200 dark:border-gray-800 shadow-2xl z-50 max-h-[85vh] overflow-y-auto" style={{ bottom: 'calc(2.75rem + env(safe-area-inset-bottom) + 2px)' }}>
+          <div className="fixed left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl border-t border-gray-200 dark:border-gray-800 shadow-2xl z-50 max-h-[85vh] overflow-y-auto" style={{ bottom: 'calc(3rem + env(safe-area-inset-bottom) + 2px)' }}>
             {/* Header */}
             <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 py-3 rounded-t-2xl flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Menu</h3>
@@ -166,7 +166,7 @@ export function MobileBottomNav() {
       )}
 
       {/* Bottom Navigation */}
-      <nav className="flex justify-around items-end h-11 px-2">
+      <nav className="flex justify-around items-end h-12 px-2">
         {mobileNavigation.map((item) => {
           const isActive = item.href === '/dashboard' 
             ? pathname === item.href 
