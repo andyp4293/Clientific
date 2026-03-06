@@ -239,7 +239,7 @@ Your job:
     },
     voice: {
       provider: '11labs',
-      voiceId: 'EXAVITQu4vr4xnSDxMaL', // Sarah — warm, professional American female
+      voiceId: 'NDjuUGBKZhdOwAYMSat7', // Custom voice
       stability: 0.45,
       similarityBoost: 0.75,
     },
