@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { requireActiveSubscription, checkPlanLimit } from '@/lib/subscription';
 
 // GET /api/services - Get all services for the business
 export async function GET() {
@@ -46,6 +47,17 @@ export async function POST(request: Request) {
     
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const subscriptionError = await requireActiveSubscription(session.user.businessId);
+    if (subscriptionError) return subscriptionError;
+
+    const limitCheck = await checkPlanLimit(session.user.businessId, 'services');
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        { error: `Service limit reached (${limitCheck.current}/${limitCheck.limit}). Please upgrade your plan.`, code: 'PLAN_LIMIT_REACHED' },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();

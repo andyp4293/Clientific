@@ -1,8 +1,10 @@
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { APP_NAME } from '@/lib/brand';
 import Link from 'next/link';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { hasActiveSubscription } from '@/lib/subscription';
 import { DashboardNav } from '@/components/layout/DashboardNav';
 import { DashboardHeader } from '@/components/layout/DashboardHeader';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
@@ -19,6 +21,16 @@ export default async function DashboardLayout({
 
   if (!session) {
     redirect('/signout');
+  }
+
+  // Subscription gate — exempt the subscribe page itself to avoid redirect loops
+  const headersList = await headers();
+  const pathname = headersList.get('x-pathname') ?? '';
+  if (pathname !== '/dashboard/subscribe' && session.user.businessId) {
+    const active = await hasActiveSubscription(session.user.businessId);
+    if (!active) {
+      redirect('/dashboard/subscribe');
+    }
   }
 
   return (

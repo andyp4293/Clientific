@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { requireActiveSubscription } from '@/lib/subscription';
 
 // PATCH /api/services/[id] - Update a service
 export async function PATCH(
@@ -10,10 +11,13 @@ export async function PATCH(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const subscriptionError = await requireActiveSubscription(session.user.businessId);
+    if (subscriptionError) return subscriptionError;
 
     const { id } = await params;
     const body = await request.json();
@@ -86,10 +90,13 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const subscriptionError = await requireActiveSubscription(session.user.businessId);
+    if (subscriptionError) return subscriptionError;
 
     const { id } = await params;
 

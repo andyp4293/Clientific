@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { requireActiveSubscription } from '@/lib/subscription';
 
 // ── Vapi helpers ──────────────────────────────────────────────────────────────
 
@@ -99,6 +100,9 @@ export async function PATCH(req: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const subscriptionError = await requireActiveSubscription(session.user.id);
+    if (subscriptionError) return subscriptionError;
 
     const body = await req.json();
     const {

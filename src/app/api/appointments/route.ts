@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { sendAppointmentConfirmation } from '@/lib/twilio';
 import { sendNewBookingEmail } from '@/lib/email';
 import { businessDayStart } from '@/lib/timezone';
+import { requireActiveSubscription } from '@/lib/subscription';
 
 const businessMidnightUTC = businessDayStart;
 
@@ -86,6 +87,9 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const subscriptionError = await requireActiveSubscription(session.user.businessId);
+    if (subscriptionError) return subscriptionError;
 
     const business = await prisma.business.findUnique({
       where: { email: session.user.email },

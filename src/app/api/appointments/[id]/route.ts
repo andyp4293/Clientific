@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { sendAppointmentCancellation, sendAppointmentBusinessConfirmed } from '@/lib/twilio';
+import { requireActiveSubscription } from '@/lib/subscription';
 import { updateCustomerSegment } from '@/lib/segment';
 
 // GET - Get single appointment
@@ -60,10 +61,13 @@ export async function PATCH(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const subscriptionError = await requireActiveSubscription(session.user.businessId);
+    if (subscriptionError) return subscriptionError;
 
     const business = await prisma.business.findUnique({
       where: { email: session.user.email },
@@ -194,10 +198,13 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const subscriptionError = await requireActiveSubscription(session.user.businessId);
+    if (subscriptionError) return subscriptionError;
 
     const business = await prisma.business.findUnique({
       where: { email: session.user.email },

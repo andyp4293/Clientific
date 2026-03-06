@@ -77,29 +77,6 @@ const features = [
   },
 ];
 
-const testimonials = [
-  {
-    name: 'Marcus T.',
-    business: 'The Fade Room — Barbershop',
-    avatar: 'M',
-    text: `Before ${APP_NAME}, I was missing calls all day while cutting hair. Now the AI picks up every call and books them straight into my calendar. I added 3 new clients last week just from missed calls I used to lose.`,
-    stars: 5,
-  },
-  {
-    name: 'Priya K.',
-    business: 'Luxe Nails & Spa',
-    avatar: 'P',
-    text: 'The booking page alone was worth it — but the AI receptionist is insane. It answers at 2am when we\'re closed and books appointments. My no-show rate dropped by more than half since the reminders started.',
-    stars: 5,
-  },
-  {
-    name: 'Derek H.',
-    business: 'DetailPro — Auto Detailing',
-    avatar: 'D',
-    text: `I'm a one-man operation and I couldn't keep up with the phone. ${APP_NAME} handles every inquiry now. Setup took 10 minutes and it just runs. Best $79 I spend each month.`,
-    stars: 5,
-  },
-];
 
 const StarIcon = () => (
   <svg className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
@@ -398,40 +375,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Testimonials ── */}
-      <section className="bg-white dark:bg-gray-900 py-20 sm:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <div className="inline-block text-xs font-semibold text-primary bg-primary-50 dark:bg-primary/10 px-3 py-1 rounded-full mb-4 uppercase tracking-widest">
-              Testimonials
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-3">Real businesses, real results</h2>
-            <div className="flex items-center justify-center gap-1.5 mt-2">
-              {[1,2,3,4,5].map(i => <StarIcon key={i} />)}
-              <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">4.9 / 5 from 200+ reviews</span>
-            </div>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((t) => (
-              <div key={t.name} className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 flex flex-col">
-                <div className="flex items-center gap-0.5 mb-4">
-                  {Array.from({ length: t.stars }).map((_, i) => <StarIcon key={i} />)}
-                </div>
-                <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed flex-1 mb-5">&ldquo;{t.text}&rdquo;</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white text-sm font-bold shrink-0">
-                    {t.avatar}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.business}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* ── Pricing ── */}
       <section id="pricing" className="bg-white dark:bg-gray-900 py-20 sm:py-28">

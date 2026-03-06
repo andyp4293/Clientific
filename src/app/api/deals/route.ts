@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { requireActiveSubscription } from '@/lib/subscription';
 
 export async function GET() {
   try {
@@ -32,6 +33,9 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const subscriptionError = await requireActiveSubscription(session.user.id);
+    if (subscriptionError) return subscriptionError;
 
     const body = await req.json();
     const { title, description, discountType, discountValue, serviceId, startsAt, expiresAt, maxRedemptions } = body;

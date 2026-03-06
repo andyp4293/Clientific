@@ -4,6 +4,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { updateCustomerSegment } from '@/lib/segment';
 import { businessDayStart } from '@/lib/timezone';
+import { requireActiveSubscription } from '@/lib/subscription';
 
 export async function GET(req: Request) {
   try {
@@ -52,6 +53,9 @@ export async function POST(req: Request) {
     if (!session?.user?.businessId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const subscriptionError = await requireActiveSubscription(session.user.businessId);
+    if (subscriptionError) return subscriptionError;
 
     const body = await req.json();
     const { customerId, serviceId, staffId, amountSpent } = body;

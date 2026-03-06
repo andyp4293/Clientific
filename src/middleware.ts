@@ -14,11 +14,15 @@ export function middleware(request: NextRequest) {
       // Rewrite to /book/[publicId] route
       const url = request.nextUrl.clone();
       url.pathname = `/book/${publicId}`;
-      return NextResponse.rewrite(url);
+      const rewriteResponse = NextResponse.rewrite(url);
+      rewriteResponse.headers.set('x-pathname', request.nextUrl.pathname);
+      return rewriteResponse;
     }
   }
-  
-  return NextResponse.next();
+
+  const response = NextResponse.next();
+  response.headers.set('x-pathname', request.nextUrl.pathname);
+  return response;
 }
 
 export const config = {

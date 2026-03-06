@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import { prisma } from './prisma';
 import { PRICING_PLANS } from './stripe';
 
@@ -33,6 +34,23 @@ export async function hasActiveSubscription(businessId: string): Promise<boolean
 
   // Allow access if subscription is active
   return business.subscriptionStatus === 'active';
+}
+
+/**
+ * Returns a 403 NextResponse if the business has no active subscription, otherwise null.
+ * Use at the top of mutating API route handlers.
+ */
+export async function requireActiveSubscription(
+  businessId: string
+): Promise<NextResponse | null> {
+  const active = await hasActiveSubscription(businessId);
+  if (!active) {
+    return NextResponse.json(
+      { error: 'Active subscription required', code: 'SUBSCRIPTION_REQUIRED' },
+      { status: 403 }
+    );
+  }
+  return null;
 }
 
 /**

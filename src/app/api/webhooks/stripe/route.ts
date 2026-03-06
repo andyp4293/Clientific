@@ -134,6 +134,9 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
       subscriptionStatus: subscription.status,
       stripePriceId: newPriceId,
       stripeCurrentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
+      trialEndsAt: subscription.trial_end
+        ? new Date(subscription.trial_end * 1000)
+        : null,
       ...(newPlan && { subscriptionPlan: newPlan }),
     },
   });

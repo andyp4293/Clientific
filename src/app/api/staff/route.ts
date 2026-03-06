@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
+import { requireActiveSubscription, checkPlanLimit } from '@/lib/subscription';
 
 // GET - List all staff members for the business
 export async function GET(req: NextRequest) {
@@ -47,6 +48,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
+      );
+    }
+
+    const subscriptionError = await requireActiveSubscription(session.user.id);
+    if (subscriptionError) return subscriptionError;
+
+    const limitCheck = await checkPlanLimit(session.user.id, 'staff');
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        { error: `Staff limit reached (${limitCheck.current}/${limitCheck.limit}). Please upgrade your plan.`, code: 'PLAN_LIMIT_REACHED' },
+        { status: 403 }
       );
     }
 

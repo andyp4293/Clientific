@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { formatPhoneNumber } from "@/lib/utils";
 import { calculateCustomerSegment } from "@/lib/segmentation";
+import { requireActiveSubscription } from "@/lib/subscription";
 
 // GET /api/customers/[id] - Get a single customer
 export async function GET(
@@ -76,6 +77,9 @@ export async function PUT(
     if (!session?.user?.businessId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const subscriptionError = await requireActiveSubscription(session.user.businessId);
+    if (subscriptionError) return subscriptionError;
 
     const { id } = await params;
 
@@ -159,6 +163,9 @@ export async function DELETE(
     if (!session?.user?.businessId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const subscriptionError = await requireActiveSubscription(session.user.businessId);
+    if (subscriptionError) return subscriptionError;
 
     const { id } = await params;
 
