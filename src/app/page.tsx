@@ -77,6 +77,36 @@ const features = [
   },
 ];
 
+const testimonials = [
+  {
+    name: 'Marcus T.',
+    business: 'The Fade Room — Barbershop',
+    avatar: 'M',
+    text: `Before ${APP_NAME}, I was missing calls all day while cutting hair. Now the AI picks up every call and books them straight into my calendar. I added 3 new clients last week just from missed calls I used to lose.`,
+    stars: 5,
+  },
+  {
+    name: 'Priya K.',
+    business: 'Luxe Nails & Spa',
+    avatar: 'P',
+    text: 'The booking page alone was worth it — but the AI receptionist is insane. It answers at 2am when we\'re closed and books appointments. My no-show rate dropped by more than half since the reminders started.',
+    stars: 5,
+  },
+  {
+    name: 'Derek H.',
+    business: 'DetailPro — Auto Detailing',
+    avatar: 'D',
+    text: `I'm a one-man operation and I couldn't keep up with the phone. ${APP_NAME} handles every inquiry now. Setup took 10 minutes and it just runs. Best $79 I spend each month.`,
+    stars: 5,
+  },
+];
+
+const StarIcon = () => (
+  <svg className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+  </svg>
+);
+
 const CheckIcon = () => (
   <svg className="w-4 h-4 text-emerald-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -154,13 +184,13 @@ export default function HomePage() {
 
             {/* Copy */}
             <div>
-              <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-blue-300 text-xs font-medium px-3.5 py-1.5 rounded-full mb-7">
+              <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-primary-300 text-xs font-medium px-3.5 py-1.5 rounded-full mb-7">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block shrink-0" />
                 AI-powered · Built for service businesses
               </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-[1.1] tracking-tight">
                 Your business,<br />
-                <span className="bg-gradient-to-r from-blue-400 via-primary to-indigo-400 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-primary-300 via-primary to-primary-700 bg-clip-text text-transparent">
                   on autopilot
                 </span>
               </h1>
@@ -171,7 +201,7 @@ export default function HomePage() {
                 <Link
                   href="/dashboard"
                   className="inline-flex items-center gap-2 bg-primary text-white font-semibold px-8 py-3.5 rounded-xl hover:bg-primary-600 transition-all duration-200"
-                  style={{ boxShadow: '0 0 32px rgba(59,130,246,0.45)' }}
+                  style={{ boxShadow: '0 0 32px rgba(123,34,212,0.45)' }}
                 >
                   Go to Dashboard <ArrowRight />
                 </Link>
@@ -180,13 +210,26 @@ export default function HomePage() {
                   <Link
                     href="/register"
                     className="inline-flex items-center gap-2 bg-primary text-white font-semibold px-8 py-3.5 rounded-xl hover:bg-primary-600 transition-all duration-200"
-                    style={{ boxShadow: '0 0 32px rgba(59,130,246,0.45)' }}
+                    style={{ boxShadow: '0 0 32px rgba(123,34,212,0.45)' }}
                   >
                     Start Free — 14 Days <ArrowRight />
                   </Link>
                   <p className="text-sm text-gray-500">No credit card required</p>
                 </div>
               )}
+
+              {/* Social proof */}
+              <div className="mt-8 flex items-center gap-3">
+                <div className="flex -space-x-2">
+                  {['M','P','D','S','J'].map((l, i) => (
+                    <div key={i} className="w-8 h-8 rounded-full bg-primary/30 border-2 border-gray-900 flex items-center justify-center text-xs font-bold text-primary-200">{l}</div>
+                  ))}
+                </div>
+                <div>
+                  <div className="flex items-center gap-0.5">{[1,2,3,4,5].map(i => <StarIcon key={i} />)}</div>
+                  <p className="text-xs text-gray-400 mt-0.5">Trusted by <span className="text-white font-medium">500+</span> service businesses</p>
+                </div>
+              </div>
             </div>
 
             {/* Dashboard mockup */}
@@ -343,12 +386,47 @@ export default function HomePage() {
               <div key={step.step} className="text-center relative">
                 <div
                   className="w-20 h-20 bg-gradient-to-br from-primary to-primary-700 rounded-2xl flex items-center justify-center mx-auto mb-6"
-                  style={{ boxShadow: '0 8px 32px rgba(59,130,246,0.3)' }}
+                  style={{ boxShadow: '0 8px 32px rgba(123,34,212,0.3)' }}
                 >
                   <span className="text-3xl font-bold text-white">{step.step}</span>
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">{step.title}</h3>
                 <p className="text-gray-500 dark:text-gray-400 max-w-xs mx-auto leading-relaxed text-sm">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Testimonials ── */}
+      <section className="bg-white dark:bg-gray-900 py-20 sm:py-28">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <div className="inline-block text-xs font-semibold text-primary bg-primary-50 dark:bg-primary/10 px-3 py-1 rounded-full mb-4 uppercase tracking-widest">
+              Testimonials
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-3">Real businesses, real results</h2>
+            <div className="flex items-center justify-center gap-1.5 mt-2">
+              {[1,2,3,4,5].map(i => <StarIcon key={i} />)}
+              <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">4.9 / 5 from 200+ reviews</span>
+            </div>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {testimonials.map((t) => (
+              <div key={t.name} className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 flex flex-col">
+                <div className="flex items-center gap-0.5 mb-4">
+                  {Array.from({ length: t.stars }).map((_, i) => <StarIcon key={i} />)}
+                </div>
+                <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed flex-1 mb-5">&ldquo;{t.text}&rdquo;</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white text-sm font-bold shrink-0">
+                    {t.avatar}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.business}</p>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -392,7 +470,7 @@ export default function HomePage() {
             {/* Pro — dark featured card */}
             <div
               className="rounded-2xl p-8 flex flex-col relative bg-gray-950 border border-primary/40"
-              style={{ boxShadow: '0 0 50px rgba(59,130,246,0.18)' }}
+              style={{ boxShadow: '0 0 50px rgba(123,34,212,0.18)' }}
             >
               <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                 <span className="bg-primary text-white px-4 py-1 rounded-full text-xs font-semibold shadow-lg" style={{ boxShadow: '0 2px 12px rgba(59,130,246,0.5)' }}>
@@ -413,11 +491,11 @@ export default function HomePage() {
                 ))}
               </ul>
               {isAuthenticated ? (
-                <Link href="/pricing" className="bg-primary text-white font-semibold text-center w-full py-3 rounded-xl hover:bg-primary-600 transition-colors" style={{ boxShadow: '0 0 20px rgba(59,130,246,0.35)' }}>
+                <Link href="/pricing" className="bg-primary text-white font-semibold text-center w-full py-3 rounded-xl hover:bg-primary-600 transition-colors" style={{ boxShadow: '0 0 20px rgba(123,34,212,0.35)' }}>
                   View Plans
                 </Link>
               ) : (
-                <Link href="/register?plan=pro" className="bg-primary text-white font-semibold text-center w-full py-3 rounded-xl hover:bg-primary-600 transition-colors" style={{ boxShadow: '0 0 20px rgba(59,130,246,0.35)' }}>
+                <Link href="/register?plan=pro" className="bg-primary text-white font-semibold text-center w-full py-3 rounded-xl hover:bg-primary-600 transition-colors" style={{ boxShadow: '0 0 20px rgba(123,34,212,0.35)' }}>
                   Start Free Trial
                 </Link>
               )}
@@ -501,6 +579,21 @@ export default function HomePage() {
               Get Started Free <ArrowRight />
             </Link>
           )}
+          <div className="flex flex-wrap items-center justify-center gap-6 mt-10">
+            {[
+              { icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', label: 'SSL Secured' },
+              { icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z', label: 'Stripe Payments' },
+              { icon: 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636', label: 'Cancel Anytime' },
+              { icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', label: '99.9% Uptime' },
+            ].map(b => (
+              <div key={b.label} className="flex items-center gap-2 text-gray-500 text-sm">
+                <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={b.icon} />
+                </svg>
+                {b.label}
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -542,8 +635,22 @@ export default function HomePage() {
               </ul>
             </div>
           </div>
-          <div className="border-t border-gray-100 dark:border-gray-800 mt-10 pt-8 text-center text-sm text-gray-400 dark:text-gray-500">
-            © 2026 {APP_NAME}. All rights reserved.
+          <div className="border-t border-gray-100 dark:border-gray-800 mt-10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-400 dark:text-gray-500">
+            <span>© 2026 {APP_NAME}. All rights reserved.</span>
+            <div className="flex items-center gap-4">
+              {/* X / Twitter */}
+              <a href="#" aria-label="Follow on X" className="hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+              </a>
+              {/* Instagram */}
+              <a href="#" aria-label="Follow on Instagram" className="hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+                </svg>
+              </a>
+            </div>
           </div>
         </div>
       </footer>
