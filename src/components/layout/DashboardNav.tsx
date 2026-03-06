@@ -103,11 +103,11 @@ export function DashboardNav() {
               href={item.href}
               className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all ${
                 isActive
-                  ? 'bg-primary-50 text-primary dark:bg-primary/20 dark:text-primary-300'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100'
+                  ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white'
+                  : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100'
               }`}
             >
-              <span className={`mr-3 ${isActive ? 'text-primary dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'}`}>{icons[item.icon]}</span>
+              <span className={`mr-3 ${isActive ? 'text-primary dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'}`}>{icons[item.icon]}</span>
               {item.name}
             </Link>
           );

@@ -136,11 +136,11 @@ export function MobileBottomNav() {
                     onClick={() => setShowMoreMenu(false)}
                     className={`flex items-center px-4 py-3 text-sm font-medium transition-colors ${
                       isActive
-                        ? 'bg-primary-50 text-primary border-l-4 border-primary pl-3 dark:bg-primary/10'
+                        ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white'
                         : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'
                     }`}
                   >
-                    <span className={`mr-3 ${isActive ? 'text-primary' : 'text-gray-500 dark:text-gray-400'}`}>
+                    <span className={`mr-3 ${isActive ? 'text-gray-700 dark:text-gray-200' : 'text-gray-500 dark:text-gray-400'}`}>
                       {page.icon}
                     </span>
                     {page.name}
@@ -178,15 +178,15 @@ export function MobileBottomNav() {
               href={item.href}
               className={`flex flex-col items-center justify-start min-w-0 flex-1 pt-2 px-1 transition-colors ${
                 isActive
-                  ? 'text-primary'
-                  : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
+                  ? 'text-gray-900 dark:text-white'
+                  : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
               }`}
             >
-              <div className={`mb-1 ${isActive ? 'text-primary' : 'text-gray-600'}`}>
+              <div className={`mb-1 ${isActive ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
                 {item.icon}
               </div>
               <span className={`text-[10px] font-medium truncate w-full text-center ${
-                isActive ? 'text-primary' : 'text-gray-600'
+                isActive ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
               }`}>
                 {item.name}
               </span>
@@ -199,17 +199,17 @@ export function MobileBottomNav() {
           onClick={() => setShowMoreMenu(!showMoreMenu)}
           className={`flex flex-col items-center justify-start min-w-0 flex-1 pt-2 px-1 transition-colors ${
             isOnMorePage || showMoreMenu
-              ? 'text-primary'
-              : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
+              ? 'text-gray-900 dark:text-white'
+              : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
           }`}
         >
-          <div className={`mb-1 ${isOnMorePage || showMoreMenu ? 'text-primary' : 'text-gray-600'}`}>
+          <div className={`mb-1 ${isOnMorePage || showMoreMenu ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </div>
           <span className={`text-[10px] font-medium truncate w-full text-center ${
-            isOnMorePage || showMoreMenu ? 'text-primary' : 'text-gray-600'
+            isOnMorePage || showMoreMenu ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
           }`}>
             More
           </span>
