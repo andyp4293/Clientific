@@ -1,11 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { toast } from 'sonner';
+import Cropper from 'react-easy-crop';
+import type { Area } from 'react-easy-crop';
+
+async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener('load', () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = pixelCrop.width;
+      canvas.height = pixelCrop.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('No canvas context')); return; }
+      ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, pixelCrop.width, pixelCrop.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.92));
+    });
+    image.addEventListener('error', reject);
+    image.src = imageSrc;
+  });
+}
 
 type Tab = 'profile' | 'branding' | 'integrations' | 'notifications' | 'loyalty' | 'ai-receptionist';
 
@@ -46,6 +65,11 @@ export default function SettingsPage() {
   const [formData, setFormData] = useState<Partial<Business>>({});
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [showEnableModal, setShowEnableModal] = useState(false);
   const [showDisableModal, setShowDisableModal] = useState(false);
   const [activatingUntil, setActivatingUntil] = useState<Date | null>(null);
@@ -163,37 +187,45 @@ export default function SettingsPage() {
     }));
   };
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.target.value = '';
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       toast.error('Please upload an image file');
       return;
     }
-
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Image must be less than 2MB');
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image must be less than 10MB');
       return;
     }
 
-    setUploadingLogo(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImageToCrop(reader.result as string);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setCropModalOpen(true);
+    };
+    reader.readAsDataURL(file);
+  };
 
+  const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
+    setCroppedAreaPixels(croppedPixels);
+  }, []);
+
+  const handleCropApply = async () => {
+    if (!imageToCrop || !croppedAreaPixels) return;
+    setUploadingLogo(true);
     try {
-      // For now, convert to base64 and store directly
-      // In production, you'd upload to a service like S3, Cloudinary, etc.
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        setLogoPreview(base64String);
-        setFormData((prev) => ({ ...prev, logoUrl: base64String }));
-      };
-      reader.readAsDataURL(file);
-    } catch (error) {
-      console.error('Error uploading logo:', error);
-      toast.error('Failed to upload logo');
+      const cropped = await getCroppedImg(imageToCrop, croppedAreaPixels);
+      setLogoPreview(cropped);
+      setFormData((prev) => ({ ...prev, logoUrl: cropped }));
+      setCropModalOpen(false);
+      setImageToCrop(null);
+    } catch {
+      toast.error('Failed to crop image');
     } finally {
       setUploadingLogo(false);
     }
@@ -925,6 +957,84 @@ export default function SettingsPage() {
           {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
+
+      {/* Crop Modal */}
+      {cropModalOpen && imageToCrop && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-lg flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Crop Logo</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Drag to reposition · Pinch or scroll to zoom</p>
+              </div>
+              <button
+                onClick={() => { setCropModalOpen(false); setImageToCrop(null); }}
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Crop Area */}
+            <div className="relative w-full" style={{ height: 320 }}>
+              <Cropper
+                image={imageToCrop}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+                cropShape="rect"
+                showGrid={false}
+                style={{
+                  containerStyle: { borderRadius: 0 },
+                  cropAreaStyle: { border: '2px solid #8B5CF6', boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)' },
+                }}
+              />
+            </div>
+
+            {/* Zoom Slider */}
+            <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-700 flex items-center gap-3">
+              <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+              </svg>
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.01}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="flex-1 accent-primary"
+              />
+              <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10h-6" />
+              </svg>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-100 dark:border-gray-700">
+              <button
+                onClick={() => { setCropModalOpen(false); setImageToCrop(null); }}
+                className="btn-outline text-sm px-4"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCropApply}
+                disabled={uploadingLogo}
+                className="btn-primary text-sm px-5 disabled:opacity-60"
+              >
+                {uploadingLogo ? 'Applying…' : 'Crop & Use'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

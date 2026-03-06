@@ -228,7 +228,7 @@ export default function PublicBookingPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           <p className="mt-4 text-gray-600 dark:text-gray-400">Loading booking page...</p>
         </div>
       </div>
@@ -263,7 +263,7 @@ export default function PublicBookingPage() {
             </div>
             <Link
               href={`/book/${slugOrPublicId}/info`}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors flex-shrink-0"
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary/10 rounded-lg transition-colors flex-shrink-0"
               title="View business information"
             >
               <Info className="w-4 h-4" />
@@ -287,7 +287,7 @@ export default function PublicBookingPage() {
                 {/* Connector line between steps */}
                 {idx > 0 && (
                   <div className={`flex-1 h-0.5 sm:h-1 mx-1 sm:mx-2 ${
-                    step > item.num - 1 ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+                    step > item.num - 1 ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'
                   }`} />
                 )}
                 {/* Step circle + label */}
@@ -295,7 +295,7 @@ export default function PublicBookingPage() {
                   <div
                     className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium flex-shrink-0 ${
                       step >= item.num
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-primary text-white'
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
                     }`}
                   >
@@ -365,14 +365,14 @@ export default function PublicBookingPage() {
                       onClick={() => toggleService(service)}
                       className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                         isSelected
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                          : 'border-gray-200 dark:border-gray-600 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10'
+                          ? 'border-primary bg-primary-50 dark:bg-primary/10'
+                          : 'border-gray-200 dark:border-gray-600 hover:border-primary-400 hover:bg-primary-50 dark:hover:bg-primary/5'
                       }`}
                     >
                       <div className="flex items-start gap-3">
                         {/* Checkbox indicator */}
                         <div className={`mt-0.5 w-5 h-5 rounded flex-shrink-0 border-2 flex items-center justify-center ${
-                          isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-400 dark:border-gray-500'
+                          isSelected ? 'bg-primary border-primary' : 'border-gray-400 dark:border-gray-500'
                         }`}>
                           {isSelected && (
                             <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -383,7 +383,7 @@ export default function PublicBookingPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
-                              <h3 className={`font-semibold mb-0.5 ${isSelected ? 'text-blue-700 dark:text-blue-400' : 'text-gray-900 dark:text-gray-100'}`}>
+                              <h3 className={`font-semibold mb-0.5 ${isSelected ? 'text-primary-700 dark:text-primary-400' : 'text-gray-900 dark:text-gray-100'}`}>
                                 {service.name}
                               </h3>
                               {service.description && (
@@ -407,7 +407,7 @@ export default function PublicBookingPage() {
               {/* Selection summary + Continue */}
               <div className="mt-6">
                 {selectedServices.length > 0 && (
-                  <div className="mb-3 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-sm text-blue-800 dark:text-blue-300 flex justify-between items-center">
+                  <div className="mb-3 px-4 py-3 bg-primary-50 dark:bg-primary/10 rounded-xl text-sm text-primary-800 dark:text-primary-300 flex justify-between items-center">
                     <span>
                       {selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected
                       {' · '}{totalDuration} min
@@ -420,7 +420,7 @@ export default function PublicBookingPage() {
                 <button
                   onClick={() => setStep(2)}
                   disabled={selectedServices.length === 0}
-                  className="w-full py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Continue →
                 </button>
@@ -437,8 +437,8 @@ export default function PublicBookingPage() {
                   onClick={() => setSelectedStaff('anyone')}
                   className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                     selectedStaff === 'anyone'
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-gray-200 dark:border-gray-600 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10'
+                      ? 'border-primary bg-primary-50 dark:bg-primary/10'
+                      : 'border-gray-200 dark:border-gray-600 hover:border-primary hover:bg-primary-50 dark:hover:bg-primary/5'
                   }`}
                 >
                   <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Anyone Available</h3>
@@ -451,8 +451,8 @@ export default function PublicBookingPage() {
                     onClick={() => setSelectedStaff(member.id)}
                     className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                       selectedStaff === member.id
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-gray-200 dark:border-gray-600 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10'
+                        ? 'border-primary bg-primary-50 dark:bg-primary/10'
+                        : 'border-gray-200 dark:border-gray-600 hover:border-primary hover:bg-primary-50 dark:hover:bg-primary/5'
                     }`}
                   >
                     <h3 className="font-semibold text-gray-900 dark:text-gray-100">{member.fullName}</h3>
@@ -470,7 +470,7 @@ export default function PublicBookingPage() {
                 <button
                   onClick={() => setStep(3)}
                   disabled={!selectedStaff}
-                  className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Continue
                 </button>
@@ -501,7 +501,7 @@ export default function PublicBookingPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Available Times</label>
                 {isLoadingSlots ? (
                   <div className="text-center py-8">
-                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                   </div>
                 ) : allSlots.length === 0 ? (
                   <div className="text-center py-8">
@@ -535,7 +535,7 @@ export default function PublicBookingPage() {
                           onClick={() => setSelectedTime(slot)}
                           className={`p-3 rounded-lg text-sm font-medium transition-all ${
                             selectedTime === slot
-                              ? 'bg-blue-600 text-white'
+                              ? 'bg-primary text-white'
                               : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600'
                           }`}
                         >
@@ -557,7 +557,7 @@ export default function PublicBookingPage() {
                 <button
                   onClick={() => setStep(4)}
                   disabled={!selectedTime}
-                  className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Continue
                 </button>
@@ -579,7 +579,7 @@ export default function PublicBookingPage() {
                     type="text"
                     value={customerInfo.name}
                     onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                     placeholder="John Doe"
                   />
                 </div>
@@ -592,7 +592,7 @@ export default function PublicBookingPage() {
                     type="tel"
                     value={customerInfo.phone}
                     onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                     placeholder="(555) 123-4567"
                   />
                 </div>
@@ -605,7 +605,7 @@ export default function PublicBookingPage() {
                     type="email"
                     value={customerInfo.email}
                     onChange={(e) => setCustomerInfo({ ...customerInfo, email: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                     placeholder="john@example.com"
                   />
                 </div>
@@ -618,7 +618,7 @@ export default function PublicBookingPage() {
                     value={customerInfo.notes}
                     onChange={(e) => setCustomerInfo({ ...customerInfo, notes: e.target.value })}
                     rows={3}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                     placeholder="Any special requests or notes..."
                   />
                 </div>
@@ -627,11 +627,11 @@ export default function PublicBookingPage() {
                 <button
                   type="button"
                   onClick={() => setCustomerInfo({ ...customerInfo, smsConsent: !customerInfo.smsConsent })}
-                  className="w-full text-left bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4"
+                  className="w-full text-left bg-primary-50 dark:bg-primary/10 border border-primary-200 dark:border-primary-800 rounded-xl p-4"
                 >
                   <div className="flex items-start gap-3">
                     <div className={`mt-0.5 w-5 h-5 flex-shrink-0 rounded border-2 flex items-center justify-center ${
-                      customerInfo.smsConsent ? 'bg-blue-600 border-blue-600' : 'bg-white dark:bg-gray-700 border-gray-400 dark:border-gray-500'
+                      customerInfo.smsConsent ? 'bg-primary border-primary' : 'bg-white dark:bg-gray-700 border-gray-400 dark:border-gray-500'
                     }`}>
                       {customerInfo.smsConsent && (
                         <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -671,7 +671,7 @@ export default function PublicBookingPage() {
                     !customerInfo.phone ||
                     bookingMutation.isPending
                   }
-                  className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {bookingMutation.isPending ? 'Submitting...' : 'Submit Request'}
                 </button>
@@ -682,7 +682,7 @@ export default function PublicBookingPage() {
 
         {/* Booking Summary */}
         {selectedServices.length > 0 && step > 1 && step < 5 && (
-          <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-6">
+          <div className="mt-6 bg-primary-50 dark:bg-primary/10 border border-primary-200 dark:border-primary-800 rounded-2xl p-6">
             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Booking Summary</h3>
             <div className="space-y-3 text-sm">
               {selectedServices.length === 1 ? (
@@ -747,7 +747,7 @@ export default function PublicBookingPage() {
               </div>
 
               {hasPrices && (
-                <div className="flex justify-between pt-3 border-t border-blue-200 dark:border-blue-800">
+                <div className="flex justify-between pt-3 border-t border-primary-200 dark:border-primary-800">
                   <span className="font-semibold text-gray-900 dark:text-gray-100">Total:</span>
                   <span className="font-bold text-gray-900 dark:text-gray-100">${totalPrice.toFixed(2)}</span>
                 </div>
@@ -766,7 +766,7 @@ export default function PublicBookingPage() {
               href="/terms"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 dark:text-blue-400 hover:underline"
+              className="text-primary dark:text-primary-400 hover:underline"
             >
               terms and conditions
             </Link>
@@ -775,7 +775,7 @@ export default function PublicBookingPage() {
               href="/privacy"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 dark:text-blue-400 hover:underline"
+              className="text-primary dark:text-primary-400 hover:underline"
             >
               privacy policy
             </Link>

@@ -115,7 +115,7 @@ export default function AppointmentPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
       </div>
     );
   }
@@ -291,7 +291,7 @@ export default function AppointmentPage() {
         <div className="space-y-3">
           <a
             href={bookingPath}
-            className="block w-full bg-blue-600 text-white rounded-xl py-3 font-medium hover:bg-blue-700 transition-colors"
+            className="block w-full bg-primary text-white rounded-xl py-3 font-medium hover:bg-primary-600 transition-colors"
           >
             Book Another Appointment
           </a>
@@ -344,7 +344,7 @@ export default function AppointmentPage() {
                   {rescheduleDate && (
                     slotsLoading ? (
                       <div className="flex justify-center py-4">
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
                       </div>
                     ) : slots.length === 0 ? (
                       <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-2">No available times on this date.</p>
@@ -356,7 +356,7 @@ export default function AppointmentPage() {
                             onClick={() => setRescheduleSlot(slot)}
                             className={`py-2 rounded-lg text-sm font-medium transition-colors ${
                               rescheduleSlot === slot
-                                ? 'bg-blue-600 text-white'
+                                ? 'bg-primary text-white'
                                 : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-500'
                             }`}
                           >
@@ -378,7 +378,7 @@ export default function AppointmentPage() {
                       <button
                         onClick={() => rescheduleMutation.mutate()}
                         disabled={rescheduleMutation.isPending}
-                        className="w-full bg-blue-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+                        className="w-full bg-primary text-white rounded-lg py-2 text-sm font-medium hover:bg-primary-600 transition-colors disabled:opacity-50"
                       >
                         {rescheduleMutation.isPending ? 'Rescheduling...' : 'Confirm Reschedule'}
                       </button>

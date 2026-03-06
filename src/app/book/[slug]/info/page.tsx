@@ -56,7 +56,7 @@ export default function BusinessInfoPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           <p className="mt-4 text-gray-600 dark:text-gray-400">Loading business information...</p>
         </div>
       </div>
@@ -84,7 +84,7 @@ export default function BusinessInfoPage() {
         <div className="max-w-5xl mx-auto px-4 py-6">
           <Link
             href={`/book/${slugOrPublicId}`}
-            className="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium mb-4"
+            className="inline-flex items-center gap-2 text-primary dark:text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 font-medium mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Booking
@@ -116,12 +116,12 @@ export default function BusinessInfoPage() {
               <div className="space-y-4">
                 {business.phone && (
                   <div className="flex items-start gap-3">
-                    <Phone className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                    <Phone className="w-5 h-5 text-primary dark:text-primary-400 mt-0.5" />
                     <div>
                       <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Phone</p>
                       <a
                         href={`tel:${business.phone}`}
-                        className="text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400"
+                        className="text-gray-900 dark:text-gray-100 hover:text-primary dark:hover:text-primary-400"
                       >
                         {business.phone}
                       </a>
@@ -131,12 +131,12 @@ export default function BusinessInfoPage() {
 
                 {business.businessEmail && (
                   <div className="flex items-start gap-3">
-                    <Mail className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                    <Mail className="w-5 h-5 text-primary dark:text-primary-400 mt-0.5" />
                     <div>
                       <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</p>
                       <a
                         href={`mailto:${business.businessEmail}`}
-                        className="text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400"
+                        className="text-gray-900 dark:text-gray-100 hover:text-primary dark:hover:text-primary-400"
                       >
                         {business.businessEmail}
                       </a>
@@ -146,7 +146,7 @@ export default function BusinessInfoPage() {
 
                 {hasAddress && (
                   <div className="flex items-start gap-3">
-                    <MapPin className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                    <MapPin className="w-5 h-5 text-primary dark:text-primary-400 mt-0.5" />
                     <div>
                       <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Address</p>
                       <address className="text-gray-900 dark:text-gray-100 not-italic">
@@ -159,7 +159,7 @@ export default function BusinessInfoPage() {
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium mt-1 inline-block"
+                        className="text-sm text-primary dark:text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 font-medium mt-1 inline-block"
                       >
                         Get Directions →
                       </a>
@@ -168,7 +168,7 @@ export default function BusinessInfoPage() {
                 )}
 
                 <div className="flex items-start gap-3">
-                  <Globe className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                  <Globe className="w-5 h-5 text-primary dark:text-primary-400 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Timezone</p>
                     <p className="text-gray-900 dark:text-gray-100">{business.timezone}</p>
@@ -192,15 +192,15 @@ export default function BusinessInfoPage() {
                     <div
                       key={day}
                       className={`flex justify-between items-center py-2 px-3 rounded-lg ${
-                        isToday ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : ''
+                        isToday ? 'bg-primary-50 dark:bg-primary/10 border border-primary-200 dark:border-primary-800' : ''
                       }`}
                     >
-                      <span className={`font-medium ${isToday ? 'text-blue-900 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'}`}>
+                      <span className={`font-medium ${isToday ? 'text-primary-900 dark:text-primary-300' : 'text-gray-900 dark:text-gray-100'}`}>
                         {day}
-                        {isToday && <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">(Today)</span>}
+                        {isToday && <span className="ml-2 text-xs text-primary dark:text-primary-400">(Today)</span>}
                       </span>
                       {hours?.isOpen ? (
-                        <span className={isToday ? 'text-blue-900 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'}>
+                        <span className={isToday ? 'text-primary-900 dark:text-primary-300' : 'text-gray-700 dark:text-gray-300'}>
                           {formatTime(hours.openTime!)} – {formatTime(hours.closeTime!)}
                         </span>
                       ) : (
@@ -240,10 +240,10 @@ export default function BusinessInfoPage() {
                     any time to opt out.
                   </p>
                   <div className="mt-2">
-                    <a href="/terms" target="_blank" className="text-sm text-blue-600 dark:text-blue-400 hover:underline mr-4">
+                    <a href="/terms" target="_blank" className="text-sm text-primary dark:text-primary-400 hover:underline mr-4">
                       Terms of Service
                     </a>
-                    <a href="/privacy" target="_blank" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                    <a href="/privacy" target="_blank" className="text-sm text-primary dark:text-primary-400 hover:underline">
                       Privacy Policy
                     </a>
                   </div>
@@ -255,14 +255,14 @@ export default function BusinessInfoPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Book Now CTA */}
-            <div className="bg-blue-600 text-white rounded-2xl shadow-sm p-6">
+            <div className="bg-primary text-white rounded-2xl shadow-sm p-6">
               <h3 className="text-lg font-bold mb-3">Ready to Book?</h3>
-              <p className="text-blue-100 text-sm mb-4">
+              <p className="text-primary-100 text-sm mb-4">
                 Schedule your appointment online in just a few clicks.
               </p>
               <Link
                 href={`/book/${slugOrPublicId}`}
-                className="block w-full py-3 bg-white text-blue-600 rounded-xl font-semibold text-center hover:bg-blue-50 transition-colors"
+                className="block w-full py-3 bg-white text-primary rounded-xl font-semibold text-center hover:bg-primary-50 transition-colors"
               >
                 Book Appointment
               </Link>
