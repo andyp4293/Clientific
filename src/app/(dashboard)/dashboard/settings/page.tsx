@@ -62,7 +62,7 @@ interface Business {
 export default function SettingsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<Tab>('profile');
+  const [activeTab, setActiveTab] = useState<Tab | null>(null);
   const [formData, setFormData] = useState<Partial<Business>>({});
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -75,6 +75,14 @@ export default function SettingsPage() {
   const [showDisableModal, setShowDisableModal] = useState(false);
   const [activatingUntil, setActivatingUntil] = useState<Date | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
+
+  // Default to first tab on desktop
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024 && !activeTab) {
+      setActiveTab('profile');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!activatingUntil) return;
@@ -271,37 +279,55 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
+    <div>
+      {/* Header — hidden on mobile when a section is open */}
+      <div className={`mb-6 ${activeTab !== null ? 'hidden lg:block' : ''}`}>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Settings</h1>
         <p className="text-gray-600 dark:text-gray-400 mt-1">Manage your business settings and preferences</p>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-        <nav className="-mb-px flex space-x-8 min-w-max">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`
-                flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap
-                ${
+      <div className="lg:flex lg:gap-6 lg:items-start">
+        {/* Sidebar / list navigation */}
+        <aside className={`lg:w-56 lg:flex-shrink-0 ${activeTab !== null ? 'hidden lg:block' : ''}`}>
+          <div className="card overflow-hidden">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-left transition-colors border-b border-gray-100 dark:border-gray-800 last:border-b-0 ${
                   activeTab === tab.id
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
-                }
-              `}
+                    ? 'bg-primary-50 text-primary dark:bg-primary/10'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                }`}
+              >
+                <svg
+                  className={`w-5 h-5 flex-shrink-0 ${activeTab === tab.id ? 'text-primary' : 'text-gray-400 dark:text-gray-500'}`}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
+                </svg>
+                <span className="flex-1">{tab.label}</span>
+                <svg className="w-4 h-4 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            ))}
+          </div>
+        </aside>
+
+        {/* Content panel */}
+        {activeTab !== null && (
+          <div className="flex-1 min-w-0">
+            {/* Mobile back button */}
+            <button
+              onClick={() => setActiveTab(null)}
+              className="lg:hidden flex items-center gap-2 mb-4 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              {tab.label}
+              Settings
             </button>
-          ))}
-        </nav>
-      </div>
 
       {/* Tab Content */}
       <div className="card p-6">
@@ -445,8 +471,8 @@ export default function SettingsPage() {
 
               {/* Public ID & Booking URL */}
               {business?.publicId && typeof window !== 'undefined' && (
-                <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <label className="block text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">                  Your Booking URL
+                <div className="mb-4 p-4 bg-primary-50 dark:bg-primary/10 rounded-lg border border-primary-200 dark:border-primary/20">
+                  <label className="block text-sm font-medium text-primary-900 dark:text-primary-100 mb-2">                  Your Booking URL
                   </label>
                   <div className="flex items-center gap-2">
                     <input
@@ -465,7 +491,7 @@ export default function SettingsPage() {
                       Copy
                     </button>
                   </div>
-                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
+                  <p className="text-xs text-primary-700 dark:text-primary-300 mt-2">
                     Share this link with customers to book appointments
                   </p>
                 </div>
@@ -837,7 +863,7 @@ export default function SettingsPage() {
                     </div>
                   ) : aiToggleMutation.isPending ? (
                     <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center gap-3">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 flex-shrink-0" />
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary flex-shrink-0" />
                       <p className="text-sm text-gray-600 dark:text-gray-400">Setting up your AI receptionist number…</p>
                     </div>
                   ) : (
@@ -902,8 +928,8 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="mt-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <p className="text-sm text-blue-800 dark:text-blue-200">
+              <div className="mt-2 p-4 bg-primary-50 dark:bg-primary/10 rounded-lg border border-primary-200 dark:border-primary/20">
+                <p className="text-sm text-primary-800 dark:text-primary-200">
                   <strong>Referral bonus:</strong> 50 points per successful referral (fixed — configurable in a future update).
                 </p>
               </div>
@@ -943,13 +969,37 @@ export default function SettingsPage() {
         )}
       </div>
 
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-3 mt-4">
+        <button
+          onClick={() => {
+            setFormData(business || {});
+            setLogoPreview(business?.logoUrl || null);
+          }}
+          className="btn-outline"
+        >
+          Reset
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={updateMutation.isPending}
+          className="btn-primary"
+        >
+          {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+        </button>
+      </div>
+
+          </div>
+        )}
+      </div>
+
       {/* Enable AI Receptionist Modal */}
       {showEnableModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <div className="w-10 h-10 bg-primary-100 dark:bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-primary dark:text-primary-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
                 </svg>
               </div>
@@ -1016,26 +1066,6 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
-
-      {/* Action Buttons */}
-      <div className="flex justify-end gap-3">
-        <button
-          onClick={() => {
-            setFormData(business || {});
-            setLogoPreview(business?.logoUrl || null);
-          }}
-          className="btn-outline"
-        >
-          Reset
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={updateMutation.isPending}
-          className="btn-primary"
-        >
-          {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
-        </button>
-      </div>
 
       {/* Crop Modal */}
       {cropModalOpen && imageToCrop && (
