@@ -94,7 +94,7 @@ export function MobileBottomNav() {
             className="fixed inset-0 bg-black/30 z-40"
             onClick={() => setShowMoreMenu(false)}
           />
-          <div className="fixed bottom-16 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl border-t border-gray-200 dark:border-gray-800 shadow-2xl z-50 max-h-[85vh] overflow-y-auto">
+          <div className="fixed left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl border-t border-gray-200 dark:border-gray-800 shadow-2xl z-50 max-h-[85vh] overflow-y-auto" style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom) + 4px)' }}>
             {/* Header */}
             <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 py-3 rounded-t-2xl flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Menu</h3>
@@ -176,7 +176,7 @@ export function MobileBottomNav() {
             <Link
               key={item.name}
               href={item.href}
-              className={`flex flex-col items-center justify-start min-w-0 flex-1 pt-2 pb-1 px-1 transition-colors ${
+              className={`flex flex-col items-center justify-start min-w-0 flex-1 pt-3 pb-1 px-1 transition-colors ${
                 isActive
                   ? 'text-primary'
                   : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
@@ -197,7 +197,7 @@ export function MobileBottomNav() {
         {/* More Button */}
         <button
           onClick={() => setShowMoreMenu(!showMoreMenu)}
-          className={`flex flex-col items-center justify-start min-w-0 flex-1 pt-2 pb-1 px-1 transition-colors ${
+          className={`flex flex-col items-center justify-start min-w-0 flex-1 pt-3 pb-1 px-1 transition-colors ${
             isOnMorePage || showMoreMenu
               ? 'text-primary'
               : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
