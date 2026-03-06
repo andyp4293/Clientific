@@ -32,7 +32,7 @@
   }
 
   .btn-secondary {
-    @apply btn bg-gray-100 text-gray-800 hover:bg-gray-200 focus:ring-gray-400 border border-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 dark:border-gray-700;
+    @apply btn bg-white text-gray-900 hover:bg-gray-50 border border-gray-300 focus:ring-gray-300 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800 dark:border-gray-700;
   }
 
   .btn-danger {
@@ -40,7 +40,7 @@
   }
 
   .btn-outline {
-    @apply btn border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-primary dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:bg-gray-800;
+    @apply btn bg-white text-gray-900 hover:bg-gray-50 border border-gray-300 focus:ring-gray-300 dark:bg-transparent dark:text-gray-100 dark:hover:bg-gray-800 dark:border-gray-700;
   }
 
   .card {

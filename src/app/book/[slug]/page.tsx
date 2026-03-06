@@ -766,7 +766,7 @@ export default function PublicBookingPage() {
               href="/terms"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary dark:text-primary-400 hover:underline"
+              className="underline underline-offset-2 hover:opacity-70"
             >
               terms and conditions
             </Link>
@@ -775,7 +775,7 @@ export default function PublicBookingPage() {
               href="/privacy"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary dark:text-primary-400 hover:underline"
+              className="underline underline-offset-2 hover:opacity-70"
             >
               privacy policy
             </Link>

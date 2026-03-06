@@ -84,7 +84,7 @@ export default function BusinessInfoPage() {
         <div className="max-w-5xl mx-auto px-4 py-6">
           <Link
             href={`/book/${slugOrPublicId}`}
-            className="inline-flex items-center gap-2 text-primary dark:text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 font-medium mb-4"
+            className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 font-medium mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Booking
@@ -121,7 +121,7 @@ export default function BusinessInfoPage() {
                       <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Phone</p>
                       <a
                         href={`tel:${business.phone}`}
-                        className="text-gray-900 dark:text-gray-100 hover:text-primary dark:hover:text-primary-400"
+                        className="text-gray-900 dark:text-gray-100 hover:underline"
                       >
                         {business.phone}
                       </a>
@@ -136,7 +136,7 @@ export default function BusinessInfoPage() {
                       <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</p>
                       <a
                         href={`mailto:${business.businessEmail}`}
-                        className="text-gray-900 dark:text-gray-100 hover:text-primary dark:hover:text-primary-400"
+                        className="text-gray-900 dark:text-gray-100 hover:underline"
                       >
                         {business.businessEmail}
                       </a>
@@ -159,7 +159,7 @@ export default function BusinessInfoPage() {
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-primary dark:text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 font-medium mt-1 inline-block"
+                        className="text-sm font-medium mt-1 inline-block underline underline-offset-2 hover:opacity-70"
                       >
                         Get Directions →
                       </a>
@@ -240,10 +240,10 @@ export default function BusinessInfoPage() {
                     any time to opt out.
                   </p>
                   <div className="mt-2">
-                    <a href="/terms" target="_blank" className="text-sm text-primary dark:text-primary-400 hover:underline mr-4">
+                    <a href="/terms" target="_blank" className="text-sm underline underline-offset-2 hover:opacity-70 mr-4">
                       Terms of Service
                     </a>
-                    <a href="/privacy" target="_blank" className="text-sm text-primary dark:text-primary-400 hover:underline">
+                    <a href="/privacy" target="_blank" className="text-sm underline underline-offset-2 hover:opacity-70">
                       Privacy Policy
                     </a>
                   </div>
