@@ -88,9 +88,9 @@ export function DashboardNav() {
   const { data: session, status } = useSession();
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+    <div className="flex flex-col h-full bg-gray-900 border-r border-gray-800">
       {/* Navigation */}
-      <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 py-6 space-y-0.5 overflow-y-auto">
         {navigation.map((item) => {
           // Exact match for Dashboard, Settings, and Billing; prefix match for others
           const exactMatch = ['/dashboard', '/dashboard/settings', '/dashboard/settings/billing'];
@@ -101,13 +101,13 @@ export function DashboardNav() {
             <Link
               key={item.name}
               href={item.href}
-              className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+              className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all ${
                 isActive
-                  ? 'bg-primary-50 text-primary dark:bg-primary/10'
-                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-gray-100'
+                  ? 'bg-primary/20 text-primary-300'
+                  : 'text-gray-400 hover:bg-gray-800 hover:text-gray-100'
               }`}
             >
-              <span className="mr-3">{icons[item.icon]}</span>
+              <span className={`mr-3 ${isActive ? 'text-primary-400' : ''}`}>{icons[item.icon]}</span>
               {item.name}
             </Link>
           );
@@ -116,18 +116,18 @@ export function DashboardNav() {
 
       {/* User Profile */}
       {status !== 'loading' && (
-        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+        <div className="border-t border-gray-800 p-4">
           <div className="flex items-center mb-3">
-            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-              <span className="text-white font-medium text-sm">
+            <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-semibold text-sm">
                 {session?.user?.name?.charAt(0).toUpperCase() || 'U'}
               </span>
             </div>
             <div className="ml-3 flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+              <p className="text-sm font-semibold text-gray-100 truncate">
                 {session?.user?.name || 'User'}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              <p className="text-xs text-gray-500 truncate">
                 {session?.user?.email || ''}
               </p>
             </div>
@@ -135,7 +135,7 @@ export function DashboardNav() {
           <ThemeToggle />
           <button
             onClick={() => signOut({ callbackUrl: '/login' })}
-            className="w-full btn-outline text-sm py-2 mt-2"
+            className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg text-gray-400 hover:bg-gray-800 hover:text-gray-100 transition-all"
           >
             Sign Out
           </button>

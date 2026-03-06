@@ -94,9 +94,9 @@ export function MobileBottomNav() {
             className="fixed inset-0 bg-black/30 z-40"
             onClick={() => setShowMoreMenu(false)}
           />
-          <div className="fixed bottom-16 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl border-t border-gray-200 dark:border-gray-700 shadow-2xl z-50 max-h-[85vh] overflow-y-auto">
+          <div className="fixed bottom-16 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl border-t border-gray-200 dark:border-gray-800 shadow-2xl z-50 max-h-[85vh] overflow-y-auto">
             {/* Header */}
-            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-4 py-3 rounded-t-2xl flex items-center justify-between">
+            <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 py-3 rounded-t-2xl flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Menu</h3>
               <button
                 onClick={() => setShowMoreMenu(false)}
@@ -109,8 +109,8 @@ export function MobileBottomNav() {
             </div>
 
             {/* User Info */}
-            <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+            <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
                 <span className="text-white font-medium text-sm">
                   {session?.user?.name?.charAt(0).toUpperCase() || 'U'}
                 </span>
