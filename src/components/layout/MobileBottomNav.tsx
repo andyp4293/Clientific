@@ -166,7 +166,7 @@ export function MobileBottomNav() {
       )}
 
       {/* Bottom Navigation */}
-      <nav className="flex justify-around items-center h-16 px-2">
+      <nav className="flex justify-around items-end h-16 px-2">
         {mobileNavigation.map((item) => {
           const isActive = item.href === '/dashboard' 
             ? pathname === item.href 
@@ -176,7 +176,7 @@ export function MobileBottomNav() {
             <Link
               key={item.name}
               href={item.href}
-              className={`flex flex-col items-center justify-start min-w-0 flex-1 pt-3 pb-1 px-1 transition-colors ${
+              className={`flex flex-col items-center justify-start min-w-0 flex-1 pt-1 pb-2 px-1 transition-colors ${
                 isActive
                   ? 'text-primary'
                   : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
@@ -197,7 +197,7 @@ export function MobileBottomNav() {
         {/* More Button */}
         <button
           onClick={() => setShowMoreMenu(!showMoreMenu)}
-          className={`flex flex-col items-center justify-start min-w-0 flex-1 pt-3 pb-1 px-1 transition-colors ${
+          className={`flex flex-col items-center justify-start min-w-0 flex-1 pt-1 pb-2 px-1 transition-colors ${
             isOnMorePage || showMoreMenu
               ? 'text-primary'
               : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
