@@ -26,11 +26,39 @@ export default async function DashboardLayout({
   // Subscription gate — exempt the subscribe page itself to avoid redirect loops
   const headersList = await headers();
   const pathname = headersList.get('x-pathname') ?? '';
-  if (pathname !== '/dashboard/subscribe' && session.user.businessId) {
+  const isSubscribePage = pathname === '/dashboard/subscribe';
+
+  if (!isSubscribePage && session.user.businessId) {
     const active = await hasActiveSubscription(session.user.businessId);
     if (!active) {
       redirect('/dashboard/subscribe');
     }
+  }
+
+  // Locked layout for subscribe page — no nav, no sidebar, just logo + sign out
+  if (isSubscribePage) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+        <header className="fixed top-0 left-0 right-0 h-14 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6">
+          <div className="flex items-center space-x-2">
+            <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-base">C</span>
+            </div>
+            <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{APP_NAME}</span>
+          </div>
+          <Link
+            href="/signout"
+            className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+          >
+            Sign out
+          </Link>
+        </header>
+        <main className="pt-14">
+          {children}
+        </main>
+        <Toaster richColors position="top-right" />
+      </div>
+    );
   }
 
   return (

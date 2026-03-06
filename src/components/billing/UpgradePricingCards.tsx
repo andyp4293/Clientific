@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 const plans = [
   {
@@ -56,7 +56,6 @@ interface Props {
 }
 
 export function UpgradePricingCards({ status, hasStripeCustomer }: Props) {
-  const router = useRouter();
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [loading, setLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -70,9 +69,17 @@ export function UpgradePricingCards({ status, hasStripeCustomer }: Props) {
         body: JSON.stringify({ plan: planKey, billingPeriod: billing }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to start checkout. Please try again.');
+        return;
+      }
       if (data.url) {
         window.location.href = data.url;
+      } else {
+        toast.error('No checkout URL returned. Please try again.');
       }
+    } catch {
+      toast.error('Something went wrong. Please try again.');
     } finally {
       setLoading(null);
     }
@@ -83,9 +90,17 @@ export function UpgradePricingCards({ status, hasStripeCustomer }: Props) {
     try {
       const res = await fetch('/api/billing/portal', { method: 'POST' });
       const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to open billing portal. Please try again.');
+        return;
+      }
       if (data.url) {
         window.location.href = data.url;
+      } else {
+        toast.error('No portal URL returned. Please try again.');
       }
+    } catch {
+      toast.error('Something went wrong. Please try again.');
     } finally {
       setPortalLoading(false);
     }
