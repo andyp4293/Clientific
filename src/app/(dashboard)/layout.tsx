@@ -47,7 +47,7 @@ export default async function DashboardLayout({
       {/* Main Content */}
       <div className="lg:pl-64 lg:pt-16">
         <SubscriptionBanner />
-        <main className="py-6 px-4 sm:px-6 lg:px-8 pb-20 lg:pb-6">
+        <main className="py-6 px-4 sm:px-6 lg:px-8 pb-16 lg:pb-6">
           {children}
         </main>
       </div>
