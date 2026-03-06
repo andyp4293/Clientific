@@ -516,15 +516,21 @@ function AppointmentRow({ appointment, timezone }: { appointment: Appointment; t
                   </>
                 )}
               </div>
-            </div>
-            <div className="flex items-center gap-1.5 flex-shrink-0">
               {appointment.notes && (
-                <button onClick={() => setShowNotesModal(true)} title="View notes" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <button
+                  onClick={() => setShowNotesModal(true)}
+                  className="flex items-center gap-1 mt-1 text-left w-full group/notes"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 flex-shrink-0 text-amber-500 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
+                  <span className="text-[11px] text-amber-600 dark:text-amber-400 group-hover/notes:text-amber-700 dark:group-hover/notes:text-amber-300 truncate transition-colors">
+                    {appointment.notes.length > 55 ? appointment.notes.slice(0, 55) + '…' : appointment.notes}
+                  </span>
                 </button>
               )}
+            </div>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
               {appointment.source === 'ai' && (
                 <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">AI</span>
               )}
@@ -612,17 +618,23 @@ function AppointmentRow({ appointment, timezone }: { appointment: Appointment; t
                   </>
                 )}
               </div>
+              {appointment.notes && (
+                <button
+                  onClick={() => setShowNotesModal(true)}
+                  className="flex items-center gap-1 mt-1.5 text-left max-w-full group/notes"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 flex-shrink-0 text-amber-500 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span className="text-xs text-amber-600 dark:text-amber-400 group-hover/notes:text-amber-700 dark:group-hover/notes:text-amber-300 truncate transition-colors">
+                    {appointment.notes.length > 55 ? appointment.notes.slice(0, 55) + '…' : appointment.notes}
+                  </span>
+                </button>
+              )}
             </div>
           </div>
           {/* Status + Actions */}
           <div className="flex items-center gap-2 px-4 py-4 flex-shrink-0">
-            {appointment.notes && (
-              <button onClick={() => setShowNotesModal(true)} title="View notes" className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors px-1">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </button>
-            )}
             {appointment.source === 'ai' && (
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">AI</span>
             )}
