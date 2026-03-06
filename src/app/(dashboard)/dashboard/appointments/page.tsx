@@ -165,22 +165,23 @@ export default function AppointmentsPage() {
       </div>
 
       {/* Date Navigator + Stats */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-5 flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-1">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        {/* Date navigation — full width on mobile */}
+        <div className="flex items-center gap-1 w-full sm:w-auto">
           <button
             onClick={() => navigate(-1)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+            className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <div className="px-2 sm:px-4 text-center min-w-[130px] sm:min-w-[220px]">
+          <div className="flex-1 sm:flex-none sm:min-w-[220px] px-2 text-center">
             <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{headerSubtitle}</p>
           </div>
           <button
             onClick={() => navigate(1)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+            className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -189,17 +190,18 @@ export default function AppointmentsPage() {
           {!isToday && view === 'day' && (
             <button
               onClick={() => setSelectedDate(new Date())}
-              className="ml-2 text-xs font-medium text-primary px-3 py-1.5 rounded-lg hover:bg-primary/5 border border-primary/20 transition-colors"
+              className="ml-1 text-xs font-medium text-primary px-3 py-1.5 rounded-lg hover:bg-primary/5 border border-primary/20 transition-colors flex-shrink-0"
             >
               Today
             </button>
           )}
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
+        {/* Controls — full width on mobile */}
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap w-full sm:w-auto">
           {/* Quick stats */}
           {appointments.length > 0 && (
-            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 border-r border-gray-100 dark:border-gray-700 pr-4 mr-1">
+            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 border-r border-gray-100 dark:border-gray-700 pr-3 mr-1">
               <span className="font-semibold text-gray-900 dark:text-gray-100">{filteredAppointments.length}</span> total
               {counts.pending > 0 && (
                 <span className="bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800 px-2 py-0.5 rounded-full font-medium">
@@ -228,13 +230,13 @@ export default function AppointmentsPage() {
             </select>
           )}
 
-          {/* View toggle */}
-          <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          {/* View toggle — stretches full width on mobile */}
+          <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex-1 sm:flex-none">
             {(['day', 'week', 'month'] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
-                className={`px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
+                className={`flex-1 sm:flex-none px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
                   view === v ? 'bg-primary text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               >
@@ -242,7 +244,6 @@ export default function AppointmentsPage() {
               </button>
             ))}
           </div>
-
         </div>
       </div>
 
@@ -484,114 +485,171 @@ function AppointmentRow({ appointment, timezone }: { appointment: Appointment; t
         {/* Status bar */}
         <div className={`w-1 self-stretch flex-shrink-0 ${config.bar}`} />
 
-        {/* Main content — column on mobile, row on sm+ */}
-        <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center">
-
-          {/* Time + Customer */}
-          <div className="flex items-center">
-            {/* Time */}
-            <div className="w-20 sm:w-28 flex-shrink-0 px-3 sm:px-4 py-3 sm:py-4">
-              <p className="text-sm font-bold text-gray-900 dark:text-gray-100 tabular-nums">
+        {/* ── MOBILE LAYOUT (hidden on sm+) ── */}
+        <div className="flex-1 min-w-0 sm:hidden px-3 py-3 space-y-2">
+          {/* Row 1: time · name · status badge */}
+          <div className="flex items-start gap-2">
+            <div className="flex-shrink-0 w-14 pt-0.5">
+              <p className="text-sm font-bold text-gray-900 dark:text-gray-100 tabular-nums leading-tight">
                 {startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: timezone })}
               </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 tabular-nums mt-0.5">
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 tabular-nums leading-tight mt-0.5">
                 {endTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: timezone })}
               </p>
-              <p className="hidden sm:block text-xs text-gray-300 dark:text-gray-600 mt-0.5">{appointment.duration} min</p>
             </div>
-
-            {/* Divider — desktop only */}
-            <div className="hidden sm:block w-px h-12 bg-gray-100 dark:bg-gray-700 flex-shrink-0" />
-
-            {/* Customer + Service */}
-            <div className="flex-1 min-w-0 px-3 sm:px-5 py-3 sm:py-4 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
-                <span className="text-xs font-bold text-primary">{initials}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{appointment.customer.name}</p>
+              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                {appointment.service && (
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{appointment.service.name}</span>
+                )}
+                {appointment.staff && (
+                  <>
+                    {appointment.service && <span className="text-gray-300 dark:text-gray-600 text-xs">·</span>}
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{appointment.staff.fullName}</span>
+                  </>
+                )}
+                {appointment.customer.phone && (
+                  <>
+                    <span className="text-gray-300 dark:text-gray-600 text-xs">·</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">{appointment.customer.phone}</span>
+                  </>
+                )}
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{appointment.customer.name}</p>
-                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                  {appointment.service && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{appointment.service.name}</span>
-                  )}
-                  {appointment.staff && (
-                    <>
-                      {appointment.service && <span className="text-gray-300 dark:text-gray-600 text-xs">·</span>}
-                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{appointment.staff.fullName}</span>
-                    </>
-                  )}
-                  {appointment.customer.phone && (
-                    <>
-                      <span className="text-gray-300 dark:text-gray-600 text-xs">·</span>
-                      <span className="text-xs text-gray-400 dark:text-gray-500">{appointment.customer.phone}</span>
-                    </>
-                  )}
-                </div>
+            </div>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              {appointment.notes && (
+                <button onClick={() => setShowNotesModal(true)} title="View notes" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </button>
+              )}
+              {appointment.source === 'ai' && (
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">AI</span>
+              )}
+              {appointment.source === 'online' && (
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Online</span>
+              )}
+              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${config.badge}`}>{config.label}</span>
+            </div>
+          </div>
+          {/* Row 2: action buttons */}
+          {(canConfirm || canModify) && (
+            <div className="flex items-center gap-2 pl-16">
+              {canConfirm ? (
+                <>
+                  <button
+                    onClick={() => confirmMutation.mutate()}
+                    disabled={confirmMutation.isPending}
+                    className="text-xs font-medium px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                  >
+                    {confirmMutation.isPending ? '…' : 'Confirm'}
+                  </button>
+                  <button
+                    onClick={() => setShowCancelConfirm(true)}
+                    disabled={cancelMutation.isPending}
+                    className="text-xs font-medium px-3 py-1.5 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+                  >
+                    Decline
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setShowEditModal(true)}
+                    className="text-xs font-medium px-3 py-1.5 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setShowCancelConfirm(true)}
+                    className="text-xs font-medium px-3 py-1.5 border border-gray-200 dark:border-gray-700 text-red-500 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── DESKTOP LAYOUT (hidden on mobile) ── */}
+        <div className="flex-1 min-w-0 hidden sm:flex sm:items-center">
+          {/* Time */}
+          <div className="w-28 flex-shrink-0 px-4 py-4">
+            <p className="text-sm font-bold text-gray-900 dark:text-gray-100 tabular-nums">
+              {startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: timezone })}
+            </p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 tabular-nums mt-0.5">
+              {endTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: timezone })}
+            </p>
+            <p className="text-xs text-gray-300 dark:text-gray-600 mt-0.5">{appointment.duration} min</p>
+          </div>
+          {/* Divider */}
+          <div className="w-px h-12 bg-gray-100 dark:bg-gray-700 flex-shrink-0" />
+          {/* Customer + Service */}
+          <div className="flex-1 min-w-0 px-5 py-4 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+              <span className="text-xs font-bold text-primary">{initials}</span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{appointment.customer.name}</p>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                {appointment.service && (
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{appointment.service.name}</span>
+                )}
+                {appointment.staff && (
+                  <>
+                    {appointment.service && <span className="text-gray-300 dark:text-gray-600 text-xs">·</span>}
+                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{appointment.staff.fullName}</span>
+                  </>
+                )}
+                {appointment.customer.phone && (
+                  <>
+                    <span className="text-gray-300 dark:text-gray-600 text-xs">·</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">{appointment.customer.phone}</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
-
-          {/* Status + Actions — stacks below on mobile, inline on sm+ */}
-          <div className="flex items-center gap-2 px-4 pb-3 sm:py-4 flex-shrink-0 flex-wrap">
+          {/* Status + Actions */}
+          <div className="flex items-center gap-2 px-4 py-4 flex-shrink-0">
             {appointment.notes && (
-              <button
-                onClick={() => setShowNotesModal(true)}
-                title="View notes"
-                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors px-1"
-              >
+              <button onClick={() => setShowNotesModal(true)} title="View notes" className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors px-1">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </button>
             )}
             {appointment.source === 'ai' && (
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                AI
-              </span>
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">AI</span>
             )}
             {appointment.source === 'online' && (
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                Online
-              </span>
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Online</span>
             )}
-            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${config.badge}`}>
-              {config.label}
-            </span>
-
+            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${config.badge}`}>{config.label}</span>
             {canConfirm ? (
-              <div className="flex gap-1.5 sm:ml-2">
-                <button
-                  onClick={() => confirmMutation.mutate()}
-                  disabled={confirmMutation.isPending}
-                  className="text-xs font-medium px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-                >
+              <div className="flex gap-1.5 ml-2">
+                <button onClick={() => confirmMutation.mutate()} disabled={confirmMutation.isPending} className="text-xs font-medium px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors">
                   {confirmMutation.isPending ? '…' : 'Confirm'}
                 </button>
-                <button
-                  onClick={() => setShowCancelConfirm(true)}
-                  disabled={cancelMutation.isPending}
-                  className="text-xs font-medium px-3 py-1.5 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
-                >
+                <button onClick={() => setShowCancelConfirm(true)} disabled={cancelMutation.isPending} className="text-xs font-medium px-3 py-1.5 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors">
                   Decline
                 </button>
               </div>
             ) : canModify ? (
-              <div className="flex gap-1.5 sm:ml-2">
-                <button
-                  onClick={() => setShowEditModal(true)}
-                  className="text-xs font-medium px-3 py-1.5 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                >
+              <div className="flex gap-1.5 ml-2">
+                <button onClick={() => setShowEditModal(true)} className="text-xs font-medium px-3 py-1.5 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                   Edit
                 </button>
-                <button
-                  onClick={() => setShowCancelConfirm(true)}
-                  className="text-xs font-medium px-3 py-1.5 border border-gray-200 dark:border-gray-700 text-red-500 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800 transition-colors"
-                >
+                <button onClick={() => setShowCancelConfirm(true)} className="text-xs font-medium px-3 py-1.5 border border-gray-200 dark:border-gray-700 text-red-500 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800 transition-colors">
                   Cancel
                 </button>
               </div>
             ) : (
-              <div className="hidden sm:block w-[100px] sm:ml-2" />
+              <div className="w-[100px] ml-2" />
             )}
           </div>
         </div>

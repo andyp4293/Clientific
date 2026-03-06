@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
+import { useSession, signOut } from 'next-auth/react';
 
 const mobileNavigation = [
   { 
@@ -77,9 +78,10 @@ const morePages = [
 export function MobileBottomNav() {
   const pathname = usePathname();
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const { data: session } = useSession();
 
   // Check if we're on a "more" page
-  const isOnMorePage = morePages.some(page => 
+  const isOnMorePage = morePages.some(page =>
     pathname === page.href || pathname.startsWith(page.href + '/')
   );
 
@@ -88,24 +90,44 @@ export function MobileBottomNav() {
       {/* More Menu Overlay */}
       {showMoreMenu && (
         <>
-          <div 
+          <div
             className="fixed inset-0 bg-black/30 z-40"
             onClick={() => setShowMoreMenu(false)}
-          />          <div className="fixed bottom-16 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl border-t border-gray-200 dark:border-gray-700 shadow-2xl z-50 max-h-80 overflow-y-auto">
-            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-4 py-3 rounded-t-2xl">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">More Pages</h3>
-                <button
-                  onClick={() => setShowMoreMenu(false)}
-                  className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+          />
+          <div className="fixed bottom-16 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl border-t border-gray-200 dark:border-gray-700 shadow-2xl z-50 max-h-[85vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-4 py-3 rounded-t-2xl flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Menu</h3>
+              <button
+                onClick={() => setShowMoreMenu(false)}
+                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* User Info */}
+            <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-medium text-sm">
+                  {session?.user?.name?.charAt(0).toUpperCase() || 'U'}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                  {session?.user?.name || 'User'}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  {session?.user?.email || ''}
+                </p>
               </div>
             </div>
-            <div className="py-2">{morePages.map((page) => {
+
+            {/* Pages */}
+            <div className="py-2">
+              {morePages.map((page) => {
                 const isActive = pathname === page.href || pathname.startsWith(page.href + '/');
                 return (
                   <Link
@@ -125,6 +147,19 @@ export function MobileBottomNav() {
                   </Link>
                 );
               })}
+            </div>
+
+            {/* Sign Out */}
+            <div className="border-t border-gray-100 dark:border-gray-700 p-4">
+              <button
+                onClick={() => signOut({ callbackUrl: '/login' })}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Sign Out
+              </button>
             </div>
           </div>
         </>
