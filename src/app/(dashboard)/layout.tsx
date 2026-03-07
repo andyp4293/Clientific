@@ -87,8 +87,10 @@ export default async function DashboardLayout({
       {/* Main Content */}
       <div className="lg:pl-64 lg:pt-16">
         <SubscriptionBanner />
-        <main className="py-6 px-4 sm:px-6 lg:px-8 pb-16 lg:pb-6">
+        <main className="py-6 px-4 sm:px-6 lg:px-8 lg:pb-6">
           {children}
+          {/* Clears the fixed bottom nav + iOS home indicator on mobile */}
+          <div className="lg:hidden" style={{ height: 'calc(3rem + env(safe-area-inset-bottom) + 1rem)' }} />
         </main>
       </div>
 
