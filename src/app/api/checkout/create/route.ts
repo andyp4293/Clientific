@@ -63,6 +63,9 @@ export async function POST(req: NextRequest) {
     // to prevent exploitation of multiple free trials.
     const isFirstTime = !business.stripeSubscriptionId;
 
+    // Derive base URL — prefer env var, fall back to the request origin
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin).replace(/\/$/, '');
+
     // Create Checkout Session
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -81,8 +84,8 @@ export async function POST(req: NextRequest) {
           plan,
         },
       },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?checkout=success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing?checkout=canceled`,
+      success_url: `${appUrl}/dashboard?checkout=success`,
+      cancel_url: `${appUrl}/pricing?checkout=canceled`,
       metadata: {
         businessId: business.id,
         plan,

@@ -37,10 +37,14 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Derive base URL — prefer env var, fall back to the request origin
+    // so the return_url is always a valid absolute URL (avoids "undefined/..." in prod)
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin).replace(/\/$/, '');
+
     // Create portal session
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: stripeCustomerId,
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/billing`,
+      return_url: `${appUrl}/dashboard/settings/billing`,
     });
 
     return NextResponse.json({ url: portalSession.url });
