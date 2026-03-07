@@ -58,6 +58,23 @@ export async function POST(
       );
     }
 
+    // Input length guards — prevent oversized payloads from bots
+    if (typeof customerName !== 'string' || customerName.trim().length === 0 || customerName.length > 100) {
+      return NextResponse.json({ error: 'Name must be 1–100 characters' }, { status: 400 });
+    }
+    if (customerPhone && (typeof customerPhone !== 'string' || customerPhone.length > 30)) {
+      return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 });
+    }
+    if (customerEmail && (typeof customerEmail !== 'string' || customerEmail.length > 254)) {
+      return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
+    }
+    if (notes && (typeof notes !== 'string' || notes.length > 1000)) {
+      return NextResponse.json({ error: 'Notes must be 1000 characters or less' }, { status: 400 });
+    }
+    if (typeof duration !== 'number' || duration < 5 || duration > 480) {
+      return NextResponse.json({ error: 'Invalid duration' }, { status: 400 });
+    }
+
     // Verify all services belong to this business
     const services = await prisma.service.findMany({
       where: {

@@ -31,6 +31,20 @@ export async function POST(request: Request) {
       );
     }
 
+    // Input length guards
+    if (typeof email !== 'string' || email.length > 254) {
+      return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
+    }
+    if (typeof businessName !== 'string' || businessName.trim().length === 0 || businessName.length > 100) {
+      return NextResponse.json({ error: 'Business name must be 1–100 characters' }, { status: 400 });
+    }
+    if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
+      return NextResponse.json(
+        { error: 'Password must be 8–128 characters' },
+        { status: 400 }
+      );
+    }
+
     // Check if email already exists
     const existingBusiness = await prisma.business.findUnique({
       where: { email: email.toLowerCase() },
