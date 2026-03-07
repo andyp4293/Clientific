@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { stripe, PRICING_PLANS } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
@@ -14,8 +13,7 @@ function getPlanFromPriceId(priceId: string): string | null {
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
-  const headersList = await headers();
-  const signature = headersList.get('stripe-signature');
+  const signature = req.headers.get('stripe-signature');
 
   if (!signature) {
     return NextResponse.json({ error: 'No signature' }, { status: 400 });
@@ -226,6 +224,35 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
     },
     update: {},
   });
+
+  // Credit referrer $15 on the referee's first paid invoice
+  if (invoice.amount_paid > 0) {
+    const referral = await prisma.referral.findFirst({
+      where: { refereeId: business.id, status: 'pending' },
+      include: { referrer: { select: { id: true, stripeCustomerId: true } } },
+    });
+    if (referral?.referrer.stripeCustomerId) {
+      try {
+        await stripe.customers.createBalanceTransaction(
+          referral.referrer.stripeCustomerId,
+          { amount: -1500, currency: 'usd', description: 'Referral reward — new subscriber' }
+        );
+        await prisma.$transaction([
+          prisma.referral.update({
+            where: { id: referral.id },
+            data: { status: 'credited', creditedAt: new Date() },
+          }),
+          prisma.business.update({
+            where: { id: referral.referrerId },
+            data: { referralCredits: { increment: 15 } },
+          }),
+        ]);
+        console.log(`✅ Referral credit applied: $15 to business ${referral.referrerId}`);
+      } catch (err) {
+        console.warn('⚠️  Referral credit failed:', err);
+      }
+    }
+  }
 }
 
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {

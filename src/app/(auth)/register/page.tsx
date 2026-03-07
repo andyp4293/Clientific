@@ -32,6 +32,7 @@ interface FormData {
   
   // Step 4
   plan: string;
+  referralCode: string;
 }
 
 function RegisterForm() {
@@ -39,6 +40,7 @@ function RegisterForm() {
   const { data: session, status } = useSession();
   const searchParams = useSearchParams();
   const defaultPlan = searchParams.get('plan') || 'pro';
+  const refCode = searchParams.get('ref') || '';
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -60,6 +62,7 @@ function RegisterForm() {
     country: 'United States',
     timezone: '',
     plan: defaultPlan,
+    referralCode: refCode,
   });
   // Redirect if already logged in
   useEffect(() => {

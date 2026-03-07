@@ -13,6 +13,7 @@ const navigation = [
   { name: 'Customers', href: '/dashboard/customers', icon: 'users' },
   { name: 'Deals', href: '/dashboard/campaigns', icon: 'tag' },
   { name: 'Business Hours', href: '/dashboard/business-hours', icon: 'clock' },
+  { name: 'Refer & Earn', href: '/dashboard/referrals', icon: 'gift' },
   { name: 'Billing', href: '/dashboard/settings/billing', icon: 'creditcard' },
   { name: 'Settings', href: '/dashboard/settings', icon: 'settings' },
 ];
@@ -93,7 +94,7 @@ export function DashboardNav() {
       <nav className="flex-1 px-3 py-6 space-y-0.5 overflow-y-auto">
         {navigation.map((item) => {
           // Exact match for Dashboard, Settings, and Billing; prefix match for others
-          const exactMatch = ['/dashboard', '/dashboard/settings', '/dashboard/settings/billing'];
+          const exactMatch = ['/dashboard', '/dashboard/settings', '/dashboard/settings/billing', '/dashboard/referrals'];
           const isActive = exactMatch.includes(item.href)
             ? pathname === item.href
             : pathname === item.href || pathname.startsWith(item.href + '/');

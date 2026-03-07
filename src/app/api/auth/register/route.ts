@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hashPassword, generateSlug, generatePublicBusinessId } from '@/lib/utils';
+import { generateReferralCode } from '@/lib/referral';
 import { addDays } from 'date-fns';
 
 export async function POST(request: Request) {
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
       country,
       timezone,
       plan,
+      referralCode,
     } = body;
 
     // Validate required fields
@@ -78,8 +80,19 @@ export async function POST(request: Request) {
     // Hash password
     const passwordHash = await hashPassword(password);
 
-    // Calculate trial end date (14 days from now)
-    const trialEndsAt = addDays(new Date(), 14);    // Create business account
+    // Look up referrer (if a referral code was provided)
+    const referrerBusiness = referralCode
+      ? await prisma.business.findUnique({ where: { referralCode } })
+      : null;
+
+    // Referred businesses get 30 extra trial days (44 total)
+    const trialDays = referrerBusiness ? 44 : 14;
+    const trialEndsAt = addDays(new Date(), trialDays);
+
+    // Generate this new business's own unique referral code
+    const newReferralCode = await generateReferralCode();
+
+    // Create business account
     const business = await prisma.business.create({
       data: {
         email: email.toLowerCase(),
@@ -99,8 +112,22 @@ export async function POST(request: Request) {
         subscriptionPlan: plan || 'trial',
         subscriptionStatus: 'trialing',
         trialEndsAt,
+        referralCode: newReferralCode,
+        ...(referrerBusiness && { referredById: referrerBusiness.id }),
       },
-    });    // Create default business hours (Monday-Friday 9-5, closed weekends)
+    });
+
+    // Create the referral record so we can credit the referrer later
+    if (referrerBusiness) {
+      await prisma.referral.create({
+        data: {
+          referrerId: referrerBusiness.id,
+          refereeId: business.id,
+        },
+      });
+    }
+
+    // Create default business hours (Monday-Friday 9-5, closed weekends)
     try {
       const defaultHoursJson: any = {};
       for (let day = 0; day <= 6; day++) {

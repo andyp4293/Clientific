@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
@@ -8,6 +8,7 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { toast } from 'sonner';
 import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
+import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 
 async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -27,6 +28,61 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string>
 }
 
 type Tab = 'profile' | 'branding' | 'integrations' | 'notifications' | 'loyalty' | 'ai-receptionist';
+
+function BookingQRCode({ bookingUrl, businessName }: { bookingUrl: string; businessName: string }) {
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+
+  function downloadPng() {
+    const canvas = canvasContainerRef.current?.querySelector('canvas');
+    if (!canvas) return;
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${businessName.toLowerCase().replace(/\s+/g, '-')}-booking-qr.png`;
+    a.click();
+  }
+
+  function downloadSvg() {
+    const svg = document.getElementById('booking-qr-svg');
+    if (!svg) return;
+    const blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${businessName.toLowerCase().replace(/\s+/g, '-')}-booking-qr.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+      <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+        Booking QR Code
+      </label>
+      <div className="flex flex-col sm:flex-row items-center gap-4">
+        <div ref={canvasContainerRef} className="bg-white p-3 rounded-lg border border-gray-200 shrink-0">
+          <QRCodeCanvas value={bookingUrl} size={160} level="M" />
+        </div>
+        <div className="hidden">
+          <QRCodeSVG id="booking-qr-svg" value={bookingUrl} size={400} level="M" />
+        </div>
+        <div className="flex flex-col gap-2 text-center sm:text-left">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Print on flyers, receipts, or your front desk display — customers scan to book instantly.
+          </p>
+          <div className="flex gap-2 justify-center sm:justify-start">
+            <button onClick={downloadPng} className="btn-primary text-sm py-1.5 px-3">
+              Download PNG
+            </button>
+            <button onClick={downloadSvg} className="btn-outline text-sm py-1.5 px-3">
+              Download SVG
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface Business {
   id: string;
@@ -471,30 +527,36 @@ export default function SettingsPage() {
 
               {/* Public ID & Booking URL */}
               {business?.publicId && typeof window !== 'undefined' && (
-                <div className="mb-4 p-4 bg-primary-50 dark:bg-primary/10 rounded-lg border border-primary-200 dark:border-primary/20">
-                  <label className="block text-sm font-medium text-primary-900 dark:text-primary-100 mb-2">                  Your Booking URL
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={`${window.location.origin}/book/${business.publicId}`}
-                      readOnly
-                      className="input flex-1 bg-white dark:bg-gray-800"
-                    />
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/book/${business.publicId}`);
-                        toast.success('Copied to clipboard!');
-                      }}
-                      className="btn-outline"
-                    >
-                      Copy
-                    </button>
+                <>
+                  <div className="mb-4 p-4 bg-primary-50 dark:bg-primary/10 rounded-lg border border-primary-200 dark:border-primary/20">
+                    <label className="block text-sm font-medium text-primary-900 dark:text-primary-100 mb-2">
+                      Your Booking URL
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={`${window.location.origin}/book/${business.publicId}`}
+                        readOnly
+                        className="input flex-1 bg-white dark:bg-gray-800"
+                      />
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/book/${business.publicId}`);
+                          toast.success('Copied to clipboard!');
+                        }}
+                        className="btn-outline"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                    <p className="text-xs text-primary-700 dark:text-primary-300 mt-2">
+                      Share this link with customers to book appointments
+                    </p>
                   </div>
-                  <p className="text-xs text-primary-700 dark:text-primary-300 mt-2">
-                    Share this link with customers to book appointments
-                  </p>
-                </div>
+
+                  {/* Booking QR Code */}
+                  <BookingQRCode bookingUrl={`${window.location.origin}/book/${business.publicId}`} businessName={business.name} />
+                </>
               )}
 
               {/* Online Booking Toggle */}

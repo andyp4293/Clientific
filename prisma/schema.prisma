@@ -52,6 +52,13 @@ model Business {
   pointsPerVisit         Int            @default(10)
   referralBonusPoints    Int            @default(50)
   notifyNewBookingEmail  Boolean        @default(true)
+  referralCode           String?        @unique
+  referredById           String?
+  referralCredits        Float          @default(0)
+  referredBy             Business?      @relation("BizReferrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals              Business[]     @relation("BizReferrals")
+  referralsMade          Referral[]     @relation("ReferrerOf")
+  referralReceived       Referral?      @relation("RefereeOf")
   appointments           Appointment[]
   businessHours          BusinessHours?
   campaigns              Campaign[]
@@ -359,4 +366,18 @@ model DealRedemption {
   customer   Customer? @relation(fields: [customerId], references: [id])
 
   @@index([dealId, createdAt])
+}
+
+model Referral {
+  id           String    @id @default(cuid())
+  createdAt    DateTime  @default(now())
+  creditedAt   DateTime?
+  referrerId   String
+  refereeId    String    @unique
+  status       String    @default("pending")
+  creditAmount Float     @default(15.00)
+  referrer     Business  @relation("ReferrerOf", fields: [referrerId], references: [id])
+  referee      Business  @relation("RefereeOf", fields: [refereeId], references: [id])
+
+  @@index([referrerId])
 }
