@@ -147,10 +147,10 @@ export async function PATCH(
       },
     });
 
-    // Send confirmed SMS if business just confirmed a pending appointment
+    // Send confirmed SMS if business just confirmed a pending or scheduled appointment
     if (
       updates.status === 'confirmed' &&
-      appointment.status === 'pending' &&
+      ['pending', 'scheduled'].includes(appointment.status) &&
       appointment.customer.phone &&
       appointment.customer.smsConsent &&
       !appointment.customer.smsOptedOut

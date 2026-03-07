@@ -422,7 +422,7 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
         businessId: business.id,
         name: customerName,
         phone: phone || undefined,
-        smsConsent: false,
+        smsConsent: !!phone, // caller provided phone to AI receptionist — implied consent
       },
     });
   } else {
