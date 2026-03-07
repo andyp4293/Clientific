@@ -62,7 +62,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="dashboard-shell min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="dashboard-shell lg:min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Mobile Header */}
       <div className="lg:hidden shrink-0">
         <DashboardHeader />
