@@ -62,9 +62,9 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="dashboard-shell min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Mobile Header */}
-      <div className="lg:hidden">
+      <div className="lg:hidden shrink-0">
         <DashboardHeader />
       </div>
 
@@ -85,18 +85,16 @@ export default async function DashboardLayout({
       </div>
 
       {/* Main Content */}
-      <div className="lg:pl-64 lg:pt-16">
+      <div className="dashboard-scroll lg:pl-64 lg:pt-16">
         <SubscriptionBanner />
         <main className="py-6 px-4 sm:px-6 lg:px-8 lg:pb-6">
           {children}
-          {/* Clears the fixed bottom nav + iOS home indicator on mobile */}
-          <div className="lg:hidden" style={{ height: 'calc(3rem + env(safe-area-inset-bottom) + 1rem)' }} />
         </main>
       </div>
 
       {/* Mobile Bottom Nav */}
       <div
-        className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-lg z-50"
+        className="dashboard-nav-bar lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-lg z-50"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 2px)' }}
       >
         <MobileBottomNav />
