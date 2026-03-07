@@ -760,48 +760,54 @@ export default function SettingsPage() {
                   </button>
                 </div>
                 {(formData.aiReceptionistFaq ?? []).length === 0 ? (
-                  <p className="text-xs text-gray-400 dark:text-gray-500 italic">No FAQ entries yet. Click &quot;Add&quot; to create one.</p>
+                  <div className="border border-dashed border-gray-200 dark:border-gray-700 rounded-lg px-4 py-6 text-center">
+                    <p className="text-xs text-gray-400 dark:text-gray-500">No FAQ entries yet. Click &quot;Add&quot; to create one.</p>
+                  </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {(formData.aiReceptionistFaq ?? []).map((item, i) => (
-                      <div key={i} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg space-y-2">
-                        <div className="flex items-start gap-2">
-                          <div className="flex-1 space-y-2">
-                            <input
-                              type="text"
-                              value={item.question}
-                              onChange={(e) => {
-                                const faq = [...(formData.aiReceptionistFaq ?? [])];
-                                faq[i] = { ...faq[i], question: e.target.value };
-                                setFormData(prev => ({ ...prev, aiReceptionistFaq: faq }));
-                              }}
-                              className="input text-sm"
-                              placeholder="Question (e.g. Do you accept walk-ins?)"
-                            />
-                            <textarea
-                              value={item.answer}
-                              onChange={(e) => {
-                                const faq = [...(formData.aiReceptionistFaq ?? [])];
-                                faq[i] = { ...faq[i], answer: e.target.value };
-                                setFormData(prev => ({ ...prev, aiReceptionistFaq: faq }));
-                              }}
-                              className="input text-sm resize-none"
-                              rows={2}
-                              placeholder="Answer (e.g. Yes, walk-ins are welcome when we have availability.)"
-                            />
-                          </div>
+                      <div key={i} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                        {/* Question row */}
+                        <div className="flex items-center gap-3 px-3 py-2.5 bg-gray-50 dark:bg-gray-800/50">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 w-4 shrink-0">Q</span>
+                          <input
+                            type="text"
+                            value={item.question}
+                            onChange={(e) => {
+                              const faq = [...(formData.aiReceptionistFaq ?? [])];
+                              faq[i] = { ...faq[i], question: e.target.value };
+                              setFormData(prev => ({ ...prev, aiReceptionistFaq: faq }));
+                            }}
+                            className="flex-1 bg-transparent text-sm font-medium text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none"
+                            placeholder="e.g. Do you accept walk-ins?"
+                          />
                           <button
                             type="button"
                             onClick={() => {
                               const faq = (formData.aiReceptionistFaq ?? []).filter((_, idx) => idx !== i);
                               setFormData(prev => ({ ...prev, aiReceptionistFaq: faq }));
                             }}
-                            className="mt-0.5 p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                            className="p-1 rounded text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 transition-colors shrink-0"
                           >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
                           </button>
+                        </div>
+                        {/* Answer row */}
+                        <div className="flex items-start gap-3 px-3 py-2.5 border-t border-gray-100 dark:border-gray-700/60">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 w-4 shrink-0 mt-0.5">A</span>
+                          <textarea
+                            value={item.answer}
+                            onChange={(e) => {
+                              const faq = [...(formData.aiReceptionistFaq ?? [])];
+                              faq[i] = { ...faq[i], answer: e.target.value };
+                              setFormData(prev => ({ ...prev, aiReceptionistFaq: faq }));
+                            }}
+                            className="flex-1 bg-transparent text-sm text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none resize-none"
+                            rows={2}
+                            placeholder="e.g. Yes, walk-ins are welcome when we have availability."
+                          />
                         </div>
                       </div>
                     ))}
