@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     const isFirstTime = !business.stripeSubscriptionId;
 
     // Derive base URL — prefer env var, fall back to the request origin
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin).replace(/\/$/, '');
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin).trim().replace(/\/$/, '');
 
     // Create Checkout Session
     const checkoutSession = await stripe.checkout.sessions.create({
