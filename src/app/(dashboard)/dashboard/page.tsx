@@ -73,6 +73,15 @@ function getCachedDashboardStats(businessId: string, timezone: string) {
   )();
 }
 
+// Cache the business row for 60 seconds — busted by Stripe webhook on plan change
+function getCachedBusiness(businessId: string) {
+  return unstable_cache(
+    () => prisma.business.findUnique({ where: { id: businessId } }),
+    [`business-${businessId}`],
+    { tags: [`business-${businessId}`], revalidate: 60 },
+  )();
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -84,15 +93,16 @@ export default async function DashboardPage({
     redirect('/login');
   }
 
-  const business = await prisma.business.findUnique({
-    where: { id: session.user.id },
-  });
+  // Run business fetch and searchParams resolution in parallel
+  const [business, params] = await Promise.all([
+    getCachedBusiness(session.user.id),
+    searchParams,
+  ]);
 
   if (!business) {
     redirect('/signout');
   }
 
-  const params = await searchParams;
   const checkoutSuccess = params.checkout === 'success';
   const stats = await getCachedDashboardStats(business.id, business.timezone);
 

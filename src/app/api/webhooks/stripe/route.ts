@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { stripe, PRICING_PLANS } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
+import { revalidateTag } from 'next/cache';
 
 function getPlanFromPriceId(priceId: string): string | null {
   const entry = Object.entries(PRICING_PLANS).find(
@@ -102,6 +103,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       stripeCurrentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
     },
   });
+  revalidateTag(`subscription-status-${businessId}`, {});
+  revalidateTag(`dashboard-stats-${businessId}`, {});
+  revalidateTag(`business-${businessId}`, {});
   // Create notification
   const trialEndMessage = subscription.trial_end 
     ? ` Your trial will end on ${new Date(subscription.trial_end * 1000).toLocaleDateString()}.`
@@ -140,6 +144,9 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
       ...(newPlan && { subscriptionPlan: newPlan }),
     },
   });
+  revalidateTag(`subscription-status-${business.id}`, {});
+  revalidateTag(`dashboard-stats-${business.id}`, {});
+  revalidateTag(`business-${business.id}`, {});
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
@@ -155,6 +162,9 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
       subscriptionStatus: 'canceled',
     },
   });
+  revalidateTag(`subscription-status-${business.id}`, {});
+  revalidateTag(`dashboard-stats-${business.id}`, {});
+  revalidateTag(`business-${business.id}`, {});
 
   // Create notification
   await prisma.notification.create({
@@ -231,6 +241,7 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
       subscriptionStatus: 'past_due',
     },
   });
+  revalidateTag(`subscription-status-${business.id}`, {});
 
   // Create notification
   await prisma.notification.create({

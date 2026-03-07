@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from './prisma';
 import { PRICING_PLANS } from './stripe';
+import { unstable_cache } from 'next/cache';
 
 export type SubscriptionStatus = 
   | 'trialing'
@@ -13,17 +14,25 @@ export type SubscriptionStatus =
 
 export type SubscriptionPlan = 'trial' | 'starter' | 'pro' | 'premium';
 
+// Cached subscription status — avoids a DB hit on every dashboard page nav.
+// TTL is 60s; busted immediately via revalidateTag when Stripe webhook fires.
+function getCachedSubscriptionStatus(businessId: string) {
+  return unstable_cache(
+    () =>
+      prisma.business.findUnique({
+        where: { id: businessId },
+        select: { subscriptionStatus: true, trialEndsAt: true },
+      }),
+    [`subscription-status-${businessId}`],
+    { tags: [`subscription-status-${businessId}`], revalidate: 60 },
+  )();
+}
+
 /**
  * Check if a business has an active subscription (including trial)
  */
 export async function hasActiveSubscription(businessId: string): Promise<boolean> {
-  const business = await prisma.business.findUnique({
-    where: { id: businessId },
-    select: {
-      subscriptionStatus: true,
-      trialEndsAt: true,
-    },
-  });
+  const business = await getCachedSubscriptionStatus(businessId);
 
   if (!business) return false;
 
