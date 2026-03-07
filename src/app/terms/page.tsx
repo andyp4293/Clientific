@@ -11,7 +11,7 @@ export default function TermsOfServicePage() {
             ← Back to Home
           </Link>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Terms of Service</h1>
-          <p className="text-gray-600">Last updated: February 13, 2026</p>
+          <p className="text-gray-600">Last updated: March 6, 2026</p>
         </div>
 
         {/* Content */}
@@ -27,9 +27,11 @@ export default function TermsOfServicePage() {
           <section>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">2. Description of Service</h2>
             <p className="text-gray-700 leading-relaxed">
-              {APP_NAME} provides a SaaS platform for review management, customer tracking, and booking services
-              for service-based businesses. We reserve the right to modify, suspend, or discontinue the Service
-              at any time without notice.
+              {APP_NAME} provides a SaaS platform for service-based businesses, including: appointment booking and
+              management, customer relationship management, online booking pages, SMS appointment reminders, an
+              AI-powered phone receptionist (automated voice system), deals and promotions management, loyalty
+              points tracking, and business analytics. We reserve the right to modify, suspend, or discontinue
+              the Service at any time without notice.
             </p>
           </section>
 
@@ -185,7 +187,27 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">12. Changes to Terms</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">12. AI Phone Receptionist</h2>
+            <div className="text-gray-700 leading-relaxed space-y-3">
+              <p>
+                {APP_NAME} offers an optional AI-powered phone receptionist feature. By enabling this feature, you agree to the following:
+              </p>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>A dedicated phone number will be provisioned for your business through our telephony provider</li>
+                <li>Inbound calls will be answered by an automated AI voice system, not a human</li>
+                <li>Call transcripts and recordings may be stored to improve the service and for your business records</li>
+                <li>You are responsible for disclosing to your customers that calls may be answered by an automated AI system, as required by applicable law</li>
+                <li>You may not use the AI receptionist to impersonate a human, deceive callers, or engage in any unlawful conduct</li>
+                <li>The AI receptionist is provided &quot;as is&quot; and may not be available 100% of the time</li>
+              </ul>
+              <p>
+                Voice synthesis is powered by ElevenLabs and call infrastructure by Vapi.ai. Call data is subject to their respective terms and privacy policies.
+              </p>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">13. Changes to Terms</h2>
             <p className="text-gray-700 leading-relaxed">
               We reserve the right to modify these terms at any time. We will notify you of any changes by 
               posting the new Terms of Service on this page and updating the "Last updated" date. Your continued 
@@ -194,7 +216,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">13. Contact Us</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">14. Contact Us</h2>
             <p className="text-gray-700 leading-relaxed">
               If you have any questions about these Terms, please contact us at:
               <br />

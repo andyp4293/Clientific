@@ -65,7 +65,7 @@ function PricingContent() {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-xl">C</span>
               </div>
-              <span className="text-xl font-bold text-gray-900 dark:text-white">ClientFlow</span>
+              <span className="text-xl font-bold text-gray-900 dark:text-white">Clientific</span>
             </Link>
             <div className="flex items-center space-x-4">
               {isAuthenticated ? (
@@ -197,7 +197,7 @@ function PricingContent() {
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Need a custom plan?{' '}
-            <a href="mailto:sales@clientflow.com" className="text-primary hover:underline">
+            <a href="mailto:support@clientific.app" className="text-primary hover:underline">
               Contact sales
             </a>
           </p>

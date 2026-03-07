@@ -11,7 +11,7 @@ export default function PrivacyPolicyPage() {
             ← Back to Home
           </Link>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Privacy Policy</h1>
-          <p className="text-gray-600">Last updated: February 13, 2026</p>
+          <p className="text-gray-600">Last updated: March 6, 2026</p>
         </div>
 
         {/* Content */}
@@ -51,7 +51,20 @@ export default function PrivacyPolicyPage() {
               <li>Appointment information</li>
             </ul>
 
-            <h3 className="text-xl font-semibold text-gray-800 mb-3 mt-4">2.3 Usage Information</h3>
+            <h3 className="text-xl font-semibold text-gray-800 mb-3 mt-4">2.3 AI Receptionist Data</h3>
+            <p className="text-gray-700 leading-relaxed">
+              If you enable the AI phone receptionist feature, we collect:
+            </p>
+            <ul className="list-disc pl-6 space-y-1 text-gray-700">
+              <li>Call transcripts and recordings processed by our AI infrastructure (Vapi.ai)</li>
+              <li>Caller phone numbers and call metadata (duration, time)</li>
+              <li>Appointments booked via AI calls</li>
+            </ul>
+            <p className="text-gray-700 leading-relaxed mt-2">
+              AI-generated voice responses are produced by ElevenLabs. Calls are automated — callers will hear an AI voice, not a human. We disclose this to callers at the start of each call.
+            </p>
+
+            <h3 className="text-xl font-semibold text-gray-800 mb-3 mt-4">2.4 Usage Information</h3>
             <p className="text-gray-700 leading-relaxed">
               We automatically collect certain information when you use our Service:
             </p>
@@ -93,14 +106,16 @@ export default function PrivacyPolicyPage() {
               We may share your information with trusted third-party service providers:
             </p>
             <ul className="list-disc pl-6 space-y-1 text-gray-700">
-              <li><strong>Stripe</strong> - Payment processing</li>
-              <li><strong>Twilio</strong> - SMS messaging</li>
-              <li><strong>Resend</strong> - Email delivery</li>
-              <li><strong>Neon/Vercel</strong> - Database and hosting</li>
-              <li><strong>Mapbox</strong> - Address autocomplete</li>
+              <li><strong>Stripe</strong> — Payment processing. Your billing information is handled directly by Stripe and never stored on our servers.</li>
+              <li><strong>Twilio</strong> — SMS messaging for appointment confirmations, reminders, and notifications sent to your customers.</li>
+              <li><strong>Resend</strong> — Transactional email delivery for booking confirmations and system notifications.</li>
+              <li><strong>Vapi.ai</strong> — AI phone receptionist infrastructure. When you enable the AI receptionist feature, call audio, transcripts, and metadata are processed by Vapi. View their privacy policy at vapi.ai/privacy.</li>
+              <li><strong>ElevenLabs</strong> — Voice synthesis for AI receptionist calls. Text is converted to speech via ElevenLabs APIs. View their privacy policy at elevenlabs.io/privacy.</li>
+              <li><strong>Neon / Vercel</strong> — Database hosting (Neon) and application hosting (Vercel). Your data is stored on Neon&apos;s PostgreSQL infrastructure.</li>
+              <li><strong>Mapbox</strong> — Address autocomplete for business profile setup.</li>
             </ul>
             <p className="text-gray-700 leading-relaxed mt-2">
-              These providers are contractually obligated to protect your data and use it only for the services 
+              These providers are contractually obligated to protect your data and use it only for the services
               they provide to us.
             </p>
 
