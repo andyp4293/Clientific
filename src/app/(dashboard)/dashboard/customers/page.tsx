@@ -33,26 +33,14 @@ export default async function CustomersPage({
   if (searchParams.segment) {
     where.segment = searchParams.segment;
   }
-  // Fetch customers with their stats
-  const customers = await prisma.customer.findMany({
-    where,
-    include: {
-      _count: {
-        select: {
-          checkIns: true,
-          appointments: true,
-        },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  // Fetch segment counts for filter badges
-  const segmentCounts = await prisma.customer.groupBy({
-    by: ["segment"],
-    where: { businessId },
-    _count: true,
-  });
+  const [customers, segmentCounts] = await Promise.all([
+    prisma.customer.findMany({
+      where,
+      include: { _count: { select: { checkIns: true, appointments: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.customer.groupBy({ by: ["segment"], where: { businessId }, _count: true }),
+  ]);
 
   return (
     <div className="space-y-6">

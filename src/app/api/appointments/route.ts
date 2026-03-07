@@ -6,6 +6,7 @@ import { sendAppointmentConfirmation } from '@/lib/twilio';
 import { sendNewBookingEmail } from '@/lib/email';
 import { businessDayStart } from '@/lib/timezone';
 import { requireActiveSubscription } from '@/lib/subscription';
+import { revalidateTag } from 'next/cache';
 
 const businessMidnightUTC = businessDayStart;
 
@@ -226,12 +227,13 @@ export async function POST(req: NextRequest) {
       }).catch(() => {});
     }
 
-    return NextResponse.json({ 
+    revalidateTag(`dashboard-stats-${business.id}`, {});
+    return NextResponse.json({
       appointment,
-      smsNotification: smsResult?.success 
-        ? 'Confirmation SMS sent' 
-        : appointment.customer.phone 
-          ? 'SMS notification failed' 
+      smsNotification: smsResult?.success
+        ? 'Confirmation SMS sent'
+        : appointment.customer.phone
+          ? 'SMS notification failed'
           : 'No phone number provided',
     }, { status: 201 });
   } catch (error: any) {

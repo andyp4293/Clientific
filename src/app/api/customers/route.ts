@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { formatPhoneNumber } from "@/lib/utils";
 import { requireActiveSubscription, checkPlanLimit } from "@/lib/subscription";
+import { revalidateTag } from "next/cache";
 
 // GET /api/customers - List all customers
 export async function GET(request: NextRequest) {
@@ -121,6 +122,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    revalidateTag(`dashboard-stats-${session.user.businessId}`, {});
     return NextResponse.json({ customer }, { status: 201 });
   } catch (error: any) {
     console.error("Error creating customer:", error);

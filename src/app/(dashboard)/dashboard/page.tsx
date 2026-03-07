@@ -6,9 +6,7 @@ import Link from 'next/link';
 import { startOfMonth, startOfWeek, startOfToday, subDays } from 'date-fns';
 import BookingLinkCard from '@/components/booking/BookingLinkCard';
 import { localToUTC } from '@/lib/timezone';
-
-// Enable Next.js ISR with 60 second revalidation
-export const revalidate = 60;
+import { unstable_cache } from 'next/cache';
 
 const bizDayBoundary = localToUTC;
 
@@ -17,83 +15,40 @@ async function getDashboardStats(businessId: string, timezone: string) {
   const thisWeekStart = startOfWeek(new Date());
   const thisMonthStart = startOfMonth(new Date());
   const last30Days = subDays(new Date(), 30);
-  // Today's date string in the business's timezone
-  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: timezone }); // 'YYYY-MM-DD'
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: timezone });
   const startOfBizDay = bizDayBoundary(todayStr, 0, 0, timezone);
   const endOfBizDay = new Date(startOfBizDay.getTime() + 24 * 60 * 60 * 1000 - 1);
 
-  // Total customers
-  const totalCustomers = await prisma.customer.count({
-    where: { businessId },
-  });
-
-  // New customers this month
-  const newCustomersThisMonth = await prisma.customer.count({
-    where: {
-      businessId,
-      createdAt: { gte: thisMonthStart },
-    },
-  });
-
-  // Check-ins today
-  const checkInsToday = await prisma.checkIn.count({
-    where: {
-      businessId,
-      checkInTime: { gte: today },
-    },
-  });
-
-  // Check-ins this week
-  const checkInsThisWeek = await prisma.checkIn.count({
-    where: {
-      businessId,
-      checkInTime: { gte: thisWeekStart },
-    },  });
-  
-  // Loyalty points issued this month
-  const pointsThisMonth = await prisma.pointsTransaction.aggregate({
-    where: {
-      customer: { businessId },
-      createdAt: { gte: thisMonthStart },
-      amount: { gt: 0 },
-    },
-    _sum: { amount: true },
-  });
-
-  // Customer segments
-  const segments = await prisma.customer.groupBy({
-    by: ['segment'],
-    where: { businessId },
-    _count: true,
-  });
-
-  // All appointments today (full business-timezone day, including pending)
-  const upcomingAppointments = await prisma.appointment.findMany({
-    where: {
-      businessId,
-      startTime: {
-        gte: startOfBizDay,
-        lte: endOfBizDay,
+  // Run all queries in parallel instead of sequentially
+  const [
+    totalCustomers,
+    newCustomersThisMonth,
+    checkInsToday,
+    checkInsThisWeek,
+    pointsThisMonth,
+    segments,
+    upcomingAppointments,
+  ] = await Promise.all([
+    prisma.customer.count({ where: { businessId } }),
+    prisma.customer.count({ where: { businessId, createdAt: { gte: thisMonthStart } } }),
+    prisma.checkIn.count({ where: { businessId, checkInTime: { gte: today } } }),
+    prisma.checkIn.count({ where: { businessId, checkInTime: { gte: thisWeekStart } } }),
+    prisma.pointsTransaction.aggregate({
+      where: { customer: { businessId }, createdAt: { gte: thisMonthStart }, amount: { gt: 0 } },
+      _sum: { amount: true },
+    }),
+    prisma.customer.groupBy({ by: ['segment'], where: { businessId }, _count: true }),
+    prisma.appointment.findMany({
+      where: {
+        businessId,
+        startTime: { gte: startOfBizDay, lte: endOfBizDay },
+        status: { in: ['pending', 'scheduled', 'confirmed'] },
       },
-      status: { in: ['pending', 'scheduled', 'confirmed'] },
-    },
-    orderBy: { startTime: 'asc' },
-    take: 10,
-    include: {
-      customer: true,
-      service: true,
-    },
-  });
-
-  // Check-ins over last 30 days for chart
-  const checkInsLast30Days = await prisma.checkIn.groupBy({
-    by: ['checkInTime'],
-    where: {
-      businessId,
-      checkInTime: { gte: last30Days },
-    },
-    _count: true,
-  });
+      orderBy: { startTime: 'asc' },
+      take: 10,
+      include: { customer: true, service: true },
+    }),
+  ]);
 
   return {
     totalCustomers,
@@ -107,6 +62,15 @@ async function getDashboardStats(businessId: string, timezone: string) {
     }, {} as Record<string, number>),
     upcomingAppointments,
   };
+}
+
+// Cache per-business stats for 30 seconds to avoid DB hits on every nav
+function getCachedDashboardStats(businessId: string, timezone: string) {
+  return unstable_cache(
+    () => getDashboardStats(businessId, timezone),
+    [`dashboard-stats-${businessId}`],
+    { tags: [`dashboard-stats-${businessId}`], revalidate: 30 },
+  )();
 }
 
 export default async function DashboardPage({
@@ -130,7 +94,7 @@ export default async function DashboardPage({
 
   const params = await searchParams;
   const checkoutSuccess = params.checkout === 'success';
-  const stats = await getDashboardStats(business.id, business.timezone);
+  const stats = await getCachedDashboardStats(business.id, business.timezone);
 
   // Calculate trial days remaining
   const trialDaysRemaining = business.trialEndsAt
