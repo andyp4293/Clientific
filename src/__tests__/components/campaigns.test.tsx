@@ -88,30 +88,30 @@ describe('DealsPage (Campaigns)', () => {
     expect(screen.getByText('Happy Hour Deal')).toBeInTheDocument();
   });
 
-  it('shows "Notify Customers" button for active deal with no notifiedAt', () => {
+  it('shows "Text My Customers" button for active deal with no notifiedAt', () => {
     mockQueries([makeDeal({ active: true, notifiedAt: null })]);
     render(<DealsPage />);
-    expect(screen.getByRole('button', { name: /notify customers/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /text my customers/i })).toBeInTheDocument();
   });
 
-  it('hides "Notify Customers" button when deal was notified within the last 7 days', () => {
+  it('hides "Text My Customers" button when deal was notified within the last 7 days', () => {
     const recentlyNotified = new Date(Date.now() - 1 * 86400000).toISOString(); // 1 day ago
     mockQueries([makeDeal({ active: true, notifiedAt: recentlyNotified })]);
     render(<DealsPage />);
-    expect(screen.queryByRole('button', { name: /notify customers/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /text my customers/i })).not.toBeInTheDocument();
   });
 
-  it('shows "Notify Customers" button when notifiedAt is older than 7 days', () => {
+  it('shows "Text My Customers" button when notifiedAt is older than 7 days', () => {
     const oldNotified = new Date(Date.now() - 8 * 86400000).toISOString(); // 8 days ago
     mockQueries([makeDeal({ active: true, notifiedAt: oldNotified })]);
     render(<DealsPage />);
-    expect(screen.getByRole('button', { name: /notify customers/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /text my customers/i })).toBeInTheDocument();
   });
 
-  it('hides "Notify Customers" button for inactive deal', () => {
+  it('hides "Text My Customers" button for inactive deal', () => {
     mockQueries([makeDeal({ active: false, notifiedAt: null })]);
     render(<DealsPage />);
-    expect(screen.queryByRole('button', { name: /notify customers/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /text my customers/i })).not.toBeInTheDocument();
   });
 
   it('shows revenue stats when revenueTracked > 0', () => {

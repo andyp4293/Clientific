@@ -56,6 +56,7 @@ export default function DealsPage() {
   const [form, setForm] = useState(defaultForm);
   const [expandedDeal, setExpandedDeal] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [confirmingNotify, setConfirmingNotify] = useState<string | null>(null);
 
   const { data: dealsData, isLoading } = useQuery({
     queryKey: ['deals'],
@@ -128,9 +129,13 @@ export default function DealsPage() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['deals'] });
-      toast.success(`Sent to ${data.sent} customer${data.sent !== 1 ? 's' : ''}`);
+      if (data.sent === 0) {
+        toast.success('No customers have opted in to receive texts yet');
+      } else {
+        toast.success(`Text sent to ${data.sent} customer${data.sent !== 1 ? 's' : ''}!`);
+      }
     },
-    onError: (e: any) => toast.error(e.message || 'Failed to notify customers'),
+    onError: (e: any) => toast.error(e.message || 'Failed to send texts'),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -349,16 +354,34 @@ export default function DealsPage() {
                     </button>
 
                     {deal.active && (!deal.notifiedAt || Date.now() - new Date(deal.notifiedAt).getTime() > 7 * 24 * 60 * 60 * 1000) && (
-                      <button
-                        onClick={() => notifyMutation.mutate(deal.id)}
-                        disabled={notifyMutation.isPending}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-60"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-                        </svg>
-                        {notifyMutation.isPending ? 'Sending...' : 'Notify Customers'}
-                      </button>
+                      confirmingNotify === deal.id ? (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs text-gray-600 dark:text-gray-400">Send a text message to your opted-in customers?</span>
+                          <button
+                            onClick={() => { notifyMutation.mutate(deal.id); setConfirmingNotify(null); }}
+                            className="text-xs font-semibold text-white bg-primary px-2.5 py-1 rounded-lg hover:bg-primary/90 transition-colors"
+                          >
+                            Yes, send
+                          </button>
+                          <button
+                            onClick={() => setConfirmingNotify(null)}
+                            className="text-xs font-semibold text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmingNotify(deal.id)}
+                          disabled={notifyMutation.isPending}
+                          className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-60"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                          {notifyMutation.isPending ? 'Sending...' : 'Text My Customers'}
+                        </button>
+                      )
                     )}
                   </div>
                 </div>

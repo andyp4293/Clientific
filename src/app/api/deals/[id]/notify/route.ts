@@ -57,12 +57,15 @@ export async function POST(
 
     await prisma.deal.update({
       where: { id: deal.id },
-      data: { notifiedAt: new Date() } as any,
+      data: { notifiedAt: new Date() },
     });
 
     return NextResponse.json({ sent, dealId: deal.id });
   } catch (error: any) {
-    console.error('POST /api/deals/[id]/notify error:', error);
-    return NextResponse.json({ error: 'Failed to send notifications' }, { status: 500 });
+    console.error('POST /api/deals/[id]/notify error:', error?.message ?? error);
+    return NextResponse.json(
+      { error: error?.message ?? 'Failed to send notifications' },
+      { status: 500 }
+    );
   }
 }
