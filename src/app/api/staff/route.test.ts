@@ -105,6 +105,20 @@ describe('POST /api/staff', () => {
     expect(res.status).toBe(400);
   });
 
+  it('returns 400 when staff text contains disallowed content', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        subscriptionPlan: 'starter',
+        _count: { customers: 0, staff: 0, services: 0 },
+      });
+    const res = await POST(makeRequest({ fullName: 'Porn Star' }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/disallowed content/i);
+  });
+
   it('creates staff when active and under limit', async () => {
     mockSession.mockResolvedValue(activeSession);
     mockBusiness

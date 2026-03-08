@@ -6,6 +6,7 @@ import { sendAppointmentCancellation, sendAppointmentBusinessConfirmed } from '@
 import { requireActiveSubscription } from '@/lib/subscription';
 import { updateCustomerSegment } from '@/lib/segment';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
+import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 
 // GET - Get single appointment
 export async function GET(
@@ -96,6 +97,11 @@ export async function PATCH(
     }
 
     const updates = await req.json();
+
+    const blockedField = getBlockedFieldLabel([{ label: 'Notes', value: updates.notes }]);
+    if (blockedField) {
+      return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
+    }
 
     // If updating time, check for conflicts
     if (updates.startTime || updates.duration) {

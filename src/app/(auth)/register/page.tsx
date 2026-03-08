@@ -1,36 +1,29 @@
-'use client';
+﻿'use client';
 
-import React, { useState, Suspense, useEffect, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
+import { signIn, useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
 import { APP_NAME } from '@/lib/brand';
 
 type Step = 1 | 2 | 3 | 4;
 
 interface FormData {
-  // Step 1
   email: string;
   password: string;
   confirmPassword: string;
   acceptTerms: boolean;
-  
-  // Step 2
   businessName: string;
   businessType: string;
   phone: string;
   businessEmail: string;
-  
-  // Step 3
   street: string;
   city: string;
   state: string;
   zipCode: string;
   country: string;
   timezone: string;
-  
-  // Step 4
   plan: string;
   referralCode: string;
   affiliateCode: string;
@@ -38,18 +31,24 @@ interface FormData {
 
 function RegisterForm() {
   const router = useRouter();
-  const { data: session, status } = useSession();
   const searchParams = useSearchParams();
+  const { status } = useSession();
+
   const defaultPlan = searchParams.get('plan') || 'pro';
+  const defaultEmail = searchParams.get('email') || '';
   const refCode = searchParams.get('ref') || '';
   const affCode = searchParams.get('aff') || '';
+  const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === 'true';
+
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [passwordFocused, setPasswordFocused] = useState(false);
-  
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
+
   const [formData, setFormData] = useState<FormData>({
-    email: '',
+    email: defaultEmail,
     password: '',
     confirmPassword: '',
     acceptTerms: false,
@@ -67,7 +66,7 @@ function RegisterForm() {
     referralCode: refCode,
     affiliateCode: affCode,
   });
-  // Redirect if already logged in
+
   useEffect(() => {
     if (status === 'authenticated') {
       router.push('/dashboard');
@@ -81,28 +80,29 @@ function RegisterForm() {
     }));
   }, []);
 
-  // Password validation checks - memoized to recalculate when password changes
-  // MUST be called before any conditional returns (Rules of Hooks)
-  const passwordChecks = useMemo(() => ({
-    minLength: formData.password.length >= 8,
-    hasNumber: /[0-9]/.test(formData.password),
-    hasSpecialChar: /[!@#$%^&*]/.test(formData.password),
-    passwordsMatch: formData.password === formData.confirmPassword && formData.confirmPassword.length > 0,
-  }), [formData.password, formData.confirmPassword]);
+  const passwordChecks = useMemo(
+    () => ({
+      minLength: formData.password.length >= 8,
+      hasNumber: /[0-9]/.test(formData.password),
+      hasSpecialChar: /[!@#$%^&*]/.test(formData.password),
+      passwordsMatch:
+        formData.password === formData.confirmPassword &&
+        formData.confirmPassword.length > 0,
+    }),
+    [formData.password, formData.confirmPassword]
+  );
 
-  // Show loading while checking auth status
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading...</p>
         </div>
       </div>
     );
   }
 
-  // Don't render registration form if authenticated
   if (status === 'authenticated') {
     return null;
   }
@@ -120,79 +120,53 @@ function RegisterForm() {
   ];
 
   const updateFormData = (updates: Partial<FormData>) => {
-    setFormData(prev => ({ ...prev, ...updates }));
+    setFormData((prev) => ({ ...prev, ...updates }));
   };
 
   const validateStep = (step: Step): boolean => {
     setError('');
-    
-    switch (step) {
-      case 1:
-        if (!formData.email) {
-          setError('Email is required');
-          return false;
-        }
-        if (!formData.password || formData.password.length < 8) {
-          setError('Password must be at least 8 characters');
-          return false;
-        }
-        if (!/[0-9]/.test(formData.password)) {
-          setError('Password must include a number');
-          return false;
-        }
-        if (!/[!@#$%^&*]/.test(formData.password)) {
-          setError('Password must include a special character (!@#$%^&*)');
-          return false;
-        }
-        if (formData.password !== formData.confirmPassword) {
-          setError('Passwords do not match');
-          return false;
-        }
-        if (!formData.acceptTerms) {
-          setError('You must accept the terms of service');
-          return false;
-        }
-        return true;
-        
-      case 2:
-        if (!formData.businessName) {
-          setError('Business name is required');
-          return false;
-        }
-        if (!formData.phone) {
-          setError('Phone number is required');
-          return false;
-        }
-        return true;
-        
-      case 3:
-        // Optional fields, always valid
-        return true;
-        
-      default:
-        return true;
-    }
-  };  const nextStep = async () => {
-    if (validateStep(currentStep)) {
-      // Check email availability before moving from step 1
-      if (currentStep === 1) {
-        setIsLoading(true);
-        const emailAvailable = await checkEmailAvailability(formData.email);
-        setIsLoading(false);
-        
-        if (!emailAvailable) {
-          setError('An account with this email already exists. Please log in instead.');
-          return;
-        }
+
+    if (step === 1) {
+      if (!formData.email) {
+        setError('Email is required');
+        return false;
       }
-      
-      // If moving from step 3 to step 4, create the account first
-      if (currentStep === 3) {
-        handleSubmit();
-      } else {
-        setCurrentStep((prev) => Math.min(prev + 1, 4) as Step);
+      if (!formData.password || formData.password.length < 8) {
+        setError('Password must be at least 8 characters');
+        return false;
       }
+      if (!/[0-9]/.test(formData.password)) {
+        setError('Password must include a number');
+        return false;
+      }
+      if (!/[!@#$%^&*]/.test(formData.password)) {
+        setError('Password must include a special character (!@#$%^&*)');
+        return false;
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setError('Passwords do not match');
+        return false;
+      }
+      if (!formData.acceptTerms) {
+        setError('You must accept the terms of service');
+        return false;
+      }
+      return true;
     }
+
+    if (step === 2) {
+      if (!formData.businessName) {
+        setError('Business name is required');
+        return false;
+      }
+      if (!formData.phone) {
+        setError('Phone number is required');
+        return false;
+      }
+      return true;
+    }
+
+    return true;
   };
 
   const checkEmailAvailability = async (email: string): Promise<boolean> => {
@@ -202,21 +176,38 @@ function RegisterForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.toLowerCase() }),
       });
-      
       const data = await response.json();
       return data.available;
-    } catch (err) {
-      // On error, allow user to proceed (fail gracefully)
-      console.error('Email check failed:', err);
+    } catch {
       return true;
     }
   };
 
-  const prevStep = () => {
-    setCurrentStep((prev) => Math.max(prev - 1, 1) as Step);
-  };  const handleSubmit = async () => {
+  const getFriendlyRegistrationError = (rawError: string): string => {
+    if (
+      rawError.includes('database') ||
+      rawError.includes('prisma') ||
+      rawError.includes('ECONNREFUSED')
+    ) {
+      return 'Service temporarily unavailable. Please try again in a few moments.';
+    }
+    if (
+      rawError.includes('already exists') ||
+      rawError.includes('duplicate') ||
+      rawError.includes('unique constraint')
+    ) {
+      return 'An account with this email already exists. Please log in instead.';
+    }
+    if (rawError.includes('required') || rawError.includes('Missing')) {
+      return 'Please fill in all required fields.';
+    }
+    return 'Unable to create account. Please check your information and try again.';
+  };
+
+  const handleSubmit = async () => {
     setIsLoading(true);
     setError('');
+    setNotice('');
 
     try {
       const response = await fetch('/api/auth/register', {
@@ -226,98 +217,79 @@ function RegisterForm() {
       });
 
       const data = await response.json();
-
       if (!response.ok) {
-        const friendlyError = getFriendlyRegistrationError(data.error || 'Registration failed');
-        throw new Error(friendlyError);
+        throw new Error(getFriendlyRegistrationError(data.error || 'Registration failed'));
       }
 
-      // Account created successfully, move to step 4
       setCurrentStep(4);
-      setIsLoading(false);
+      if (!data.verificationEmailSent) {
+        setNotice('Account created. Use resend below if your verification email did not arrive.');
+      }
     } catch (err: any) {
       setError(err.message);
+    } finally {
       setIsLoading(false);
-      // Stay on step 3 so user can see the error
     }
   };
 
-  const handleDashboardRedirect = async () => {
-    setIsLoading(true);
-
+  const resendVerification = async () => {
+    setIsResendingVerification(true);
+    setError('');
+    setNotice('');
     try {
-      // Auto-login after registration
-      const { signIn } = await import('next-auth/react');
-      const result = await signIn('credentials', {
-        email: formData.email,
-        password: formData.password,
-        redirect: false,
+      const res = await fetch('/api/auth/verify-email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email }),
       });
-
-      if (result?.error) {
-        setError('Account created but login failed. Please try logging in manually.');
-        setIsLoading(false);
-        return;
+      const body = await res.json();
+      if (!res.ok) {
+        throw new Error(body.error || 'Unable to resend verification email');
       }
-
-      router.push('/dashboard');
-      router.refresh();
+      setNotice('If your account exists and is not verified, a new link has been sent.');
     } catch (err: any) {
-      setError('Account created but login failed. Please try logging in manually.');
-      setIsLoading(false);
+      setError(err.message || 'Unable to resend verification email');
+    } finally {
+      setIsResendingVerification(false);
     }
   };
 
-  const handleSubscribeRedirect = async () => {
-    setIsLoading(true);
+  const nextStep = async () => {
+    if (!validateStep(currentStep)) {
+      return;
+    }
 
-    try {
-      // Auto-login first so the checkout API can read the session
-      const { signIn } = await import('next-auth/react');
-      const result = await signIn('credentials', {
-        email: formData.email,
-        password: formData.password,
-        redirect: false,
-      });
-
-      if (result?.error) {
-        setError('Login failed. Please go to the dashboard and subscribe from billing settings.');
-        setIsLoading(false);
+    if (currentStep === 1) {
+      setIsLoading(true);
+      const emailAvailable = await checkEmailAvailability(formData.email);
+      setIsLoading(false);
+      if (!emailAvailable) {
+        setError('An account with this email already exists. Please log in instead.');
         return;
       }
-
-      // Now trigger checkout for the selected plan
-      router.push(`/pricing?autostart=${formData.plan}`);
-      router.refresh();
-    } catch {
-      setError('Something went wrong. Please subscribe from the billing settings page.');
-      setIsLoading(false);
     }
+
+    if (currentStep === 3) {
+      void handleSubmit();
+      return;
+    }
+
+    setCurrentStep((prev) => (prev === 4 ? 4 : ((prev + 1) as Step)));
   };
 
-  const getFriendlyRegistrationError = (error: string): string => {
-    // Database connection errors
-    if (error.includes('database') || error.includes('prisma') || error.includes('ECONNREFUSED')) {
-      return 'Service temporarily unavailable. Please try again in a few moments.';
-    }
-    
-    // Duplicate email
-    if (error.includes('already exists') || error.includes('duplicate') || error.includes('unique constraint')) {
-      return 'An account with this email already exists. Please log in instead.';
-    }
-    
-    // Missing fields
-    if (error.includes('required') || error.includes('Missing')) {
-      return 'Please fill in all required fields.';
-    }
-    
-    // Default friendly message
-    return 'Unable to create account. Please check your information and try again.';
+  const prevStep = () => {
+    setCurrentStep((prev) => (prev === 1 ? 1 : ((prev - 1) as Step)));
   };
 
-  return (    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 sm:py-12 px-4">
+  const handleGoogleSignUp = () => {
+    setError('');
+    setNotice('');
+    void signIn('google', { callbackUrl: '/dashboard' });
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 sm:py-12 px-4">
       <div className="w-full max-w-2xl mx-auto">
-        {/* Logo */}
         <div className="text-center mb-6 sm:mb-8">
           <Link href="/" className="inline-flex items-center space-x-2">
             <div className="w-8 sm:w-10 h-8 sm:h-10 bg-primary rounded-lg flex items-center justify-center">
@@ -328,14 +300,13 @@ function RegisterForm() {
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2">Start your 14-day free trial</p>
         </div>
 
-        {/* Progress Steps */}
         <div className="mb-6 sm:mb-8">
           <div className="flex items-start">
             {[
               { num: 1, label: 'Account' },
               { num: 2, label: 'Business' },
               { num: 3, label: 'Details' },
-              { num: 4, label: 'Complete' },
+              { num: 4, label: 'Verify' },
             ].map((item, idx) => (
               <React.Fragment key={item.num}>
                 {idx > 0 && (
@@ -362,21 +333,32 @@ function RegisterForm() {
               </React.Fragment>
             ))}
           </div>
-        </div>        {/* Registration Card */}
+        </div>
+
         <div className="card p-4 sm:p-6 lg:p-8">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-md mb-4 sm:mb-6 text-xs sm:text-sm">
               {error}
             </div>
-          )}          {/* Step 1: Account Creation */}
+          )}
+          {notice && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-3 sm:px-4 py-2 sm:py-3 rounded-md mb-4 sm:mb-6 text-xs sm:text-sm">
+              {notice}
+            </div>
+          )}
+
           {currentStep === 1 && (
             <div className="space-y-3 sm:space-y-4">
               <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-900 dark:text-gray-100">Create Your Account</h2>
-              
+
+              {googleEnabled && (
+                <button type="button" onClick={handleGoogleSignUp} className="btn-outline w-full">
+                  Continue with Google
+                </button>
+              )}
+
               <div>
-                <label htmlFor="email" className="label">
-                  Email Address *
-                </label>
+                <label htmlFor="email" className="label">Email Address *</label>
                 <input
                   id="email"
                   type="email"
@@ -386,10 +368,10 @@ function RegisterForm() {
                   placeholder="you@example.com"
                   required
                 />
-              </div>              <div>
-                <label htmlFor="password" className="label">
-                  Password *
-                </label>
+              </div>
+
+              <div>
+                <label htmlFor="password" className="label">Password *</label>
                 <input
                   id="password"
                   type="password"
@@ -400,44 +382,15 @@ function RegisterForm() {
                   placeholder="Min. 8 characters with number & special character"
                   required
                 />
-                
-                {/* Password Requirements Checklist */}
                 {(passwordFocused || formData.password.length > 0) && (
                   <div className="mt-3 space-y-2 text-sm">
                     <div className={`flex items-center ${passwordChecks.minLength ? 'text-success' : 'text-gray-500'}`}>
-                      {passwordChecks.minLength ? (
-                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <circle cx="10" cy="10" r="3" />
-                        </svg>
-                      )}
                       <span>At least 8 characters</span>
                     </div>
                     <div className={`flex items-center ${passwordChecks.hasNumber ? 'text-success' : 'text-gray-500'}`}>
-                      {passwordChecks.hasNumber ? (
-                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <circle cx="10" cy="10" r="3" />
-                        </svg>
-                      )}
                       <span>Contains a number</span>
                     </div>
                     <div className={`flex items-center ${passwordChecks.hasSpecialChar ? 'text-success' : 'text-gray-500'}`}>
-                      {passwordChecks.hasSpecialChar ? (
-                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <circle cx="10" cy="10" r="3" />
-                        </svg>
-                      )}
                       <span>Contains a special character (!@#$%^&*)</span>
                     </div>
                   </div>
@@ -445,9 +398,7 @@ function RegisterForm() {
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="label">
-                  Confirm Password *
-                </label>
+                <label htmlFor="confirmPassword" className="label">Confirm Password *</label>
                 <input
                   id="confirmPassword"
                   type="password"
@@ -457,28 +408,9 @@ function RegisterForm() {
                   placeholder="Re-enter your password"
                   required
                 />
-                
-                {/* Password Match Indicator */}
-                {formData.confirmPassword.length > 0 && (
-                  <div className={`mt-2 text-sm flex items-center ${passwordChecks.passwordsMatch ? 'text-success' : 'text-red-600'}`}>
-                    {passwordChecks.passwordsMatch ? (
-                      <>
-                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        <span>Passwords match</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                        </svg>
-                        <span>Passwords do not match</span>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>              <div className="flex items-start">
+              </div>
+
+              <div className="flex items-start">
                 <input
                   id="acceptTerms"
                   type="checkbox"
@@ -488,25 +420,20 @@ function RegisterForm() {
                 />
                 <label htmlFor="acceptTerms" className="text-sm text-gray-600 dark:text-gray-400">
                   I accept the{' '}
-                  <Link href="/terms" target="_blank" className="text-primary hover:underline">
-                    Terms of Service
-                  </Link>{' '}
+                  <Link href="/terms" target="_blank" className="text-primary hover:underline">Terms of Service</Link>{' '}
                   and{' '}
-                  <Link href="/privacy" target="_blank" className="text-primary hover:underline">
-                    Privacy Policy
-                  </Link>
+                  <Link href="/privacy" target="_blank" className="text-primary hover:underline">Privacy Policy</Link>
                 </label>
               </div>
             </div>
-          )}          {/* Step 2: Business Information */}
+          )}
+
           {currentStep === 2 && (
             <div className="space-y-3 sm:space-y-4">
               <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-900 dark:text-gray-100">Tell Us About Your Business</h2>
 
               <div>
-                <label htmlFor="businessName" className="label">
-                  Business Name *
-                </label>
+                <label htmlFor="businessName" className="label">Business Name *</label>
                 <input
                   id="businessName"
                   type="text"
@@ -519,9 +446,7 @@ function RegisterForm() {
               </div>
 
               <div>
-                <label htmlFor="businessType" className="label">
-                  Business Type *
-                </label>
+                <label htmlFor="businessType" className="label">Business Type *</label>
                 <select
                   id="businessType"
                   value={formData.businessType}
@@ -530,17 +455,13 @@ function RegisterForm() {
                   required
                 >
                   {businessTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
+                    <option key={type} value={type}>{type}</option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label htmlFor="phone" className="label">
-                  Business Phone *
-                </label>
+                <label htmlFor="phone" className="label">Business Phone *</label>
                 <input
                   id="phone"
                   type="tel"
@@ -553,9 +474,7 @@ function RegisterForm() {
               </div>
 
               <div>
-                <label htmlFor="businessEmail" className="label">
-                  Business Email (optional)
-                </label>
+                <label htmlFor="businessEmail" className="label">Business Email (optional)</label>
                 <input
                   id="businessEmail"
                   type="email"
@@ -568,16 +487,15 @@ function RegisterForm() {
             </div>
           )}
 
-          {/* Step 3: Business Details */}
           {currentStep === 3 && (
             <div className="space-y-4">
               <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">Business Location</h2>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                 This information will be shown to customers booking appointments.
-              </p>              <div>
-                <label htmlFor="street" className="label">
-                  Street Address
-                </label>
+              </p>
+
+              <div>
+                <label htmlFor="street" className="label">Street Address</label>
                 <AddressAutocomplete
                   defaultValue={formData.street}
                   placeholder="Start typing your business address..."
@@ -596,9 +514,7 @@ function RegisterForm() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="city" className="label">
-                    City
-                  </label>
+                  <label htmlFor="city" className="label">City</label>
                   <input
                     id="city"
                     type="text"
@@ -608,11 +524,8 @@ function RegisterForm() {
                     placeholder="San Francisco"
                   />
                 </div>
-
                 <div>
-                  <label htmlFor="state" className="label">
-                    State/Province
-                  </label>
+                  <label htmlFor="state" className="label">State/Province</label>
                   <input
                     id="state"
                     type="text"
@@ -626,9 +539,7 @@ function RegisterForm() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="zipCode" className="label">
-                    ZIP/Postal Code
-                  </label>
+                  <label htmlFor="zipCode" className="label">ZIP/Postal Code</label>
                   <input
                     id="zipCode"
                     type="text"
@@ -638,11 +549,8 @@ function RegisterForm() {
                     placeholder="94102"
                   />
                 </div>
-
                 <div>
-                  <label htmlFor="country" className="label">
-                    Country
-                  </label>
+                  <label htmlFor="country" className="label">Country</label>
                   <input
                     id="country"
                     type="text"
@@ -654,9 +562,7 @@ function RegisterForm() {
               </div>
 
               <div>
-                <label htmlFor="timezone" className="label">
-                  Timezone
-                </label>
+                <label htmlFor="timezone" className="label">Timezone</label>
                 <input
                   id="timezone"
                   type="text"
@@ -670,87 +576,60 @@ function RegisterForm() {
             </div>
           )}
 
-          {/* Step 4: Complete */}
           {currentStep === 4 && (
             <div className="text-center py-8">
-              <div className="w-20 h-20 bg-success rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg
-                  className="w-10 h-10 text-white"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
+              <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              
-              <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-gray-100">You're All Set!</h2>
-              <p className="text-gray-600 dark:text-gray-400 mb-8">
-                Your account has been created. Your 14-day free trial starts now.
+
+              <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-gray-100">Check Your Email</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                We sent a verification link to <strong>{formData.email}</strong>. Verify your email before logging in.
               </p>
 
               <div className="card bg-primary-50 p-6 text-left mb-8">
-                <h3 className="font-semibold mb-4">What's Next?</h3>
+                <h3 className="font-semibold mb-3">Activation checklist</h3>
                 <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                  <li className="flex items-start">
-                    <svg className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <span>Check in your first customer</span>
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <span>Set up your services and business hours</span>
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <span>Enable online booking for customers</span>
-                  </li>                </ul>
-              </div>              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                {formData.plan && formData.plan !== 'trial' && (
-                  <button
-                    onClick={handleSubscribeRedirect}
-                    className="btn-primary px-8 py-3 text-lg"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? 'Please wait...' : 'Subscribe Now'}
-                  </button>
-                )}
+                  <li>1. Open the verification email.</li>
+                  <li>2. Click the verification link.</li>
+                  <li>3. Return here and log in to your dashboard.</li>
+                </ul>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button
-                  onClick={handleDashboardRedirect}
-                  className={formData.plan && formData.plan !== 'trial' ? 'btn-outline px-8 py-3 text-base' : 'btn-primary px-8 py-3 text-lg'}
-                  disabled={isLoading}
+                  type="button"
+                  onClick={resendVerification}
+                  className="btn-outline px-8 py-3"
+                  disabled={isResendingVerification}
                 >
-                  {isLoading ? 'Logging you in...' : formData.plan && formData.plan !== 'trial' ? 'Skip — use free trial' : 'Go to Dashboard'}
+                  {isResendingVerification ? 'Sending...' : 'Resend Verification Email'}
                 </button>
+                <Link href="/login" className="btn-primary px-8 py-3 text-center">
+                  Go to Login
+                </Link>
               </div>
             </div>
           )}
 
-          {/* Navigation Buttons */}
           {currentStep < 4 && (
-            <div className="flex justify-between mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">              {currentStep > 1 ? (
+            <div className="flex justify-between mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+              {currentStep > 1 ? (
                 <button onClick={prevStep} className="btn-secondary" disabled={isLoading}>
-                  ← Previous
+                  Previous
                 </button>
               ) : (
                 <div />
               )}
               <button onClick={nextStep} className="btn-primary" disabled={isLoading}>
-                {isLoading && currentStep === 3 ? 'Creating account...' : 'Next →'}
+                {isLoading && currentStep === 3 ? 'Creating account...' : 'Next'}
               </button>
             </div>
           )}
-        </div>        {/* Login Link */}
+        </div>
+
         <div className="text-center mt-6 text-sm text-gray-600 dark:text-gray-400">
           Already have an account?{' '}
           <Link href="/login" className="text-primary hover:text-primary-700 font-medium">

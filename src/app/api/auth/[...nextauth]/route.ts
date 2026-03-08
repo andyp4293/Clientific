@@ -1,56 +1,77 @@
 import NextAuth, { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import GoogleProvider from 'next-auth/providers/google';
 import { prisma } from '@/lib/prisma';
 import { verifyPassword } from '@/lib/utils';
 
-export const authOptions: NextAuthOptions = {
-  providers: [
-    CredentialsProvider({
-      name: 'Credentials',
-      credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' },
-      },      async authorize(credentials) {
-        try {
-          if (!credentials?.email || !credentials?.password) {
-            throw new Error('Please enter your email and password');
-          }
-
-          const business = await prisma.business.findUnique({
-            where: { email: credentials.email.toLowerCase() },
-          });
-
-          if (!business) {
-            throw new Error('Email or password is incorrect');
-          }
-
-          const isValid = await verifyPassword(credentials.password, business.passwordHash);
-
-          if (!isValid) {
-            throw new Error('Email or password is incorrect');
-          }
-
-          return {
-            id: business.id,
-            email: business.email,
-            name: business.name,
-            businessId: business.id,
-          };
-        } catch (error: any) {
-          // Log the actual error for debugging (server-side only)
-          console.error('Auth error:', error);
-          
-          // Don't expose database connection errors to users
-          if (error.message.includes('prisma') || error.message.includes('database')) {
-            throw new Error('Service temporarily unavailable');
-          }
-          
-          // Re-throw user-friendly errors
-          throw error;
+const providers: NextAuthOptions['providers'] = [
+  CredentialsProvider({
+    name: 'Credentials',
+    credentials: {
+      email: { label: 'Email', type: 'email' },
+      password: { label: 'Password', type: 'password' },
+    },      async authorize(credentials) {
+      try {
+        if (!credentials?.email || !credentials?.password) {
+          throw new Error('Please enter your email and password');
         }
+
+        const business = await prisma.business.findUnique({
+          where: { email: credentials.email.toLowerCase() },
+        });
+
+        if (!business) {
+          throw new Error('Email or password is incorrect');
+        }
+
+        const isValid = await verifyPassword(credentials.password, business.passwordHash);
+
+        if (!isValid) {
+          throw new Error('Email or password is incorrect');
+        }
+
+        if (!business.emailVerifiedAt) {
+          throw new Error('EmailNotVerified');
+        }
+
+        return {
+          id: business.id,
+          email: business.email,
+          name: business.name,
+          businessId: business.id,
+        };
+      } catch (error: any) {
+        // Log the actual error for debugging (server-side only)
+        console.error('Auth error:', error);
+        
+        // Don't expose database connection errors to users
+        if (error.message.includes('prisma') || error.message.includes('database')) {
+          throw new Error('Service temporarily unavailable');
+        }
+        
+        // Re-throw user-friendly errors
+        throw error;
+      }
+    },
+  }),
+];
+
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  providers.push(
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      authorization: {
+        params: {
+          prompt: 'select_account',
+        },
       },
-    }),
-  ],
+    })
+  );
+}
+
+export const authOptions: NextAuthOptions = {
+  providers,
   session: {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
@@ -60,17 +81,59 @@ export const authOptions: NextAuthOptions = {
     error: '/login',
   },
   callbacks: {
+    async signIn({ user, account, profile }) {
+      if (account?.provider !== 'google') {
+        return true;
+      }
+
+      const email = user.email?.toLowerCase();
+      const googleEmailVerified = Boolean((profile as { email_verified?: boolean } | undefined)?.email_verified);
+      if (!email || !googleEmailVerified) {
+        return '/login?error=GoogleEmailNotVerified';
+      }
+
+      const business = await prisma.business.findUnique({
+        where: { email },
+        select: { id: true, emailVerifiedAt: true },
+      });
+      if (!business) {
+        return `/register?email=${encodeURIComponent(email)}&oauth=google`;
+      }
+      if (!business.emailVerifiedAt) {
+        return '/login?error=EmailNotVerified';
+      }
+
+      return true;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.businessId = user.businessId;
+        const businessId = (user as { businessId?: string }).businessId;
+        if (businessId) {
+          token.businessId = businessId;
+        }
+      }
+
+      if ((!token.businessId || !token.id) && token.email) {
+        const business = await prisma.business.findUnique({
+          where: { email: token.email.toLowerCase() },
+          select: { id: true },
+        });
+        if (business) {
+          token.id = business.id;
+          token.businessId = business.id;
+        }
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
-        session.user.businessId = token.businessId as string;
+        if (token.id) {
+          session.user.id = token.id as string;
+        }
+        if (token.businessId) {
+          session.user.businessId = token.businessId as string;
+        }
       }
       return session;
     },

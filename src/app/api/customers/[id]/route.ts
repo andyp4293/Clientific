@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { formatPhoneNumber } from "@/lib/utils";
 import { calculateCustomerSegment } from "@/lib/segmentation";
 import { requireActiveSubscription } from "@/lib/subscription";
+import { blockedContentError, getBlockedFieldLabel } from "@/lib/moderation";
 
 // GET /api/customers/[id] - Get a single customer
 export async function GET(
@@ -105,6 +106,17 @@ export async function PUT(
     if (!name || name.trim().length === 0) {
       return NextResponse.json(
         { error: "Name is required" },
+        { status: 400 }
+      );
+    }
+
+    const blockedField = getBlockedFieldLabel([
+      { label: 'Customer name', value: name },
+      { label: 'Notes', value: notes },
+    ]);
+    if (blockedField) {
+      return NextResponse.json(
+        { error: blockedContentError(blockedField) },
         { status: 400 }
       );
     }

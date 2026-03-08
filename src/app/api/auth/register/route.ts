@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma';
 import { hashPassword, generateSlug, generatePublicBusinessId } from '@/lib/utils';
 import { generateReferralCode } from '@/lib/referral';
 import { addDays } from 'date-fns';
+import { createEmailVerificationToken, isValidEmail } from '@/lib/auth-verification';
+import { sendEmailVerificationEmail } from '@/lib/email';
+import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 
 export async function POST(request: Request) {
   try {
@@ -35,7 +38,7 @@ export async function POST(request: Request) {
     }
 
     // Input length guards
-    if (typeof email !== 'string' || email.length > 254) {
+    if (typeof email !== 'string' || email.length > 254 || !isValidEmail(email)) {
       return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
     }
     if (typeof businessName !== 'string' || businessName.trim().length === 0 || businessName.length > 100) {
@@ -46,6 +49,15 @@ export async function POST(request: Request) {
         { error: 'Password must be 8–128 characters' },
         { status: 400 }
       );
+    }
+
+    const blockedField = getBlockedFieldLabel([
+      { label: 'Business name', value: businessName },
+      { label: 'Street', value: street },
+      { label: 'City', value: city },
+    ]);
+    if (blockedField) {
+      return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
     }
 
     // Check if email already exists
@@ -97,11 +109,16 @@ export async function POST(request: Request) {
 
     // Generate this new business's own unique referral code
     const newReferralCode = await generateReferralCode();
+    const { token: verificationToken, tokenHash, expiresAt: verificationExpiry } =
+      createEmailVerificationToken();
 
     // Create business account
     const business = await prisma.business.create({
       data: {
         email: email.toLowerCase(),
+        emailVerificationTokenHash: tokenHash,
+        emailVerificationTokenExpiry: verificationExpiry,
+        verificationSentAt: new Date(),
         passwordHash,
         name: businessName,
         slug,
@@ -166,9 +183,18 @@ export async function POST(request: Request) {
       console.error('Failed to create default business hours:', hoursError);
       // Continue anyway - hours can be set up later
     }
+    let verificationEmailSent = false;
+    try {
+      await sendEmailVerificationEmail(business.email, verificationToken);
+      verificationEmailSent = true;
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+    }
 
     return NextResponse.json({
       success: true,
+      requiresEmailVerification: true,
+      verificationEmailSent,
       business: {
         id: business.id,
         email: business.email,

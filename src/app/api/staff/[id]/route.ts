@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { requireActiveSubscription } from '@/lib/subscription';
+import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 
 // PATCH - Update staff member
 export async function PATCH(
@@ -25,6 +26,18 @@ export async function PATCH(
     const { id } = await params;
     const body = await req.json();
     const { fullName, email, phone, role, bio, isActive, workDays } = body;
+
+    const blockedField = getBlockedFieldLabel([
+      { label: 'Staff name', value: fullName },
+      { label: 'Role', value: role },
+      { label: 'Bio', value: bio },
+    ]);
+    if (blockedField) {
+      return NextResponse.json(
+        { error: blockedContentError(blockedField) },
+        { status: 400 }
+      );
+    }
 
     // Verify staff belongs to this business
     const existingStaff = await prisma.staff.findUnique({

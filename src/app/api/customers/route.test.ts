@@ -125,6 +125,23 @@ describe('POST /api/customers', () => {
     expect(body.code).toBe('PLAN_LIMIT_REACHED');
   });
 
+  it('returns 400 when customer text contains disallowed content', async () => {
+    mockGetServerSession.mockResolvedValue({
+      user: { businessId: 'biz-1', email: 'test@test.com' },
+    });
+    mockBusinessFindUnique
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        subscriptionPlan: 'starter',
+        _count: { customers: 5, staff: 0, services: 0 },
+      });
+
+    const res = await POST(makeRequest({ name: 'Nude Customer' }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/disallowed content/i);
+  });
+
   it('creates customer successfully when active and under limit', async () => {
     mockGetServerSession.mockResolvedValue({
       user: { businessId: 'biz-1', email: 'test@test.com' },

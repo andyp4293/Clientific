@@ -38,6 +38,7 @@ vi.mock('@/lib/twilio', () => ({
 vi.mock('@/lib/email', () => ({
   sendNewBookingEmail: vi.fn().mockResolvedValue(undefined),
   sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined),
+  sendEmailVerificationEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/lib/utils', () => ({

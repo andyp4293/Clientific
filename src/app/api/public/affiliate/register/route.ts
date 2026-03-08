@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generateAffiliateCode } from '@/lib/affiliate';
+import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -15,6 +16,14 @@ export async function POST(req: NextRequest) {
   }
   if (!email || typeof email !== 'string' || !EMAIL_RE.test(email) || email.length > 254) {
     return NextResponse.json({ error: 'A valid email address is required' }, { status: 400 });
+  }
+
+  const blockedField = getBlockedFieldLabel([
+    { label: 'Name', value: name },
+    { label: 'Payout info', value: payoutInfo },
+  ]);
+  if (blockedField) {
+    return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
   }
 
   const existing = await prisma.affiliate.findUnique({ where: { email: email.toLowerCase() } });

@@ -120,6 +120,16 @@ describe('PATCH /api/business', () => {
     expect(body.business.name).toBe('Updated Salon');
   });
 
+  it('returns 400 when profile text contains disallowed content', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
+    const res = await PATCH(makePatchRequest({ name: 'Porn Palace' }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/disallowed content/i);
+  });
+
   it('does not call Vapi when VAPI_PRIVATE_KEY is not set', async () => {
     delete process.env.VAPI_PRIVATE_KEY;
     mockSession.mockResolvedValue(activeSession);

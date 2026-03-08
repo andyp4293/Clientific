@@ -13,6 +13,10 @@ model Business {
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
   email                  String         @unique
+  emailVerifiedAt        DateTime?
+  emailVerificationTokenHash String?
+  emailVerificationTokenExpiry DateTime?
+  verificationSentAt     DateTime?
   passwordHash           String
   name                   String
   slug                   String         @unique

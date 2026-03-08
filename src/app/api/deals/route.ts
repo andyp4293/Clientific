@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
+import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 
 export async function GET() {
   try {
@@ -48,6 +49,14 @@ export async function POST(req: NextRequest) {
 
     if (!title || !discountType || !startsAt || !expiresAt) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    const blockedField = getBlockedFieldLabel([
+      { label: 'Deal title', value: title },
+      { label: 'Deal description', value: description },
+    ]);
+    if (blockedField) {
+      return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
     }
 
     if (discountType !== 'free_service' && (discountValue === undefined || discountValue === null)) {

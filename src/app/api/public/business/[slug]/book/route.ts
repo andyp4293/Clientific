@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { sendAppointmentConfirmation, formatPhoneNumber } from '@/lib/twilio';
 import { sendNewBookingEmail } from '@/lib/email';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
+import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 
 // POST - Create public booking (no auth required)
 export async function POST(
@@ -78,6 +79,14 @@ export async function POST(
     }
     if (typeof duration !== 'number' || duration < 5 || duration > 480) {
       return NextResponse.json({ error: 'Invalid duration' }, { status: 400 });
+    }
+
+    const blockedField = getBlockedFieldLabel([
+      { label: 'Customer name', value: customerName },
+      { label: 'Notes', value: notes },
+    ]);
+    if (blockedField) {
+      return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
     }
 
     const normalizedCustomerPhone = formatPhoneNumber(customerPhone);

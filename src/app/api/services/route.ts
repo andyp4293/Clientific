@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription, checkPlanLimit } from '@/lib/subscription';
+import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 
 // GET /api/services - Get all services for the business
 export async function GET() {
@@ -69,6 +70,14 @@ export async function POST(request: Request) {
         { error: 'Name and duration are required' },
         { status: 400 }
       );
+    }
+
+    const blockedField = getBlockedFieldLabel([
+      { label: 'Service name', value: name },
+      { label: 'Service description', value: description },
+    ]);
+    if (blockedField) {
+      return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
     }
 
     if (duration < 5) {

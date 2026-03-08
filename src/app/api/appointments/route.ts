@@ -8,6 +8,7 @@ import { businessDayStart } from '@/lib/timezone';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { revalidateTag } from 'next/cache';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
+import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 
 const businessMidnightUTC = businessDayStart;
 
@@ -121,6 +122,11 @@ export async function POST(req: NextRequest) {
         { error: 'Customer, start time, and duration are required' },
         { status: 400 }
       );
+    }
+
+    const blockedField = getBlockedFieldLabel([{ label: 'Notes', value: notes }]);
+    if (blockedField) {
+      return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
     }
 
     const start = new Date(startTime);

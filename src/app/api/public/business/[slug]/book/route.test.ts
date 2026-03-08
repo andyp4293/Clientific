@@ -71,6 +71,22 @@ describe('POST /api/public/business/[slug]/book - consent split', () => {
     vi.mocked(prisma.smsConsentEvent.create).mockResolvedValue({ id: 'evt-1' } as any);
   });
 
+  it('blocks booking when customer text contains disallowed content', async () => {
+    const res = await POST(
+      req({
+        ...BASE_BODY,
+        customerName: 'Sexy bitch',
+      }),
+      { params: Promise.resolve({ slug: 'test-salon' }) }
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/disallowed content/i);
+    expect(prisma.customer.create).not.toHaveBeenCalled();
+    expect(prisma.appointment.create).not.toHaveBeenCalled();
+  });
+
   it('stores both transactional and marketing consent on new customer + logs FORM_OPT_IN', async () => {
     vi.mocked(prisma.customer.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.customer.create).mockResolvedValue({

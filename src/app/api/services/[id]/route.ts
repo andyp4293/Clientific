@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
+import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 
 // PATCH /api/services/[id] - Update a service
 export async function PATCH(
@@ -22,6 +23,14 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
     const { name, description, duration, price, isActive } = body;
+
+    const blockedField = getBlockedFieldLabel([
+      { label: 'Service name', value: name },
+      { label: 'Service description', value: description },
+    ]);
+    if (blockedField) {
+      return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
+    }
 
     // Validation
     if (name !== undefined && !name.trim()) {

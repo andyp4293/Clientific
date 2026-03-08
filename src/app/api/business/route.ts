@@ -4,6 +4,7 @@ import { authOptions } from '../auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
+import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 
 // ── Vapi helpers ──────────────────────────────────────────────────────────────
 
@@ -131,6 +132,17 @@ export async function PATCH(req: NextRequest) {
       pointsPerDollar,
       pointsPerVisit,
     } = body;
+
+    const blockedField = getBlockedFieldLabel([
+      { label: 'Business name', value: name },
+      { label: 'Street', value: street },
+      { label: 'City', value: city },
+      { label: 'AI greeting', value: aiReceptionistGreeting },
+      { label: 'AI FAQ', value: typeof aiReceptionistFaq === 'string' ? aiReceptionistFaq : null },
+    ]);
+    if (blockedField) {
+      return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
+    }
 
     // Fetch current business to detect Vapi state changes
     const current = await prisma.business.findUnique({

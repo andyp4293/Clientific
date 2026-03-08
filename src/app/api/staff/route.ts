@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { requireActiveSubscription, checkPlanLimit } from '@/lib/subscription';
+import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 
 // GET - List all staff members for the business
 export async function GET(req: NextRequest) {
@@ -70,7 +71,21 @@ export async function POST(req: NextRequest) {
         { error: 'Full name is required' },
         { status: 400 }
       );
-    }    const staff = await prisma.staff.create({
+    }
+
+    const blockedField = getBlockedFieldLabel([
+      { label: 'Staff name', value: fullName },
+      { label: 'Role', value: role },
+      { label: 'Bio', value: bio },
+    ]);
+    if (blockedField) {
+      return NextResponse.json(
+        { error: blockedContentError(blockedField) },
+        { status: 400 }
+      );
+    }
+
+    const staff = await prisma.staff.create({
       data: {
         businessId: session.user.id,
         fullName,

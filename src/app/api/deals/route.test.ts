@@ -95,6 +95,20 @@ describe('POST /api/deals', () => {
     expect(res.status).toBe(400);
   });
 
+  it('returns 400 when deal text contains disallowed content', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
+    const res = await POST(
+      makeRequest({
+        ...validDealBody,
+        title: 'Free blowjob special',
+      })
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/disallowed content/i);
+  });
+
   it('returns 400 when discountValue is missing for non-free deal', async () => {
     mockSession.mockResolvedValue(activeSession);
     mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });

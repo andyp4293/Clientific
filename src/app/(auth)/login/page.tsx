@@ -1,18 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { signIn, useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { APP_NAME } from '@/lib/brand';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, status } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === 'true';
+  const oauthError = searchParams.get('error');
 
   // Redirect if already logged in
   useEffect(() => {
@@ -20,6 +25,11 @@ export default function LoginPage() {
       router.push('/dashboard');
     }
   }, [status, router]);
+
+  useEffect(() => {
+    if (!oauthError) return;
+    setError(getFriendlyErrorMessage(oauthError));
+  }, [oauthError]);
 
   // Show loading while checking auth status
   if (status === 'loading') {
@@ -41,6 +51,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setNotice('');
     setIsLoading(true);
 
     try {
@@ -66,6 +77,16 @@ export default function LoginPage() {
   };
 
   const getFriendlyErrorMessage = (error: string): string => {
+    if (error.includes('EmailNotVerified')) {
+      return 'Please verify your email before logging in. Use "Resend verification email" below if needed.';
+    }
+    if (error.includes('GoogleEmailNotVerified')) {
+      return 'Your Google account email is not verified. Please verify it with Google first.';
+    }
+    if (error.includes('AccessDenied')) {
+      return 'Sign-in was denied. Make sure your account exists and your email is verified.';
+    }
+
     // Database connection errors
     if (error.includes('database') || error.includes('prisma') || error.includes('ECONNREFUSED')) {
       return 'Service temporarily unavailable. Please try again in a few moments.';
@@ -88,6 +109,38 @@ export default function LoginPage() {
     return 'Login failed. Please check your credentials and try again.';
   };
 
+  const handleResendVerification = async () => {
+    if (!email) {
+      setError('Enter your email address to resend the verification link.');
+      return;
+    }
+    setIsResendingVerification(true);
+    setNotice('');
+    setError('');
+    try {
+      const res = await fetch('/api/auth/verify-email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.toLowerCase() }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        throw new Error(body.error || 'Unable to resend verification email');
+      }
+      setNotice('If an account exists, we sent a new verification link to your inbox.');
+    } catch (err: any) {
+      setError(err.message || 'Unable to resend verification email');
+    } finally {
+      setIsResendingVerification(false);
+    }
+  };
+
+  const handleGoogleSignIn = () => {
+    setError('');
+    setNotice('');
+    void signIn('google', { callbackUrl: '/dashboard' });
+  };
+
   return (    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
@@ -107,6 +160,11 @@ export default function LoginPage() {
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4 text-sm">
               {error}
+            </div>
+          )}
+          {notice && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md mb-4 text-sm">
+              {notice}
             </div>
           )}
 
@@ -165,6 +223,26 @@ export default function LoginPage() {
             </button>
           </form>
 
+          {googleEnabled && (
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              className="btn-outline mt-3 w-full"
+              disabled={isLoading}
+            >
+              Continue with Google
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={handleResendVerification}
+            className="mt-3 text-sm font-medium text-primary hover:text-primary-700"
+            disabled={isResendingVerification}
+          >
+            {isResendingVerification ? 'Sending verification link...' : 'Resend verification email'}
+          </button>
+
           <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
             Don't have an account?{' '}
             <Link href="/register" className="text-primary hover:text-primary-700 font-medium">
@@ -174,5 +252,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

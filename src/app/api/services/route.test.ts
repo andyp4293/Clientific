@@ -124,6 +124,20 @@ describe('POST /api/services', () => {
     expect(res.status).toBe(400);
   });
 
+  it('returns 400 when service text contains disallowed content', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        subscriptionPlan: 'starter',
+        _count: { customers: 0, staff: 0, services: 0 },
+      });
+    const res = await POST(makeRequest({ name: 'Nude package', duration: 30 }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/disallowed content/i);
+  });
+
   it('creates service successfully when active and under limit', async () => {
     mockSession.mockResolvedValue(activeSession);
     mockBusiness

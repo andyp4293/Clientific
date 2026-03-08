@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { formatPhoneNumber } from "@/lib/utils";
 import { requireActiveSubscription, checkPlanLimit } from "@/lib/subscription";
 import { revalidateTag } from "next/cache";
+import { blockedContentError, getBlockedFieldLabel } from "@/lib/moderation";
 
 // GET /api/customers - List all customers
 export async function GET(request: NextRequest) {
@@ -81,6 +82,17 @@ export async function POST(request: NextRequest) {
     if (!name || name.trim().length === 0) {
       return NextResponse.json(
         { error: "Name is required" },
+        { status: 400 }
+      );
+    }
+
+    const blockedField = getBlockedFieldLabel([
+      { label: 'Customer name', value: name },
+      { label: 'Notes', value: notes },
+    ]);
+    if (blockedField) {
+      return NextResponse.json(
+        { error: blockedContentError(blockedField) },
         { status: 400 }
       );
     }

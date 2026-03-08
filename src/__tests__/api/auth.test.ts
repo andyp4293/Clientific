@@ -26,6 +26,7 @@ vi.mock('@/lib/utils', () => ({
 
 vi.mock('@/lib/email', () => ({
   sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined),
+  sendEmailVerificationEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('next/cache', () => ({
@@ -54,11 +55,13 @@ vi.mock('crypto', async (importOriginal) => {
 
 import { prisma } from '@/lib/prisma';
 import { hashPassword, verifyPassword, generateSlug, generatePublicBusinessId } from '@/lib/utils';
-import { sendPasswordResetEmail } from '@/lib/email';
+import { sendEmailVerificationEmail, sendPasswordResetEmail } from '@/lib/email';
 import { POST as registerPOST } from '@/app/api/auth/register/route';
 import { POST as forgotPasswordPOST } from '@/app/api/auth/forgot-password/route';
 import { POST as resetPasswordPOST } from '@/app/api/auth/reset-password/route';
 import { POST as checkEmailPOST } from '@/app/api/auth/check-email/route';
+import { POST as sendVerifyEmailPOST } from '@/app/api/auth/verify-email/send/route';
+import { POST as confirmVerifyEmailPOST } from '@/app/api/auth/verify-email/confirm/route';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -73,6 +76,7 @@ const mockVerifyPassword = verifyPassword as ReturnType<typeof vi.fn>;
 const mockGenerateSlug = generateSlug as ReturnType<typeof vi.fn>;
 const mockGeneratePublicId = generatePublicBusinessId as ReturnType<typeof vi.fn>;
 const mockSendResetEmail = sendPasswordResetEmail as ReturnType<typeof vi.fn>;
+const mockSendVerificationEmail = sendEmailVerificationEmail as ReturnType<typeof vi.fn>;
 
 function req(url: string, body: Record<string, unknown>) {
   return new NextRequest(`http://localhost${url}`, {
@@ -89,6 +93,7 @@ const MOCK_BUSINESS = {
   slug: 'test-business',
   publicId: 'pub-abc123',
   passwordHash: 'hashed-password',
+  emailVerifiedAt: new Date('2026-01-01T00:00:00.000Z'),
   resetToken: null,
   resetTokenExpiry: null,
   subscriptionStatus: 'active',
@@ -108,7 +113,7 @@ beforeEach(() => {
 describe('POST /api/auth/register', () => {
   const validBody = {
     email: 'new@example.com',
-    password: 'password123',
+    password: 'Password123!',
     businessName: 'My Business',
     phone: '+19085551234',
     businessType: 'salon',
@@ -143,6 +148,7 @@ describe('POST /api/auth/register', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
+    expect(body.requiresEmailVerification).toBe(true);
     expect(body.business.email).toBe('owner@example.com');
   });
 
@@ -164,10 +170,20 @@ describe('POST /api/auth/register', () => {
     mockHoursCreate.mockResolvedValue({});
 
     await registerPOST(req('/api/auth/register', validBody));
-    expect(mockHashPassword).toHaveBeenCalledWith('password123');
+    expect(mockHashPassword).toHaveBeenCalledWith('Password123!');
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ passwordHash: 'hashed-password' }) })
     );
+  });
+
+  it('sends verification email after account creation', async () => {
+    mockFindUnique.mockResolvedValue(null);
+    mockCreate.mockResolvedValue(MOCK_BUSINESS);
+    mockHoursCreate.mockResolvedValue({});
+
+    const res = await registerPOST(req('/api/auth/register', validBody));
+    expect(res.status).toBe(200);
+    expect(mockSendVerificationEmail).toHaveBeenCalledWith('owner@example.com', expect.any(String));
   });
 
   it('sets subscriptionStatus to trialing and creates trial end date', async () => {
@@ -403,6 +419,70 @@ describe('POST /api/auth/check-email', () => {
 // have it use Vitest mocks. We test the identical business logic directly — the
 // same prisma and verifyPassword calls that the real authorize makes.
 
+describe('POST /api/auth/verify-email/send', () => {
+  it('returns 400 for invalid email', async () => {
+    const res = await sendVerifyEmailPOST(req('/api/auth/verify-email/send', { email: 'bad-email' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns generic success when account is not found', async () => {
+    mockFindUnique.mockResolvedValue(null);
+    const res = await sendVerifyEmailPOST(req('/api/auth/verify-email/send', { email: 'nobody@example.com' }));
+    expect(res.status).toBe(200);
+    expect(mockSendVerificationEmail).not.toHaveBeenCalled();
+  });
+
+  it('rotates token and sends email when account exists and is unverified', async () => {
+    mockFindUnique.mockResolvedValue({ id: 'biz-1', email: 'owner@example.com', emailVerifiedAt: null });
+    mockUpdate.mockResolvedValue({});
+
+    const res = await sendVerifyEmailPOST(req('/api/auth/verify-email/send', { email: 'owner@example.com' }));
+    expect(res.status).toBe(200);
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'biz-1' },
+        data: expect.objectContaining({
+          emailVerificationTokenHash: expect.any(String),
+          emailVerificationTokenExpiry: expect.any(Date),
+          verificationSentAt: expect.any(Date),
+        }),
+      })
+    );
+    expect(mockSendVerificationEmail).toHaveBeenCalledWith('owner@example.com', expect.any(String));
+  });
+});
+
+describe('POST /api/auth/verify-email/confirm', () => {
+  it('returns 400 when token is missing', async () => {
+    const res = await confirmVerifyEmailPOST(req('/api/auth/verify-email/confirm', {}));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when token is invalid or expired', async () => {
+    mockFindFirst.mockResolvedValue(null);
+    const res = await confirmVerifyEmailPOST(req('/api/auth/verify-email/confirm', { token: 'valid-token-1234567890' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('marks business as verified for a valid token', async () => {
+    mockFindFirst.mockResolvedValue({ id: 'biz-1', email: 'owner@example.com' });
+    mockUpdate.mockResolvedValue({});
+
+    const res = await confirmVerifyEmailPOST(req('/api/auth/verify-email/confirm', { token: 'valid-token-1234567890' }));
+    expect(res.status).toBe(200);
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'biz-1' },
+        data: expect.objectContaining({
+          emailVerifiedAt: expect.any(Date),
+          emailVerificationTokenHash: null,
+          emailVerificationTokenExpiry: null,
+        }),
+      })
+    );
+  });
+});
+
 async function runAuthorize(credentials: { email: string; password: string } | undefined) {
   if (!credentials?.email || !credentials?.password) {
     throw new Error('Please enter your email and password');
@@ -420,6 +500,10 @@ async function runAuthorize(credentials: { email: string; password: string } | u
 
   if (!isValid) {
     throw new Error('Email or password is incorrect');
+  }
+
+  if (!(business as any).emailVerifiedAt) {
+    throw new Error('EmailNotVerified');
   }
 
   return {
@@ -454,6 +538,14 @@ describe('NextAuth sign-in (authorize logic)', () => {
     ).rejects.toThrow(/email or password is incorrect/i);
   });
 
+  it('throws when email is not verified', async () => {
+    mockFindUnique.mockResolvedValue({ ...MOCK_BUSINESS, emailVerifiedAt: null });
+    mockVerifyPassword.mockResolvedValue(true);
+    await expect(runAuthorize({ email: 'owner@example.com', password: 'correct' })).rejects.toThrow(
+      /EmailNotVerified/
+    );
+  });
+
   it('returns user object when credentials are correct', async () => {
     mockFindUnique.mockResolvedValue(MOCK_BUSINESS);
     mockVerifyPassword.mockResolvedValue(true);
@@ -476,8 +568,8 @@ describe('NextAuth sign-in (authorize logic)', () => {
   });
 
   it('authOptions is configured with credentials provider', () => {
-    expect(authOptions.providers).toHaveLength(1);
-    expect((authOptions.providers[0] as any).type).toBe('credentials');
+    expect(authOptions.providers.length).toBeGreaterThanOrEqual(1);
+    expect(authOptions.providers.some((provider) => (provider as any).type === 'credentials')).toBe(true);
     expect(authOptions.session?.strategy).toBe('jwt');
     expect(authOptions.pages?.signIn).toBe('/login');
   });
