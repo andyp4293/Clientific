@@ -1,3 +1,4 @@
+import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
 // Mock next/cache globally — unstable_cache and revalidateTag are used in

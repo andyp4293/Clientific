@@ -174,7 +174,7 @@ export default function ReferralsPage() {
         <div className="flex items-center gap-2 mb-4">
           <Users className="w-4 h-4 text-gray-500" />
           <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Your referrals</h2>
-          {data && data.referrals.length > 0 && (
+          {data && data.referrals?.length > 0 && (
             <span className="ml-auto text-xs text-gray-400">{data.referrals.length} total</span>
           )}
         </div>
@@ -191,7 +191,7 @@ export default function ReferralsPage() {
               </div>
             ))}
           </div>
-        ) : !data?.referrals.length ? (
+        ) : !data?.referrals?.length ? (
           <div className="text-center py-10">
             <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-3">
               <Gift className="w-7 h-7 text-gray-300 dark:text-gray-600" />

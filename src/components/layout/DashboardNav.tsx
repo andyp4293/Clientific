@@ -97,7 +97,7 @@ export function DashboardNav() {
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-6 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-3 py-3 space-y-px">
         {navigation.map((item) => {
           // Exact match for Dashboard, Settings, and Billing; prefix match for others
           const exactMatch = ['/dashboard', '/dashboard/settings', '/dashboard/settings/billing', '/dashboard/referrals', '/dashboard/redeem'];
@@ -108,7 +108,7 @@ export function DashboardNav() {
             <Link
               key={item.name}
               href={item.href}
-              className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all ${
+              className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all ${
                 isActive
                   ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white'
                   : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100'
