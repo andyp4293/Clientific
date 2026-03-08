@@ -7,7 +7,7 @@ import CustomerList from "@/components/customers/CustomerList";
 export default async function CustomersPage({
   searchParams,
 }: {
-  searchParams: { search?: string; segment?: string };
+  searchParams: Promise<{ search?: string; segment?: string }>;
 }) {
   const session = await getServerSession(authOptions);
 
@@ -16,22 +16,23 @@ export default async function CustomersPage({
   }
 
   const businessId = session.user.businessId;
+  const params = await searchParams;
 
   // Build where clause
   const where: any = { businessId };
 
   // Search filter
-  if (searchParams.search) {
+  if (params.search) {
     where.OR = [
-      { name: { contains: searchParams.search, mode: "insensitive" } },
-      { email: { contains: searchParams.search, mode: "insensitive" } },
-      { phone: { contains: searchParams.search, mode: "insensitive" } },
+      { name: { contains: params.search, mode: "insensitive" } },
+      { email: { contains: params.search, mode: "insensitive" } },
+      { phone: { contains: params.search, mode: "insensitive" } },
     ];
   }
 
   // Segment filter
-  if (searchParams.segment) {
-    where.segment = searchParams.segment;
+  if (params.segment) {
+    where.segment = params.segment;
   }
   const [customers, segmentCounts] = await Promise.all([
     prisma.customer.findMany({
@@ -56,8 +57,8 @@ export default async function CustomersPage({
       <CustomerList
         customers={customers}
         segmentCounts={segmentCounts}
-        initialSearch={searchParams.search}
-        initialSegment={searchParams.segment}
+        initialSearch={params.search}
+        initialSegment={params.segment}
       />
     </div>
   );
