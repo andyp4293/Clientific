@@ -26,6 +26,18 @@ const nextConfig = {
         destination: 'https://clientific.app/:path*',
         permanent: true,
       },
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'clientell.io' }],
+        destination: 'https://clientific.app/:path*',
+        permanent: true,
+      },
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.clientell.io' }],
+        destination: 'https://clientific.app/:path*',
+        permanent: true,
+      },
     ];
   },
   experimental: {
