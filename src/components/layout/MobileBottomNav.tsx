@@ -46,6 +46,15 @@ const morePages = [
     )
   },
   {
+    name: 'Redeem',
+    href: '/dashboard/redeem',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4h4v4H4V4zm12 0h4v4h-4V4zM4 16h4v4H4v-4zm12 3.5V16M4 12h4m4 0h.01M12 12h4.01M16 20h4M20 16h-4m0 4v-4" />
+      </svg>
+    )
+  },
+  {
     name: 'Services',
     href: '/dashboard/services',
     icon: (

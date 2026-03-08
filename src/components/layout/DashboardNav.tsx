@@ -12,6 +12,7 @@ const navigation = [
   { name: 'Services & Staff', href: '/dashboard/services', icon: 'briefcase' },
   { name: 'Customers', href: '/dashboard/customers', icon: 'users' },
   { name: 'Deals', href: '/dashboard/campaigns', icon: 'tag' },
+  { name: 'Redeem', href: '/dashboard/redeem', icon: 'scan' },
   { name: 'Business Hours', href: '/dashboard/business-hours', icon: 'clock' },
   { name: 'Refer & Earn', href: '/dashboard/referrals', icon: 'gift' },
   { name: 'Billing', href: '/dashboard/settings/billing', icon: 'creditcard' },
@@ -82,6 +83,11 @@ const icons: Record<string, ReactElement> = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 8V5a2 2 0 012-2h2z" />
     </svg>
   ),
+  scan: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4h4v4H4V4zm12 0h4v4h-4V4zM4 16h4v4H4v-4zm12 3.5V16M4 12h4m4 0h.01M12 12h4.01M16 20h4M20 16h-4m0 4v-4" />
+    </svg>
+  ),
 };
 
 export function DashboardNav() {
@@ -94,7 +100,7 @@ export function DashboardNav() {
       <nav className="flex-1 px-3 py-6 space-y-0.5 overflow-y-auto">
         {navigation.map((item) => {
           // Exact match for Dashboard, Settings, and Billing; prefix match for others
-          const exactMatch = ['/dashboard', '/dashboard/settings', '/dashboard/settings/billing', '/dashboard/referrals'];
+          const exactMatch = ['/dashboard', '/dashboard/settings', '/dashboard/settings/billing', '/dashboard/referrals', '/dashboard/redeem'];
           const isActive = exactMatch.includes(item.href)
             ? pathname === item.href
             : pathname === item.href || pathname.startsWith(item.href + '/');

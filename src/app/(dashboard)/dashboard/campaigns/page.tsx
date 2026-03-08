@@ -18,7 +18,11 @@ interface Deal {
   redemptionCount: number;
   active: boolean;
   createdAt: string;
-  redemptions: { id: string; code: string; createdAt: string; usedAt: string | null }[];
+  notifiedAt: string | null;
+  platformFeePercent: number;
+  revenueTracked: number;
+  platformFeesOwed: number;
+  redemptions: { id: string; code: string; createdAt: string; usedAt: string | null; transactionAmount: number | null; platformFee: number | null }[];
 }
 
 function discountLabel(deal: Deal) {
@@ -114,6 +118,19 @@ export default function DealsPage() {
       toast.success('Deal deleted');
     },
     onError: () => toast.error('Failed to delete deal'),
+  });
+
+  const notifyMutation = useMutation({
+    mutationFn: async (dealId: string) => {
+      const res = await fetch(`/api/deals/${dealId}/notify`, { method: 'POST' });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Failed'); }
+      return res.json() as Promise<{ sent: number }>;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['deals'] });
+      toast.success(`Sent to ${data.sent} customer${data.sent !== 1 ? 's' : ''}`);
+    },
+    onError: (e: any) => toast.error(e.message || 'Failed to notify customers'),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -313,13 +330,37 @@ export default function DealsPage() {
                     <span>{deal.redemptionCount}{deal.maxRedemptions ? ` / ${deal.maxRedemptions}` : ''} claimed</span>
                   </div>
 
-                  {/* Codes button */}
-                  <button
-                    onClick={() => setExpandedDeal(isExpanded ? null : deal.id)}
-                    className="text-xs text-primary hover:text-primary/80 font-semibold transition-colors"
-                  >
-                    {isExpanded ? 'Hide codes' : `View codes (${deal.redemptions.length})`}
-                  </button>
+                  {/* Revenue stats */}
+                  {deal.revenueTracked > 0 && (
+                    <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 mb-3">
+                      <span>Revenue tracked: <span className="font-semibold text-gray-700 dark:text-gray-300">${deal.revenueTracked.toFixed(2)}</span></span>
+                      <span className="text-gray-300 dark:text-gray-600">·</span>
+                      <span>Platform fees: <span className="font-semibold text-gray-700 dark:text-gray-300">${deal.platformFeesOwed.toFixed(2)}</span></span>
+                    </div>
+                  )}
+
+                  {/* Bottom row: codes button + notify button */}
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <button
+                      onClick={() => setExpandedDeal(isExpanded ? null : deal.id)}
+                      className="text-xs text-primary hover:text-primary/80 font-semibold transition-colors"
+                    >
+                      {isExpanded ? 'Hide codes' : `View codes (${deal.redemptions.length})`}
+                    </button>
+
+                    {deal.active && (!deal.notifiedAt || Date.now() - new Date(deal.notifiedAt).getTime() > 7 * 24 * 60 * 60 * 1000) && (
+                      <button
+                        onClick={() => notifyMutation.mutate(deal.id)}
+                        disabled={notifyMutation.isPending}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-60"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                        </svg>
+                        {notifyMutation.isPending ? 'Sending...' : 'Notify Customers'}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Expanded codes */}

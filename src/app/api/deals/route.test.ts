@@ -61,7 +61,7 @@ describe('GET /api/deals', () => {
 
   it('returns deals for authenticated business', async () => {
     mockSession.mockResolvedValue(activeSession);
-    mockDealFindMany.mockResolvedValue([{ id: 'deal-1', title: '20% Off' }]);
+    mockDealFindMany.mockResolvedValue([{ id: 'deal-1', title: '20% Off', redemptions: [] }]);
     const res = await GET();
     expect(res.status).toBe(200);
     const body = await res.json();

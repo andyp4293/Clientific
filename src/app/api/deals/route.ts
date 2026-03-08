@@ -20,7 +20,13 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json({ deals });
+    const withStats = deals.map(deal => ({
+      ...deal,
+      revenueTracked: deal.redemptions.reduce((s: number, r: any) => s + (r.transactionAmount ?? 0), 0),
+      platformFeesOwed: deal.redemptions.reduce((s: number, r: any) => s + (r.platformFee ?? 0), 0),
+    }));
+
+    return NextResponse.json({ deals: withStats });
   } catch (error: any) {
     console.error('GET /api/deals error:', error);
     return NextResponse.json({ error: 'Failed to fetch deals' }, { status: 500 });

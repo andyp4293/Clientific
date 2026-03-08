@@ -1,0 +1,68 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { prisma } from '@/lib/prisma';
+import { requireActiveSubscription } from '@/lib/subscription';
+import { sendSMS, formatPhoneNumber } from '@/lib/twilio';
+import { APP_URL } from '@/lib/brand';
+
+export async function POST(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const subscriptionError = await requireActiveSubscription(session.user.id);
+    if (subscriptionError) return subscriptionError;
+
+    const deal = await prisma.deal.findUnique({
+      where: { id },
+      include: { business: { select: { name: true, slug: true } } },
+    });
+
+    if (!deal) {
+      return NextResponse.json({ error: 'Deal not found' }, { status: 404 });
+    }
+
+    if (deal.businessId !== session.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    if (!deal.active) {
+      return NextResponse.json({ error: 'Deal is not active' }, { status: 400 });
+    }
+
+    const customers = await prisma.customer.findMany({
+      where: {
+        businessId: session.user.id,
+        smsConsent: true,
+        smsOptedOut: false,
+        phone: { not: null },
+      },
+      select: { phone: true },
+    });
+
+    const message = `${deal.business.name}: ${deal.title} -- claim your deal: ${APP_URL}/book/${deal.business.slug}?deal=${deal.id}`;
+
+    const results = await Promise.allSettled(
+      customers.map(c => sendSMS({ to: formatPhoneNumber(c.phone!), message }))
+    );
+
+    const sent = results.filter(r => r.status === 'fulfilled').length;
+
+    await prisma.deal.update({
+      where: { id: deal.id },
+      data: { notifiedAt: new Date() } as any,
+    });
+
+    return NextResponse.json({ sent, dealId: deal.id });
+  } catch (error: any) {
+    console.error('POST /api/deals/[id]/notify error:', error);
+    return NextResponse.json({ error: 'Failed to send notifications' }, { status: 500 });
+  }
+}

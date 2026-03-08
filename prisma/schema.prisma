@@ -349,7 +349,9 @@ model Deal {
   expiresAt       DateTime
   maxRedemptions  Int?
   redemptionCount Int              @default(0)
-  active          Boolean          @default(true)
+  active              Boolean          @default(true)
+  platformFeePercent  Float            @default(15)
+  notifiedAt          DateTime?
   business        Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
   service         Service?         @relation(fields: [serviceId], references: [id])
   redemptions     DealRedemption[]
@@ -363,7 +365,9 @@ model DealRedemption {
   dealId     String
   customerId String?
   code       String    @unique
-  usedAt     DateTime?
+  usedAt            DateTime?
+  transactionAmount Float?
+  platformFee       Float?
   deal       Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
   customer   Customer? @relation(fields: [customerId], references: [id])
 
