@@ -5,6 +5,15 @@ import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 
+function parseDealDate(value: string, endOfDay: boolean): Date | null {
+  const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/;
+  const parsed = dateOnlyPattern.test(value)
+    ? new Date(`${value}T${endOfDay ? '23:59:59.999' : '00:00:00.000'}`)
+    : new Date(value);
+
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -63,6 +72,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'discountValue required for this discount type' }, { status: 400 });
     }
 
+    const parsedStartsAt = parseDealDate(startsAt, false);
+    const parsedExpiresAt = parseDealDate(expiresAt, true);
+    if (!parsedStartsAt || !parsedExpiresAt) {
+      return NextResponse.json({ error: 'Invalid deal dates' }, { status: 400 });
+    }
+    if (parsedExpiresAt <= parsedStartsAt) {
+      return NextResponse.json({ error: 'End date must be after start date' }, { status: 400 });
+    }
+
     const deal = await prisma.deal.create({
       data: {
         businessId: session.user.id,
@@ -71,8 +89,8 @@ export async function POST(req: NextRequest) {
         discountType,
         discountValue: discountType === 'free_service' ? 0 : Number(discountValue),
         serviceId: serviceId || null,
-        startsAt: new Date(startsAt),
-        expiresAt: new Date(expiresAt),
+        startsAt: parsedStartsAt,
+        expiresAt: parsedExpiresAt,
         maxRedemptions: maxRedemptions ? Number(maxRedemptions) : null,
       },
       include: { service: { select: { name: true } } },

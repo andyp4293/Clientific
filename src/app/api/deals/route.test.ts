@@ -118,6 +118,35 @@ describe('POST /api/deals', () => {
     expect(res.status).toBe(400);
   });
 
+  it('returns 400 when date input is invalid', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
+    const res = await POST(
+      makeRequest({
+        ...validDealBody,
+        startsAt: 'not-a-date',
+      })
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/invalid deal dates/i);
+  });
+
+  it('returns 400 when end date is before start date', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
+    const res = await POST(
+      makeRequest({
+        ...validDealBody,
+        startsAt: '2026-03-08',
+        expiresAt: '2026-03-07',
+      })
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/end date must be after start date/i);
+  });
+
   it('creates deal successfully with active subscription', async () => {
     mockSession.mockResolvedValue(activeSession);
     mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
@@ -142,5 +171,34 @@ describe('POST /api/deals', () => {
     mockDealCreate.mockResolvedValue(fakeDeal);
     const res = await POST(makeRequest(freeDeal));
     expect(res.status).toBe(201);
+  });
+
+  it('normalizes date-only inputs to full-day bounds', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
+    mockDealCreate.mockResolvedValue({
+      id: 'deal-3',
+      ...validDealBody,
+      businessId: 'biz-1',
+      service: null,
+    });
+
+    const res = await POST(
+      makeRequest({
+        ...validDealBody,
+        startsAt: '2026-03-08',
+        expiresAt: '2026-03-08',
+      })
+    );
+    expect(res.status).toBe(201);
+
+    const createArgs = mockDealCreate.mock.calls[0][0] as any;
+    const startsAt = createArgs.data.startsAt as Date;
+    const expiresAt = createArgs.data.expiresAt as Date;
+
+    expect(startsAt.getHours()).toBe(0);
+    expect(startsAt.getMinutes()).toBe(0);
+    expect(expiresAt.getHours()).toBe(23);
+    expect(expiresAt.getMinutes()).toBe(59);
   });
 });
