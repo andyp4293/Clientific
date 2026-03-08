@@ -15,7 +15,6 @@ import { GET } from '@/app/api/public/explore/deals/route';
 
 const now = new Date();
 const future = new Date(now.getTime() + 7 * 86400000);
-const past = new Date(now.getTime() - 86400000);
 
 function makeDeal(overrides: Record<string, unknown> = {}) {
   return {
@@ -69,14 +68,84 @@ describe('GET /api/public/explore/deals', () => {
     expect(body.deals).toHaveLength(1);
   });
 
-  it('passes city filter to prisma query', async () => {
+  it('passes location filter to prisma query when city parameter is provided', async () => {
     vi.mocked(prisma.deal.findMany).mockResolvedValue([] as any);
     await GET(req({ city: 'Miami' }));
+
+    const callArgs = vi.mocked(prisma.deal.findMany).mock.calls[0][0] as any;
+    const locationFilters = callArgs.where.business.OR;
+
+    expect(locationFilters).toEqual(
+      expect.arrayContaining([
+        { city: { contains: 'Miami', mode: 'insensitive' } },
+        { state: { contains: 'Miami', mode: 'insensitive' } },
+        { zipCode: { contains: 'Miami', mode: 'insensitive' } },
+      ])
+    );
+  });
+
+  it('supports the location query parameter alias', async () => {
+    vi.mocked(prisma.deal.findMany).mockResolvedValue([] as any);
+    await GET(req({ location: '33101' }));
+
+    const callArgs = vi.mocked(prisma.deal.findMany).mock.calls[0][0] as any;
+    const locationFilters = callArgs.where.business.OR;
+
+    expect(locationFilters).toEqual(
+      expect.arrayContaining([
+        { city: { contains: '33101', mode: 'insensitive' } },
+        { state: { contains: '33101', mode: 'insensitive' } },
+        { zipCode: { contains: '33101', mode: 'insensitive' } },
+      ])
+    );
+  });
+
+  it('normalizes city-like location values that include state suffixes', async () => {
+    vi.mocked(prisma.deal.findMany).mockResolvedValue([] as any);
+    await GET(req({ location: 'Miami, FL' }));
+
+    const callArgs = vi.mocked(prisma.deal.findMany).mock.calls[0][0] as any;
+    const locationFilters = callArgs.where.business.OR;
+
+    expect(locationFilters).toEqual(
+      expect.arrayContaining([
+        { city: { contains: 'Miami', mode: 'insensitive' } },
+        { state: { contains: 'Miami', mode: 'insensitive' } },
+        { zipCode: { contains: 'Miami', mode: 'insensitive' } },
+      ])
+    );
+
+    expect(locationFilters).not.toEqual(
+      expect.arrayContaining([
+        { city: { contains: 'Miami, FL', mode: 'insensitive' } },
+      ])
+    );
+  });
+
+  it('adds a dedicated ZIP filter when a ZIP is embedded in the location text', async () => {
+    vi.mocked(prisma.deal.findMany).mockResolvedValue([] as any);
+    await GET(req({ location: 'Miami FL 33101' }));
+
+    const callArgs = vi.mocked(prisma.deal.findMany).mock.calls[0][0] as any;
+    const locationFilters = callArgs.where.business.OR;
+
+    expect(locationFilters).toEqual(
+      expect.arrayContaining([
+        { city: { contains: 'Miami FL 33101', mode: 'insensitive' } },
+        { zipCode: { contains: '33101', mode: 'insensitive' } },
+      ])
+    );
+  });
+
+  it('does not attach a location OR block when no location is provided', async () => {
+    vi.mocked(prisma.deal.findMany).mockResolvedValue([] as any);
+    await GET(req());
+
     expect(prisma.deal.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          business: expect.objectContaining({
-            city: { contains: 'Miami', mode: 'insensitive' },
+          business: expect.not.objectContaining({
+            OR: expect.anything(),
           }),
         }),
       })

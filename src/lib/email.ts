@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 
 interface NewBookingDetails {
   businessName: string;
@@ -76,7 +77,7 @@ export async function sendNewBookingEmail(businessEmail: string, details: NewBoo
 export async function sendPasswordResetEmail(email: string, token: string) {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const FROM = process.env.RESEND_FROM_EMAIL || 'noreply@clientflow.com';
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://clientflow.vercel.app';
+  const APP_URL = getConfiguredAppBaseUrl();
   const resetUrl = `${APP_URL}/reset-password?token=${token}`;
 
   await resend.emails.send({

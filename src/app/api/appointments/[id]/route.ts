@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { sendAppointmentCancellation, sendAppointmentBusinessConfirmed } from '@/lib/twilio';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { updateCustomerSegment } from '@/lib/segment';
+import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 
 // GET - Get single appointment
 export async function GET(
@@ -155,7 +156,7 @@ export async function PATCH(
       appointment.customer.smsConsent &&
       !appointment.customer.smsOptedOut
     ) {
-      const appBase = (process.env.NEXT_PUBLIC_APP_URL || 'https://clientflow-theta.vercel.app').trim().replace(/\/$/, '');
+      const appBase = getConfiguredAppBaseUrl();
       // Build service name from serviceIds if available
       let serviceName = appointment.service?.name || 'Appointment';
       if (appointment.serviceIds.length > 1) {

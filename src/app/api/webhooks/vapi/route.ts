@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { sendAppointmentConfirmation } from '@/lib/twilio';
 import { localToUTC } from '@/lib/timezone';
+import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -94,7 +95,7 @@ type BusinessData = {
 // ─── Assistant config builder ─────────────────────────────────────────────────
 
 function buildAssistantConfig(business: BusinessData) {
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '');
+  const appUrl = getConfiguredAppBaseUrl();
 
   // Give the AI the actual current date so it doesn't hallucinate past dates
   const now = new Date();
@@ -509,7 +510,7 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
 
   // Send SMS confirmation non-blocking (same template as web booking)
   if (callerPhone) {
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').trim();
+    const appUrl = getConfiguredAppBaseUrl();
     const apptUrl = `${appUrl}/a/${shortId}`;
     sendAppointmentConfirmation(callerPhone, {
       customerName,

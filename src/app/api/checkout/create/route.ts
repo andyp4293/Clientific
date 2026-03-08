@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { stripe, PRICING_PLANS } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
+import { getAppBaseUrlFromRequest } from '@/lib/app-url';
 
 export async function POST(req: NextRequest) {
   try {
@@ -64,7 +65,7 @@ export async function POST(req: NextRequest) {
     const isFirstTime = !business.stripeSubscriptionId;
 
     // Derive base URL — prefer env var, fall back to the request origin
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin).trim().replace(/\/$/, '');
+    const appUrl = getAppBaseUrlFromRequest(req.url);
 
     // Create Checkout Session
     const checkoutSession = await stripe.checkout.sessions.create({

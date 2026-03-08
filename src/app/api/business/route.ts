@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
+import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 
 // ── Vapi helpers ──────────────────────────────────────────────────────────────
 
@@ -154,7 +155,7 @@ export async function PATCH(req: NextRequest) {
     // Vapi operations — only run if VAPI_PRIVATE_KEY is configured
     const vapiUpdates: Record<string, string | null> = {};
     const vapiConfigured = !!process.env.VAPI_PRIVATE_KEY;
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '');
+    const appUrl = getConfiguredAppBaseUrl();
     const serverUrl = `${appUrl}/api/webhooks/vapi`;
 
     if (vapiConfigured && finalEnabled && !current.vapiPhoneNumberId) {

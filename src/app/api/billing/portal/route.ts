@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { stripe } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
+import { getAppBaseUrlFromRequest } from '@/lib/app-url';
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
 
     // Derive base URL — prefer env var, fall back to the request origin
     // so the return_url is always a valid absolute URL (avoids "undefined/..." in prod)
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin).trim().replace(/\/$/, '');
+    const appUrl = getAppBaseUrlFromRequest(req.url);
 
     // Create portal session
     const portalSession = await stripe.billingPortal.sessions.create({

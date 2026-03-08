@@ -4,10 +4,25 @@ import { prisma } from '@/lib/prisma';
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const city = searchParams.get('city')?.trim() || '';
+    const rawLocation = searchParams.get('location')?.trim() || searchParams.get('city')?.trim() || '';
     const category = searchParams.get('category')?.trim() || '';
     const limitParam = parseInt(searchParams.get('limit') || '24', 10);
     const limit = Math.min(Math.max(1, isNaN(limitParam) ? 24 : limitParam), 48);
+
+    const normalizedLocation = rawLocation.split(',')[0].trim();
+    const zipMatch = rawLocation.match(/\b\d{5}(?:-\d{4})?\b/);
+    const zipNeedle = zipMatch?.[0] ?? '';
+
+    const locationFilters: Array<Record<string, unknown>> = [];
+    if (normalizedLocation) {
+      locationFilters.push({ city: { contains: normalizedLocation, mode: 'insensitive' } });
+      locationFilters.push({ state: { contains: normalizedLocation, mode: 'insensitive' } });
+      locationFilters.push({ zipCode: { contains: normalizedLocation, mode: 'insensitive' } });
+    }
+
+    if (zipNeedle && zipNeedle !== normalizedLocation) {
+      locationFilters.push({ zipCode: { contains: zipNeedle, mode: 'insensitive' } });
+    }
 
     const now = new Date();
 
@@ -18,7 +33,7 @@ export async function GET(req: NextRequest) {
         expiresAt: { gt: now },
         business: {
           enableOnlineBooking: true,
-          ...(city ? { city: { contains: city, mode: 'insensitive' } } : {}),
+          ...(locationFilters.length > 0 ? { OR: locationFilters } : {}),
           ...(category && category !== 'all' ? { businessType: category } : {}),
         },
       },
@@ -37,7 +52,6 @@ export async function GET(req: NextRequest) {
       take: limit,
     });
 
-    // Remove maxed-out deals
     const available = deals.filter(
       d => d.maxRedemptions === null || d.redemptionCount < d.maxRedemptions
     );

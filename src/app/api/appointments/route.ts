@@ -7,6 +7,7 @@ import { sendNewBookingEmail } from '@/lib/email';
 import { businessDayStart } from '@/lib/timezone';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { revalidateTag } from 'next/cache';
+import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 
 const businessMidnightUTC = businessDayStart;
 
@@ -217,7 +218,7 @@ export async function POST(req: NextRequest) {
 
     // Send email to business owner (non-blocking)
     if (business.notifyNewBookingEmail !== false) {
-      const appBase = (process.env.NEXT_PUBLIC_APP_URL || 'https://clientflow-theta.vercel.app').trim().replace(/\/$/, '');
+      const appBase = getConfiguredAppBaseUrl();
       sendNewBookingEmail(business.email, {
         businessName: business.name,
         customerName: appointment.customer.name,

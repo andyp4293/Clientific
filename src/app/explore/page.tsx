@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { ArrowRight, Building2, MapPin, Search, Sparkles, Tag } from 'lucide-react';
+import LocationAutocomplete from '@/components/ui/LocationAutocomplete';
 import { APP_NAME } from '@/lib/brand';
 
 interface DealBusiness {
@@ -22,7 +24,7 @@ interface ExploreDeal {
 }
 
 const CATEGORIES = [
-  { value: 'all', label: 'All' },
+  { value: 'all', label: 'All Services' },
   { value: 'nails', label: 'Nails' },
   { value: 'hair', label: 'Hair' },
   { value: 'barber', label: 'Barber' },
@@ -36,10 +38,22 @@ function discountLabel(type: string, value: number): string {
   return 'Free service';
 }
 
+function formatBusinessType(value: string): string {
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function expiresLabel(iso: string): { text: string; urgent: boolean } {
   const diff = new Date(iso).getTime() - Date.now();
   const days = Math.ceil(diff / 86400000);
-  if (days <= 7) return { text: `Expires in ${days} day${days !== 1 ? 's' : ''}`, urgent: true };
+  if (days <= 7) {
+    return {
+      text: `Ends in ${Math.max(1, days)} day${days !== 1 ? 's' : ''}`,
+      urgent: true,
+    };
+  }
+
   return {
     text: `Until ${new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
     urgent: false,
@@ -48,33 +62,42 @@ function expiresLabel(iso: string): { text: string; urgent: boolean } {
 
 function SkeletonCard() {
   return (
-    <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm animate-pulse">
-      <div className="h-4 bg-gray-100 rounded w-3/4 mb-2" />
-      <div className="h-3 bg-gray-100 rounded w-1/2 mb-4" />
-      <div className="h-8 bg-gray-100 rounded w-1/3 mb-3" />
-      <div className="h-9 bg-gray-100 rounded w-full" />
+    <div className="animate-pulse rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      <div className="mb-2 h-4 w-2/3 rounded bg-gray-200 dark:bg-gray-800" />
+      <div className="mb-5 h-3 w-1/3 rounded bg-gray-200 dark:bg-gray-800" />
+      <div className="mb-4 h-4 w-full rounded bg-gray-200 dark:bg-gray-800" />
+      <div className="h-10 w-full rounded-xl bg-gray-200 dark:bg-gray-800" />
     </div>
   );
 }
 
 export default function ExplorePage() {
-  const [city, setCity] = useState('');
+  const [location, setLocation] = useState('');
   const [category, setCategory] = useState('all');
   const [deals, setDeals] = useState<ExploreDeal[]>([]);
   const [loading, setLoading] = useState(true);
   const [searched, setSearched] = useState(false);
+  const [error, setError] = useState('');
 
-  const fetchDeals = async (cityVal: string, catVal: string) => {
+  const fetchDeals = async (locationValue: string, categoryValue: string) => {
     setLoading(true);
+    setError('');
+
     try {
       const params = new URLSearchParams();
-      if (cityVal) params.set('city', cityVal);
-      if (catVal && catVal !== 'all') params.set('category', catVal);
+      if (locationValue.trim()) params.set('location', locationValue.trim());
+      if (categoryValue && categoryValue !== 'all') params.set('category', categoryValue);
+
       const res = await fetch(`/api/public/explore/deals?${params.toString()}`);
+      if (!res.ok) {
+        throw new Error('Failed to load deals');
+      }
+
       const data = await res.json();
-      setDeals(data.deals || []);
+      setDeals(Array.isArray(data.deals) ? data.deals : []);
     } catch {
       setDeals([]);
+      setError('Unable to load deals right now. Please try again in a moment.');
     } finally {
       setLoading(false);
     }
@@ -84,120 +107,211 @@ export default function ExplorePage() {
     fetchDeals('', 'all');
   }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearch = (event: React.FormEvent) => {
+    event.preventDefault();
     setSearched(true);
-    fetchDeals(city, category);
+    fetchDeals(location, category);
   };
 
+  const uniqueBusinessCount = useMemo(
+    () => new Set(deals.map((deal) => deal.business.slug || deal.business.name)).size,
+    [deals]
+  );
+
   return (
-    <div className="min-h-screen bg-white text-gray-900">
-      {/* Header */}
-      <header className="border-b border-gray-200 bg-white sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-lg font-bold text-gray-900">
-            {APP_NAME}
+    <div className="relative min-h-screen overflow-x-hidden bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(123,34,212,0.15),transparent_45%),radial-gradient(circle_at_top_left,rgba(15,23,42,0.06),transparent_35%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(123,34,212,0.22),transparent_45%),radial-gradient(circle_at_top_left,rgba(59,130,246,0.12),transparent_35%)]" />
+
+      <header className="sticky top-0 z-30 border-b border-gray-200/80 bg-white/90 backdrop-blur-md dark:border-gray-800 dark:bg-gray-950/85">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+          <Link href="/" className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white shadow-sm">
+              C
+            </span>
+            <span className="text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-100">{APP_NAME}</span>
           </Link>
-          <Link
-            href="/register"
-            className="text-sm font-semibold text-primary border border-primary/30 px-3 py-1.5 rounded-lg hover:bg-primary/5 transition-colors"
-          >
-            List Your Business
-          </Link>
+
+          <div className="flex items-center gap-2">
+            <Link
+              href="/"
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              Home
+            </Link>
+            <Link
+              href="/register"
+              className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700"
+            >
+              List Your Business
+            </Link>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-10">
-        {/* Hero */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">Deals Near You</h1>
-          <p className="text-gray-500 text-lg">
-            Save on nail, hair, spa, and barber services at businesses in your area.
-          </p>
-        </div>
+      <main className="relative mx-auto max-w-6xl px-4 pb-20 pt-8 sm:px-6 lg:px-8">
+        <section className="mb-8 overflow-hidden rounded-3xl border border-gray-200 bg-white/80 shadow-xl shadow-gray-200/60 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 dark:shadow-black/30">
+          <div className="relative p-6 sm:p-8 lg:p-10">
+            <div className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-primary/15 blur-2xl dark:bg-primary/25" />
+            <div className="pointer-events-none absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-blue-500/10 blur-2xl dark:bg-blue-500/20" />
 
-        {/* Filter bar */}
-        <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 mb-8">
-          <select
-            value={category}
-            onChange={e => setCategory(e.target.value)}
-            className="flex-1 rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
-          >
-            {CATEGORIES.map(c => (
-              <option key={c.value} value={c.value}>{c.label}</option>
-            ))}
-          </select>
-          <input
-            type="text"
-            placeholder="City or zip code"
-            value={city}
-            onChange={e => setCity(e.target.value)}
-            className="flex-1 rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-          <button
-            type="submit"
-            className="px-5 py-2.5 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary-700 transition-colors whitespace-nowrap"
-          >
-            Find Deals
-          </button>
-        </form>
-
-        {/* Results */}
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
-          </div>
-        ) : deals.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-gray-400 text-sm">
-              {searched ? 'No active deals found. Try a different city or category.' : 'No active deals right now. Check back soon.'}
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {deals.map(deal => {
-              const expires = expiresLabel(deal.expiresAt);
-              return (
-                <div
-                  key={deal.id}
-                  className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow flex flex-col"
-                >
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <p className="font-semibold text-gray-900 text-sm leading-snug">{deal.business.name}</p>
-                    <span className="shrink-0 bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-full font-medium capitalize">
-                      {deal.business.businessType}
-                    </span>
-                  </div>
-
-                  {deal.business.city && (
-                    <p className="text-xs text-gray-400 mb-2">{deal.business.city}</p>
-                  )}
-
-                  <p className="text-sm text-gray-700 mb-3 flex-1">{deal.title}</p>
-
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="bg-amber-100 text-amber-800 text-sm font-bold px-2 py-0.5 rounded">
-                      {discountLabel(deal.discountType, deal.discountValue)}
-                    </span>
-                    <span className={`text-xs font-medium ${expires.urgent ? 'text-red-600' : 'text-gray-400'}`}>
-                      {expires.text}
-                    </span>
-                  </div>
-
-                  <a
-                    href={`/d/${deal.id}`}
-                    className="block w-full text-center text-sm font-semibold text-primary border border-primary/40 px-3 py-2 rounded-lg hover:bg-primary/5 transition-colors"
-                  >
-                    Claim Deal
-                  </a>
+            <div className="relative grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
+              <div>
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary dark:border-primary/30 dark:bg-primary/20 dark:text-primary-200">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Curated local promotions
                 </div>
+                <h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl dark:text-gray-100">
+                  Discover trusted deals near you
+                </h1>
+                <p className="mt-3 max-w-2xl text-base text-gray-600 sm:text-lg dark:text-gray-300">
+                  Find limited-time offers from verified salons, spas, and barber shops. Search by city or ZIP and claim in seconds.
+                </p>
+              </div>
+
+              <div className="grid min-w-[220px] gap-3 text-sm">
+                <div className="rounded-2xl border border-gray-200 bg-white/90 px-4 py-3 dark:border-gray-700 dark:bg-gray-900/90">
+                  <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Active deals</div>
+                  <div className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{loading ? '--' : deals.length}</div>
+                </div>
+                <div className="rounded-2xl border border-gray-200 bg-white/90 px-4 py-3 dark:border-gray-700 dark:bg-gray-900/90">
+                  <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Businesses</div>
+                  <div className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{loading ? '--' : uniqueBusinessCount}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <form
+          onSubmit={handleSearch}
+          className="mb-8 rounded-3xl border border-gray-200 bg-white p-5 shadow-lg shadow-gray-200/60 dark:border-gray-800 dark:bg-gray-900 dark:shadow-black/30 sm:p-6"
+        >
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+            <Search className="h-4 w-4" />
+            Search promotions
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {CATEGORIES.map((item) => {
+              const active = category === item.value;
+              return (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => setCategory(item.value)}
+                  className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                    active
+                      ? 'border-primary bg-primary text-white shadow-sm'
+                      : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  {item.label}
+                </button>
               );
             })}
           </div>
-        )}
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+            <div className="relative">
+              <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+              <LocationAutocomplete
+                value={location}
+                onChange={setLocation}
+                inputClassName="h-12 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-4 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-500"
+                className="w-full"
+                placeholder="Search by city or ZIP"
+              />
+            </div>
+            <button
+              type="submit"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-white transition-colors hover:bg-primary-700"
+            >
+              Find Deals
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </form>
+
+        <section>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Available Deals</h2>
+            {!loading && (
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {deals.length} result{deals.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+
+          {loading ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <SkeletonCard key={index} />
+              ))}
+            </div>
+          ) : error ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center dark:border-amber-900/60 dark:bg-amber-950/30">
+              <p className="text-sm text-amber-700 dark:text-amber-200">{error}</p>
+            </div>
+          ) : deals.length === 0 ? (
+            <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center dark:border-gray-800 dark:bg-gray-900">
+              <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-800">
+                <Building2 className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+              </div>
+              <p className="text-base font-medium text-gray-900 dark:text-gray-100">No active deals found</p>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {searched
+                  ? 'Try another city, ZIP, or category to expand your results.'
+                  : 'There are no active deals right now. Check back soon.'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {deals.map((deal) => {
+                const expires = expiresLabel(deal.expiresAt);
+
+                return (
+                  <article
+                    key={deal.id}
+                    className="group flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{deal.business.name}</p>
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{deal.business.city || 'Location available on claim'}</p>
+                      </div>
+                      <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-[11px] font-semibold text-primary dark:border-primary/35 dark:bg-primary/20 dark:text-primary-200">
+                        {formatBusinessType(deal.business.businessType)}
+                      </span>
+                    </div>
+
+                    <p className="mt-4 flex-1 text-sm leading-relaxed text-gray-700 dark:text-gray-300">{deal.title}</p>
+
+                    <div className="mt-5 flex items-center justify-between gap-3">
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                        <Tag className="h-3.5 w-3.5" />
+                        {discountLabel(deal.discountType, deal.discountValue)}
+                      </span>
+                      <span className={`text-xs font-medium ${expires.urgent ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                        {expires.text}
+                      </span>
+                    </div>
+
+                    <Link
+                      href={`/d/${deal.id}`}
+                      className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-900 transition-colors group-hover:border-primary group-hover:text-primary dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:group-hover:border-primary dark:group-hover:text-primary-200"
+                    >
+                      View Deal
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </main>
 
-      <footer className="text-center py-8 text-xs text-gray-400">
+      <footer className="relative border-t border-gray-200 py-8 text-center text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
         Powered by {APP_NAME}
       </footer>
     </div>

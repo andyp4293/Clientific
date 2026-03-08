@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 
 export async function GET(
   _req: NextRequest,
@@ -12,7 +13,7 @@ export async function GET(
     select: { id: true },
   });
 
-  const base = process.env.NEXT_PUBLIC_APP_URL || 'https://clientflow-theta.vercel.app';
+  const base = getConfiguredAppBaseUrl();
 
   if (!appointment) {
     return NextResponse.redirect(`${base}/`);

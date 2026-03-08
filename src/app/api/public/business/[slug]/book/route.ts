@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendAppointmentConfirmation, formatPhoneNumber } from '@/lib/twilio';
 import { sendNewBookingEmail } from '@/lib/email';
+import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 
 // POST - Create public booking (no auth required)
 export async function POST(
@@ -242,7 +243,7 @@ export async function POST(
     }
 
     // Send SMS confirmation only if customer consented
-    const appBase = (process.env.NEXT_PUBLIC_APP_URL || 'https://clientflow-theta.vercel.app').trim().replace(/\/$/, '');
+    const appBase = getConfiguredAppBaseUrl();
     const appointmentUrl = `${appBase}/a/${shortId}`;
     const serviceName = services.map(s => s.name).join(', ');
     let smsResult = null;
@@ -267,7 +268,7 @@ export async function POST(
 
     // Send email to business owner (non-blocking)
     if (business.notifyNewBookingEmail !== false) {
-      const appBase = (process.env.NEXT_PUBLIC_APP_URL || 'https://clientflow-theta.vercel.app').trim().replace(/\/$/, '');
+      const appBase = getConfiguredAppBaseUrl();
       sendNewBookingEmail(business.email, {
         businessName: business.name,
         customerName: customer.name,

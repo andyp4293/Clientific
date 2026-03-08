@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generateVoiceResponse } from '@/lib/openai';
+import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 
 // Shared conversation store (same instance as parent route within same function container)
 const conversationStore = new Map<string, Array<{ role: 'user' | 'assistant'; content: string }>>();
@@ -112,7 +113,8 @@ export async function POST(req: NextRequest) {
   const location = [business.street, business.city, business.state].filter(Boolean).join(', ') || 'Location not listed.';
 
   // Build booking URL
-  const bookingUrl = `${process.env.NEXT_PUBLIC_APP_URL}/book/${business.publicId}`;
+  const appBase = getConfiguredAppBaseUrl();
+  const bookingUrl = `${appBase}/book/${business.publicId}`;
 
   // FAQ
   const faqItems = (business.aiReceptionistFaq as { question: string; answer: string }[] | null ?? []).filter(f => f.question && f.answer);
@@ -170,7 +172,7 @@ Your job:
     }
   }
 
-  const processUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/twilio-voice/process?publicId=${publicId}&callSid=${callSid}`;
+  const processUrl = `${appBase}/api/webhooks/twilio-voice/process?publicId=${publicId}&callSid=${callSid}`;
 
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
