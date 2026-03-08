@@ -31,6 +31,10 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function fmtDateShort(iso: string) {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 const defaultForm = {
   title: '',
   description: '',
@@ -121,21 +125,22 @@ export default function DealsPage() {
   const labelClass = 'block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1';
 
   return (
-    <div className="p-6 max-w-4xl space-y-6">
+    <div className="p-4 md:p-6 max-w-4xl pb-28 md:pb-8 space-y-4 md:space-y-6">
+      {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Deals</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Create time-limited promotions that appear on your booking page.</p>
         </div>
-        <button onClick={() => setShowForm(v => !v)} className="btn-primary text-sm shrink-0">
-          {showForm ? 'Cancel' : (
+        <button onClick={() => setShowForm(v => !v)} className="btn-primary text-sm shrink-0 flex items-center gap-1.5">
+          {showForm ? (
+            'Cancel'
+          ) : (
             <>
-              <span className="hidden sm:inline">+ New Deal</span>
-              <span className="sm:hidden">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </span>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="hidden sm:inline">New Deal</span>
             </>
           )}
         </button>
@@ -143,7 +148,7 @@ export default function DealsPage() {
 
       {/* Create form */}
       {showForm && (
-        <div className="card p-6">
+        <div className="card p-5 md:p-6">
           <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">New Deal</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -240,7 +245,7 @@ export default function DealsPage() {
       {/* Deals list */}
       {isLoading ? (
         <div className="space-y-3">
-          {[1, 2].map(i => <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse" />)}
+          {[1, 2].map(i => <div key={i} className="h-28 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" />)}
         </div>
       ) : deals.length === 0 ? (
         <div className="card p-12 text-center">
@@ -258,79 +263,89 @@ export default function DealsPage() {
 
             return (
               <div key={deal.id} className="card overflow-hidden">
-                <div className="p-5 flex items-start gap-4">
-                  <div className="flex-shrink-0 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold px-2.5 py-1 rounded-lg whitespace-nowrap mt-0.5">
-                    {discountLabel(deal)}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
+                <div className="p-4 md:p-5">
+                  {/* Top row: badge + status tags */}
+                  <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{deal.title}</p>
+                      <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold px-2.5 py-1 rounded-lg whitespace-nowrap">
+                        {discountLabel(deal)}
+                      </span>
                       {isExpired && <span className="text-xs text-red-500 font-medium">Expired</span>}
                       {isFull && !isExpired && <span className="text-xs text-gray-400 font-medium">Max reached</span>}
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      {deal.service?.name ?? 'Any service'} · {fmtDate(deal.startsAt)} – {fmtDate(deal.expiresAt)}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      {deal.redemptionCount}{deal.maxRedemptions ? ` / ${deal.maxRedemptions}` : ''} claimed
-                    </p>
-                  </div>
 
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    <button
-                      onClick={() => setExpandedDeal(isExpanded ? null : deal.id)}
-                      className="text-xs text-primary hover:underline font-medium"
-                    >
-                      {isExpanded ? 'Hide codes' : `Codes (${deal.redemptions.length})`}
-                    </button>
-
-                    <button
-                      onClick={() => toggleMutation.mutate({ id: deal.id, active: !deal.active })}
-                      title={deal.active ? 'Active — click to deactivate' : 'Inactive — click to activate'}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${deal.active ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'}`}
-                    >
-                      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${deal.active ? 'translate-x-4' : 'translate-x-1'}`} />
-                    </button>
-
-                    {confirmDelete === deal.id ? (
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => deleteMutation.mutate(deal.id)} disabled={deleteMutation.isPending} className="text-xs text-red-600 font-medium hover:underline">Confirm</button>
-                        <button onClick={() => setConfirmDelete(null)} className="text-xs text-gray-500 hover:underline">Cancel</button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setConfirmDelete(deal.id)} className="text-gray-400 hover:text-red-500 transition-colors" title="Delete">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                    {/* Toggle + Delete — always top-right */}
+                    <div className="flex items-center gap-3 shrink-0">
+                      <button
+                        onClick={() => toggleMutation.mutate({ id: deal.id, active: !deal.active })}
+                        title={deal.active ? 'Active — click to deactivate' : 'Inactive — click to activate'}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 ${deal.active ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'}`}
+                      >
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${deal.active ? 'translate-x-4' : 'translate-x-1'}`} />
                       </button>
-                    )}
+
+                      {confirmDelete === deal.id ? (
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => deleteMutation.mutate(deal.id)} disabled={deleteMutation.isPending} className="text-xs text-red-600 font-semibold hover:underline">Delete</button>
+                          <button onClick={() => setConfirmDelete(null)} className="text-xs text-gray-400 hover:underline">Cancel</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setConfirmDelete(deal.id)} className="text-gray-400 hover:text-red-500 transition-colors" title="Delete">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Title */}
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-snug mb-1.5">
+                    {deal.title}
+                  </p>
+
+                  {/* Meta row */}
+                  <div className="flex items-center gap-x-3 gap-y-1 flex-wrap text-xs text-gray-500 dark:text-gray-400 mb-3">
+                    <span>{deal.service?.name ?? 'Any service'}</span>
+                    <span className="text-gray-300 dark:text-gray-600">·</span>
+                    <span>{fmtDateShort(deal.startsAt)} – {fmtDateShort(deal.expiresAt)}</span>
+                    <span className="text-gray-300 dark:text-gray-600">·</span>
+                    <span>{deal.redemptionCount}{deal.maxRedemptions ? ` / ${deal.maxRedemptions}` : ''} claimed</span>
+                  </div>
+
+                  {/* Codes button */}
+                  <button
+                    onClick={() => setExpandedDeal(isExpanded ? null : deal.id)}
+                    className="text-xs text-primary hover:text-primary/80 font-semibold transition-colors"
+                  >
+                    {isExpanded ? 'Hide codes' : `View codes (${deal.redemptions.length})`}
+                  </button>
                 </div>
 
+                {/* Expanded codes */}
                 {isExpanded && (
-                  <div className="border-t border-gray-100 dark:border-gray-700 px-5 py-4">
+                  <div className="border-t border-gray-100 dark:border-gray-700 px-4 md:px-5 py-4">
                     {deal.redemptions.length === 0 ? (
                       <p className="text-xs text-gray-400 dark:text-gray-500">No codes claimed yet.</p>
                     ) : (
-                      <table className="min-w-full text-xs">
-                        <thead>
-                          <tr className="text-left text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                            <th className="pb-2 pr-8 font-semibold">Code</th>
-                            <th className="pb-2 pr-8 font-semibold">Claimed</th>
-                            <th className="pb-2 font-semibold">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
-                          {deal.redemptions.map(r => (
-                            <tr key={r.id}>
-                              <td className="py-2 pr-8 font-mono font-bold text-gray-900 dark:text-gray-100 tracking-widest">{r.code}</td>
-                              <td className="py-2 pr-8 text-gray-500 dark:text-gray-400">{fmtDate(r.createdAt)}</td>
-                              <td className="py-2">{r.usedAt ? <span className="text-green-600 dark:text-green-400 font-medium">Used</span> : <span className="text-gray-400">Pending</span>}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                      <div className="space-y-2">
+                        {/* Header */}
+                        <div className="grid grid-cols-3 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider pb-1">
+                          <span>Code</span>
+                          <span>Claimed</span>
+                          <span>Status</span>
+                        </div>
+                        {deal.redemptions.map(r => (
+                          <div key={r.id} className="grid grid-cols-3 text-xs py-1.5 border-t border-gray-100 dark:border-gray-700/50">
+                            <span className="font-mono font-bold text-gray-900 dark:text-gray-100 tracking-widest">{r.code}</span>
+                            <span className="text-gray-500 dark:text-gray-400">{fmtDateShort(r.createdAt)}</span>
+                            <span>{r.usedAt
+                              ? <span className="text-green-600 dark:text-green-400 font-semibold">Used</span>
+                              : <span className="text-gray-400">Pending</span>}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 )}
