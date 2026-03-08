@@ -120,6 +120,7 @@ export default function HomePage() {
             <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{APP_NAME}</span>
           </div>
           <nav className="hidden md:flex items-center space-x-8">
+            <Link href="/explore" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">Explore Deals</Link>
             <a href="#features" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">Features</a>
             <a href="#how-it-works" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">How It Works</a>
             <a href="#pricing" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">Pricing</a>
@@ -194,6 +195,12 @@ export default function HomePage() {
                     style={{ boxShadow: '0 0 40px rgba(123,34,212,0.5)' }}
                   >
                     Start Free — 14 Days <ArrowRight />
+                  </Link>
+                  <Link
+                    href="/explore"
+                    className="inline-flex items-center gap-2 border border-white/20 text-white font-semibold px-8 py-4 rounded-xl hover:bg-white/5 transition-all duration-200 text-base"
+                  >
+                    Find Deals Near You <ArrowRight />
                   </Link>
                   <div className="flex items-center gap-1.5 text-sm text-gray-500">
                     <svg className="w-3.5 h-3.5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
@@ -575,6 +582,7 @@ export default function HomePage() {
               <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 text-sm">Product</h4>
               <ul className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
                 <li><a href="#features" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">Features</a></li>
+                <li><Link href="/explore" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">Explore Deals</Link></li>
                 <li><a href="#pricing" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">Pricing</a></li>
                 <li><a href="#faq" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">FAQ</a></li>
               </ul>

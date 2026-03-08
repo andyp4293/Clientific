@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Building2, MapPin, Search, Sparkles, Tag } from 'lucide-react';
 import LocationAutocomplete from '@/components/ui/LocationAutocomplete';
+import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
 import { APP_NAME } from '@/lib/brand';
 
 interface DealBusiness {
@@ -122,31 +123,7 @@ export default function ExplorePage() {
     <div className="relative min-h-screen overflow-x-hidden bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(123,34,212,0.15),transparent_45%),radial-gradient(circle_at_top_left,rgba(15,23,42,0.06),transparent_35%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(123,34,212,0.22),transparent_45%),radial-gradient(circle_at_top_left,rgba(59,130,246,0.12),transparent_35%)]" />
 
-      <header className="sticky top-0 z-30 border-b border-gray-200/80 bg-white/90 backdrop-blur-md dark:border-gray-800 dark:bg-gray-950/85">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white shadow-sm">
-              C
-            </span>
-            <span className="text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-100">{APP_NAME}</span>
-          </Link>
-
-          <div className="flex items-center gap-2">
-            <Link
-              href="/"
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-            >
-              Home
-            </Link>
-            <Link
-              href="/register"
-              className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700"
-            >
-              List Your Business
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PublicSiteHeader active="explore" />
 
       <main className="relative mx-auto max-w-6xl px-4 pb-20 pt-8 sm:px-6 lg:px-8">
         <section className="mb-8 overflow-hidden rounded-3xl border border-gray-200 bg-white/80 shadow-xl shadow-gray-200/60 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 dark:shadow-black/30">

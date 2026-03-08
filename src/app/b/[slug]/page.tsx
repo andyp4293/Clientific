@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { APP_NAME, APP_URL } from '@/lib/brand';
+import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
 
 export const revalidate = 60;
 
@@ -67,14 +68,7 @@ export default async function BusinessProfilePage({ params }: { params: { slug: 
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      {/* Header */}
-      <header className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-lg font-bold text-gray-900 dark:text-white">
-            {APP_NAME}
-          </Link>
-        </div>
-      </header>
+      <PublicSiteHeader active="business" />
 
       <main className="max-w-3xl mx-auto px-4 py-8 space-y-8">
         {/* Business hero */}
@@ -100,6 +94,17 @@ export default async function BusinessProfilePage({ params }: { params: { slug: 
           >
             Book an Appointment
           </a>
+          <div className="mt-3 flex flex-wrap gap-3 text-sm">
+            <Link
+              href={business.city ? `/explore?location=${encodeURIComponent(business.city)}` : '/explore'}
+              className="font-medium text-primary hover:underline"
+            >
+              Browse more deals
+            </Link>
+            <Link href={`/book/${business.slug}/info`} className="font-medium text-gray-600 hover:underline dark:text-gray-300">
+              View business info
+            </Link>
+          </div>
         </div>
 
         {/* Active deals */}

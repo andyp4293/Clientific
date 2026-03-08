@@ -5,6 +5,8 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PRICING_PLANS } from '@/lib/stripe';
+import { APP_SUPPORT_EMAIL } from '@/lib/brand';
+import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
 
 function PricingContent() {
   const { status } = useSession();
@@ -57,34 +59,15 @@ function PricingContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-100 dark:from-gray-900 dark:to-gray-800">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">C</span>
-              </div>
-              <span className="text-xl font-bold text-gray-900 dark:text-white">Clientific</span>
-            </Link>
-            <div className="flex items-center space-x-4">
-              {isAuthenticated ? (
-                <Link href="/dashboard" className="btn-primary">
-                  Dashboard
-                </Link>
-              ) : (
-                <>
-                  <Link href="/login" className="btn-outline">Log In</Link>
-                  <Link href="/register" className="btn-primary">Start Free Trial</Link>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      <PublicSiteHeader
+        active="pricing"
+        ctaLabel={isAuthenticated ? 'Dashboard' : 'Start Free Trial'}
+        ctaHref={isAuthenticated ? '/dashboard' : '/register'}
+        showLogin={!isAuthenticated}
+      />
 
       {/* Pricing Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+      <div className="max-w-7xl mx-auto px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
         <div className="text-center mb-8 sm:mb-12">
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">
             Simple, Transparent Pricing
@@ -197,7 +180,7 @@ function PricingContent() {
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Need a custom plan?{' '}
-            <a href="mailto:support@clientific.app" className="text-primary hover:underline">
+            <a href={`mailto:${APP_SUPPORT_EMAIL}`} className="text-primary hover:underline">
               Contact sales
             </a>
           </p>

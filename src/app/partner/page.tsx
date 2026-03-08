@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { APP_NAME } from '@/lib/brand';
+import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
 
 export default function PartnerPage() {
   const [form, setForm] = useState({ name: '', email: '', payoutInfo: '' });
@@ -45,17 +46,7 @@ export default function PartnerPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      {/* Nav */}
-      <header className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-lg font-bold text-gray-900 dark:text-white">
-            {APP_NAME}
-          </Link>
-          <Link href="/login" className="text-sm text-primary font-medium hover:text-primary/80">
-            Sign in
-          </Link>
-        </div>
-      </header>
+      <PublicSiteHeader active="partner" />
 
       <main className="max-w-2xl mx-auto px-4 py-12 md:py-20">
 

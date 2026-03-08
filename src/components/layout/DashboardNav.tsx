@@ -3,146 +3,81 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
-import { ReactElement } from 'react';
+import {
+  DASHBOARD_DESKTOP_NAV,
+  DASHBOARD_SECTION_LABELS,
+  DashboardNavSection,
+  isDashboardRouteActive,
+} from '@/lib/navigation';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { DashboardIcon } from '@/components/layout/nav-icons';
 
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: 'home' },
-  { name: 'Appointments', href: '/dashboard/appointments', icon: 'calendar' },
-  { name: 'Services & Staff', href: '/dashboard/services', icon: 'briefcase' },
-  { name: 'Customers', href: '/dashboard/customers', icon: 'users' },
-  { name: 'Deals', href: '/dashboard/campaigns', icon: 'tag' },
-  { name: 'Redeem', href: '/dashboard/redeem', icon: 'scan' },
-  { name: 'Business Hours', href: '/dashboard/business-hours', icon: 'clock' },
-  { name: 'Refer & Earn', href: '/dashboard/referrals', icon: 'gift' },
-  { name: 'Billing', href: '/dashboard/settings/billing', icon: 'creditcard' },
-  { name: 'Settings', href: '/dashboard/settings', icon: 'settings' },
-];
-
-const icons: Record<string, ReactElement> = {
-  home: (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-    </svg>
-  ),
-  users: (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-    </svg>
-  ),
-  check: (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-    </svg>
-  ),
-  star: (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-    </svg>
-  ),
-  calendar: (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-    </svg>
-  ),
-  gift: (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-    </svg>
-  ),
-  megaphone: (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-    </svg>
-  ),
-  chart: (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-    </svg>
-  ),  settings: (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-    </svg>
-  ),  briefcase: (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-    </svg>
-  ),  clock: (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  ),
-  creditcard: (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-    </svg>
-  ),
-  tag: (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 8V5a2 2 0 012-2h2z" />
-    </svg>
-  ),
-  scan: (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4h4v4H4V4zm12 0h4v4h-4V4zM4 16h4v4H4v-4zm12 3.5V16M4 12h4m4 0h.01M12 12h4.01M16 20h4M20 16h-4m0 4v-4" />
-    </svg>
-  ),
-};
+const SECTION_ORDER: DashboardNavSection[] = ['core', 'growth', 'operations', 'account'];
 
 export function DashboardNav() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-3 space-y-px">
-        {navigation.map((item) => {
-          // Exact match for Dashboard, Settings, and Billing; prefix match for others
-          const exactMatch = ['/dashboard', '/dashboard/settings', '/dashboard/settings/billing', '/dashboard/referrals', '/dashboard/redeem'];
-          const isActive = exactMatch.includes(item.href)
-            ? pathname === item.href
-            : pathname === item.href || pathname.startsWith(item.href + '/');
+    <div className="flex h-full flex-col border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+      <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-3">
+        {SECTION_ORDER.map((section) => {
+          const items = DASHBOARD_DESKTOP_NAV.filter((item) => item.section === section);
+          if (items.length === 0) return null;
+
           return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all ${
-                isActive
-                  ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white'
-                  : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100'
-              }`}
-            >
-              <span className={`mr-3 ${isActive ? 'text-primary dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'}`}>{icons[item.icon]}</span>
-              {item.name}
-            </Link>
+            <div key={section}>
+              <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                {DASHBOARD_SECTION_LABELS[section]}
+              </p>
+              <div className="space-y-px">
+                {items.map((item) => {
+                  const isActive = isDashboardRouteActive(pathname, item);
+
+                  return (
+                    <Link
+                      key={item.key}
+                      href={item.href}
+                      className={`flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+                        isActive
+                          ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white'
+                          : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100'
+                      }`}
+                    >
+                      <span
+                        className={`mr-3 ${
+                          isActive ? 'text-primary dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'
+                        }`}
+                      >
+                        <DashboardIcon icon={item.icon} className="h-5 w-5" />
+                      </span>
+                      {item.name}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </nav>
 
-      {/* User Profile */}
       {status !== 'loading' && (
-        <div className="border-t border-gray-200 dark:border-gray-800 p-4">
-          <div className="flex items-center mb-3">
-            <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-semibold text-sm">
-                {session?.user?.name?.charAt(0).toUpperCase() || 'U'}
-              </span>
+        <div className="border-t border-gray-200 p-4 dark:border-gray-800">
+          <div className="mb-3 flex items-center">
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-primary">
+              <span className="text-sm font-semibold text-white">{session?.user?.name?.charAt(0).toUpperCase() || 'U'}</span>
             </div>
-            <div className="ml-3 flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+            <div className="ml-3 min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
                 {session?.user?.name || 'User'}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-500 truncate">
-                {session?.user?.email || ''}
-              </p>
+              <p className="truncate text-xs text-gray-500 dark:text-gray-500">{session?.user?.email || ''}</p>
             </div>
           </div>
           <ThemeToggle />
           <button
             onClick={() => signOut({ callbackUrl: '/login' })}
-            className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100 transition-all"
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-all hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
           >
             Sign Out
           </button>
