@@ -119,10 +119,17 @@ export default function HomePage() {
             </div>
             <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{APP_NAME}</span>
           </div>
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden lg:flex items-center gap-5">
+            <span className="rounded-full border border-gray-200 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-700 dark:text-gray-400">
+              For Customers
+            </span>
             <Link href="/explore" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">Explore Deals</Link>
-            <a href="#features" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">Features</a>
-            <a href="#how-it-works" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">How It Works</a>
+            <Link href="/partner" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">Refer &amp; Earn</Link>
+            <span className="h-4 w-px bg-gray-200 dark:bg-gray-700" />
+            <span className="rounded-full border border-gray-200 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-700 dark:text-gray-400">
+              For Businesses
+            </span>
+            <a href="#features" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">Platform</a>
             <a href="#pricing" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">Pricing</a>
             <a href="#faq" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">FAQ</a>
           </nav>
@@ -133,6 +140,9 @@ export default function HomePage() {
               </Link>
             ) : (
               <>
+                <Link href="/explore" className="hidden md:inline-flex text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 font-medium text-sm transition-colors">
+                  Find Deals
+                </Link>
                 <Link href="/login" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 font-medium text-sm transition-colors">
                   Log In
                 </Link>
@@ -144,6 +154,23 @@ export default function HomePage() {
           </div>
         </div>
       </header>
+
+      <div className="border-b border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900 lg:hidden">
+        <div className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-4 py-2 sm:px-6">
+          <Link href="/explore" className="whitespace-nowrap rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:text-gray-200">
+            Explore Deals
+          </Link>
+          <Link href="/partner" className="whitespace-nowrap rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:text-gray-200">
+            Refer &amp; Earn
+          </Link>
+          <a href="#pricing" className="whitespace-nowrap rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:text-gray-200">
+            Pricing
+          </a>
+          <a href="#faq" className="whitespace-nowrap rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:text-gray-200">
+            FAQ
+          </a>
+        </div>
+      </div>
 
       {/* ── Hero ── */}
       <section className="relative overflow-hidden bg-[#030712]">
@@ -583,6 +610,7 @@ export default function HomePage() {
               <ul className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
                 <li><a href="#features" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">Features</a></li>
                 <li><Link href="/explore" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">Explore Deals</Link></li>
+                <li><Link href="/partner" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">Refer &amp; Earn</Link></li>
                 <li><a href="#pricing" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">Pricing</a></li>
                 <li><a href="#faq" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">FAQ</a></li>
               </ul>
