@@ -55,10 +55,12 @@ model Business {
   referralCode           String?        @unique
   referredById           String?
   referralCredits        Float          @default(0)
+  affiliateCodeUsed      String?
   referredBy             Business?      @relation("BizReferrals", fields: [referredById], references: [id], onDelete: SetNull)
   referrals              Business[]     @relation("BizReferrals")
   referralsMade          Referral[]     @relation("ReferrerOf")
   referralReceived       Referral?      @relation("RefereeOf")
+  affiliateSignup        AffiliateSignup?
   appointments           Appointment[]
   businessHours          BusinessHours?
   campaigns              Campaign[]
@@ -380,4 +382,29 @@ model Referral {
   referee      Business  @relation("RefereeOf", fields: [refereeId], references: [id])
 
   @@index([referrerId])
+}
+
+model Affiliate {
+  id         String            @id @default(cuid())
+  createdAt  DateTime          @default(now())
+  name       String
+  email      String            @unique
+  code       String            @unique
+  payoutInfo String?
+  active     Boolean           @default(true)
+  signups    AffiliateSignup[]
+}
+
+model AffiliateSignup {
+  id          String     @id @default(cuid())
+  createdAt   DateTime   @default(now())
+  affiliateId String
+  businessId  String     @unique
+  status      String     @default("pending")
+  earnAmount  Float      @default(15.00)
+  earnedAt    DateTime?
+  affiliate   Affiliate  @relation(fields: [affiliateId], references: [id])
+  business    Business   @relation(fields: [businessId], references: [id])
+
+  @@index([affiliateId])
 }

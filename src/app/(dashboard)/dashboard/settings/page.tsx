@@ -56,9 +56,12 @@ function BookingQRCode({ bookingUrl, businessName }: { bookingUrl: string; busin
 
   return (
     <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-      <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+      <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
         Booking QR Code
       </label>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">
+        A QR code lets customers open your booking page by pointing their phone camera at it. No typing, no app download needed. Print it on flyers, receipts, appointment reminder cards, or your front desk display to give walk-in customers an instant way to book.
+      </p>
       <div className="flex flex-col sm:flex-row items-center gap-4">
         <div ref={canvasContainerRef} className="bg-white p-3 rounded-lg border border-gray-200 shrink-0">
           <QRCodeCanvas value={bookingUrl} size={160} level="M" />
@@ -67,8 +70,8 @@ function BookingQRCode({ bookingUrl, businessName }: { bookingUrl: string; busin
           <QRCodeSVG id="booking-qr-svg" value={bookingUrl} size={400} level="M" />
         </div>
         <div className="flex flex-col gap-2 text-center sm:text-left">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Print on flyers, receipts, or your front desk display — customers scan to book instantly.
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Download as PNG for print or SVG for digital use (scales to any size without losing quality).
           </p>
           <div className="flex gap-2 justify-center sm:justify-start">
             <button onClick={downloadPng} className="btn-primary text-sm py-1.5 px-3">

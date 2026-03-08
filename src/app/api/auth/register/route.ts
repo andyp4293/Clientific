@@ -23,6 +23,7 @@ export async function POST(request: Request) {
       timezone,
       plan,
       referralCode,
+      affiliateCode,
     } = body;
 
     // Validate required fields
@@ -85,8 +86,13 @@ export async function POST(request: Request) {
       ? await prisma.business.findUnique({ where: { referralCode } })
       : null;
 
-    // Referred businesses get 30 extra trial days (44 total)
-    const trialDays = referrerBusiness ? 44 : 14;
+    // Look up affiliate (if an affiliate code was provided and no referral code took priority)
+    const affiliate = !referrerBusiness && affiliateCode
+      ? await prisma.affiliate.findUnique({ where: { code: affiliateCode, active: true } })
+      : null;
+
+    // Referred or affiliate-referred businesses get 30 extra trial days (44 total)
+    const trialDays = referrerBusiness || affiliate ? 44 : 14;
     const trialEndsAt = addDays(new Date(), trialDays);
 
     // Generate this new business's own unique referral code
@@ -114,6 +120,7 @@ export async function POST(request: Request) {
         trialEndsAt,
         referralCode: newReferralCode,
         ...(referrerBusiness && { referredById: referrerBusiness.id }),
+        ...(affiliate && { affiliateCodeUsed: affiliate.code }),
       },
     });
 
@@ -123,6 +130,16 @@ export async function POST(request: Request) {
         data: {
           referrerId: referrerBusiness.id,
           refereeId: business.id,
+        },
+      });
+    }
+
+    // Create the affiliate signup record so we can track the payout later
+    if (affiliate) {
+      await prisma.affiliateSignup.create({
+        data: {
+          affiliateId: affiliate.id,
+          businessId: business.id,
         },
       });
     }

@@ -26,6 +26,8 @@ vi.mock('@/lib/prisma', () => ({
     payment: { upsert: vi.fn() },
     invoice: { upsert: vi.fn() },
     notification: { create: vi.fn() },
+    affiliate: { findUnique: vi.fn() },
+    affiliateSignup: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn(), update: vi.fn() },
     $transaction: vi.fn(async (ops: unknown[]) => {
       for (const op of ops) await op;
     }),
@@ -260,6 +262,8 @@ describe('Stripe webhook — invoice.payment_succeeded referral credit', () => {
     vi.mocked(prisma.payment.upsert).mockResolvedValue({} as any);
     vi.mocked(prisma.invoice.upsert).mockResolvedValue({} as any);
     vi.mocked(prisma.notification.create).mockResolvedValue({} as any);
+    vi.mocked(prisma.referral.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.affiliateSignup.findFirst).mockResolvedValue(null);
   });
 
   function webhookReq() {
@@ -285,7 +289,7 @@ describe('Stripe webhook — invoice.payment_succeeded referral credit', () => {
 
     expect(stripe.customers.createBalanceTransaction).toHaveBeenCalledWith(
       'cus_referrer',
-      { amount: -1500, currency: 'usd', description: 'Referral reward — new subscriber' }
+      { amount: -1500, currency: 'usd', description: 'Referral reward: new subscriber' }
     );
   });
 

@@ -235,7 +235,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
       try {
         await stripe.customers.createBalanceTransaction(
           referral.referrer.stripeCustomerId,
-          { amount: -1500, currency: 'usd', description: 'Referral reward — new subscriber' }
+          { amount: -1500, currency: 'usd', description: 'Referral reward: new subscriber' }
         );
         await prisma.$transaction([
           prisma.referral.update({
@@ -250,6 +250,22 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
         console.log(`✅ Referral credit applied: $15 to business ${referral.referrerId}`);
       } catch (err) {
         console.warn('⚠️  Referral credit failed:', err);
+      }
+    }
+
+    // Mark affiliate signup as earned (owner manually pays via their payoutInfo)
+    const affSignup = await prisma.affiliateSignup.findFirst({
+      where: { businessId: business.id, status: 'pending' },
+    });
+    if (affSignup) {
+      try {
+        await prisma.affiliateSignup.update({
+          where: { id: affSignup.id },
+          data: { status: 'earned', earnedAt: new Date() },
+        });
+        console.log(`✅ Affiliate signup earned: ${affSignup.affiliateId}`);
+      } catch (err) {
+        console.warn('⚠️  Affiliate signup update failed:', err);
       }
     }
   }

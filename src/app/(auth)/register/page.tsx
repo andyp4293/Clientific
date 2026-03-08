@@ -33,6 +33,7 @@ interface FormData {
   // Step 4
   plan: string;
   referralCode: string;
+  affiliateCode: string;
 }
 
 function RegisterForm() {
@@ -41,6 +42,7 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const defaultPlan = searchParams.get('plan') || 'pro';
   const refCode = searchParams.get('ref') || '';
+  const affCode = searchParams.get('aff') || '';
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -63,6 +65,7 @@ function RegisterForm() {
     timezone: '',
     plan: defaultPlan,
     referralCode: refCode,
+    affiliateCode: affCode,
   });
   // Redirect if already logged in
   useEffect(() => {
