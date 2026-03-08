@@ -752,6 +752,17 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
   const staffList: any[] = staffQueryData?.staff || [];
   const businessHours: any[] = businessHoursData?.businessHours || [];
 
+  // Fetch existing appointments for the selected staff member + date to show availability
+  const { data: staffApptData } = useQuery({
+    queryKey: ['staff-appointments', formData.staffId, formData.date],
+    queryFn: async () => {
+      const res = await fetch(`/api/appointments?staffId=${formData.staffId}&date=${formData.date}`);
+      if (!res.ok) return { appointments: [] };
+      return res.json();
+    },
+    enabled: !!formData.staffId && !!formData.date,
+  });
+
   // Derive time slots from business hours for the selected date
   const { timeSlots, isClosed } = useMemo(() => {
     if (!businessHours.length || !formData.date) return { timeSlots: [], isClosed: false };
@@ -771,10 +782,38 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
     return { timeSlots: slots, isClosed: false };
   }, [businessHours, formData.date]);
 
+  // Compute which slots are blocked by the selected staff's existing appointments
+  const blockedSlots = useMemo(() => {
+    if (!formData.staffId || !staffApptData?.appointments?.length) return new Set<string>();
+    const blocked = new Set<string>();
+    const durationMs = formData.duration * 60000;
+    for (const slot of timeSlots) {
+      const slotStart = new Date(`${formData.date}T${slot}`).getTime();
+      const slotEnd = slotStart + durationMs;
+      for (const appt of staffApptData.appointments) {
+        if (!['scheduled', 'confirmed'].includes(appt.status)) continue;
+        const apptStart = new Date(appt.startTime).getTime();
+        const apptEnd = new Date(appt.endTime).getTime();
+        if (slotStart < apptEnd && slotEnd > apptStart) {
+          blocked.add(slot);
+          break;
+        }
+      }
+    }
+    return blocked;
+  }, [formData.staffId, formData.date, formData.duration, staffApptData, timeSlots]);
+
   // Clear selected time when date changes so stale slot isn't kept
   useEffect(() => {
     setFormData(prev => ({ ...prev, time: '' }));
   }, [formData.date]);
+
+  // Clear selected time if it becomes blocked (staff changed, duration changed, etc.)
+  useEffect(() => {
+    if (formData.time && blockedSlots.has(formData.time)) {
+      setFormData(prev => ({ ...prev, time: '' }));
+    }
+  }, [blockedSlots, formData.time]);
 
   const formatSlot = (slot: string) => {
     const [h, m] = slot.split(':').map(Number);
@@ -883,19 +922,27 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
                   <p className="text-xs text-gray-400 dark:text-gray-500 py-4 text-center">Loading hours…</p>
                 ) : (
                   <div className="grid grid-cols-3 gap-1 max-h-[210px] overflow-y-auto pr-0.5">
-                    {timeSlots.map(slot => (
-                      <button
-                        key={slot} type="button"
-                        onClick={() => setFormData({ ...formData, time: slot })}
-                        className={`text-xs py-2 rounded-lg border font-medium transition-colors ${
-                          formData.time === slot
-                            ? 'bg-primary text-white border-primary shadow-sm'
-                            : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-primary/40 hover:text-primary dark:hover:text-primary hover:bg-primary/5'
-                        }`}
-                      >
-                        {formatSlot(slot)}
-                      </button>
-                    ))}
+                    {timeSlots.map(slot => {
+                      const isBlocked = blockedSlots.has(slot);
+                      const isSelected = formData.time === slot;
+                      return (
+                        <button
+                          key={slot} type="button"
+                          disabled={isBlocked}
+                          onClick={() => !isBlocked && setFormData({ ...formData, time: slot })}
+                          title={isBlocked ? 'Already booked' : undefined}
+                          className={`text-xs py-2 rounded-lg border font-medium transition-colors ${
+                            isBlocked
+                              ? 'border-gray-100 dark:border-gray-700 text-gray-300 dark:text-gray-600 bg-gray-50 dark:bg-gray-800/50 cursor-not-allowed line-through'
+                              : isSelected
+                                ? 'bg-primary text-white border-primary shadow-sm'
+                                : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-primary/40 hover:text-primary dark:hover:text-primary hover:bg-primary/5'
+                          }`}
+                        >
+                          {formatSlot(slot)}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>

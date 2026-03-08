@@ -58,6 +58,11 @@ export async function GET(req: NextRequest) {
       where.customerId = customerId;
     }
 
+    const staffIdParam = searchParams.get('staffId');
+    if (staffIdParam) {
+      where.staffId = staffIdParam;
+    }
+
     const appointments = await prisma.appointment.findMany({
       where,
       include: {
