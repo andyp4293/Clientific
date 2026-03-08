@@ -48,8 +48,8 @@ export default function ReferralsPage() {
     a.click();
   }
 
-  const creditedCount = data?.referrals.filter(r => r.status === 'credited').length ?? 0;
-  const pendingCount = data?.referrals.filter(r => r.status === 'pending').length ?? 0;
+  const creditedCount = data?.referrals?.filter(r => r.status === 'credited').length ?? 0;
+  const pendingCount = data?.referrals?.filter(r => r.status === 'pending').length ?? 0;
   const totalCredits = data?.totalCredits ?? 0;
 
   return (
