@@ -126,6 +126,11 @@ export default function TermsOfServicePage() {
                 booking with regarding your appointment. This includes appointment confirmations, reminders, and
                 cancellation notifications.
               </p>
+              <p>
+                Promotional or marketing SMS (such as deal alerts and limited-time offers) are sent only when you
+                separately opt in to promotional messaging. You can opt out of any SMS category at any time by
+                replying STOP.
+              </p>
 
               <h3 className="font-semibold text-gray-900 mt-4">Message Frequency</h3>
               <p>

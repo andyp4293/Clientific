@@ -25,13 +25,14 @@ vi.mock('@/lib/prisma', () => ({
     service: { findMany: vi.fn() },
     staff: { findFirst: vi.fn() },
     notification: { create: vi.fn() },
+    smsConsentEvent: { create: vi.fn() },
     businessHours: { create: vi.fn() },
   },
 }));
 
 vi.mock('@/lib/twilio', () => ({
   sendAppointmentConfirmation: vi.fn().mockResolvedValue({ success: true }),
-  sendNewBookingEmail: vi.fn().mockResolvedValue(undefined),
+  formatPhoneNumber: vi.fn((p: string) => p),
 }));
 
 vi.mock('@/lib/email', () => ({

@@ -1,0 +1,142 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { NextRequest } from 'next/server';
+
+vi.mock('@/lib/prisma', () => ({
+  prisma: {
+    business: { findUnique: vi.fn() },
+    service: { findMany: vi.fn() },
+    staff: { findFirst: vi.fn() },
+    appointment: { findMany: vi.fn(), create: vi.fn() },
+    customer: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
+    notification: { create: vi.fn() },
+    smsConsentEvent: { create: vi.fn() },
+  },
+}));
+
+vi.mock('@/lib/twilio', () => ({
+  sendAppointmentConfirmation: vi.fn().mockResolvedValue({ success: true }),
+  formatPhoneNumber: vi.fn((p: string) => p),
+}));
+
+vi.mock('@/lib/email', () => ({
+  sendNewBookingEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
+import { prisma } from '@/lib/prisma';
+import { sendAppointmentConfirmation } from '@/lib/twilio';
+import { POST } from './route';
+
+function req(body: Record<string, unknown>) {
+  return new NextRequest('http://localhost/api/public/business/test-salon/book', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+const BASE_BODY = {
+  serviceIds: ['svc-1'],
+  startTime: '2026-03-10T14:00:00.000Z',
+  duration: 60,
+  customerName: 'Jane',
+  customerPhone: '+15551234567',
+};
+
+const APPOINTMENT = {
+  id: 'appt-1',
+  startTime: new Date('2026-03-10T14:00:00.000Z'),
+  duration: 60,
+  customer: { id: 'cust-1', name: 'Jane', phone: '+15551234567' },
+  service: { name: 'Haircut' },
+  staff: null,
+  business: { name: 'Test Salon' },
+};
+
+describe('POST /api/public/business/[slug]/book - consent split', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    vi.mocked(prisma.business.findUnique).mockResolvedValue({
+      id: 'biz-1',
+      enableOnlineBooking: true,
+      email: 'owner@test.com',
+      name: 'Test Salon',
+      timezone: 'America/New_York',
+      notifyNewBookingEmail: false,
+    } as any);
+    vi.mocked(prisma.service.findMany).mockResolvedValue([{ id: 'svc-1', name: 'Haircut' }] as any);
+    vi.mocked(prisma.appointment.findMany).mockResolvedValue([] as any);
+    vi.mocked(prisma.appointment.create).mockResolvedValue(APPOINTMENT as any);
+    vi.mocked(prisma.notification.create).mockResolvedValue({ id: 'notif-1' } as any);
+    vi.mocked(prisma.smsConsentEvent.create).mockResolvedValue({ id: 'evt-1' } as any);
+  });
+
+  it('stores both transactional and marketing consent on new customer + logs FORM_OPT_IN', async () => {
+    vi.mocked(prisma.customer.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.customer.create).mockResolvedValue({
+      id: 'cust-1',
+      name: 'Jane',
+      phone: '+15551234567',
+      smsOptedOut: false,
+    } as any);
+
+    const res = await POST(
+      req({
+        ...BASE_BODY,
+        smsConsent: true,
+        smsMarketingConsent: true,
+      }),
+      { params: Promise.resolve({ slug: 'test-salon' }) }
+    );
+
+    expect(res.status).toBe(200);
+    expect(prisma.customer.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          smsConsent: true,
+          smsMarketingConsent: true,
+        }),
+      })
+    );
+    expect(prisma.smsConsentEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          eventType: 'FORM_OPT_IN',
+          source: 'booking_form',
+        }),
+      })
+    );
+    expect(sendAppointmentConfirmation).toHaveBeenCalled();
+  });
+
+  it('allows marketing opt-in without turning on transactional consent', async () => {
+    vi.mocked(prisma.customer.findFirst).mockResolvedValue({
+      id: 'cust-1',
+      smsOptedOut: false,
+      phone: '+15551234567',
+      name: 'Jane',
+    } as any);
+    vi.mocked(prisma.customer.update).mockResolvedValue({
+      id: 'cust-1',
+      name: 'Jane',
+      phone: '+15551234567',
+      smsOptedOut: false,
+    } as any);
+
+    const res = await POST(
+      req({
+        ...BASE_BODY,
+        smsConsent: false,
+        smsMarketingConsent: true,
+      }),
+      { params: Promise.resolve({ slug: 'test-salon' }) }
+    );
+
+    expect(res.status).toBe(200);
+    const updateArgs = vi.mocked(prisma.customer.update).mock.calls[0][0] as any;
+    expect(updateArgs.data.smsMarketingConsent).toBe(true);
+    expect(updateArgs.data.smsConsent).toBeUndefined();
+    expect(prisma.smsConsentEvent.create).toHaveBeenCalled();
+    expect(sendAppointmentConfirmation).not.toHaveBeenCalled();
+  });
+});

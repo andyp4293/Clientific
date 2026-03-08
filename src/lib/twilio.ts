@@ -1,6 +1,5 @@
 import twilio from 'twilio';
 
-// Types
 interface SendSMSParams {
   to: string;
   message: string;
@@ -20,7 +19,7 @@ interface AppointmentDetails {
   businessName: string;
   duration?: number;
   appointmentUrl?: string;
-  timezone?: string; // IANA timezone, e.g. "America/New_York"
+  timezone?: string;
 }
 
 interface CancellationDetails {
@@ -50,7 +49,33 @@ interface ReminderDetails {
   timezone?: string;
 }
 
-// Utility: Format phone number to E.164
+interface RescheduleDetails {
+  customerName: string;
+  serviceName: string;
+  businessName: string;
+  newDateTime: Date;
+  timezone?: string;
+}
+
+interface ReviewRequestDetails {
+  businessName: string;
+  customerName: string;
+  googleReviewUrl?: string | null;
+  yelpUrl?: string | null;
+}
+
+const SMS_COMPLIANCE_FOOTER = 'Reply STOP to opt out, HELP for help.';
+
+export function appendSmsComplianceFooter(message: string): string {
+  const trimmed = message.trim();
+  const alreadyHasFooter =
+    /reply\s+stop\s+to\s+opt\s*out[, ]+\s*help\s+for\s+help\.?$/i.test(trimmed) ||
+    /reply\s+stop\s+to\s+opt\s*out\.?$/i.test(trimmed);
+
+  if (alreadyHasFooter) return trimmed;
+  return `${trimmed} ${SMS_COMPLIANCE_FOOTER}`;
+}
+
 export function formatPhoneNumber(phone: string): string {
   const cleaned = phone.replace(/\D/g, '');
 
@@ -65,39 +90,35 @@ export function formatPhoneNumber(phone: string): string {
   return phone.startsWith('+') ? phone : `+${cleaned}`;
 }
 
-// Utility: Validate phone number
 export function isValidPhoneNumber(phone: string): boolean {
   if (!phone) return false;
   const cleaned = phone.replace(/\D/g, '');
   return cleaned.length >= 10 && cleaned.length <= 15;
 }
 
-// Utility: Format time for SMS
 function formatTime(date: Date, timezone?: string): string {
   return date.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
-    ...(timezone && { timeZone: timezone }),
+    ...(timezone ? { timeZone: timezone } : {}),
   });
 }
 
-// Main SMS sending function — reads env vars at call time (lazy) to avoid build-time null
 export async function sendSMS({ to, message }: SendSMSParams): Promise<SMSResult> {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
   const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
 
-  if (!accountSid || !authToken || (!messagingServiceSid && !twilioPhoneNumber)) {
-    console.log('📱 SMS disabled (Twilio not configured)');
+  if (!accountSid || !authToken || !twilioPhoneNumber) {
+    console.log('SMS disabled (Twilio not configured)');
     console.log('Would have sent to:', to);
     console.log('Message:', message);
     return { success: false, error: 'Twilio not configured' };
   }
 
   if (!isValidPhoneNumber(to)) {
-    console.error('❌ Invalid phone number:', to);
+    console.error('Invalid phone number:', to);
     return { success: false, error: 'Invalid phone number format' };
   }
 
@@ -107,163 +128,140 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SMSResult
   try {
     const result = await client.messages.create({
       body: message,
-      ...(messagingServiceSid
-        ? { messagingServiceSid }
-        : { from: twilioPhoneNumber! }),
+      from: twilioPhoneNumber,
       to: formattedPhone,
     });
 
-    console.log('✅ SMS sent successfully:', result.sid);
+    console.log('SMS sent successfully:', result.sid);
     return { success: true, sid: result.sid };
   } catch (error: any) {
-    console.error('❌ Failed to send SMS:', error);
+    console.error('Failed to send SMS:', error);
     return {
       success: false,
-      error: error?.message || 'Failed to send SMS'
+      error: error?.message || 'Failed to send SMS',
     };
   }
 }
 
-// Legacy export kept for compatibility
 export const twilioClient = null;
 
-// Template: Appointment Request Received (pending confirmation)
 export function formatAppointmentConfirmationSMS(details: AppointmentDetails): string {
   const tz = details.timezone || undefined;
   const dateStr = details.dateTime.toLocaleDateString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric', ...(tz && { timeZone: tz }),
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    ...(tz ? { timeZone: tz } : {}),
   });
   const timeStr = details.dateTime.toLocaleTimeString('en-US', {
-    hour: 'numeric', minute: '2-digit', hour12: true, ...(tz && { timeZone: tz }),
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    ...(tz ? { timeZone: tz } : {}),
   });
-  const staffLine = details.staffName && details.staffName !== 'our team' ? ` with ${details.staffName}` : '';
+  const staffLine =
+    details.staffName && details.staffName !== 'our team' ? ` with ${details.staffName}` : '';
 
   const base = `${details.businessName}: Hi ${details.customerName}, your ${details.serviceName}${staffLine} appointment has been requested for ${dateStr} at ${timeStr}. We'll send you another text once it's confirmed.`;
   const urlPart = details.appointmentUrl ? ` Check status: ${details.appointmentUrl}` : '';
-  const msg = `${base}${urlPart} Reply STOP to opt out.`;
-  return msg;
+  return appendSmsComplianceFooter(`${base}${urlPart}`);
 }
 
-// Template: Appointment Confirmed by Business
 export function formatAppointmentBusinessConfirmedSMS(details: BusinessConfirmedDetails): string {
   const tz = details.timezone || undefined;
   const dateStr = details.dateTime.toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
-    ...(tz && { timeZone: tz }),
+    ...(tz ? { timeZone: tz } : {}),
   });
   const timeStr = formatTime(details.dateTime, tz);
-
   const base = `${details.businessName}: Your ${details.serviceName} appointment on ${dateStr} at ${timeStr} is CONFIRMED. See you then!`;
-  const msg = details.appointmentUrl
-    ? `${base} ${details.appointmentUrl}`
-    : base;
-  return msg;
+  const withUrl = details.appointmentUrl ? `${base} ${details.appointmentUrl}` : base;
+  return appendSmsComplianceFooter(withUrl);
 }
 
-// Template: Appointment Reminder (24 hours before) - shortened
 export function formatAppointmentReminderSMS(details: ReminderDetails): string {
   const timeStr = formatTime(details.dateTime, details.timezone);
-
-  return `Reminder: Appointment tomorrow at ${details.businessName}. ${details.serviceName} with ${details.staffName} at ${timeStr}.`;
+  const message = `Reminder: Appointment tomorrow at ${details.businessName}. ${details.serviceName} with ${details.staffName} at ${timeStr}.`;
+  return appendSmsComplianceFooter(message);
 }
 
-// Template: Appointment Cancellation
 export function formatAppointmentCancellationSMS(details: CancellationDetails): string {
   const tz = details.timezone || undefined;
   const dateStr = details.dateTime.toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
-    ...(tz && { timeZone: tz }),
+    ...(tz ? { timeZone: tz } : {}),
   });
   const timeStr = formatTime(details.dateTime, tz);
-
-  return `Hi ${details.customerName}, your ${details.serviceName} appointment at ${details.businessName} on ${dateStr} at ${timeStr} has been cancelled. We truly appreciate your time and hope to have the pleasure of welcoming you back in the future. You're always welcome! — ${details.businessName}`;
+  const message = `Hi ${details.customerName}, your ${details.serviceName} appointment at ${details.businessName} on ${dateStr} at ${timeStr} has been cancelled. We truly appreciate your time and hope to welcome you back soon.`;
+  return appendSmsComplianceFooter(message);
 }
 
-// Helper: Send appointment confirmation
 export async function sendAppointmentConfirmation(
   phone: string,
   details: AppointmentDetails
 ): Promise<SMSResult> {
-  const message = formatAppointmentConfirmationSMS(details);
-  return sendSMS({ to: phone, message });
+  return sendSMS({ to: phone, message: formatAppointmentConfirmationSMS(details) });
 }
 
-// Helper: Send appointment reminder
 export async function sendAppointmentReminder(
   phone: string,
   details: ReminderDetails
 ): Promise<SMSResult> {
-  const message = formatAppointmentReminderSMS(details);
-  return sendSMS({ to: phone, message });
+  return sendSMS({ to: phone, message: formatAppointmentReminderSMS(details) });
 }
 
-// Helper: Send appointment cancellation
 export async function sendAppointmentCancellation(
   phone: string,
   details: CancellationDetails
 ): Promise<SMSResult> {
-  const message = formatAppointmentCancellationSMS(details);
-  return sendSMS({ to: phone, message });
+  return sendSMS({ to: phone, message: formatAppointmentCancellationSMS(details) });
 }
 
-// Helper: Send appointment confirmed by business
 export async function sendAppointmentBusinessConfirmed(
   phone: string,
   details: BusinessConfirmedDetails
 ): Promise<SMSResult> {
-  const message = formatAppointmentBusinessConfirmedSMS(details);
-  return sendSMS({ to: phone, message });
-}
-
-// Template: Appointment Rescheduled
-interface RescheduleDetails {
-  customerName: string;
-  serviceName: string;
-  businessName: string;
-  newDateTime: Date;
-  timezone?: string;
+  return sendSMS({ to: phone, message: formatAppointmentBusinessConfirmedSMS(details) });
 }
 
 export function formatAppointmentRescheduledSMS(details: RescheduleDetails): string {
   const tz = details.timezone || undefined;
   const dateStr = details.newDateTime.toLocaleDateString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric', ...(tz && { timeZone: tz }),
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    ...(tz ? { timeZone: tz } : {}),
   });
   const timeStr = details.newDateTime.toLocaleTimeString('en-US', {
-    hour: 'numeric', minute: '2-digit', hour12: true, ...(tz && { timeZone: tz }),
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    ...(tz ? { timeZone: tz } : {}),
   });
-  return `${details.businessName}: Hi ${details.customerName}, your ${details.serviceName} appointment has been rescheduled to ${dateStr} at ${timeStr}. See you then!`;
+  const message = `${details.businessName}: Hi ${details.customerName}, your ${details.serviceName} appointment has been rescheduled to ${dateStr} at ${timeStr}. See you then!`;
+  return appendSmsComplianceFooter(message);
 }
 
 export async function sendAppointmentRescheduled(
   phone: string,
   details: RescheduleDetails
 ): Promise<SMSResult> {
-  const message = formatAppointmentRescheduledSMS(details);
-  return sendSMS({ to: phone, message });
-}
-
-// Template: Review Request
-interface ReviewRequestDetails {
-  businessName: string;
-  customerName: string;
-  googleReviewUrl?: string | null;
-  yelpUrl?: string | null;
+  return sendSMS({ to: phone, message: formatAppointmentRescheduledSMS(details) });
 }
 
 export function formatReviewRequestSMS(details: ReviewRequestDetails): string {
   const link = details.googleReviewUrl || details.yelpUrl || '';
-  return `${details.businessName}: Hi ${details.customerName}, thank you for your visit! We'd love your feedback — it means a lot to us. ${link} Reply STOP to opt out.`;
+  const message = `${details.businessName}: Hi ${details.customerName}, thank you for your visit! We'd love your feedback. ${link}`;
+  return appendSmsComplianceFooter(message);
 }
 
 export async function sendReviewRequest(
   phone: string,
   details: ReviewRequestDetails
 ): Promise<SMSResult> {
-  const message = formatReviewRequestSMS(details);
-  return sendSMS({ to: phone, message });
+  return sendSMS({ to: phone, message: formatReviewRequestSMS(details) });
 }

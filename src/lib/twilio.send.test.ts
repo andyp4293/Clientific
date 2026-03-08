@@ -1,0 +1,80 @@
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const hoisted = vi.hoisted(() => {
+  const createMessage = vi.fn();
+  const twilioFactory = vi.fn(() => ({
+    messages: {
+      create: createMessage,
+    },
+  }));
+  return { createMessage, twilioFactory };
+});
+
+vi.mock('twilio', () => ({
+  default: hoisted.twilioFactory,
+}));
+
+import { sendSMS } from './twilio';
+
+const ORIGINAL_ENV = { ...process.env };
+
+describe('sendSMS', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.TWILIO_ACCOUNT_SID = 'AC_test';
+    process.env.TWILIO_AUTH_TOKEN = 'token_test';
+    process.env.TWILIO_PHONE_NUMBER = '+18557654989';
+    process.env.TWILIO_MESSAGING_SERVICE_SID = 'MG_should_not_be_used';
+  });
+
+  afterAll(() => {
+    process.env = ORIGINAL_ENV;
+  });
+
+  it('forces direct from phone number even when messaging service sid is present', async () => {
+    hoisted.createMessage.mockResolvedValueOnce({ sid: 'SM123' });
+
+    const result = await sendSMS({ to: '5551234567', message: 'Test message' });
+
+    expect(result.success).toBe(true);
+    expect(hoisted.createMessage).toHaveBeenCalledTimes(1);
+    const payload = hoisted.createMessage.mock.calls[0][0];
+    expect(payload).toEqual(
+      expect.objectContaining({
+        body: 'Test message',
+        from: '+18557654989',
+        to: '+15551234567',
+      })
+    );
+    expect(payload.messagingServiceSid).toBeUndefined();
+  });
+
+  it('returns failure when twilio credentials are missing', async () => {
+    delete process.env.TWILIO_ACCOUNT_SID;
+    delete process.env.TWILIO_AUTH_TOKEN;
+    delete process.env.TWILIO_PHONE_NUMBER;
+
+    const result = await sendSMS({ to: '+15551234567', message: 'Test message' });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Twilio not configured');
+    expect(hoisted.createMessage).not.toHaveBeenCalled();
+  });
+
+  it('returns validation error for invalid phone number', async () => {
+    const result = await sendSMS({ to: 'abc', message: 'Test message' });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Invalid phone number');
+    expect(hoisted.createMessage).not.toHaveBeenCalled();
+  });
+
+  it('surfaces twilio send failures', async () => {
+    hoisted.createMessage.mockRejectedValueOnce(new Error('carrier reject'));
+
+    const result = await sendSMS({ to: '+15551234567', message: 'Test message' });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('carrier reject');
+  });
+});

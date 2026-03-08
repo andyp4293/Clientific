@@ -122,7 +122,7 @@ export default async function BusinessProfilePage({ params }: { params: { slug: 
                     </span>
                   </div>
                   <a
-                    href={`/book/${business.slug}`}
+                    href={`/d/${deal.id}`}
                     className="block w-full text-center text-sm font-semibold text-primary border border-primary/40 px-3 py-2 rounded-lg hover:bg-primary/5 transition-colors"
                   >
                     Claim Deal

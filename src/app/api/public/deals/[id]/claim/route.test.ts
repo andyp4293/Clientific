@@ -29,7 +29,7 @@ const activeDeal = {
   redemptionCount: 0,
 };
 
-function makeRequest(dealId: string, body: Record<string, unknown> = {}) {
+function makeRequest(dealId: string, body: Record<string, unknown> = { customerPhone: '5551234567' }) {
   return new NextRequest(`http://localhost/api/public/deals/${dealId}/claim`, {
     method: 'POST',
     body: JSON.stringify(body),
@@ -47,6 +47,13 @@ beforeEach(() => {
 });
 
 describe('POST /api/public/deals/[id]/claim', () => {
+  it('returns 400 when customerPhone is missing', async () => {
+    const res = await POST(makeRequest('deal-1', {}), makeParams('deal-1'));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain('customerPhone is required');
+  });
+
   it('returns 404 when deal does not exist', async () => {
     mockDealFindUnique.mockResolvedValue(null);
     const res = await POST(makeRequest('deal-1'), makeParams('deal-1'));
@@ -115,7 +122,12 @@ describe('POST /api/public/deals/[id]/claim', () => {
     // Verify customer lookup was called with the phone
     expect(mockCustomerFindFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ phone: '5551234567' }),
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([
+            { phone: '+15551234567' },
+            { phone: '5551234567' },
+          ]),
+        }),
       })
     );
   });

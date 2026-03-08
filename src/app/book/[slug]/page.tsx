@@ -69,9 +69,8 @@ export default function PublicBookingPage() {
     email: '',
     notes: '',
     smsConsent: false,
+    smsMarketingConsent: false,
   });
-  const [claimedCodes, setClaimedCodes] = useState<Record<string, string>>({});
-  const [claimingDealId, setClaimingDealId] = useState<string | null>(null);
 
   // Derived totals
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration, 0);
@@ -171,24 +170,6 @@ export default function PublicBookingPage() {
     },
   });
 
-  const claimDeal = async (dealId: string) => {
-    setClaimingDealId(dealId);
-    try {
-      const res = await fetch(`/api/public/deals/${dealId}/claim`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerPhone: customerInfo.phone || undefined }),
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setClaimedCodes(prev => ({ ...prev, [dealId]: data.code }));
-    } catch {
-      // silently fail — deal may have run out
-    } finally {
-      setClaimingDealId(null);
-    }
-  };
-
   const business: Business | null = businessData?.business;
   const services: Service[] = servicesData?.services || [];
   const staff: Staff[] = staffData?.staff || [];
@@ -221,6 +202,7 @@ export default function PublicBookingPage() {
       customerEmail: customerInfo.email || undefined,
       notes: customerInfo.notes || undefined,
       smsConsent: customerInfo.smsConsent,
+      smsMarketingConsent: customerInfo.smsMarketingConsent,
     });
   };
 
@@ -329,19 +311,12 @@ export default function PublicBookingPage() {
                       {deal.service?.name ?? 'Any service'} · Expires {new Date(deal.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </p>
                   </div>
-                  {claimedCodes[deal.id] ? (
-                    <span className="text-xs font-mono bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 px-2 py-1 rounded font-bold flex-shrink-0">
-                      {claimedCodes[deal.id]}
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => claimDeal(deal.id)}
-                      disabled={claimingDealId === deal.id}
-                      className="text-xs font-medium bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
-                    >
-                      {claimingDealId === deal.id ? '...' : 'Claim'}
-                    </button>
-                  )}
+                  <Link
+                    href={`/d/${deal.id}`}
+                    className="text-xs font-medium bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg transition-colors flex-shrink-0"
+                  >
+                    Claim
+                  </Link>
                 </div>
               ))}
             </div>
@@ -641,6 +616,27 @@ export default function PublicBookingPage() {
                     </div>
                     <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">
                       <span className="font-medium">Yes, send me SMS appointment reminders and updates.</span> Message and data rates may apply. Message frequency varies. Reply STOP to cancel, HELP for help. This is optional — you can still book without SMS.
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCustomerInfo({ ...customerInfo, smsMarketingConsent: !customerInfo.smsMarketingConsent })}
+                  className="w-full text-left bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-700 rounded-xl p-4"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 w-5 h-5 flex-shrink-0 rounded border-2 flex items-center justify-center ${
+                      customerInfo.smsMarketingConsent ? 'bg-amber-500 border-amber-500' : 'bg-white dark:bg-gray-700 border-gray-400 dark:border-gray-500'
+                    }`}>
+                      {customerInfo.smsMarketingConsent && (
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">
+                      <span className="font-medium">Yes, send me promotional offers and deal alerts by SMS.</span> Message and data rates may apply. Message frequency varies. Reply STOP to cancel, HELP for help.
                     </span>
                   </div>
                 </button>

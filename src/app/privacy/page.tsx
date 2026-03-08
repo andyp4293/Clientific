@@ -49,6 +49,7 @@ export default function PrivacyPolicyPage() {
               <li>Reviews and ratings</li>
               <li>Loyalty points and rewards</li>
               <li>Appointment information</li>
+              <li>SMS consent and opt-in/opt-out audit records</li>
             </ul>
 
             <h3 className="text-xl font-semibold text-gray-800 mb-3 mt-4">2.3 AI Receptionist Data</h3>

@@ -30,6 +30,7 @@ vi.mock('@/lib/subscription', () => ({
 vi.mock('@/lib/twilio', () => ({
   sendSMS: vi.fn().mockResolvedValue({ success: true }),
   formatPhoneNumber: vi.fn((p: string) => p),
+  appendSmsComplianceFooter: vi.fn((m: string) => `${m} Reply STOP to opt out, HELP for help.`),
 }));
 
 vi.mock('@/lib/brand', () => ({
@@ -104,6 +105,20 @@ describe('POST /api/deals/[id]/notify', () => {
     expect(sendSMS).toHaveBeenCalledTimes(2);
   });
 
+  it('counts only successful sendSMS results', async () => {
+    vi.mocked(prisma.customer.findMany).mockResolvedValue([
+      { phone: '5551111111' },
+      { phone: '5552222222' },
+    ] as any);
+    vi.mocked(sendSMS)
+      .mockResolvedValueOnce({ success: true } as any)
+      .mockResolvedValueOnce({ success: false, error: 'carrier reject' } as any);
+
+    const res = await POST(notifyReq(), ctx('deal-1'));
+    const body = await res.json();
+    expect(body.sent).toBe(1);
+  });
+
   it('sends 0 when no eligible customers', async () => {
     vi.mocked(prisma.customer.findMany).mockResolvedValue([]);
     const res = await POST(notifyReq(), ctx('deal-1'));
@@ -124,15 +139,25 @@ describe('POST /api/deals/[id]/notify', () => {
     );
   });
 
-  it('queries only smsConsent=true, smsOptedOut=false customers with a phone', async () => {
+  it('queries only smsMarketingConsent=true, smsOptedOut=false customers with a phone', async () => {
     await POST(notifyReq(), ctx('deal-1'));
     expect(prisma.customer.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          smsConsent: true,
+          smsMarketingConsent: true,
           smsOptedOut: false,
           phone: { not: null },
         }),
+      })
+    );
+  });
+
+  it('sends dedicated deal landing page URL', async () => {
+    vi.mocked(prisma.customer.findMany).mockResolvedValue([{ phone: '5551111111' }] as any);
+    await POST(notifyReq(), ctx('deal-1'));
+    expect(sendSMS).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining('https://clientific.app/d/deal-1'),
       })
     );
   });

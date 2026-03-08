@@ -73,6 +73,7 @@ model Business {
   rewards                Reward[]
   services               Service[]
   smsLogs                SmsLog[]       @relation("SmsLogs")
+  smsConsentEvents       SmsConsentEvent[] @relation("BusinessSmsConsentEvents")
   staff                  Staff[]
 }
 
@@ -102,6 +103,8 @@ model Customer {
   optedOutAt         DateTime?
   notes              String?
   smsConsent         Boolean             @default(false)
+  smsMarketingConsent Boolean            @default(false)
+  smsMarketingConsentAt DateTime?
   smsOptedOut        Boolean             @default(false)
   smsOptedOutAt      DateTime?
   appointments       Appointment[]
@@ -110,6 +113,7 @@ model Customer {
   business           Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
   pointsTransactions PointsTransaction[]
   redemptions        Redemption[]
+  smsConsentEvents   SmsConsentEvent[]   @relation("CustomerSmsConsentEvents")
 
   @@index([businessId, segment])
   @@index([businessId, lastVisit])
@@ -281,6 +285,29 @@ model SmsLog {
 
   @@index([businessId, createdAt])
   @@index([toPhone])
+}
+
+model SmsConsentEvent {
+  id          String    @id @default(cuid())
+  createdAt   DateTime  @default(now())
+  businessId  String?
+  customerId  String?
+  phone       String
+  eventType   String
+  source      String
+  messageSid  String?
+  messageBody String?
+  fromPhone   String?
+  toPhone     String?
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?
+  business    Business? @relation("BusinessSmsConsentEvents", fields: [businessId], references: [id], onDelete: SetNull)
+  customer    Customer? @relation("CustomerSmsConsentEvents", fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([phone, createdAt])
+  @@index([eventType, createdAt])
+  @@index([businessId, createdAt])
 }
 
 model Notification {

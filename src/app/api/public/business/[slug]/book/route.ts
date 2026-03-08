@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sendAppointmentConfirmation } from '@/lib/twilio';
+import { sendAppointmentConfirmation, formatPhoneNumber } from '@/lib/twilio';
 import { sendNewBookingEmail } from '@/lib/email';
 
 // POST - Create public booking (no auth required)
@@ -41,7 +41,11 @@ export async function POST(
       customerEmail,
       notes,
       smsConsent,
+      smsMarketingConsent,
     } = await req.json();
+
+    const transactionalConsent = Boolean(smsConsent);
+    const marketingConsent = Boolean(smsMarketingConsent);
 
     // Support both serviceIds[] (new) and serviceId (legacy)
     const serviceIds: string[] = rawServiceIds?.length
@@ -74,6 +78,8 @@ export async function POST(
     if (typeof duration !== 'number' || duration < 5 || duration > 480) {
       return NextResponse.json({ error: 'Invalid duration' }, { status: 400 });
     }
+
+    const normalizedCustomerPhone = formatPhoneNumber(customerPhone);
 
     // Verify all services belong to this business
     const services = await prisma.service.findMany({
@@ -154,7 +160,7 @@ export async function POST(
     let customer = await prisma.customer.findFirst({
       where: {
         businessId: business.id,
-        phone: customerPhone,
+        OR: [{ phone: normalizedCustomerPhone }, { phone: customerPhone }],
       },
     });
 
@@ -163,9 +169,11 @@ export async function POST(
         data: {
           businessId: business.id,
           name: customerName,
-          phone: customerPhone,
+          phone: normalizedCustomerPhone,
           email: customerEmail || null,
-          smsConsent: smsConsent || false,
+          smsConsent: transactionalConsent,
+          smsMarketingConsent: marketingConsent,
+          smsMarketingConsentAt: marketingConsent ? new Date() : null,
         },
       });
     } else {
@@ -174,7 +182,13 @@ export async function POST(
         data: {
           name: customerName,
           ...(customerEmail && { email: customerEmail }),
-          ...(smsConsent && !customer.smsOptedOut && { smsConsent: true }),
+          ...(transactionalConsent && !customer.smsOptedOut && { smsConsent: true }),
+          ...(marketingConsent && !customer.smsOptedOut
+            ? {
+                smsMarketingConsent: true,
+                smsMarketingConsentAt: new Date(),
+              }
+            : {}),
         },
       });
     }
@@ -210,12 +224,29 @@ export async function POST(
       },
     });
 
+    if (transactionalConsent || marketingConsent) {
+      await prisma.smsConsentEvent.create({
+        data: {
+          businessId: business.id,
+          customerId: customer.id,
+          phone: customer.phone || normalizedCustomerPhone,
+          eventType: 'FORM_OPT_IN',
+          source: 'booking_form',
+          metadata: {
+            transactionalConsent,
+            marketingConsent,
+            channel: 'public-business-slug-book',
+          },
+        },
+      });
+    }
+
     // Send SMS confirmation only if customer consented
     const appBase = (process.env.NEXT_PUBLIC_APP_URL || 'https://clientflow-theta.vercel.app').trim().replace(/\/$/, '');
     const appointmentUrl = `${appBase}/a/${shortId}`;
     const serviceName = services.map(s => s.name).join(', ');
     let smsResult = null;
-    if (customer.phone && smsConsent && !customer.smsOptedOut) {
+    if (customer.phone && transactionalConsent && !customer.smsOptedOut) {
       smsResult = await sendAppointmentConfirmation(customer.phone, {
         customerName: customer.name,
         serviceName,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { formatPhoneNumber } from '@/lib/twilio';
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous I, O, 0, 1
@@ -17,7 +18,13 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await req.json().catch(() => ({}));
-    const customerPhone: string | undefined = body.customerPhone;
+    const customerPhoneRaw = typeof body.customerPhone === 'string' ? body.customerPhone.trim() : '';
+
+    if (!customerPhoneRaw) {
+      return NextResponse.json({ error: 'customerPhone is required' }, { status: 400 });
+    }
+
+    const customerPhone = formatPhoneNumber(customerPhoneRaw);
 
     const deal = await prisma.deal.findUnique({ where: { id } });
     if (!deal || !deal.active) {
@@ -33,15 +40,16 @@ export async function POST(
       return NextResponse.json({ error: 'Deal has reached maximum redemptions' }, { status: 400 });
     }
 
-    // Find customer by phone if provided
+    // Find customer by phone to associate redemption when possible
     let customerId: string | null = null;
-    if (customerPhone) {
-      const customer = await prisma.customer.findFirst({
-        where: { businessId: deal.businessId, phone: customerPhone },
-        select: { id: true },
-      });
-      customerId = customer?.id ?? null;
-    }
+    const customer = await prisma.customer.findFirst({
+      where: {
+        businessId: deal.businessId,
+        OR: [{ phone: customerPhone }, { phone: customerPhoneRaw }],
+      },
+      select: { id: true },
+    });
+    customerId = customer?.id ?? null;
 
     // Generate unique code with retry
     let code = '';

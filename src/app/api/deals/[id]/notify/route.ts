@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
-import { sendSMS, formatPhoneNumber } from '@/lib/twilio';
+import { sendSMS, formatPhoneNumber, appendSmsComplianceFooter } from '@/lib/twilio';
 import { APP_URL } from '@/lib/brand';
 
 export async function POST(
@@ -40,20 +40,22 @@ export async function POST(
     const customers = await prisma.customer.findMany({
       where: {
         businessId: session.user.id,
-        smsConsent: true,
+        smsMarketingConsent: true,
         smsOptedOut: false,
         phone: { not: null },
       },
       select: { phone: true },
     });
 
-    const message = `${deal.business.name}: ${deal.title} -- claim your deal: ${APP_URL}/book/${deal.business.slug}?deal=${deal.id}`;
+    const message = appendSmsComplianceFooter(
+      `${deal.business.name}: ${deal.title} -- claim your deal: ${APP_URL}/d/${deal.id}`
+    );
 
-    const results = await Promise.allSettled(
+    const results = await Promise.all(
       customers.map(c => sendSMS({ to: formatPhoneNumber(c.phone!), message }))
     );
 
-    const sent = results.filter(r => r.status === 'fulfilled').length;
+    const sent = results.filter((r) => r.success).length;
 
     await prisma.deal.update({
       where: { id: deal.id },
