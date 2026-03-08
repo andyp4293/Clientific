@@ -68,7 +68,10 @@ export default function PartnerPage() {
             Earn $15 for every business you refer
           </h1>
           <p className="text-gray-600 dark:text-gray-400 text-lg leading-relaxed">
-            No subscription needed. Share your unique link and get paid each time a business you refer becomes a paying customer.
+            No subscription needed. Share your unique link and earn $15 when the business you referred starts a paid subscription.
+          </p>
+          <p className="text-sm text-amber-600 dark:text-amber-400 font-medium mt-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 px-4 py-2 rounded-lg inline-block">
+            You earn only when they subscribe and pay, not just for signing up.
           </p>
         </div>
 
@@ -77,7 +80,7 @@ export default function PartnerPage() {
           {[
             { num: '1', title: 'Get your link', body: 'Sign up below and we send you a unique referral link in seconds.' },
             { num: '2', title: 'Share it', body: 'Send it to business owners, post it in Facebook groups, or add it to your website.' },
-            { num: '3', title: 'Get paid', body: 'Every time someone subscribes using your link, we pay you $15 directly.' },
+            { num: '3', title: 'Get paid', body: 'Once they start a paid plan (after any trial), we pay you $15 directly. No payment from them means no payout for you.' },
           ].map(({ num, title, body }) => (
             <div key={num} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
               <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold mb-3">
@@ -118,7 +121,7 @@ export default function PartnerPage() {
                 </button>
               </div>
               <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
-                Save this link. We will reach out to you at your provided payout details when you earn your first credit. There is no limit on how many businesses you can refer.
+                Save this link. We will reach out using your payout details once a referred business makes their first payment. There is no limit on how many businesses you can refer.
               </p>
             </div>
           ) : (
