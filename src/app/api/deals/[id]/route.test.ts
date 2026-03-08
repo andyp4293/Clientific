@@ -1,11 +1,100 @@
-import { describe, it, expect } from 'vitest';
-import * as routeModule from './route';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { NextRequest } from 'next/server';
 
-const METHOD_EXPORTS = ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'] as const;
+vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
+vi.mock('@/app/api/auth/[...nextauth]/route', () => ({ authOptions: {} }));
+vi.mock('@/lib/subscription', () => ({ requireActiveSubscription: vi.fn() }));
+vi.mock('@/lib/prisma', () => ({
+  prisma: {
+    deal: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+  },
+}));
 
-describe('route module smoke test', () => {
-  it('exports at least one HTTP handler function', () => {
-    const handlers = METHOD_EXPORTS.filter((method) => typeof (routeModule as Record<string, unknown>)[method] === 'function');
-    expect(handlers.length).toBeGreaterThan(0);
+import { getServerSession } from 'next-auth';
+import { prisma } from '@/lib/prisma';
+import { requireActiveSubscription } from '@/lib/subscription';
+import { PATCH } from './route';
+
+const mockSession = getServerSession as ReturnType<typeof vi.fn>;
+const mockRequireActiveSubscription = requireActiveSubscription as ReturnType<typeof vi.fn>;
+const mockDealFindUnique = prisma.deal.findUnique as ReturnType<typeof vi.fn>;
+const mockDealUpdate = prisma.deal.update as ReturnType<typeof vi.fn>;
+
+const activeSession = { user: { id: 'biz-1' } };
+const existingDeal = {
+  id: 'deal-1',
+  businessId: 'biz-1',
+  startsAt: new Date('2026-03-01T00:00:00.000Z'),
+  expiresAt: new Date('2026-03-31T23:59:59.999Z'),
+};
+
+function makePatchRequest(body: Record<string, unknown>) {
+  return new NextRequest('http://localhost/api/deals/deal-1', {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+    headers: { 'content-type': 'application/json' },
+  });
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockSession.mockResolvedValue(activeSession);
+  mockRequireActiveSubscription.mockResolvedValue(null);
+  mockDealFindUnique.mockResolvedValue(existingDeal);
+});
+
+describe('PATCH /api/deals/[id]', () => {
+  it('returns 401 when unauthenticated', async () => {
+    mockSession.mockResolvedValue(null);
+    const res = await PATCH(makePatchRequest({ title: 'New title' }), { params: Promise.resolve({ id: 'deal-1' }) });
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 400 when date input is invalid', async () => {
+    const res = await PATCH(
+      makePatchRequest({ startsAt: 'not-a-date' }),
+      { params: Promise.resolve({ id: 'deal-1' }) }
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/invalid deal dates/i);
+    expect(mockDealUpdate).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when end date is before start date', async () => {
+    const res = await PATCH(
+      makePatchRequest({ startsAt: '2026-03-10', expiresAt: '2026-03-09' }),
+      { params: Promise.resolve({ id: 'deal-1' }) }
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/end date must be after start date/i);
+    expect(mockDealUpdate).not.toHaveBeenCalled();
+  });
+
+  it('normalizes date-only inputs to full-day bounds', async () => {
+    mockDealUpdate.mockResolvedValue({ ...existingDeal, id: 'deal-1' });
+
+    const res = await PATCH(
+      makePatchRequest({ startsAt: '2026-03-08', expiresAt: '2026-03-08' }),
+      { params: Promise.resolve({ id: 'deal-1' }) }
+    );
+
+    expect(res.status).toBe(200);
+
+    const updateArgs = mockDealUpdate.mock.calls[0][0] as any;
+    const startsAt = updateArgs.data.startsAt as Date;
+    const expiresAt = updateArgs.data.expiresAt as Date;
+
+    expect(startsAt.getHours()).toBe(0);
+    expect(startsAt.getMinutes()).toBe(0);
+    expect(expiresAt.getHours()).toBe(23);
+    expect(expiresAt.getMinutes()).toBe(59);
   });
 });

@@ -5,6 +5,15 @@ import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 
+function parseDealDate(value: string, endOfDay: boolean): Date | null {
+  const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/;
+  const parsed = dateOnlyPattern.test(value)
+    ? new Date(`${value}T${endOfDay ? '23:59:59.999' : '00:00:00.000'}`)
+    : new Date(value);
+
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
@@ -31,6 +40,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
+    let parsedStartsAt: Date | undefined;
+    if (body.startsAt !== undefined) {
+      const parsed = parseDealDate(body.startsAt, false);
+      if (!parsed) {
+        return NextResponse.json({ error: 'Invalid deal dates' }, { status: 400 });
+      }
+      parsedStartsAt = parsed;
+    }
+
+    let parsedExpiresAt: Date | undefined;
+    if (body.expiresAt !== undefined) {
+      const parsed = parseDealDate(body.expiresAt, true);
+      if (!parsed) {
+        return NextResponse.json({ error: 'Invalid deal dates' }, { status: 400 });
+      }
+      parsedExpiresAt = parsed;
+    }
+
+    const nextStartsAt = parsedStartsAt ?? existing.startsAt;
+    const nextExpiresAt = parsedExpiresAt ?? existing.expiresAt;
+    if (nextExpiresAt <= nextStartsAt) {
+      return NextResponse.json({ error: 'End date must be after start date' }, { status: 400 });
+    }
+
     const deal = await prisma.deal.update({
       where: { id },
       data: {
@@ -40,8 +73,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...(body.discountType !== undefined && { discountType: body.discountType }),
         ...(body.discountValue !== undefined && { discountValue: Number(body.discountValue) }),
         ...(body.serviceId !== undefined && { serviceId: body.serviceId || null }),
-        ...(body.startsAt !== undefined && { startsAt: new Date(body.startsAt) }),
-        ...(body.expiresAt !== undefined && { expiresAt: new Date(body.expiresAt) }),
+        ...(parsedStartsAt !== undefined && { startsAt: parsedStartsAt }),
+        ...(parsedExpiresAt !== undefined && { expiresAt: parsedExpiresAt }),
         ...(body.maxRedemptions !== undefined && { maxRedemptions: body.maxRedemptions ? Number(body.maxRedemptions) : null }),
       },
       include: { service: { select: { name: true } } },
