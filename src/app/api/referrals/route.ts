@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { generateReferralCode } from '@/lib/referral';
 
 export async function GET() {
   try {
@@ -10,7 +11,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const business = await prisma.business.findUnique({
+    let business = await prisma.business.findUnique({
       where: { id: session.user.businessId },
       select: {
         referralCode: true,
@@ -33,6 +34,16 @@ export async function GET() {
 
     if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
+    }
+
+    // Lazy-generate referral code for businesses created before the feature existed
+    if (!business.referralCode) {
+      const code = await generateReferralCode();
+      await prisma.business.update({
+        where: { id: session.user.businessId },
+        data: { referralCode: code },
+      });
+      business = { ...business, referralCode: code };
     }
 
     return NextResponse.json({
