@@ -198,10 +198,10 @@ export default function AppointmentsPage() {
         </div>
 
         {/* Controls — full width on mobile */}
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
           {/* Quick stats */}
           {appointments.length > 0 && (
-            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 border-r border-gray-100 dark:border-gray-700 pr-3 mr-1">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 w-full sm:w-auto sm:border-r sm:border-gray-100 sm:dark:border-gray-700 sm:pr-3 sm:mr-1">
               <span className="font-semibold text-gray-900 dark:text-gray-100">{filteredAppointments.length}</span> total
               {counts.pending > 0 && (
                 <span className="bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800 px-2 py-0.5 rounded-full font-medium">
@@ -221,7 +221,7 @@ export default function AppointmentsPage() {
             <select
               value={selectedStaffId}
               onChange={(e) => setSelectedStaffId(e.target.value)}
-              className="text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full sm:w-auto text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="">All Staff</option>
               {staffList.map(s => (
@@ -231,7 +231,7 @@ export default function AppointmentsPage() {
           )}
 
           {/* View toggle — stretches full width on mobile */}
-          <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex-1 sm:flex-none">
+          <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden w-full sm:w-auto">
             {(['day', 'week', 'month'] as const).map((v) => (
               <button
                 key={v}
