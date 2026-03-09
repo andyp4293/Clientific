@@ -72,6 +72,9 @@ export async function GET(req: NextRequest) {
         aiReceptionistPhone: true,
         aiReceptionistGreeting: true,
         aiReceptionistFaq: true,
+        smsAiEnabled: true,
+        smsAiPhoneNumber: true,
+        smsAiGreeting: true,
         vapiPhoneNumber: true,
         notifyNewBookingEmail: true,
         pointsPerDollar: true,
@@ -128,6 +131,9 @@ export async function PATCH(req: NextRequest) {
       aiReceptionistPhone,
       aiReceptionistGreeting,
       aiReceptionistFaq,
+      smsAiEnabled,
+      smsAiPhoneNumber,
+      smsAiGreeting,
       notifyNewBookingEmail,
       pointsPerDollar,
       pointsPerVisit,
@@ -139,6 +145,7 @@ export async function PATCH(req: NextRequest) {
       { label: 'City', value: city },
       { label: 'AI greeting', value: aiReceptionistGreeting },
       { label: 'AI FAQ', value: typeof aiReceptionistFaq === 'string' ? aiReceptionistFaq : null },
+      { label: 'SMS AI greeting', value: smsAiGreeting },
     ]);
     if (blockedField) {
       return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
@@ -222,6 +229,9 @@ export async function PATCH(req: NextRequest) {
         ...(aiReceptionistPhone !== undefined && { aiReceptionistPhone }),
         ...(aiReceptionistGreeting !== undefined && { aiReceptionistGreeting }),
         ...(aiReceptionistFaq !== undefined && { aiReceptionistFaq }),
+        ...(smsAiEnabled !== undefined && { smsAiEnabled }),
+        ...(smsAiPhoneNumber !== undefined && { smsAiPhoneNumber }),
+        ...(smsAiGreeting !== undefined && { smsAiGreeting }),
         ...(notifyNewBookingEmail !== undefined && { notifyNewBookingEmail }),
         ...(pointsPerDollar !== undefined && { pointsPerDollar: Number(pointsPerDollar) }),
         ...(pointsPerVisit !== undefined && { pointsPerVisit: Math.round(Number(pointsPerVisit)) }),

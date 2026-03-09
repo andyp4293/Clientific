@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import twilio from 'twilio';
 import { prisma } from '@/lib/prisma';
+import { handleSmsAiInbound } from '@/lib/sms-ai';
 
 const STOP_KEYWORDS = new Set(['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT']);
 const START_KEYWORDS = new Set(['START', 'UNSTOP', 'YES']);
@@ -34,9 +36,34 @@ function keywordFromBody(body: string | null | undefined): string {
   return first.toUpperCase();
 }
 
+function formDataToRecord(form: FormData): Record<string, string> {
+  const params: Record<string, string> = {};
+  for (const [key, value] of form.entries()) {
+    if (typeof value === 'string') params[key] = value;
+  }
+  return params;
+}
+
+function isValidTwilioSignature(req: NextRequest, params: Record<string, string>): boolean {
+  if (process.env.TWILIO_VALIDATE_WEBHOOK !== 'true') return true;
+  const signature = req.headers.get('x-twilio-signature');
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  if (!signature || !authToken) return false;
+  try {
+    return twilio.validateRequest(authToken, signature, req.url, params);
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const form = await req.formData();
+    const formParams = formDataToRecord(form);
+    if (!isValidTwilioSignature(req, formParams)) {
+      return NextResponse.json({ error: 'Invalid Twilio signature' }, { status: 403 });
+    }
+
     const fromPhoneRaw = (form.get('From') as string | null) || null;
     const toPhoneRaw = (form.get('To') as string | null) || null;
     const messageBody = (form.get('Body') as string | null) || null;
@@ -48,7 +75,7 @@ export async function POST(req: NextRequest) {
 
     const allCustomers = await prisma.customer.findMany({
       where: { phone: { not: null } },
-      select: { id: true, businessId: true, phone: true },
+      select: { id: true, businessId: true, phone: true, smsOptedOut: true },
     });
 
     const matchingCustomers = normalizedFrom
@@ -60,6 +87,7 @@ export async function POST(req: NextRequest) {
     let eventType = 'INBOUND_MESSAGE';
     let responseText =
       'Clientific alerts: Reply STOP to opt out, START to resubscribe, HELP for help.';
+    let extraMetadata: Record<string, unknown> = {};
 
     if (STOP_KEYWORDS.has(keyword)) {
       eventType = 'STOP';
@@ -101,6 +129,17 @@ export async function POST(req: NextRequest) {
       eventType = 'HELP';
       responseText =
         'Clientific SMS Help: Reply STOP to opt out, START to resubscribe. Msg & data rates may apply.';
+    } else {
+      const aiResult = await handleSmsAiInbound({
+        fromPhoneRaw,
+        toPhoneRaw,
+        messageBody,
+      });
+      if (aiResult?.handled) {
+        eventType = aiResult.eventType;
+        responseText = aiResult.text;
+        extraMetadata = aiResult.metadata || {};
+      }
     }
 
     if (matchingCustomers.length > 0) {
@@ -120,6 +159,7 @@ export async function POST(req: NextRequest) {
           metadata: {
             keyword,
             matchedCustomers: matchingCustomers.length,
+            ...extraMetadata,
           },
         })),
       });
@@ -138,6 +178,7 @@ export async function POST(req: NextRequest) {
           metadata: {
             keyword,
             matchedCustomers: 0,
+            ...extraMetadata,
           },
         },
       });

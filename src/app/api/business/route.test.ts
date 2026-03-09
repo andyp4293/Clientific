@@ -41,6 +41,9 @@ const fakeBusiness = {
   subscriptionStatus: 'active',
   trialEndsAt: null,
   aiReceptionistEnabled: false,
+  smsAiEnabled: false,
+  smsAiPhoneNumber: null,
+  smsAiGreeting: null,
   vapiPhoneNumberId: null,
   phone: '5551234567',
 };

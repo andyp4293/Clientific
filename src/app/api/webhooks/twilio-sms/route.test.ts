@@ -1,6 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
+vi.mock('twilio', () => ({
+  default: {
+    validateRequest: vi.fn(() => true),
+  },
+}));
+
+vi.mock('@/lib/sms-ai', () => ({
+  handleSmsAiInbound: vi.fn(),
+}));
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     customer: {
@@ -15,13 +25,15 @@ vi.mock('@/lib/prisma', () => ({
 }));
 
 import { prisma } from '@/lib/prisma';
+import twilio from 'twilio';
+import { handleSmsAiInbound } from '@/lib/sms-ai';
 import { POST } from '@/app/api/webhooks/twilio-sms/route';
 
-function inboundReq(body: Record<string, string>) {
+function inboundReq(body: Record<string, string>, headers?: Record<string, string>) {
   const payload = new URLSearchParams(body);
   return new NextRequest('http://localhost/api/webhooks/twilio-sms', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...(headers || {}) },
     body: payload,
   });
 }
@@ -30,11 +42,14 @@ describe('POST /api/webhooks/twilio-sms', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(prisma.customer.findMany).mockResolvedValue([
-      { id: 'cust-1', businessId: 'biz-1', phone: '+15551234567' },
+      { id: 'cust-1', businessId: 'biz-1', phone: '+15551234567', smsOptedOut: false },
     ] as any);
     vi.mocked(prisma.customer.updateMany).mockResolvedValue({ count: 1 } as any);
     vi.mocked(prisma.smsConsentEvent.createMany).mockResolvedValue({ count: 1 } as any);
     vi.mocked(prisma.smsConsentEvent.create).mockResolvedValue({ id: 'evt-1' } as any);
+    vi.mocked(handleSmsAiInbound).mockResolvedValue(null);
+    vi.mocked((twilio as any).validateRequest).mockReturnValue(true);
+    delete process.env.TWILIO_VALIDATE_WEBHOOK;
   });
 
   it('handles STOP and opts matching customers out globally', async () => {
@@ -168,8 +183,8 @@ describe('POST /api/webhooks/twilio-sms', () => {
 
   it('updates all matched customers globally for shared sender numbers', async () => {
     vi.mocked(prisma.customer.findMany).mockResolvedValue([
-      { id: 'cust-1', businessId: 'biz-1', phone: '+15551234567' },
-      { id: 'cust-2', businessId: 'biz-2', phone: '5551234567' },
+      { id: 'cust-1', businessId: 'biz-1', phone: '+15551234567', smsOptedOut: false },
+      { id: 'cust-2', businessId: 'biz-2', phone: '5551234567', smsOptedOut: false },
     ] as any);
 
     const res = await POST(
@@ -197,5 +212,62 @@ describe('POST /api/webhooks/twilio-sms', () => {
         ]),
       })
     );
+  });
+
+  it('routes non-keyword messages through SMS AI handler when available', async () => {
+    vi.mocked(handleSmsAiInbound).mockResolvedValue({
+      handled: true,
+      text: 'Please confirm: haircut tomorrow at 3 PM for Jordan. Reply YES to book.',
+      eventType: 'AI_BOOKING_CONFIRM_REQUEST',
+      metadata: { flow: 'booking' },
+    });
+
+    const res = await POST(
+      inboundReq({
+        From: '+15551234567',
+        To: '+18557654989',
+        Body: 'book haircut tomorrow at 3pm',
+        MessageSid: 'SM130',
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(handleSmsAiInbound).toHaveBeenCalledWith({
+      fromPhoneRaw: '+15551234567',
+      toPhoneRaw: '+18557654989',
+      messageBody: 'book haircut tomorrow at 3pm',
+    });
+    expect(prisma.smsConsentEvent.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            eventType: 'AI_BOOKING_CONFIRM_REQUEST',
+            metadata: expect.objectContaining({ flow: 'booking' }),
+          }),
+        ]),
+      })
+    );
+    const text = await res.text();
+    expect(text).toContain('Reply YES to book');
+  });
+
+  it('rejects invalid Twilio signature when webhook validation is enabled', async () => {
+    process.env.TWILIO_VALIDATE_WEBHOOK = 'true';
+    process.env.TWILIO_AUTH_TOKEN = 'test-token';
+    vi.mocked((twilio as any).validateRequest).mockReturnValue(false);
+
+    const res = await POST(
+      inboundReq(
+        {
+          From: '+15551234567',
+          To: '+18557654989',
+          Body: 'HELLO',
+          MessageSid: 'SM131',
+        },
+        { 'x-twilio-signature': 'invalid-signature' }
+      )
+    );
+
+    expect(res.status).toBe(403);
   });
 });

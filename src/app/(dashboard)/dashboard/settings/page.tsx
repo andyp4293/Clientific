@@ -112,6 +112,9 @@ interface Business {
   aiReceptionistPhone: string | null;
   aiReceptionistGreeting: string | null;
   aiReceptionistFaq: { question: string; answer: string }[] | null;
+  smsAiEnabled: boolean;
+  smsAiPhoneNumber: string | null;
+  smsAiGreeting: string | null;
   vapiPhoneNumber: string | null;
   notifyNewBookingEmail: boolean;
   pointsPerDollar: number;
@@ -794,6 +797,55 @@ export default function SettingsPage() {
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Leave blank to use the default greeting above
                 </p>
+              </div>
+
+              {/* SMS AI Booking */}
+              <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <label className="flex items-center cursor-pointer mb-4">
+                  <input
+                    type="checkbox"
+                    checked={formData.smsAiEnabled ?? false}
+                    onChange={(e) => handleInputChange('smsAiEnabled', e.target.checked)}
+                    className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary mr-3"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Enable SMS AI Booking</span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Let customers text to ask questions, book, and cancel appointments.
+                    </p>
+                  </div>
+                </label>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      SMS AI Inbound Number
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.smsAiPhoneNumber || ''}
+                      onChange={(e) => handleInputChange('smsAiPhoneNumber', e.target.value)}
+                      className="input"
+                      placeholder="+18557654989"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Set this to the Twilio number that points to `/api/webhooks/twilio-sms`.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      SMS Greeting <span className="font-normal text-gray-400 dark:text-gray-500">(optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.smsAiGreeting || ''}
+                      onChange={(e) => handleInputChange('smsAiGreeting', e.target.value)}
+                      className="input"
+                      placeholder={`Hi from ${formData.name || 'our business'}. I can help you book by text.`}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* FAQ Section */}

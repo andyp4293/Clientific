@@ -1,0 +1,118 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('@/lib/prisma', () => ({
+  prisma: {
+    business: { findMany: vi.fn() },
+    smsAiSession: { upsert: vi.fn(), update: vi.fn() },
+    customer: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
+    service: { findFirst: vi.fn() },
+    staff: { findFirst: vi.fn() },
+    appointment: {
+      findMany: vi.fn(),
+      count: vi.fn(),
+      create: vi.fn(),
+      findFirst: vi.fn(),
+      update: vi.fn(),
+    },
+    notification: { create: vi.fn() },
+  },
+}));
+
+import { prisma } from '@/lib/prisma';
+import { handleSmsAiInbound } from '@/lib/sms-ai';
+
+const baseBusiness = {
+  id: 'biz-1',
+  name: 'Test Nail Salon',
+  timezone: 'America/New_York',
+  street: '123 Main St',
+  city: 'Miami',
+  state: 'FL',
+  smsAiGreeting: 'Hi from Test Nail Salon.',
+  smsAiPhoneNumber: '+18557654989',
+  vapiPhoneNumber: null,
+  services: [{ id: 'svc-1', name: 'Classic Manicure', duration: 60, price: 35 }],
+  staff: [{ id: 'stf-1', fullName: 'Jordan', workDays: [1, 2, 3, 4, 5] }],
+  businessHours: {
+    hours: {
+      0: { isOpen: false },
+      1: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+      2: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+      3: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+      4: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+      5: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+      6: { isOpen: false },
+    },
+  },
+};
+
+const baseSession = {
+  id: 'sess-1',
+  businessId: 'biz-1',
+  phone: '+15551234567',
+  state: 'idle',
+  turns: 1,
+  serviceId: null,
+  staffId: null,
+  requestedDate: null,
+  requestedTime: null,
+  selectedSlotTime: null,
+  customerName: null,
+  notes: null,
+  pendingOptions: null,
+  lastIntent: null,
+  lastInboundText: null,
+  lastOutboundText: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+
+describe('handleSmsAiInbound', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.business.findMany).mockResolvedValue([baseBusiness] as any);
+    vi.mocked(prisma.smsAiSession.upsert).mockResolvedValue(baseSession as any);
+    vi.mocked(prisma.smsAiSession.update).mockResolvedValue(baseSession as any);
+  });
+
+  it('returns null when no SMS AI business is enabled', async () => {
+    vi.mocked(prisma.business.findMany).mockResolvedValue([] as any);
+
+    const result = await handleSmsAiInbound({
+      fromPhoneRaw: '+15551234567',
+      toPhoneRaw: '+18557654989',
+      messageBody: 'book tomorrow at 3pm',
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it('returns help response for help intent', async () => {
+    const result = await handleSmsAiInbound({
+      fromPhoneRaw: '+15551234567',
+      toPhoneRaw: '+18557654989',
+      messageBody: 'help',
+    });
+
+    expect(result?.eventType).toBe('AI_HELP');
+    expect(result?.text).toContain('Book manicure tomorrow at 3pm');
+  });
+
+  it('asks for service when booking intent does not include a service', async () => {
+    const result = await handleSmsAiInbound({
+      fromPhoneRaw: '+15551234567',
+      toPhoneRaw: '+18557654989',
+      messageBody: 'book tomorrow at 3pm',
+    });
+
+    expect(result?.eventType).toBe('AI_BOOKING_NEEDS_SERVICE');
+    expect(result?.text).toContain('Which service');
+    expect(prisma.smsAiSession.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          state: 'booking_collect_service',
+        }),
+      })
+    );
+  });
+});

@@ -50,6 +50,9 @@ model Business {
   aiReceptionistPhone    String?
   aiReceptionistGreeting String?
   aiReceptionistFaq      Json?
+  smsAiEnabled           Boolean        @default(false)
+  smsAiPhoneNumber       String?
+  smsAiGreeting          String?
   vapiPhoneNumberId      String?
   vapiPhoneNumber        String?
   pointsPerDollar        Float          @default(1.0)
@@ -77,6 +80,7 @@ model Business {
   rewards                Reward[]
   services               Service[]
   smsLogs                SmsLog[]       @relation("SmsLogs")
+  smsAiSessions          SmsAiSession[] @relation("BusinessSmsAiSessions")
   smsConsentEvents       SmsConsentEvent[] @relation("BusinessSmsConsentEvents")
   staff                  Staff[]
 }
@@ -312,6 +316,31 @@ model SmsConsentEvent {
   @@index([phone, createdAt])
   @@index([eventType, createdAt])
   @@index([businessId, createdAt])
+}
+
+model SmsAiSession {
+  id               String   @id @default(cuid())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  businessId       String
+  phone            String
+  state            String   @default("idle")
+  turns            Int      @default(0)
+  serviceId        String?
+  staffId          String?
+  requestedDate    String?
+  requestedTime    String?
+  selectedSlotTime DateTime?
+  customerName     String?
+  notes            String?
+  pendingOptions   Json?
+  lastInboundText  String?
+  lastOutboundText String?
+  lastIntent       String?
+  business         Business @relation("BusinessSmsAiSessions", fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, phone])
+  @@index([businessId, updatedAt])
 }
 
 model Notification {
