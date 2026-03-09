@@ -51,7 +51,7 @@ function isLikelyTollFree(phone: string | null | undefined): boolean {
 }
 
 function shouldSuppressKeywordReply(keyword: string, toPhoneRaw: string | null): boolean {
-  const mode = (process.env.TWILIO_KEYWORD_REPLY_MODE || 'auto').toLowerCase();
+  const mode = (process.env.TWILIO_KEYWORD_REPLY_MODE || 'custom').toLowerCase();
   if (keyword !== 'STOP' && keyword !== 'START') return false;
   if (mode === 'custom') return false;
   if (mode === 'silent') return true;

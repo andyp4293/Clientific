@@ -74,7 +74,7 @@ describe('POST /api/webhooks/twilio-sms', () => {
       })
     );
     const text = await res.text();
-    expect(text).toContain('<Response></Response>');
+    expect(text).toContain('unsubscribed');
   });
 
   it('handles START and reenables transactional + marketing consents', async () => {
@@ -98,11 +98,11 @@ describe('POST /api/webhooks/twilio-sms', () => {
       })
     );
     const text = await res.text();
-    expect(text).toContain('<Response></Response>');
+    expect(text).toContain('resubscribed');
   });
 
-  it('returns custom STOP text when keyword reply mode is forced to custom', async () => {
-    process.env.TWILIO_KEYWORD_REPLY_MODE = 'custom';
+  it('suppresses STOP reply in auto mode for toll-free numbers', async () => {
+    process.env.TWILIO_KEYWORD_REPLY_MODE = 'auto';
 
     const res = await POST(
       inboundReq({
@@ -115,7 +115,7 @@ describe('POST /api/webhooks/twilio-sms', () => {
 
     expect(res.status).toBe(200);
     const text = await res.text();
-    expect(text).toContain('unsubscribed');
+    expect(text).toContain('<Response></Response>');
   });
 
   it('handles HELP without mutating consent flags', async () => {
