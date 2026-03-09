@@ -145,6 +145,8 @@ export default function DealsPage() {
   };
 
   const labelClass = 'block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1';
+  const notifyCooldownMs = 7 * 24 * 60 * 60 * 1000;
+  const nowMs = Date.now();
 
   return (
     <div className="p-4 md:p-6 max-w-4xl pb-28 md:pb-8 space-y-4 md:space-y-6">
@@ -282,6 +284,12 @@ export default function DealsPage() {
             const isExpired = new Date(deal.expiresAt) <= new Date();
             const isFull = deal.maxRedemptions !== null && deal.redemptionCount >= deal.maxRedemptions;
             const isExpanded = expandedDeal === deal.id;
+            const notifiedAtMs = deal.notifiedAt ? new Date(deal.notifiedAt).getTime() : null;
+            const notifyAvailableAtMs = notifiedAtMs ? notifiedAtMs + notifyCooldownMs : null;
+            const notifyOnCooldown = notifyAvailableAtMs !== null && notifyAvailableAtMs > nowMs;
+            const cooldownDaysRemaining = notifyOnCooldown
+              ? Math.ceil((notifyAvailableAtMs - nowMs) / (24 * 60 * 60 * 1000))
+              : 0;
 
             return (
               <div key={deal.id} className="card overflow-hidden">
@@ -353,8 +361,8 @@ export default function DealsPage() {
                       {isExpanded ? 'Hide codes' : `View codes (${deal.redemptions.length})`}
                     </button>
 
-                    {deal.active && (!deal.notifiedAt || Date.now() - new Date(deal.notifiedAt).getTime() > 7 * 24 * 60 * 60 * 1000) && (
-                      confirmingNotify === deal.id ? (
+                    {deal.active && (
+                      confirmingNotify === deal.id && !notifyOnCooldown ? (
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs text-gray-600 dark:text-gray-400">Send a text message to your opted-in customers?</span>
                           <button
@@ -371,16 +379,23 @@ export default function DealsPage() {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => setConfirmingNotify(deal.id)}
-                          disabled={notifyMutation.isPending}
-                          className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-60"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                          </svg>
-                          {notifyMutation.isPending ? 'Sending...' : 'Text My Customers'}
-                        </button>
+                        <div className="flex flex-col items-end gap-1">
+                          <button
+                            onClick={() => setConfirmingNotify(deal.id)}
+                            disabled={notifyMutation.isPending || notifyOnCooldown}
+                            className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                            {notifyMutation.isPending ? 'Sending...' : 'Text My Customers'}
+                          </button>
+                          {notifyOnCooldown && (
+                            <p className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                              Cooldown: available in {cooldownDaysRemaining} day{cooldownDaysRemaining !== 1 ? 's' : ''}
+                            </p>
+                          )}
+                        </div>
                       )
                     )}
                   </div>

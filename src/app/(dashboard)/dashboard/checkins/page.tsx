@@ -136,15 +136,17 @@ export default function CheckInsPage() {
   const totalPoints = checkIns.reduce((sum, ci) => sum + ci.pointsEarned, 0);
 
   return (
-    <div className="max-w-7xl space-y-6">
+    <div className="max-w-7xl space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Check-Ins</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Track customer visits and award loyalty points</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Check-Ins</h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
+            Track customer visits and award loyalty points
+          </p>
         </div>
-        <button onClick={() => setShowModal(true)} className="btn-primary">
-          <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <button onClick={() => setShowModal(true)} className="btn-primary w-full sm:w-auto text-sm">
+          <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           New Check-In
@@ -153,30 +155,30 @@ export default function CheckInsPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card p-6">
+        <div className="card p-4 sm:p-6">
           <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Today's Check-Ins</p>
-          <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{checkIns.length}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">{checkIns.length}</p>
         </div>
-        <div className="card p-6">
+        <div className="card p-4 sm:p-6">
           <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Revenue</p>
-          <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">${totalSpent.toFixed(2)}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">${totalSpent.toFixed(2)}</p>
         </div>
-        <div className="card p-6">
+        <div className="card p-4 sm:p-6">
           <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Points Awarded</p>
-          <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{totalPoints}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">{totalPoints}</p>
         </div>
       </div>
 
       {/* Date Filter */}
-      <div className="card p-6">
+      <div className="card p-4 sm:p-6">
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by Date</label>
         <DatePicker value={selectedDate} onChange={setSelectedDate} />
       </div>
 
       {/* Check-Ins List */}
       <div className="card">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
             Check-Ins for {selectedDate.toLocaleDateString('en-US', {
               weekday: 'long',
               month: 'long',
@@ -187,11 +189,11 @@ export default function CheckInsPage() {
         </div>
 
         {isLoadingCheckIns ? (
-          <div className="p-12 text-center">
+          <div className="p-8 sm:p-12 text-center">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
         ) : checkIns.length === 0 ? (
-          <div className="p-12 text-center">
+          <div className="p-8 sm:p-12 text-center">
             <svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
@@ -201,7 +203,39 @@ export default function CheckInsPage() {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            <div className="sm:hidden divide-y divide-gray-200 dark:divide-gray-700">
+              {checkIns.map((checkIn) => (
+                <div key={checkIn.id} className="p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {new Date(checkIn.checkInTime).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        timeZone: timezone,
+                      })}
+                    </p>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300">
+                      +{checkIn.pointsEarned} pts
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{checkIn.customer.name}</p>
+                    {checkIn.customer.phone && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{checkIn.customer.phone}</p>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
+                    <p>Service: <span className="text-gray-900 dark:text-gray-100">{checkIn.service?.name || '-'}</span></p>
+                    <p>Staff: <span className="text-gray-900 dark:text-gray-100">{checkIn.staff?.fullName || '-'}</span></p>
+                    <p className="col-span-2">
+                      Amount: <span className="text-gray-900 dark:text-gray-100">{checkIn.amountSpent ? `$${checkIn.amountSpent.toFixed(2)}` : '-'}</span>
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden sm:block overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
@@ -245,16 +279,17 @@ export default function CheckInsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </div>
 
       {/* New Check-In Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl max-w-md w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">New Check-In</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">New Check-In</h2>
               <button
                 onClick={() => {
                   setShowModal(false);
@@ -280,7 +315,7 @@ export default function CheckInsPage() {
                   placeholder="Search by name or phone..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+                  className="input"
                 />
                 {searchTerm.length >= 2 && customers.length > 0 && (
                   <div className="mt-2 border border-gray-200 dark:border-gray-700 rounded-xl max-h-48 overflow-y-auto dark:bg-gray-700">
@@ -308,7 +343,8 @@ export default function CheckInsPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Service (Optional)</label>
                 <select
-                  value={formData.serviceId}                  onChange={(e) => {
+                  value={formData.serviceId}
+                  onChange={(e) => {
                     const serviceId = e.target.value;
                     setFormData({ ...formData, serviceId });
                     // Auto-fill amount if service has a price
@@ -317,7 +353,7 @@ export default function CheckInsPage() {
                       setFormData(prev => ({ ...prev, serviceId, amountSpent: service.price!.toString() }));
                     }
                   }}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
+                  className="input"
                 >
                   <option value="">No service</option>
                   {services.map((service) => (
@@ -334,7 +370,7 @@ export default function CheckInsPage() {
                 <select
                   value={formData.staffId}
                   onChange={(e) => setFormData({ ...formData, staffId: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
+                  className="input"
                 >
                   <option value="">No staff</option>
                   {staff.map((member) => (
@@ -356,7 +392,7 @@ export default function CheckInsPage() {
                     min="0"
                     value={formData.amountSpent}
                     onChange={(e) => setFormData({ ...formData, amountSpent: e.target.value })}
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+                    className="input pl-8"
                     placeholder="0.00"
                   />
                 </div>
@@ -372,7 +408,7 @@ export default function CheckInsPage() {
                 </div>
               )}
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
                 <button
                   type="button"
                   onClick={() => {
@@ -380,14 +416,14 @@ export default function CheckInsPage() {
                     setFormData({ customerId: '', serviceId: '', staffId: '', amountSpent: '' });
                     setSearchTerm('');
                   }}
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  className="flex-1 btn-outline"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!formData.customerId || createCheckIn.isPending}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {createCheckIn.isPending ? 'Creating...' : 'Check In'}
                 </button>

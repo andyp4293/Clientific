@@ -140,9 +140,6 @@ export default function HomePage() {
               </Link>
             ) : (
               <>
-                <Link href="/explore" className="hidden md:inline-flex text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 font-medium text-sm transition-colors">
-                  Find Deals
-                </Link>
                 <Link href="/login" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 font-medium text-sm transition-colors">
                   Log In
                 </Link>
@@ -222,12 +219,6 @@ export default function HomePage() {
                     style={{ boxShadow: '0 0 40px rgba(123,34,212,0.5)' }}
                   >
                     Start Free — 14 Days <ArrowRight />
-                  </Link>
-                  <Link
-                    href="/explore"
-                    className="inline-flex items-center gap-2 border border-white/20 text-white font-semibold px-8 py-4 rounded-xl hover:bg-white/5 transition-all duration-200 text-base"
-                  >
-                    Find Deals Near You <ArrowRight />
                   </Link>
                   <div className="flex items-center gap-1.5 text-sm text-gray-500">
                     <svg className="w-3.5 h-3.5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
