@@ -5,16 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
-
-// ── Vapi helpers ──────────────────────────────────────────────────────────────
-
-function parseAreaCode(phone: string | null | undefined): string | null {
-  if (!phone) return null;
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length === 11 && digits[0] === '1') return digits.slice(1, 4);
-  if (digits.length === 10) return digits.slice(0, 3);
-  return null;
-}
+import twilio from 'twilio';
 
 async function vapiRequest(method: string, path: string, body?: object) {
   const res = await fetch(`https://api.vapi.ai${path}`, {
@@ -25,14 +16,79 @@ async function vapiRequest(method: string, path: string, body?: object) {
     },
     ...(body && { body: JSON.stringify(body) }),
   });
+
   if (!res.ok && res.status !== 404) {
     const text = await res.text().catch(() => '');
     throw new Error(`Vapi ${method} ${path} failed: ${res.status} ${text}`);
   }
+
   return res.status === 204 || res.status === 404 ? null : res.json();
 }
 
-// ── GET ───────────────────────────────────────────────────────────────────────
+type TwilioProvisionedNumber = {
+  sid: string;
+  phoneNumber: string;
+};
+
+function getTwilioClient() {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+
+  if (!accountSid || !authToken) {
+    throw new Error('Twilio credentials are required for AI receptionist number provisioning');
+  }
+
+  return twilio(accountSid, authToken);
+}
+
+async function provisionTwilioTollFreeNumber(): Promise<TwilioProvisionedNumber> {
+  const client = getTwilioClient();
+  const available = await client.availablePhoneNumbers('US').tollFree.list({
+    smsEnabled: true,
+    voiceEnabled: true,
+    limit: 1,
+  });
+
+  const candidate = available[0]?.phoneNumber;
+  if (!candidate) {
+    throw new Error('No toll-free numbers are currently available from Twilio');
+  }
+
+  const purchased = await client.incomingPhoneNumbers.create({ phoneNumber: candidate });
+
+  if (!purchased.sid || !purchased.phoneNumber) {
+    throw new Error('Twilio returned an invalid purchased number payload');
+  }
+
+  return {
+    sid: purchased.sid,
+    phoneNumber: purchased.phoneNumber,
+  };
+}
+
+async function setTwilioSmsWebhook(numberSid: string, appUrl: string): Promise<void> {
+  const client = getTwilioClient();
+  await client.incomingPhoneNumbers(numberSid).update({
+    smsUrl: `${appUrl}/api/webhooks/twilio-sms`,
+    smsMethod: 'POST',
+  });
+}
+
+async function releaseTwilioNumberBySid(numberSid: string): Promise<void> {
+  const client = getTwilioClient();
+  await client.incomingPhoneNumbers(numberSid).remove();
+}
+
+async function releaseTwilioNumberByPhone(phoneNumber: string | null | undefined): Promise<void> {
+  if (!phoneNumber) return;
+
+  const client = getTwilioClient();
+  const matches = await client.incomingPhoneNumbers.list({ phoneNumber, limit: 1 });
+  const sid = matches[0]?.sid;
+
+  if (!sid) return;
+  await client.incomingPhoneNumbers(sid).remove();
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -96,8 +152,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// ── PATCH ─────────────────────────────────────────────────────────────────────
-
 export async function PATCH(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -147,11 +201,11 @@ export async function PATCH(req: NextRequest) {
       { label: 'AI FAQ', value: typeof aiReceptionistFaq === 'string' ? aiReceptionistFaq : null },
       { label: 'SMS AI greeting', value: smsAiGreeting },
     ]);
+
     if (blockedField) {
       return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
     }
 
-    // Fetch current business to detect Vapi state changes
     const current = await prisma.business.findUnique({
       where: { id: session.user.id },
       select: {
@@ -159,6 +213,9 @@ export async function PATCH(req: NextRequest) {
         phone: true,
         aiReceptionistEnabled: true,
         vapiPhoneNumberId: true,
+        vapiPhoneNumber: true,
+        smsAiEnabled: true,
+        smsAiPhoneNumber: true,
       },
     });
 
@@ -166,43 +223,93 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
-    // Determine final enabled state
     const finalEnabled = aiReceptionistEnabled !== undefined
       ? aiReceptionistEnabled
       : current.aiReceptionistEnabled;
 
-    // Vapi operations — only run if VAPI_PRIVATE_KEY is configured
-    const vapiUpdates: Record<string, string | null> = {};
+    const vapiUpdates: {
+      vapiPhoneNumberId?: string | null;
+      vapiPhoneNumber?: string | null;
+      smsAiPhoneNumber?: string | null;
+      smsAiEnabled?: boolean;
+    } = {};
+
     const vapiConfigured = !!process.env.VAPI_PRIVATE_KEY;
     const appUrl = getConfiguredAppBaseUrl();
     const serverUrl = `${appUrl}/api/webhooks/vapi`;
 
     if (vapiConfigured && finalEnabled && !current.vapiPhoneNumberId) {
-      // Toggling ON — provision phone number with server.url (Vapi's current API structure)
-      const areaCode = parseAreaCode(phone ?? current.phone) ?? '800';
-      const phoneNumber = await vapiRequest('POST', '/phone-number', {
-        provider: 'vapi',
-        numberDesiredAreaCode: areaCode,
-        name: `${name ?? current.name} Receptionist`,
-        server: { url: serverUrl },
-      });
-      // Also PATCH to ensure server.url is set (belt-and-suspenders)
-      const patchResult = await vapiRequest('PATCH', `/phone-number/${phoneNumber.id}`, {
-        server: { url: serverUrl },
-      });
-      console.log('[vapi] provisioned phone number, server.url confirmed:', patchResult?.server?.url);
-      vapiUpdates.vapiPhoneNumberId = phoneNumber.id;
-      vapiUpdates.vapiPhoneNumber = phoneNumber.number;
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
+
+      if (!accountSid || !authToken) {
+        throw new Error('Twilio credentials are required to provision an AI receptionist number');
+      }
+
+      let twilioNumber: TwilioProvisionedNumber | null = null;
+
+      try {
+        twilioNumber = await provisionTwilioTollFreeNumber();
+
+        const phoneNumber = await vapiRequest('POST', '/phone-number', {
+          provider: 'twilio',
+          number: twilioNumber.phoneNumber,
+          twilioAccountSid: accountSid,
+          twilioAuthToken: authToken,
+          smsEnabled: false,
+          name: `${name ?? current.name} Receptionist`,
+          server: { url: serverUrl },
+        });
+
+        const patchResult = await vapiRequest('PATCH', `/phone-number/${phoneNumber.id}`, {
+          server: { url: serverUrl },
+        });
+
+        console.log('[vapi] provisioned Twilio number, server.url confirmed:', patchResult?.server?.url);
+
+        await setTwilioSmsWebhook(twilioNumber.sid, appUrl);
+
+        vapiUpdates.vapiPhoneNumberId = phoneNumber.id;
+        vapiUpdates.vapiPhoneNumber = phoneNumber.number ?? twilioNumber.phoneNumber;
+
+        if (smsAiPhoneNumber === undefined && !current.smsAiPhoneNumber) {
+          vapiUpdates.smsAiPhoneNumber = twilioNumber.phoneNumber;
+        }
+      } catch (error) {
+        if (twilioNumber?.sid) {
+          await releaseTwilioNumberBySid(twilioNumber.sid).catch((releaseError) => {
+            console.error('[twilio] rollback failed after Vapi provisioning error:', releaseError);
+          });
+        }
+        throw error;
+      }
     } else if (vapiConfigured && !finalEnabled && current.vapiPhoneNumberId) {
-      // Toggling OFF — release phone number
       await vapiRequest('DELETE', `/phone-number/${current.vapiPhoneNumberId}`);
+      await releaseTwilioNumberByPhone(current.vapiPhoneNumber).catch((releaseError) => {
+        console.error('[twilio] failed to release number on AI disable:', releaseError);
+      });
+
       vapiUpdates.vapiPhoneNumberId = null;
       vapiUpdates.vapiPhoneNumber = null;
+
+      if (
+        smsAiPhoneNumber === undefined &&
+        current.smsAiPhoneNumber &&
+        current.smsAiPhoneNumber === current.vapiPhoneNumber
+      ) {
+        vapiUpdates.smsAiPhoneNumber = null;
+        if (smsAiEnabled === undefined && current.smsAiEnabled) {
+          vapiUpdates.smsAiEnabled = false;
+        }
+      }
     } else if (vapiConfigured && finalEnabled && current.vapiPhoneNumberId) {
-      // Already enabled — sync server.url on every save
       const syncResult = await vapiRequest('PATCH', `/phone-number/${current.vapiPhoneNumberId}`, {
         server: { url: serverUrl },
-      }).catch((e: any) => { console.error('[vapi] Failed to sync phone number server URL:', e); return null; });
+      }).catch((e: any) => {
+        console.error('[vapi] Failed to sync phone number server URL:', e);
+        return null;
+      });
+
       console.log('[vapi] synced phone number server.url:', syncResult?.server?.url ?? 'error');
     }
 
@@ -237,6 +344,8 @@ export async function PATCH(req: NextRequest) {
         ...(pointsPerVisit !== undefined && { pointsPerVisit: Math.round(Number(pointsPerVisit)) }),
         ...('vapiPhoneNumberId' in vapiUpdates && { vapiPhoneNumberId: vapiUpdates.vapiPhoneNumberId }),
         ...('vapiPhoneNumber' in vapiUpdates && { vapiPhoneNumber: vapiUpdates.vapiPhoneNumber }),
+        ...('smsAiPhoneNumber' in vapiUpdates && { smsAiPhoneNumber: vapiUpdates.smsAiPhoneNumber }),
+        ...('smsAiEnabled' in vapiUpdates && { smsAiEnabled: vapiUpdates.smsAiEnabled }),
       },
     });
 
@@ -249,3 +358,4 @@ export async function PATCH(req: NextRequest) {
     );
   }
 }
+
