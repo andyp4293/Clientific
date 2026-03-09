@@ -35,7 +35,7 @@ export default function PrivacyPolicyPage() {
                 <li>Email address</li>
                 <li>Password (encrypted)</li>
                 <li>Business address and phone number</li>
-                <li>Payment information (processed securely through Stripe)</li>
+                <li>Payment information (processed securely through our payment partner)</li>
               </ul>
             </div>
 
@@ -57,12 +57,12 @@ export default function PrivacyPolicyPage() {
               If you enable the AI phone receptionist feature, we collect:
             </p>
             <ul className="list-disc pl-6 space-y-1 text-gray-700">
-              <li>Call transcripts and recordings processed by our AI infrastructure (Vapi.ai)</li>
+              <li>Call transcripts and recordings processed by our AI infrastructure partners</li>
               <li>Caller phone numbers and call metadata (duration, time)</li>
               <li>Appointments booked via AI calls</li>
             </ul>
             <p className="text-gray-700 leading-relaxed mt-2">
-              AI-generated voice responses are produced by ElevenLabs. Calls are automated — callers will hear an AI voice, not a human. We disclose this to callers at the start of each call.
+              AI-generated voice responses are produced by our voice technology partners. Calls are automated — callers will hear an AI voice, not a human. We disclose this to callers at the start of each call.
             </p>
 
             <h3 className="text-xl font-semibold text-gray-800 mb-3 mt-4">2.4 Usage Information</h3>
@@ -107,13 +107,13 @@ export default function PrivacyPolicyPage() {
               We may share your information with trusted third-party service providers:
             </p>
             <ul className="list-disc pl-6 space-y-1 text-gray-700">
-              <li><strong>Stripe</strong> — Payment processing. Your billing information is handled directly by Stripe and never stored on our servers.</li>
-              <li><strong>Twilio</strong> — SMS messaging for appointment confirmations, reminders, and notifications sent to your customers.</li>
-              <li><strong>Resend</strong> — Transactional email delivery for booking confirmations and system notifications.</li>
-              <li><strong>Vapi.ai</strong> — AI phone receptionist infrastructure. When you enable the AI receptionist feature, call audio, transcripts, and metadata are processed by Vapi. View their privacy policy at vapi.ai/privacy.</li>
-              <li><strong>ElevenLabs</strong> — Voice synthesis for AI receptionist calls. Text is converted to speech via ElevenLabs APIs. View their privacy policy at elevenlabs.io/privacy.</li>
-              <li><strong>Neon / Vercel</strong> — Database hosting (Neon) and application hosting (Vercel). Your data is stored on Neon&apos;s PostgreSQL infrastructure.</li>
-              <li><strong>Mapbox</strong> — Address autocomplete for business profile setup.</li>
+              <li><strong>Payment partner</strong> — Billing and subscription processing. Your payment details are handled by our payment processor and are not stored on our servers.</li>
+              <li><strong>Messaging provider</strong> — SMS messaging for appointment confirmations, reminders, and notifications sent to your customers.</li>
+              <li><strong>Email delivery provider</strong> — Transactional email delivery for booking confirmations and system notifications.</li>
+              <li><strong>AI call infrastructure provider</strong> — AI receptionist call handling, including call audio, transcripts, and related metadata when you enable AI calling.</li>
+              <li><strong>Voice generation provider</strong> — Text-to-speech voice generation for AI receptionist calls.</li>
+              <li><strong>Hosting and database providers</strong> — Application hosting and secure data storage infrastructure.</li>
+              <li><strong>Location services provider</strong> — Address autocomplete for business profile setup.</li>
             </ul>
             <p className="text-gray-700 leading-relaxed mt-2">
               These providers are contractually obligated to protect your data and use it only for the services

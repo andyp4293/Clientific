@@ -15,6 +15,7 @@ export async function GET(
         id: true,
         name: true,
         slug: true,
+        publicId: true,
         businessType: true,
         phone: true,
         businessEmail: true,

@@ -12,6 +12,7 @@ interface Business {
   id: string;
   name: string;
   slug: string;
+  publicId: string;
   businessType: string;
   phone: string;
   businessEmail: string | null;
@@ -244,7 +245,7 @@ export default function PublicBookingPage() {
               </div>
             </div>
             <Link
-              href={`/book/${slugOrPublicId}/info`}
+              href={`/business/${business.publicId}`}
               className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary/10 rounded-lg transition-colors flex-shrink-0"
               title="View business information"
             >

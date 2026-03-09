@@ -839,7 +839,7 @@ export default function SettingsPage() {
                       placeholder="+18557654989"
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Auto-generated from Twilio when AI receptionist is enabled. This number is managed by Clientific.
+                      Auto-generated when AI receptionist is enabled. This number is managed by Clientific.
                     </p>
                   </div>
 

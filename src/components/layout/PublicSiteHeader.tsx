@@ -20,14 +20,15 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { key: 'explore', label: 'Explore Deals', href: '/explore', activeKeys: ['explore', 'business', 'deal', 'book'] },
+  { key: 'home', label: 'For Businesses', href: '/', activeKeys: ['home'] },
+  { key: 'explore', label: 'For Customers', href: '/explore', activeKeys: ['explore', 'business', 'deal', 'book'] },
   { key: 'pricing', label: 'Pricing', href: '/pricing', activeKeys: ['pricing'] },
-  { key: 'partner', label: 'Partner Program', href: '/partner', activeKeys: ['partner'] },
+  { key: 'partner', label: 'Refer & Earn', href: '/partner', activeKeys: ['partner'] },
 ];
 
 export function PublicSiteHeader({
   active = 'home',
-  ctaLabel = 'List Your Business',
+  ctaLabel = 'Start Free Trial',
   ctaHref = '/register',
   showLogin = true,
 }: PublicSiteHeaderProps) {

@@ -206,7 +206,7 @@ export default function TermsOfServicePage() {
                 <li>The AI receptionist is provided &quot;as is&quot; and may not be available 100% of the time</li>
               </ul>
               <p>
-                Voice synthesis is powered by ElevenLabs and call infrastructure by Vapi.ai. Call data is subject to their respective terms and privacy policies.
+                Voice generation and call infrastructure are provided by third-party service providers. Call data is processed under their applicable terms and privacy policies.
               </p>
             </div>
           </section>

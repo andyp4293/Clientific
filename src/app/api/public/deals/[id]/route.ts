@@ -11,7 +11,7 @@ export async function GET(
       where: { id },
       include: {
         service: { select: { name: true } },
-        business: { select: { name: true, slug: true, city: true, state: true } },
+        business: { select: { name: true, slug: true, publicId: true, city: true, state: true } },
       },
     });
 

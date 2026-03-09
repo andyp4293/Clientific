@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { DatePicker } from '@/components/ui/DatePicker';
 
 interface Deal {
   id: string;
@@ -39,13 +40,26 @@ function fmtDateShort(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function toDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function fromDateInputValue(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+}
+
 const defaultForm = {
   title: '',
   description: '',
   discountType: 'percent_off',
   discountValue: '',
   serviceId: '',
-  startsAt: new Date().toLocaleDateString('en-CA'),
+  startsAt: toDateInputValue(new Date()),
   expiresAt: '',
   maxRedemptions: '',
 };
@@ -237,12 +251,21 @@ export default function DealsPage() {
 
               <div>
                 <label className={labelClass}>Start date <span className="text-red-500">*</span></label>
-                <input className="input text-sm" type="date" value={form.startsAt} onChange={e => setForm(f => ({ ...f, startsAt: e.target.value }))} required />
+                <DatePicker
+                  value={fromDateInputValue(form.startsAt)}
+                  onChange={(date) => setForm(f => ({ ...f, startsAt: toDateInputValue(date) }))}
+                  placeholder="Select start date"
+                />
               </div>
 
               <div>
                 <label className={labelClass}>End date <span className="text-red-500">*</span></label>
-                <input className="input text-sm" type="date" value={form.expiresAt} onChange={e => setForm(f => ({ ...f, expiresAt: e.target.value }))} required />
+                <DatePicker
+                  value={fromDateInputValue(form.expiresAt)}
+                  onChange={(date) => setForm(f => ({ ...f, expiresAt: toDateInputValue(date) }))}
+                  minDate={fromDateInputValue(form.startsAt) ?? undefined}
+                  placeholder="Select end date"
+                />
               </div>
 
               <div className="sm:col-span-2">

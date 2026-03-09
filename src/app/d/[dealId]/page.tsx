@@ -19,6 +19,7 @@ interface DealResponse {
     business: {
       name: string;
       slug: string;
+      publicId: string;
       city: string | null;
       state: string | null;
     };
@@ -137,7 +138,7 @@ export default function PublicDealClaimPage() {
           </div>
 
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-medium">
-            <Link href={`/b/${deal.business.slug}`} className="text-primary hover:underline">
+            <Link href={`/business/${deal.business.publicId}`} className="text-primary hover:underline">
               View business profile
             </Link>
             <Link
@@ -181,7 +182,7 @@ export default function PublicDealClaimPage() {
                 Show this code at checkout for redemption.
               </p>
               <Link
-                href={`/book/${deal.business.slug}`}
+                href={`/book/${deal.business.publicId}`}
                 className="inline-block mt-4 text-sm font-medium text-primary hover:underline"
               >
                 Optional: Book now

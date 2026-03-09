@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { DatePicker } from '@/components/ui/DatePicker';
 
 interface Appointment {
   id: string;
@@ -30,6 +31,12 @@ interface Appointment {
 
 function toDateStr(d: Date) {
   return d.toLocaleDateString('en-CA'); // YYYY-MM-DD
+}
+
+function fromDateStr(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
 }
 
 function getWeekStart(date: Date): Date {
@@ -148,14 +155,14 @@ export default function AppointmentsPage() {
   return (
     <div className="w-full">
       {/* Header */}
-      <div className="flex justify-between items-start mb-6">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Appointments</h1>
           <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">{headerSubtitle}</p>
         </div>
         <button
           onClick={() => setShowNewModal(true)}
-          className="btn-primary flex items-center gap-2 text-sm"
+          className="btn-primary inline-flex w-full items-center justify-center gap-2 text-sm sm:w-auto"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -165,22 +172,24 @@ export default function AppointmentsPage() {
       </div>
 
       {/* Date Navigator + Stats */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+      <div className="mb-5 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800 sm:p-4">
         {/* Date navigation — full width on mobile */}
-        <div className="flex items-center gap-1 w-full sm:w-auto">
+        <div className="flex items-center gap-1 w-full">
           <button
             onClick={() => navigate(-1)}
+            aria-label="Previous period"
             className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <div className="flex-1 sm:flex-none sm:min-w-[220px] px-2 text-center">
-            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{headerSubtitle}</p>
+          <div className="min-w-0 flex-1 sm:flex-none sm:min-w-[220px] px-2 text-center">
+            <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{headerSubtitle}</p>
           </div>
           <button
             onClick={() => navigate(1)}
+            aria-label="Next period"
             className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -190,6 +199,7 @@ export default function AppointmentsPage() {
           {!isToday && view === 'day' && (
             <button
               onClick={() => setSelectedDate(new Date())}
+              aria-label="Jump to today"
               className="ml-1 text-xs font-medium text-primary px-3 py-1.5 rounded-lg hover:bg-primary/5 border border-primary/20 transition-colors flex-shrink-0"
             >
               Today
@@ -198,10 +208,10 @@ export default function AppointmentsPage() {
         </div>
 
         {/* Controls — full width on mobile */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+        <div className="mt-3 flex flex-col gap-2 sm:mt-0 sm:flex-row sm:items-center sm:gap-3">
           {/* Quick stats */}
           {appointments.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 w-full sm:w-auto sm:border-r sm:border-gray-100 sm:dark:border-gray-700 sm:pr-3 sm:mr-1">
+            <div className="flex w-full flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 sm:w-auto sm:border-r sm:border-gray-100 sm:pr-3 dark:sm:border-gray-700">
               <span className="font-semibold text-gray-900 dark:text-gray-100">{filteredAppointments.length}</span> total
               {counts.pending > 0 && (
                 <span className="bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800 px-2 py-0.5 rounded-full font-medium">
@@ -221,7 +231,7 @@ export default function AppointmentsPage() {
             <select
               value={selectedStaffId}
               onChange={(e) => setSelectedStaffId(e.target.value)}
-              className="w-full sm:w-auto text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary sm:w-auto"
             >
               <option value="">All Staff</option>
               {staffList.map(s => (
@@ -886,12 +896,9 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
               {/* Date */}
               <div>
                 <label className={labelClass}>Date</label>
-                <input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className="input text-sm"
-                  required
+                <DatePicker
+                  value={fromDateStr(formData.date)}
+                  onChange={(date) => setFormData({ ...formData, date: toDateStr(date) })}
                 />
                 <div className="flex gap-1.5 mt-2">
                   {[{ label: 'Today', val: todayStr }, { label: 'Tomorrow', val: tomorrowStr }].map(({ label, val }) => (
@@ -1141,7 +1148,10 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="label">Date *</label>
-                <input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="input" required />
+                <DatePicker
+                  value={fromDateStr(formData.date)}
+                  onChange={(date) => setFormData({ ...formData, date: toDateStr(date) })}
+                />
               </div>
               <div>
                 <label className="label">Time *</label>

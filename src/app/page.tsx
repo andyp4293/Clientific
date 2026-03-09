@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useState } from 'react';
 import { APP_NAME, APP_DOMAIN } from '@/lib/brand';
+import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
 
 const faqs = [
   {
@@ -109,63 +110,27 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
+      <PublicSiteHeader
+        active="home"
+        showLogin={!isAuthenticated}
+        ctaLabel={isAuthenticated ? 'Dashboard' : 'Start Free Trial'}
+        ctaHref={isAuthenticated ? '/dashboard' : '/register'}
+      />
 
-      {/* ── Header ── */}
-      <header className="sticky top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-sm">
-              <span className="text-white font-bold text-xl">C</span>
-            </div>
-            <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{APP_NAME}</span>
-          </div>
-          <nav className="hidden lg:flex items-center gap-5">
-            <span className="rounded-full border border-gray-200 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-700 dark:text-gray-400">
-              For Customers
-            </span>
-            <Link href="/explore" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">Explore Deals</Link>
-            <Link href="/partner" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">Refer &amp; Earn</Link>
-            <span className="h-4 w-px bg-gray-200 dark:bg-gray-700" />
-            <span className="rounded-full border border-gray-200 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-700 dark:text-gray-400">
-              For Businesses
-            </span>
-            <a href="#features" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">Platform</a>
-            <a href="#pricing" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">Pricing</a>
-            <a href="#faq" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium transition-colors">FAQ</a>
-          </nav>
-          <div className="flex items-center gap-3">
-            {isAuthenticated ? (
-              <Link href="/dashboard" className="btn-primary text-sm px-4 py-2">
-                Dashboard
-              </Link>
-            ) : (
-              <>
-                <Link href="/login" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 font-medium text-sm transition-colors">
-                  Log In
-                </Link>
-                <Link href="/register" className="btn-primary text-sm px-4 py-2 whitespace-nowrap">
-                  Start Free Trial
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <div className="border-b border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900 lg:hidden">
-        <div className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-4 py-2 sm:px-6">
-          <Link href="/explore" className="whitespace-nowrap rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:text-gray-200">
-            Explore Deals
-          </Link>
-          <Link href="/partner" className="whitespace-nowrap rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:text-gray-200">
-            Refer &amp; Earn
-          </Link>
+      <div className="border-b border-gray-100 bg-white/90 dark:border-gray-800 dark:bg-gray-900/90">
+        <div className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-4 py-2 sm:px-6 lg:px-8">
+          <a href="#features" className="whitespace-nowrap rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:text-gray-200">
+            Platform
+          </a>
           <a href="#pricing" className="whitespace-nowrap rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:text-gray-200">
             Pricing
           </a>
           <a href="#faq" className="whitespace-nowrap rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:text-gray-200">
             FAQ
           </a>
+          <Link href="/explore" className="whitespace-nowrap rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:text-gray-200">
+            Customer Deals
+          </Link>
         </div>
       </div>
 
@@ -566,7 +531,7 @@ export default function HomePage() {
           <div className="flex flex-wrap items-center justify-center gap-6 mt-10">
             {[
               { icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', label: 'SSL Secured' },
-              { icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z', label: 'Stripe Payments' },
+              { icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z', label: 'Secure Payments' },
               { icon: 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636', label: 'Cancel Anytime' },
               { icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', label: '99.9% Uptime' },
             ].map(b => (

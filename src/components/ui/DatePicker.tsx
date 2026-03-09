@@ -3,8 +3,10 @@
 import { useState, useRef, useEffect } from 'react';
 
 interface DatePickerProps {
-  value: Date;
+  value: Date | null;
   onChange: (date: Date) => void;
+  onClear?: () => void;
+  allowClear?: boolean;
   minDate?: Date;
   maxDate?: Date;
   placeholder?: string;
@@ -13,13 +15,23 @@ interface DatePickerProps {
 export function DatePicker({
   value,
   onChange,
+  onClear,
+  allowClear = false,
   minDate,
   maxDate,
   placeholder = 'Select date',
 }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [displayMonth, setDisplayMonth] = useState(new Date(value.getFullYear(), value.getMonth()));
+  const [displayMonth, setDisplayMonth] = useState(() => {
+    const base = value ?? new Date();
+    return new Date(base.getFullYear(), base.getMonth());
+  });
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!value) return;
+    setDisplayMonth(new Date(value.getFullYear(), value.getMonth()));
+  }, [value]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -82,7 +94,7 @@ export function DatePicker({
   }
 
   const isSelected = (day: number | null) => {
-    if (!day) return false;
+    if (!day || !value) return false;
     return (
       day === value.getDate() &&
       displayMonth.getMonth() === value.getMonth() &&
@@ -101,29 +113,33 @@ export function DatePicker({
   };
 
   const monthName = displayMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-  const selectedDateStr = value.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  const selectedDateStr = value
+    ? value.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : placeholder;
 
   return (
     <div className="relative" ref={containerRef}>
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-left font-medium text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all flex items-center justify-between"
       >
-        <span>{selectedDateStr}</span>
+        <span className={!value ? 'text-gray-500 dark:text-gray-400' : ''}>{selectedDateStr}</span>
         <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50 p-4 w-80">
+        <div className="absolute top-full left-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800">
           {/* Month Navigation */}
           <div className="flex items-center justify-between mb-4">
             <button
+              type="button"
               onClick={handlePrevMonth}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
@@ -133,6 +149,7 @@ export function DatePicker({
             </button>
             <h3 className="font-semibold text-gray-900 dark:text-gray-100">{monthName}</h3>
             <button
+              type="button"
               onClick={handleNextMonth}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
@@ -156,6 +173,7 @@ export function DatePicker({
             {days.map((day, index) => (
               <button
                 key={index}
+                type="button"
                 onClick={() => day && !isDateDisabled(day) && handleDateClick(day)}
                 disabled={!day || isDateDisabled(day)}
                 className={`
@@ -173,18 +191,33 @@ export function DatePicker({
           </div>
 
           {/* Today Button */}
-          <button
-            onClick={() => {
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-              onChange(today);
-              setDisplayMonth(new Date(today.getFullYear(), today.getMonth()));
-              setIsOpen(false);
-            }}
-            className="mt-4 w-full py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-          >
-            Today
-          </button>
+          <div className="mt-4 flex items-center justify-between gap-2">
+            {allowClear && value && onClear && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClear();
+                  setIsOpen(false);
+                }}
+                className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                Clear
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                onChange(today);
+                setDisplayMonth(new Date(today.getFullYear(), today.getMonth()));
+                setIsOpen(false);
+              }}
+              className="ml-auto rounded-lg px-3 py-2 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+            >
+              Today
+            </button>
+          </div>
         </div>
       )}
     </div>
