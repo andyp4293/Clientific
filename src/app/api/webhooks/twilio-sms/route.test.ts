@@ -50,6 +50,7 @@ describe('POST /api/webhooks/twilio-sms', () => {
     vi.mocked(handleSmsAiInbound).mockResolvedValue(null);
     vi.mocked((twilio as any).validateRequest).mockReturnValue(true);
     delete process.env.TWILIO_VALIDATE_WEBHOOK;
+    delete process.env.TWILIO_KEYWORD_REPLY_MODE;
   });
 
   it('handles STOP and opts matching customers out globally', async () => {
@@ -73,7 +74,7 @@ describe('POST /api/webhooks/twilio-sms', () => {
       })
     );
     const text = await res.text();
-    expect(text).toContain('unsubscribed');
+    expect(text).toContain('<Response></Response>');
   });
 
   it('handles START and reenables transactional + marketing consents', async () => {
@@ -97,7 +98,24 @@ describe('POST /api/webhooks/twilio-sms', () => {
       })
     );
     const text = await res.text();
-    expect(text).toContain('resubscribed');
+    expect(text).toContain('<Response></Response>');
+  });
+
+  it('returns custom STOP text when keyword reply mode is forced to custom', async () => {
+    process.env.TWILIO_KEYWORD_REPLY_MODE = 'custom';
+
+    const res = await POST(
+      inboundReq({
+        From: '+1 (555) 123-4567',
+        To: '+18557654989',
+        Body: 'STOP',
+        MessageSid: 'SM124A',
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).toContain('unsubscribed');
   });
 
   it('handles HELP without mutating consent flags', async () => {

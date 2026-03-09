@@ -6,6 +6,7 @@ import { handleSmsAiInbound } from '@/lib/sms-ai';
 const STOP_KEYWORDS = new Set(['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT']);
 const START_KEYWORDS = new Set(['START', 'UNSTOP', 'YES']);
 const HELP_KEYWORDS = new Set(['HELP', 'INFO']);
+const TOLL_FREE_AREA_CODES = new Set(['800', '833', '844', '855', '866', '877', '888']);
 
 function escapeXml(value: string): string {
   return value
@@ -21,6 +22,12 @@ function twimlMessage(message: string): NextResponse {
   return new NextResponse(body, { headers: { 'Content-Type': 'text/xml' } });
 }
 
+function twimlEmpty(): NextResponse {
+  return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
+    headers: { 'Content-Type': 'text/xml' },
+  });
+}
+
 function normalizePhone(phone: string | null | undefined): string | null {
   if (!phone) return null;
   const digits = phone.replace(/\D/g, '');
@@ -34,6 +41,21 @@ function normalizePhone(phone: string | null | undefined): string | null {
 function keywordFromBody(body: string | null | undefined): string {
   const first = (body || '').trim().split(/\s+/)[0] || '';
   return first.toUpperCase();
+}
+
+function isLikelyTollFree(phone: string | null | undefined): boolean {
+  const normalized = normalizePhone(phone);
+  if (!normalized || !normalized.startsWith('+1') || normalized.length < 5) return false;
+  const areaCode = normalized.slice(2, 5);
+  return TOLL_FREE_AREA_CODES.has(areaCode);
+}
+
+function shouldSuppressKeywordReply(keyword: string, toPhoneRaw: string | null): boolean {
+  const mode = (process.env.TWILIO_KEYWORD_REPLY_MODE || 'auto').toLowerCase();
+  if (keyword !== 'STOP' && keyword !== 'START') return false;
+  if (mode === 'custom') return false;
+  if (mode === 'silent') return true;
+  return isLikelyTollFree(toPhoneRaw);
 }
 
 function formDataToRecord(form: FormData): Record<string, string> {
@@ -86,11 +108,13 @@ export async function POST(req: NextRequest) {
     const now = new Date();
     let eventType = 'INBOUND_MESSAGE';
     let responseText =
-      'Clientific alerts: Reply STOP to opt out, START to resubscribe, HELP for help.';
+      'Clientific: Thanks for your message. Reply HELP for help, STOP to opt out.';
     let extraMetadata: Record<string, unknown> = {};
+    let suppressKeywordReply = false;
 
     if (STOP_KEYWORDS.has(keyword)) {
       eventType = 'STOP';
+      suppressKeywordReply = shouldSuppressKeywordReply('STOP', toPhoneRaw);
       responseText =
         "You have been unsubscribed from Clientific SMS alerts. Reply START to resubscribe.";
 
@@ -109,6 +133,7 @@ export async function POST(req: NextRequest) {
       }
     } else if (START_KEYWORDS.has(keyword)) {
       eventType = 'START';
+      suppressKeywordReply = shouldSuppressKeywordReply('START', toPhoneRaw);
       responseText = 'You are resubscribed to Clientific SMS alerts. Reply STOP to opt out.';
 
       if (customerIds.length > 0) {
@@ -139,6 +164,9 @@ export async function POST(req: NextRequest) {
         eventType = aiResult.eventType;
         responseText = aiResult.text;
         extraMetadata = aiResult.metadata || {};
+      } else {
+        responseText =
+          'Clientific: Booking by text is not enabled for this business yet. Reply HELP for help.';
       }
     }
 
@@ -184,6 +212,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    if (suppressKeywordReply) return twimlEmpty();
     return twimlMessage(responseText);
   } catch (error: any) {
     console.error('POST /api/webhooks/twilio-sms error:', error);
