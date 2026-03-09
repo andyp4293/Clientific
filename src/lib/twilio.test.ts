@@ -28,6 +28,29 @@ describe('twilio sms formatting', () => {
     expect(message).toContain(FOOTER);
   });
 
+  it('formats confirmation times in the provided business timezone', () => {
+    const dateTime = new Date('2026-01-15T18:00:00.000Z');
+    const nyMessage = formatAppointmentConfirmationSMS({
+      customerName: 'Jane',
+      serviceName: 'Haircut',
+      staffName: 'Sam',
+      dateTime,
+      businessName: 'Test Salon',
+      timezone: 'America/New_York',
+    });
+    const laMessage = formatAppointmentConfirmationSMS({
+      customerName: 'Jane',
+      serviceName: 'Haircut',
+      staffName: 'Sam',
+      dateTime,
+      businessName: 'Test Salon',
+      timezone: 'America/Los_Angeles',
+    });
+
+    expect(nyMessage).toContain('1:00 PM');
+    expect(laMessage).toContain('10:00 AM');
+  });
+
   it('includes footer on business confirmed template', () => {
     const message = formatAppointmentBusinessConfirmedSMS({
       customerName: 'Jane',

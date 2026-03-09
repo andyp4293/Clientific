@@ -180,6 +180,7 @@ export async function PATCH(
         businessName: business.name,
         appointmentUrl,
         timezone: business.timezone ?? undefined,
+        senderPhone: business.vapiPhoneNumber,
       }).catch(err => console.warn('⚠️  Confirmed SMS failed:', err));
     }
 
@@ -233,6 +234,7 @@ export async function DELETE(
           select: {
             name: true,
             timezone: true,
+            vapiPhoneNumber: true,
           },
         },
       },
@@ -250,6 +252,7 @@ export async function DELETE(
         dateTime: appointment.startTime,
         businessName: appointment.business.name,
         timezone: appointment.business.timezone ?? undefined,
+        senderPhone: appointment.business.vapiPhoneNumber,
       });
     }
 

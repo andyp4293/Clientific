@@ -271,10 +271,8 @@ export async function PATCH(req: NextRequest) {
 
         vapiUpdates.vapiPhoneNumberId = phoneNumber.id;
         vapiUpdates.vapiPhoneNumber = phoneNumber.number ?? twilioNumber.phoneNumber;
-
-        if (smsAiPhoneNumber === undefined && !current.smsAiPhoneNumber) {
-          vapiUpdates.smsAiPhoneNumber = twilioNumber.phoneNumber;
-        }
+        vapiUpdates.smsAiPhoneNumber = twilioNumber.phoneNumber;
+        vapiUpdates.smsAiEnabled = true;
       } catch (error) {
         if (twilioNumber?.sid) {
           await releaseTwilioNumberBySid(twilioNumber.sid).catch((releaseError) => {
@@ -291,17 +289,8 @@ export async function PATCH(req: NextRequest) {
 
       vapiUpdates.vapiPhoneNumberId = null;
       vapiUpdates.vapiPhoneNumber = null;
-
-      if (
-        smsAiPhoneNumber === undefined &&
-        current.smsAiPhoneNumber &&
-        current.smsAiPhoneNumber === current.vapiPhoneNumber
-      ) {
-        vapiUpdates.smsAiPhoneNumber = null;
-        if (smsAiEnabled === undefined && current.smsAiEnabled) {
-          vapiUpdates.smsAiEnabled = false;
-        }
-      }
+      vapiUpdates.smsAiPhoneNumber = null;
+      vapiUpdates.smsAiEnabled = false;
     } else if (vapiConfigured && finalEnabled && current.vapiPhoneNumberId) {
       const syncResult = await vapiRequest('PATCH', `/phone-number/${current.vapiPhoneNumberId}`, {
         server: { url: serverUrl },
@@ -311,6 +300,10 @@ export async function PATCH(req: NextRequest) {
       });
 
       console.log('[vapi] synced phone number server.url:', syncResult?.server?.url ?? 'error');
+      if (current.vapiPhoneNumber) {
+        vapiUpdates.smsAiPhoneNumber = current.vapiPhoneNumber;
+        vapiUpdates.smsAiEnabled = true;
+      }
     }
 
     const business = await prisma.business.update({

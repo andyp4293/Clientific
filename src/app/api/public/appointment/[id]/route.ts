@@ -67,7 +67,7 @@ export async function PATCH(
       startTime: true,
       service: { select: { name: true } },
       customer: { select: { name: true, phone: true, smsConsent: true, smsOptedOut: true } },
-      business: { select: { name: true, timezone: true } },
+      business: { select: { name: true, timezone: true, vapiPhoneNumber: true } },
       businessId: true,
       duration: true,
     },
@@ -112,6 +112,7 @@ export async function PATCH(
         businessName: existing.business.name,
         newDateTime: newStart,
         timezone: existing.business.timezone,
+        senderPhone: existing.business.vapiPhoneNumber,
       }).catch((err) => console.warn('⚠️  Reschedule SMS failed:', err));
     }
 
@@ -136,6 +137,7 @@ export async function PATCH(
       dateTime: existing.startTime,
       businessName: existing.business.name,
       timezone: existing.business.timezone ?? undefined,
+      senderPhone: existing.business.vapiPhoneNumber,
     }).catch((err) => console.warn('⚠️  Cancellation SMS failed:', err));
   }
 

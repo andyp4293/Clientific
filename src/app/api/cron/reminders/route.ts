@@ -27,7 +27,7 @@ export async function GET(req: Request) {
       customer: { select: { name: true, phone: true, smsConsent: true, smsOptedOut: true } },
       service: { select: { name: true } },
       staff: { select: { fullName: true } },
-      business: { select: { name: true, timezone: true } },
+      business: { select: { name: true, timezone: true, vapiPhoneNumber: true } },
       serviceIds: true,
     },
   });
@@ -60,6 +60,7 @@ export async function GET(req: Request) {
         staffName: appt.staff?.fullName ?? 'our team',
         dateTime: appt.startTime,
         businessName: appt.business.name,
+        senderPhone: appt.business.vapiPhoneNumber,
       });
 
       if (result.success) {

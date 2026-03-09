@@ -51,6 +51,7 @@ const mockBusiness = {
   name: 'Test Salon',
   email: 'owner@example.com',
   timezone: 'America/New_York',
+  vapiPhoneNumber: '+18557654989',
 };
 
 function makeAppointment(overrides: Record<string, unknown> = {}) {
@@ -119,6 +120,7 @@ describe('PATCH /api/appointments/[id] — confirmed SMS', () => {
         expect.objectContaining({
           businessName: 'Test Salon',
           serviceName: 'Haircut',
+          senderPhone: '+18557654989',
         })
       );
     });
@@ -189,6 +191,7 @@ describe('PATCH /api/appointments/[id] — confirmed SMS', () => {
         expect.objectContaining({
           businessName: 'Test Salon',
           serviceName: 'Haircut',
+          senderPhone: '+18557654989',
         })
       );
     });

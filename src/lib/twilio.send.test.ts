@@ -77,4 +77,76 @@ describe('sendSMS', () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain('carrier reject');
   });
+
+  it('uses preferred sender when provided', async () => {
+    hoisted.createMessage.mockResolvedValueOnce({ sid: 'SM456' });
+
+    const result = await sendSMS({
+      to: '+15551234567',
+      message: 'Test message',
+      from: '+17755146208',
+    });
+
+    expect(result.success).toBe(true);
+    expect(hoisted.createMessage).toHaveBeenCalledTimes(1);
+    expect(hoisted.createMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: '+17755146208',
+        to: '+15551234567',
+      })
+    );
+  });
+
+  it('falls back to shared sender when preferred sender is invalid', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    hoisted.createMessage.mockResolvedValueOnce({ sid: 'SM789' });
+
+    const result = await sendSMS({
+      to: '+15551234567',
+      message: 'Test message',
+      from: 'abc',
+    });
+
+    expect(result.success).toBe(true);
+    expect(hoisted.createMessage).toHaveBeenCalledTimes(1);
+    expect(hoisted.createMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: '+18557654989',
+      })
+    );
+    expect(warnSpy).toHaveBeenCalledWith(
+      'SMS sender fallback',
+      expect.stringContaining('invalid_preferred_from')
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  it('retries with shared sender when preferred sender send fails', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    hoisted.createMessage
+      .mockRejectedValueOnce(new Error('not owned number'))
+      .mockResolvedValueOnce({ sid: 'SM999' });
+
+    const result = await sendSMS({
+      to: '+15551234567',
+      message: 'Test message',
+      from: '+17755146208',
+    });
+
+    expect(result.success).toBe(true);
+    expect(hoisted.createMessage).toHaveBeenCalledTimes(2);
+    expect(hoisted.createMessage.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ from: '+17755146208' })
+    );
+    expect(hoisted.createMessage.mock.calls[1][0]).toEqual(
+      expect.objectContaining({ from: '+18557654989' })
+    );
+    expect(warnSpy).toHaveBeenCalledWith(
+      'SMS sender fallback',
+      expect.stringContaining('preferred_send_failed')
+    );
+
+    warnSpy.mockRestore();
+  });
 });

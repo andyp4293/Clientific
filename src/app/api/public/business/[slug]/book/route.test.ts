@@ -63,6 +63,7 @@ describe('POST /api/public/business/[slug]/book - consent split', () => {
       name: 'Test Salon',
       timezone: 'America/New_York',
       notifyNewBookingEmail: false,
+      vapiPhoneNumber: '+18557654989',
     } as any);
     vi.mocked(prisma.service.findMany).mockResolvedValue([{ id: 'svc-1', name: 'Haircut' }] as any);
     vi.mocked(prisma.appointment.findMany).mockResolvedValue([] as any);
@@ -122,7 +123,12 @@ describe('POST /api/public/business/[slug]/book - consent split', () => {
         }),
       })
     );
-    expect(sendAppointmentConfirmation).toHaveBeenCalled();
+    expect(sendAppointmentConfirmation).toHaveBeenCalledWith(
+      '+15551234567',
+      expect.objectContaining({
+        senderPhone: '+18557654989',
+      })
+    );
   });
 
   it('allows marketing opt-in without turning on transactional consent', async () => {

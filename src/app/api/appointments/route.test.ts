@@ -20,12 +20,13 @@ vi.mock('@/lib/stripe', () => ({
 
 vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
 vi.mock('@/app/api/auth/[...nextauth]/route', () => ({ authOptions: {} }));
-vi.mock('@/lib/twilio', () => ({ sendAppointmentConfirmation: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('@/lib/twilio', () => ({ sendAppointmentConfirmation: vi.fn().mockResolvedValue({ success: true }) }));
 vi.mock('@/lib/email', () => ({ sendNewBookingEmail: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('@/lib/timezone', () => ({ businessDayStart: vi.fn((date: string) => new Date(date)) }));
 
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
+import { sendAppointmentConfirmation } from '@/lib/twilio';
 import { GET, POST } from './route';
 
 const mockSession = getServerSession as ReturnType<typeof vi.fn>;
@@ -177,5 +178,37 @@ describe('POST /api/appointments', () => {
     expect(res.status).toBe(201);
     // No conflict check without staffId
     expect(mockAppointmentFindMany).not.toHaveBeenCalled();
+  });
+
+  it('uses business AI number as SMS sender when available', async () => {
+    vi.mocked(sendAppointmentConfirmation).mockResolvedValue({ success: true } as any);
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({ ...fakeBusiness, vapiPhoneNumber: '+18557654989' });
+    mockAppointmentFindMany.mockResolvedValue([]);
+    mockNotificationCreate.mockResolvedValue({});
+    mockAppointmentCreate.mockResolvedValue({
+      id: 'appt-3',
+      customerId: 'cust-1',
+      businessId: 'biz-1',
+      startTime: new Date(validApptBody.startTime),
+      duration: 60,
+      customer: { id: 'cust-1', name: 'Test', phone: '+15551234567', email: null, smsConsent: true },
+      service: { name: 'Haircut' },
+      staff: null,
+      business: { name: 'Test Salon' },
+    });
+
+    const res = await POST(makeRequest(validApptBody));
+
+    expect(res.status).toBe(201);
+    expect(sendAppointmentConfirmation).toHaveBeenCalledWith(
+      '+15551234567',
+      expect.objectContaining({
+        businessName: 'Test Salon',
+        senderPhone: '+18557654989',
+      })
+    );
   });
 });

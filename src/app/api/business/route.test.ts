@@ -209,7 +209,12 @@ describe('PATCH /api/business', () => {
     mockSession.mockResolvedValue(activeSession);
     mockBusiness
       .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
-      .mockResolvedValueOnce({ ...fakeBusiness, smsAiPhoneNumber: null, vapiPhoneNumberId: null });
+      .mockResolvedValueOnce({
+        ...fakeBusiness,
+        smsAiEnabled: false,
+        smsAiPhoneNumber: '+15559990000',
+        vapiPhoneNumberId: null,
+      });
 
     mockFetch
       .mockResolvedValueOnce({
@@ -228,6 +233,7 @@ describe('PATCH /api/business', () => {
       aiReceptionistEnabled: true,
       vapiPhoneNumberId: 'vapi-pn-1',
       vapiPhoneNumber: '+18557654989',
+      smsAiEnabled: true,
       smsAiPhoneNumber: '+18557654989',
     });
 
@@ -251,6 +257,7 @@ describe('PATCH /api/business', () => {
         data: expect.objectContaining({
           vapiPhoneNumberId: 'vapi-pn-1',
           vapiPhoneNumber: '+18557654989',
+          smsAiEnabled: true,
           smsAiPhoneNumber: '+18557654989',
         }),
       })
@@ -322,6 +329,49 @@ describe('PATCH /api/business', () => {
           vapiPhoneNumber: null,
           smsAiPhoneNumber: null,
           smsAiEnabled: false,
+        }),
+      })
+    );
+  });
+
+  it('re-syncs existing AI number into SMS settings when already enabled', async () => {
+    process.env.VAPI_PRIVATE_KEY = 'vapi_test_key';
+
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        ...fakeBusiness,
+        aiReceptionistEnabled: true,
+        vapiPhoneNumberId: 'vapi-pn-1',
+        vapiPhoneNumber: '+18557654989',
+        smsAiEnabled: false,
+        smsAiPhoneNumber: '+15559990000',
+      });
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ server: { url: 'https://clientific.app/api/webhooks/vapi' } }),
+    });
+
+    mockBusinessUpdate.mockResolvedValue({
+      ...fakeBusiness,
+      aiReceptionistEnabled: true,
+      vapiPhoneNumberId: 'vapi-pn-1',
+      vapiPhoneNumber: '+18557654989',
+      smsAiEnabled: true,
+      smsAiPhoneNumber: '+18557654989',
+    });
+
+    const res = await PATCH(makePatchRequest({ aiReceptionistEnabled: true }));
+
+    expect(res.status).toBe(200);
+    expect(mockBusinessUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          smsAiEnabled: true,
+          smsAiPhoneNumber: '+18557654989',
         }),
       })
     );

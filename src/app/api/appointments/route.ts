@@ -101,7 +101,14 @@ export async function POST(req: NextRequest) {
 
     const business = await prisma.business.findUnique({
       where: { email: session.user.email },
-      select: { id: true, name: true, email: true, timezone: true, notifyNewBookingEmail: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        timezone: true,
+        notifyNewBookingEmail: true,
+        vapiPhoneNumber: true,
+      },
     });
 
     if (!business) {
@@ -204,6 +211,7 @@ export async function POST(req: NextRequest) {
         businessName: appointment.business.name,
         duration: appointment.duration,
         timezone: business.timezone,
+        senderPhone: business.vapiPhoneNumber,
       });
 
       if (smsResult.success) {

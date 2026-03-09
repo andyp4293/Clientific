@@ -15,7 +15,15 @@ export async function POST(
 
     const business = await prisma.business.findUnique({
       where: { slug },
-      select: { id: true, enableOnlineBooking: true, email: true, name: true, timezone: true, notifyNewBookingEmail: true },
+      select: {
+        id: true,
+        enableOnlineBooking: true,
+        email: true,
+        name: true,
+        timezone: true,
+        notifyNewBookingEmail: true,
+        vapiPhoneNumber: true,
+      },
     });
 
     if (!business) {
@@ -266,6 +274,7 @@ export async function POST(
         duration: appointment.duration,
         appointmentUrl,
         timezone: business.timezone ?? undefined,
+        senderPhone: business.vapiPhoneNumber,
       });
 
       if (smsResult.success) {

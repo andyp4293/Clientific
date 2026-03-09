@@ -3,6 +3,7 @@ import twilio from 'twilio';
 interface SendSMSParams {
   to: string;
   message: string;
+  from?: string | null;
 }
 
 interface SMSResult {
@@ -20,6 +21,7 @@ interface AppointmentDetails {
   duration?: number;
   appointmentUrl?: string;
   timezone?: string;
+  senderPhone?: string | null;
 }
 
 interface CancellationDetails {
@@ -28,6 +30,7 @@ interface CancellationDetails {
   dateTime: Date;
   businessName: string;
   timezone?: string;
+  senderPhone?: string | null;
 }
 
 interface BusinessConfirmedDetails {
@@ -37,6 +40,7 @@ interface BusinessConfirmedDetails {
   businessName: string;
   appointmentUrl?: string;
   timezone?: string;
+  senderPhone?: string | null;
 }
 
 interface ReminderDetails {
@@ -47,6 +51,7 @@ interface ReminderDetails {
   businessName: string;
   businessPhone?: string;
   timezone?: string;
+  senderPhone?: string | null;
 }
 
 interface RescheduleDetails {
@@ -55,6 +60,7 @@ interface RescheduleDetails {
   businessName: string;
   newDateTime: Date;
   timezone?: string;
+  senderPhone?: string | null;
 }
 
 interface ReviewRequestDetails {
@@ -105,12 +111,12 @@ function formatTime(date: Date, timezone?: string): string {
   });
 }
 
-export async function sendSMS({ to, message }: SendSMSParams): Promise<SMSResult> {
+export async function sendSMS({ to, message, from }: SendSMSParams): Promise<SMSResult> {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
+  const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER || null;
 
-  if (!accountSid || !authToken || !twilioPhoneNumber) {
+  if (!accountSid || !authToken) {
     console.log('SMS disabled (Twilio not configured)');
     console.log('Would have sent to:', to);
     console.log('Message:', message);
@@ -124,17 +130,73 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SMSResult
 
   const client = twilio(accountSid, authToken);
   const formattedPhone = formatPhoneNumber(to);
+  const preferredFrom = from && isValidPhoneNumber(from) ? formatPhoneNumber(from) : null;
+  const fallbackFrom = twilioPhoneNumber && isValidPhoneNumber(twilioPhoneNumber)
+    ? formatPhoneNumber(twilioPhoneNumber)
+    : null;
+
+  if (from && !preferredFrom) {
+    console.warn(
+      'SMS sender fallback',
+      JSON.stringify({
+        reason: 'invalid_preferred_from',
+        preferredFrom: from,
+        fallbackFrom,
+      })
+    );
+  }
+
+  const primarySender = preferredFrom || fallbackFrom;
+  if (!primarySender) {
+    console.log('SMS disabled (Twilio sender number not configured)');
+    console.log('Would have sent to:', to);
+    console.log('Message:', message);
+    return { success: false, error: 'Twilio not configured' };
+  }
 
   try {
     const result = await client.messages.create({
       body: message,
-      from: twilioPhoneNumber,
+      from: primarySender,
       to: formattedPhone,
     });
 
     console.log('SMS sent successfully:', result.sid);
     return { success: true, sid: result.sid };
   } catch (error: any) {
+    const shouldRetryWithFallback =
+      !!preferredFrom &&
+      !!fallbackFrom &&
+      fallbackFrom !== preferredFrom;
+
+    if (shouldRetryWithFallback) {
+      console.warn(
+        'SMS sender fallback',
+        JSON.stringify({
+          reason: 'preferred_send_failed',
+          preferredFrom,
+          fallbackFrom,
+          error: error?.message || 'unknown_error',
+        })
+      );
+
+      try {
+        const fallbackResult = await client.messages.create({
+          body: message,
+          from: fallbackFrom,
+          to: formattedPhone,
+        });
+        console.log('SMS sent successfully with fallback sender:', fallbackResult.sid);
+        return { success: true, sid: fallbackResult.sid };
+      } catch (fallbackError: any) {
+        console.error('Failed to send SMS with fallback sender:', fallbackError);
+        return {
+          success: false,
+          error: fallbackError?.message || 'Failed to send SMS',
+        };
+      }
+    }
+
     console.error('Failed to send SMS:', error);
     return {
       success: false,
@@ -204,28 +266,44 @@ export async function sendAppointmentConfirmation(
   phone: string,
   details: AppointmentDetails
 ): Promise<SMSResult> {
-  return sendSMS({ to: phone, message: formatAppointmentConfirmationSMS(details) });
+  return sendSMS({
+    to: phone,
+    message: formatAppointmentConfirmationSMS(details),
+    from: details.senderPhone ?? null,
+  });
 }
 
 export async function sendAppointmentReminder(
   phone: string,
   details: ReminderDetails
 ): Promise<SMSResult> {
-  return sendSMS({ to: phone, message: formatAppointmentReminderSMS(details) });
+  return sendSMS({
+    to: phone,
+    message: formatAppointmentReminderSMS(details),
+    from: details.senderPhone ?? null,
+  });
 }
 
 export async function sendAppointmentCancellation(
   phone: string,
   details: CancellationDetails
 ): Promise<SMSResult> {
-  return sendSMS({ to: phone, message: formatAppointmentCancellationSMS(details) });
+  return sendSMS({
+    to: phone,
+    message: formatAppointmentCancellationSMS(details),
+    from: details.senderPhone ?? null,
+  });
 }
 
 export async function sendAppointmentBusinessConfirmed(
   phone: string,
   details: BusinessConfirmedDetails
 ): Promise<SMSResult> {
-  return sendSMS({ to: phone, message: formatAppointmentBusinessConfirmedSMS(details) });
+  return sendSMS({
+    to: phone,
+    message: formatAppointmentBusinessConfirmedSMS(details),
+    from: details.senderPhone ?? null,
+  });
 }
 
 export function formatAppointmentRescheduledSMS(details: RescheduleDetails): string {
@@ -250,7 +328,11 @@ export async function sendAppointmentRescheduled(
   phone: string,
   details: RescheduleDetails
 ): Promise<SMSResult> {
-  return sendSMS({ to: phone, message: formatAppointmentRescheduledSMS(details) });
+  return sendSMS({
+    to: phone,
+    message: formatAppointmentRescheduledSMS(details),
+    from: details.senderPhone ?? null,
+  });
 }
 
 export function formatReviewRequestSMS(details: ReviewRequestDetails): string {

@@ -225,6 +225,8 @@ export default function SettingsPage() {
           ...prev,
           aiReceptionistEnabled: data.business.aiReceptionistEnabled,
           vapiPhoneNumber: newNumber,
+          smsAiEnabled: Boolean(data.business.smsAiEnabled),
+          smsAiPhoneNumber: data.business.smsAiPhoneNumber ?? newNumber,
         };
       });
       queryClient.invalidateQueries({ queryKey: ['business-info'] });
@@ -239,7 +241,13 @@ export default function SettingsPage() {
 
   const handleDisableConfirm = () => {
     setShowDisableModal(false);
-    setFormData(prev => ({ ...prev, aiReceptionistEnabled: false, vapiPhoneNumber: null }));
+    setFormData(prev => ({
+      ...prev,
+      aiReceptionistEnabled: false,
+      vapiPhoneNumber: null,
+      smsAiEnabled: false,
+      smsAiPhoneNumber: null,
+    }));
     aiToggleMutation.mutate(false);
   };
 
@@ -339,6 +347,7 @@ export default function SettingsPage() {
     { id: 'ai-receptionist', label: 'AI Receptionist', icon: 'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z' },
     { id: 'loyalty', label: 'Loyalty Points', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
   ];
+  const unifiedBusinessAiNumber = formData.vapiPhoneNumber || formData.smsAiPhoneNumber || '';
 
   return (
     <div>
@@ -801,35 +810,36 @@ export default function SettingsPage() {
 
               {/* SMS AI Booking */}
               <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                <label className="flex items-center cursor-pointer mb-4">
-                  <input
-                    type="checkbox"
-                    checked={formData.smsAiEnabled ?? false}
-                    onChange={(e) => handleInputChange('smsAiEnabled', e.target.checked)}
-                    className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary mr-3"
-                  />
+                <div className="flex items-start justify-between gap-3 mb-4">
                   <div>
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Enable SMS AI Booking</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">SMS AI Booking</span>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Let customers text to ask questions, book, and cancel appointments.
+                      Calls and booking texts share one business number.
                     </p>
                   </div>
-                </label>
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                    (formData.smsAiEnabled ?? false) && !!unifiedBusinessAiNumber
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
+                  }`}>
+                    {(formData.smsAiEnabled ?? false) && !!unifiedBusinessAiNumber ? 'Active' : 'Pending setup'}
+                  </span>
+                </div>
 
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      SMS AI Inbound Number
+                      Business AI Number (calls + booking SMS)
                     </label>
                     <input
                       type="tel"
-                      value={formData.smsAiPhoneNumber || ''}
-                      onChange={(e) => handleInputChange('smsAiPhoneNumber', e.target.value)}
-                      className="input"
+                      value={unifiedBusinessAiNumber}
+                      readOnly
+                      className="input bg-gray-50 dark:bg-gray-800 text-sm font-mono"
                       placeholder="+18557654989"
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Set this to the Twilio number that points to `/api/webhooks/twilio-sms`.
+                      Auto-generated from Twilio when AI receptionist is enabled. This number is managed by Clientific.
                     </p>
                   </div>
 

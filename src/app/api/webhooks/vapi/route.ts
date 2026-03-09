@@ -79,6 +79,7 @@ type BusinessData = {
   name: string;
   businessType: string;
   phone: string;
+  vapiPhoneNumber: string | null;
   publicId: string | null;
   street: string | null;
   city: string | null;
@@ -520,6 +521,7 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
       businessName: business.name,
       timezone: business.timezone,
       appointmentUrl: apptUrl,
+      senderPhone: business.vapiPhoneNumber,
     }).catch((err) => console.error('[vapi] SMS send failed:', err));
   }
 
@@ -660,6 +662,7 @@ async function handleToolCalls(body: any): Promise<NextResponse> {
           name: true,
           businessType: true,
           phone: true,
+          vapiPhoneNumber: true,
           publicId: true,
           street: true,
           city: true,
@@ -788,6 +791,7 @@ export async function POST(req: NextRequest) {
             name: true,
             businessType: true,
             phone: true,
+            vapiPhoneNumber: true,
             publicId: true,
             street: true,
             city: true,
