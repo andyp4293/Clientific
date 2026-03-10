@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
+import AddressAutocomplete, { type AddressComponents } from '@/components/ui/AddressAutocomplete';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { toast } from 'sonner';
 import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
+import { timezoneFromCoordinates } from '@/lib/timezone';
 
 async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -264,7 +265,14 @@ export default function SettingsPage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleAddressSelect = (address: any) => {
+  const handleAddressSelect = (address: AddressComponents) => {
+    const latitude = typeof address.latitude === 'number' ? address.latitude : null;
+    const longitude = typeof address.longitude === 'number' ? address.longitude : null;
+    const locationTimezone =
+      latitude !== null && longitude !== null
+        ? timezoneFromCoordinates(latitude, longitude)
+        : null;
+
     setFormData((prev) => ({
       ...prev,
       street: address.street,
@@ -272,6 +280,7 @@ export default function SettingsPage() {
       state: address.state,
       zipCode: address.zipCode,
       country: address.country || 'United States',
+      ...(locationTimezone ? { timezone: locationTimezone } : {}),
     }));
   };
 
@@ -547,6 +556,9 @@ export default function SettingsPage() {
                   <option value="America/Anchorage">Alaska</option>
                   <option value="Pacific/Honolulu">Hawaii</option>
                 </select>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Selecting an address auto-fills timezone. You can still override it here.
+                </p>
               </div>
 
               {/* Public ID & Booking URL */}

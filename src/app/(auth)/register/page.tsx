@@ -4,8 +4,9 @@ import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
+import AddressAutocomplete, { type AddressComponents } from '@/components/ui/AddressAutocomplete';
 import { APP_NAME } from '@/lib/brand';
+import { timezoneFromCoordinates } from '@/lib/timezone';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -39,6 +40,7 @@ function RegisterForm() {
   const refCode = searchParams.get('ref') || '';
   const affCode = searchParams.get('aff') || '';
   const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === 'true';
+  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -46,6 +48,11 @@ function RegisterForm() {
   const [notice, setNotice] = useState('');
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [isResendingVerification, setIsResendingVerification] = useState(false);
+  const [timezoneSource, setTimezoneSource] = useState<'browser' | 'location'>('browser');
+  const [selectedCoordinates, setSelectedCoordinates] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
   const [formData, setFormData] = useState<FormData>({
     email: defaultEmail,
@@ -74,10 +81,12 @@ function RegisterForm() {
   }, [status, router]);
 
   useEffect(() => {
+    const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     setFormData((prev) => ({
       ...prev,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timezone: prev.timezone || browserTimezone,
     }));
+    setTimezoneSource('browser');
   }, []);
 
   const passwordChecks = useMemo(
@@ -121,6 +130,46 @@ function RegisterForm() {
 
   const updateFormData = (updates: Partial<FormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
+  };
+
+  const resolveSubmittedTimezone = async (): Promise<string | null> => {
+    if (selectedCoordinates) {
+      return timezoneFromCoordinates(selectedCoordinates.latitude, selectedCoordinates.longitude);
+    }
+
+    if (!mapboxToken) return null;
+
+    const query = [
+      formData.street,
+      formData.city,
+      formData.state,
+      formData.zipCode,
+      formData.country,
+    ]
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join(', ');
+
+    if (!query) return null;
+
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+          query
+        )}.json?access_token=${mapboxToken}&limit=1&country=us,ca`
+      );
+      if (!response.ok) return null;
+
+      const data = (await response.json()) as {
+        features?: Array<{ center?: [number, number] }>;
+      };
+      const center = data.features?.[0]?.center;
+      if (!Array.isArray(center) || center.length < 2) return null;
+
+      return timezoneFromCoordinates(center[1], center[0]);
+    } catch {
+      return null;
+    }
   };
 
   const validateStep = (step: Step): boolean => {
@@ -210,10 +259,20 @@ function RegisterForm() {
     setNotice('');
 
     try {
+      const payload = { ...formData };
+      const locationTimezone = await resolveSubmittedTimezone();
+      if (locationTimezone) {
+        payload.timezone = locationTimezone;
+        setTimezoneSource('location');
+      }
+      if (!payload.timezone) {
+        payload.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
+      }
+
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -500,14 +559,33 @@ function RegisterForm() {
                   defaultValue={formData.street}
                   placeholder="Start typing your business address..."
                   className="input"
-                  onAddressSelect={(address) => {
+                  onAddressSelect={(address: AddressComponents) => {
+                    const latitude =
+                      typeof address.latitude === 'number' ? address.latitude : null;
+                    const longitude =
+                      typeof address.longitude === 'number' ? address.longitude : null;
+                    const locationTimezone =
+                      latitude !== null && longitude !== null
+                        ? timezoneFromCoordinates(latitude, longitude)
+                        : null;
+
                     updateFormData({
                       street: address.street,
                       city: address.city,
                       state: address.state,
                       zipCode: address.zipCode,
-                      country: address.country,
+                      country: address.country || 'United States',
+                      ...(locationTimezone ? { timezone: locationTimezone } : {}),
                     });
+                    setTimezoneSource(locationTimezone ? 'location' : 'browser');
+                    setSelectedCoordinates(
+                      latitude !== null && longitude !== null
+                        ? {
+                            latitude,
+                            longitude,
+                          }
+                        : null
+                    );
                   }}
                 />
               </div>
@@ -567,11 +645,14 @@ function RegisterForm() {
                   id="timezone"
                   type="text"
                   value={formData.timezone}
-                  onChange={(e) => updateFormData({ timezone: e.target.value })}
                   className="input"
                   readOnly
                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Auto-detected from your browser</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {timezoneSource === 'location'
+                    ? 'Calculated from your selected business address'
+                    : 'Using your browser timezone until an address is selected'}
+                </p>
               </div>
             </div>
           )}

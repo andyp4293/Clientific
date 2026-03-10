@@ -43,6 +43,7 @@
     "stripe": "^20.3.1",
     "twilio": "^5.12.1",
     "typescript": "^5.9.3",
+    "tz-lookup": "^6.1.25",
     "zod": "^4.3.6"
   },
   "devDependencies": {

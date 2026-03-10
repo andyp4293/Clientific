@@ -1,3 +1,5 @@
+import tzLookup from 'tz-lookup';
+
 /**
  * Convert a local business-timezone date+time to UTC.
  *
@@ -49,4 +51,19 @@ export function localToUTC(
 /** Midnight at the start of `dateStr` in the business timezone, as UTC. */
 export function businessDayStart(dateStr: string, timezone: string): Date {
   return localToUTC(dateStr, 0, 0, timezone);
+}
+
+export function timezoneFromCoordinates(
+  latitude: number,
+  longitude: number
+): string | null {
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  if (latitude < -90 || latitude > 90) return null;
+  if (longitude < -180 || longitude > 180) return null;
+
+  try {
+    return tzLookup(latitude, longitude);
+  } catch {
+    return null;
+  }
 }

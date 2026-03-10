@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react';
 
-interface AddressComponents {
+export interface AddressComponents {
   street: string;
   city: string;
   state: string;
   zipCode: string;
   country: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 interface AddressAutocompleteProps {
@@ -20,6 +22,7 @@ interface AddressAutocompleteProps {
 interface MapboxFeature {
   place_name: string;
   text: string;
+  center?: [number, number];
   context?: Array<{
     id: string;
     text: string;
@@ -92,7 +95,9 @@ export default function AddressAutocomplete({
     debounceRef.current = setTimeout(() => {
       fetchSuggestions(value);
     }, 300);
-  };  const handleSelectAddress = (feature: MapboxFeature) => {
+  };
+
+  const handleSelectAddress = (feature: MapboxFeature) => {
     setIsOpen(false);
 
     // Parse address components from Mapbox response
@@ -122,10 +127,21 @@ export default function AddressAutocomplete({
       }
     });
 
+    const latitude = Array.isArray(feature.center) ? feature.center[1] : undefined;
+    const longitude = Array.isArray(feature.center) ? feature.center[0] : undefined;
+
     // Set input value to just the street address, not the full place_name
     setInputValue(street);
 
-    onAddressSelect({ street, city, state, zipCode, country });
+    onAddressSelect({
+      street,
+      city,
+      state,
+      zipCode,
+      country,
+      latitude,
+      longitude,
+    });
   };
 
   return (
@@ -144,7 +160,9 @@ export default function AddressAutocomplete({
         <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
           <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
         </div>
-      )}      {isOpen && suggestions.length > 0 && (
+      )}
+
+      {isOpen && suggestions.length > 0 && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
           {suggestions.map((feature, index) => (
             <button
@@ -156,7 +174,8 @@ export default function AddressAutocomplete({
               <div className="text-sm text-gray-900">{feature.place_name}</div>
             </button>
           ))}
-        </div>      )}
+        </div>
+      )}
 
       {isMounted && !MAPBOX_TOKEN && (
         <p className="text-xs text-red-500 mt-1">
