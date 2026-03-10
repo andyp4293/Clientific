@@ -22,31 +22,43 @@ export async function GET(
       );
     }
 
-    if (!business.enableOnlineBooking) {
+    const infoOnly = req.nextUrl.searchParams.get('infoOnly') === 'true';
+
+    if (!business.enableOnlineBooking && !infoOnly) {
       return NextResponse.json(
         { error: 'Online booking is not enabled' },
         { status: 403 }
       );
     }
 
+    const groups = await prisma.serviceGroup.findMany({
+      where: { businessId: business.id },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+      select: {
+        id: true,
+        name: true,
+        sortOrder: true,
+      },
+    });
+
     const services = await prisma.service.findMany({
       where: {
         businessId: business.id,
         active: true,
       },
-      orderBy: {
-        name: 'asc',
-      },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       select: {
         id: true,
+        groupId: true,
         name: true,
         description: true,
         duration: true,
         price: true,
+        sortOrder: true,
       },
     });
 
-    return NextResponse.json({ services });
+    return NextResponse.json({ services, groups });
   } catch (error: any) {
     console.error('Fetch services error:', error);
     return NextResponse.json(

@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { DatePicker } from '@/components/ui/DatePicker';
 import Link from 'next/link';
-import { Info } from 'lucide-react';
+import { ChevronDown, Info } from 'lucide-react';
 import { APP_NAME } from '@/lib/brand';
+import { groupServicesForDisplay } from '@/lib/service-grouping';
+import { toggleServiceSelection } from '@/lib/service-selection';
 
 interface Business {
   id: string;
@@ -32,10 +34,18 @@ interface Business {
 
 interface Service {
   id: string;
+  groupId: string | null;
   name: string;
   description: string | null;
   duration: number;
   price: number | null;
+  sortOrder?: number;
+}
+
+interface ServiceGroup {
+  id: string;
+  name: string;
+  sortOrder: number;
 }
 
 interface Staff {
@@ -50,6 +60,58 @@ interface Deal {
   discountValue: number;
   expiresAt: string;
   service: { name: string } | null;
+}
+
+function ServiceOptionCard({
+  service,
+  selected,
+  onToggle,
+}: {
+  service: Service;
+  selected: boolean;
+  onToggle: (service: Service) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(service)}
+      className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+        selected
+          ? 'border-primary bg-primary-50 dark:bg-primary/10'
+          : 'border-gray-200 dark:border-gray-600 hover:border-primary-400 hover:bg-primary-50 dark:hover:bg-primary/5'
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <div className={`mt-0.5 w-5 h-5 rounded flex-shrink-0 border-2 flex items-center justify-center ${
+          selected ? 'bg-primary border-primary' : 'border-gray-400 dark:border-gray-500'
+        }`}>
+          {selected && (
+            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <h3 className={`font-semibold mb-0.5 ${selected ? 'text-primary-700 dark:text-primary-400' : 'text-gray-900 dark:text-gray-100'}`}>
+                {service.name}
+              </h3>
+              {service.description && (
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{service.description}</p>
+              )}
+              <p className="text-sm text-gray-500 dark:text-gray-400">{service.duration} min</p>
+            </div>
+            {service.price != null && service.price > 0 && (
+              <p className="text-lg font-bold text-gray-900 dark:text-gray-100 ml-4 flex-shrink-0">
+                ${service.price.toFixed(2)}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </button>
+  );
 }
 
 export default function PublicBookingPage() {
@@ -173,20 +235,35 @@ export default function PublicBookingPage() {
 
   const business: Business | null = businessData?.business;
   const services: Service[] = servicesData?.services || [];
+  const groups: ServiceGroup[] = servicesData?.groups || [];
   const staff: Staff[] = staffData?.staff || [];
   const deals: Deal[] = dealsData?.deals || [];
   const availableSlots: string[] = slotsData?.slots || [];
   const unavailableSlots: string[] = slotsData?.unavailableSlots || [];
+  const groupedServices = useMemo(
+    () => groupServicesForDisplay(services, groups),
+    [services, groups]
+  );
+  const [openGroupIds, setOpenGroupIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!groupedServices.hasGroups || groupedServices.groupedSections.length === 0) {
+      setOpenGroupIds([]);
+      return;
+    }
+
+    const firstGroupId = groupedServices.groupedSections[0]?.group.id;
+    setOpenGroupIds(prev => {
+      if (!firstGroupId) return prev;
+      return prev.length ? prev.filter(id => groupedServices.groupedSections.some(section => section.group.id === id)) : [firstGroupId];
+    });
+  }, [groupedServices]);
   // All slots sorted by time for display
   const allSlots = [...availableSlots, ...unavailableSlots].sort();
   const unavailableSet = new Set(unavailableSlots);
 
   const toggleService = (service: Service) => {
-    setSelectedServices(prev =>
-      prev.some(s => s.id === service.id)
-        ? prev.filter(s => s.id !== service.id)
-        : [...prev, service]
-    );
+    setSelectedServices((prev) => toggleServiceSelection(prev, service));
   };
 
   const handleBooking = () => {
@@ -332,53 +409,75 @@ export default function PublicBookingPage() {
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">Select Services</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Choose one or more services for your appointment.</p>
 
-              <div className="space-y-3">
-                {services.map((service) => {
-                  const isSelected = selectedServices.some(s => s.id === service.id);
-                  return (
-                    <button
-                      key={service.id}
-                      onClick={() => toggleService(service)}
-                      className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                        isSelected
-                          ? 'border-primary bg-primary-50 dark:bg-primary/10'
-                          : 'border-gray-200 dark:border-gray-600 hover:border-primary-400 hover:bg-primary-50 dark:hover:bg-primary/5'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        {/* Checkbox indicator */}
-                        <div className={`mt-0.5 w-5 h-5 rounded flex-shrink-0 border-2 flex items-center justify-center ${
-                          isSelected ? 'bg-primary border-primary' : 'border-gray-400 dark:border-gray-500'
-                        }`}>
-                          {isSelected && (
-                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <h3 className={`font-semibold mb-0.5 ${isSelected ? 'text-primary-700 dark:text-primary-400' : 'text-gray-900 dark:text-gray-100'}`}>
-                                {service.name}
-                              </h3>
-                              {service.description && (
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{service.description}</p>
-                              )}
-                              <p className="text-sm text-gray-500 dark:text-gray-400">{service.duration} min</p>
-                            </div>
-                            {service.price != null && service.price > 0 && (
-                              <p className="text-lg font-bold text-gray-900 dark:text-gray-100 ml-4 flex-shrink-0">
-                                ${service.price.toFixed(2)}
-                              </p>
-                            )}
+              {groupedServices.hasGroups ? (
+                <div className="space-y-3">
+                  {groupedServices.groupedSections.map((section) => {
+                    if (section.services.length === 0) return null;
+                    const isOpen = openGroupIds.includes(section.group.id);
+                    return (
+                      <div key={section.group.id} className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setOpenGroupIds((prev) =>
+                              prev.includes(section.group.id)
+                                ? prev.filter((id) => id !== section.group.id)
+                                : [...prev, section.group.id]
+                            )
+                          }
+                          className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700/40 flex items-center justify-between"
+                        >
+                          <span className="font-semibold text-gray-900 dark:text-gray-100">{section.group.name}</span>
+                          <ChevronDown
+                            className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                          />
+                        </button>
+                        {isOpen && (
+                          <div className="p-3 space-y-3 bg-white dark:bg-gray-800">
+                            {section.services.map((service) => (
+                              <ServiceOptionCard
+                                key={service.id}
+                                service={service}
+                                selected={selectedServices.some((selectedService) => selectedService.id === service.id)}
+                                onToggle={toggleService}
+                              />
+                            ))}
                           </div>
-                        </div>
+                        )}
                       </div>
-                    </button>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+
+                  {groupedServices.ungroupedServices.length > 0 && (
+                    <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                      <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700/40">
+                        <span className="font-semibold text-gray-900 dark:text-gray-100">Other Services</span>
+                      </div>
+                      <div className="p-3 space-y-3 bg-white dark:bg-gray-800">
+                        {groupedServices.ungroupedServices.map((service) => (
+                          <ServiceOptionCard
+                            key={service.id}
+                            service={service}
+                            selected={selectedServices.some((selectedService) => selectedService.id === service.id)}
+                            onToggle={toggleService}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {groupedServices.flatServices.map((service) => (
+                    <ServiceOptionCard
+                      key={service.id}
+                      service={service}
+                      selected={selectedServices.some((selectedService) => selectedService.id === service.id)}
+                      onToggle={toggleService}
+                    />
+                  ))}
+                </div>
+              )}
 
               {/* Selection summary + Continue */}
               <div className="mt-6">

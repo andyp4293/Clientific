@@ -10,6 +10,15 @@ interface Service {
   duration: number;
   price: number | null;
   isActive: boolean;
+  groupId: string | null;
+  sortOrder: number;
+}
+
+interface ServiceGroup {
+  id: string;
+  name: string;
+  sortOrder: number;
+  _count?: { services: number };
 }
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -29,44 +38,223 @@ interface Staff {
 type Tab = 'services' | 'staff';
 type ModalType = 'service' | 'staff' | null;
 
-// Services Tab Component
-function ServicesTab({ 
-  services, 
-  onEdit, 
-  onDelete 
-}: { 
-  services: Service[]; 
+function ServicesTab({
+  services,
+  groups,
+  onEdit,
+  onDelete,
+  onCreateGroup,
+  onRenameGroup,
+  onDeleteGroup,
+  onMoveGroup,
+  onMoveService,
+}: {
+  services: Service[];
+  groups: ServiceGroup[];
   onEdit: (service: Service) => void;
   onDelete: (id: string) => void;
+  onCreateGroup: (name: string) => void;
+  onRenameGroup: (group: ServiceGroup) => void;
+  onDeleteGroup: (group: ServiceGroup) => void;
+  onMoveGroup: (groupId: string, direction: 'up' | 'down') => void;
+  onMoveService: (serviceId: string, direction: 'up' | 'down', groupId: string | null) => void;
 }) {
-  if (services.length === 0) {
-    return (
-      <div className="text-center py-16">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full mb-4">
-          <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
-        </div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No services yet</h3>
-        <p className="text-gray-600 dark:text-gray-400 max-w-sm mx-auto">
-          Start by adding services that your business offers to customers
-        </p>
-      </div>
-    );
-  }
+  const [newGroupName, setNewGroupName] = useState('');
+  const sortedGroups = [...groups].sort((a, b) => a.sortOrder - b.sortOrder);
+  const sortedServices = [...services].sort((a, b) => a.sortOrder - b.sortOrder);
+  const hasGroups = sortedGroups.length > 0;
+  const ungroupedServices = sortedServices.filter((service) => !service.groupId);
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {services.map((service) => (
-        <div key={service.id} className="card p-5 hover:shadow-md transition-shadow">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">{service.name}</h3>
-              {service.description && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{service.description}</p>
-              )}
+    <div className="space-y-6">
+      <div className="card p-4 sm:p-5">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">Service Groups</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Organize services into sections on your public booking page. Leave all groups empty for a flat list.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-2 mb-4">
+          <input
+            type="text"
+            value={newGroupName}
+            onChange={(e) => setNewGroupName(e.target.value)}
+            className="input flex-1"
+            placeholder="Create a group (e.g., Manicures)"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              const trimmed = newGroupName.trim();
+              if (!trimmed) return;
+              onCreateGroup(trimmed);
+              setNewGroupName('');
+            }}
+            className="btn-primary whitespace-nowrap"
+          >
+            Add Group
+          </button>
+        </div>
+
+        {sortedGroups.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">No groups yet. Services will display as one flat list.</p>
+        ) : (
+          <div className="space-y-2">
+            {sortedGroups.map((group, index) => (
+              <div
+                key={group.id}
+                className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{group.name}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {(group._count?.services ?? services.filter((service) => service.groupId === group.id).length)} services
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => onMoveGroup(group.id, 'up')}
+                    disabled={index === 0}
+                    className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded disabled:opacity-40"
+                    title="Move up"
+                  >
+                    Up
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onMoveGroup(group.id, 'down')}
+                    disabled={index === sortedGroups.length - 1}
+                    className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded disabled:opacity-40"
+                    title="Move down"
+                  >
+                    Down
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onRenameGroup(group)}
+                    className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded"
+                  >
+                    Rename
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDeleteGroup(group)}
+                    className="px-2 py-1 text-xs text-red-600 border border-red-200 dark:border-red-800 rounded"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {services.length === 0 ? (
+        <div className="text-center py-16">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full mb-4">
+            <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No services yet</h3>
+          <p className="text-gray-600 dark:text-gray-400 max-w-sm mx-auto">
+            Start by adding services that your business offers to customers
+          </p>
+        </div>
+      ) : hasGroups ? (
+        <div className="space-y-4">
+          {sortedGroups.map((group) => {
+            const groupServices = sortedServices.filter((service) => service.groupId === group.id);
+            if (groupServices.length === 0) return null;
+            return (
+              <div key={group.id} className="card p-4">
+                <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">{group.name}</h4>
+                <div className="space-y-3">
+                  {groupServices.map((service, index) => (
+                    <ServiceRow
+                      key={service.id}
+                      service={service}
+                      onEdit={onEdit}
+                      onDelete={onDelete}
+                      onMoveUp={() => onMoveService(service.id, 'up', group.id)}
+                      onMoveDown={() => onMoveService(service.id, 'down', group.id)}
+                      disableMoveUp={index === 0}
+                      disableMoveDown={index === groupServices.length - 1}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          {ungroupedServices.length > 0 && (
+            <div className="card p-4">
+              <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">Other Services</h4>
+              <div className="space-y-3">
+                {ungroupedServices.map((service, index) => (
+                  <ServiceRow
+                    key={service.id}
+                    service={service}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    onMoveUp={() => onMoveService(service.id, 'up', null)}
+                    onMoveDown={() => onMoveService(service.id, 'down', null)}
+                    disableMoveUp={index === 0}
+                    disableMoveDown={index === ungroupedServices.length - 1}
+                  />
+                ))}
+              </div>
             </div>
-            <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${
+          )}
+        </div>
+      ) : (
+        <div className="card p-4">
+          <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">All Services</h4>
+          <div className="space-y-3">
+            {sortedServices.map((service, index) => (
+              <ServiceRow
+                key={service.id}
+                service={service}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onMoveUp={() => onMoveService(service.id, 'up', null)}
+                onMoveDown={() => onMoveService(service.id, 'down', null)}
+                disableMoveUp={index === 0}
+                disableMoveDown={index === sortedServices.length - 1}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ServiceRow({
+  service,
+  onEdit,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+  disableMoveUp,
+  disableMoveDown,
+}: {
+  service: Service;
+  onEdit: (service: Service) => void;
+  onDelete: (id: string) => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  disableMoveUp: boolean;
+  disableMoveDown: boolean;
+}) {
+  return (
+    <div className="rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <h5 className="font-semibold text-gray-900 dark:text-gray-100 truncate">{service.name}</h5>
+            <span className={`px-2 py-0.5 text-xs rounded-full ${
               service.isActive
                 ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'
                 : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
@@ -74,45 +262,53 @@ function ServicesTab({
               {service.isActive ? 'Active' : 'Inactive'}
             </span>
           </div>
-          
-          <div className="flex items-center gap-4 mb-4 text-sm text-gray-600 dark:text-gray-400">
-            <div className="flex items-center">
-              <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {service.duration}min
-            </div>
-            {service.price && (
-              <div className="flex items-center font-medium text-gray-900 dark:text-gray-100">
-                <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                ${service.price.toFixed(2)}
-              </div>
-            )}
-          </div>          <div className="flex gap-2">
-            <button
-              onClick={() => onEdit(service)}
-              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              Edit
-            </button>
-            <button
-              onClick={() => {
-                if (confirm('Delete this service? This cannot be undone.')) {
-                  onDelete(service.id);
-                }
-              }}
-              className="px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg transition-colors"
-              title="Delete service"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          </div>
+          {service.description && (
+            <p className="text-sm text-gray-600 dark:text-gray-400">{service.description}</p>
+          )}
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {service.duration} min
+            {service.price != null ? ` - $${service.price.toFixed(2)}` : ''}
+          </p>
         </div>
-      ))}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onMoveUp}
+            disabled={disableMoveUp}
+            className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded disabled:opacity-40"
+            title="Move up"
+          >
+            Up
+          </button>
+          <button
+            type="button"
+            onClick={onMoveDown}
+            disabled={disableMoveDown}
+            className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded disabled:opacity-40"
+            title="Move down"
+          >
+            Down
+          </button>
+          <button
+            type="button"
+            onClick={() => onEdit(service)}
+            className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm('Delete this service? This cannot be undone.')) {
+                onDelete(service.id);
+              }
+            }}
+            className="px-2 py-1 text-xs text-red-600 border border-red-200 dark:border-red-800 rounded"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -243,6 +439,7 @@ export default function ServicesPage() {
     duration: 30,
     price: '',
     isActive: true,
+    groupId: '',
   });
   const [staffFormData, setStaffFormData] = useState({
     fullName: '',
@@ -260,6 +457,16 @@ export default function ServicesPage() {
     queryFn: async () => {
       const res = await fetch('/api/services');
       if (!res.ok) throw new Error('Failed to fetch services');
+      return res.json();
+    },
+  });
+
+  // Fetch service groups
+  const { data: groupsData, isLoading: isLoadingGroups } = useQuery({
+    queryKey: ['service-groups'],
+    queryFn: async () => {
+      const res = await fetch('/api/service-groups');
+      if (!res.ok) throw new Error('Failed to fetch service groups');
       return res.json();
     },
   });
@@ -286,6 +493,7 @@ export default function ServicesPage() {
         body: JSON.stringify({
           ...data,
           price: data.price ? parseFloat(data.price) : null,
+          groupId: data.groupId || null,
         }),
       });
       
@@ -297,6 +505,7 @@ export default function ServicesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['services'] });
+      queryClient.invalidateQueries({ queryKey: ['service-groups'] });
       closeModal();
     },
   });
@@ -308,6 +517,94 @@ export default function ServicesPage() {
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || 'Failed to delete service');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services'] });
+      queryClient.invalidateQueries({ queryKey: ['service-groups'] });
+    },
+  });
+
+  const createGroupMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const res = await fetch('/api/service-groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to create service group');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-groups'] });
+    },
+  });
+
+  const updateGroupMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Record<string, unknown> }) => {
+      const res = await fetch(`/api/service-groups/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to update service group');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-groups'] });
+    },
+  });
+
+  const deleteGroupMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/service-groups/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to delete service group');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['services'] });
+    },
+  });
+
+  const reorderGroupsMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const res = await fetch('/api/service-groups/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to reorder service groups');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-groups'] });
+    },
+  });
+
+  const reorderServicesMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const res = await fetch('/api/services/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to reorder services');
       }
       return res.json();
     },
@@ -356,6 +653,7 @@ export default function ServicesPage() {
   });
 
   const services: Service[] = servicesData?.services || [];
+  const groups: ServiceGroup[] = groupsData?.groups || [];
   const staff: Staff[] = staffData?.staff || [];
 
   const openServiceModal = (service?: Service) => {
@@ -367,6 +665,7 @@ export default function ServicesPage() {
         duration: service.duration,
         price: service.price?.toString() || '',
         isActive: service.isActive,
+        groupId: service.groupId || '',
       });
     } else {
       setEditingService(null);
@@ -376,6 +675,7 @@ export default function ServicesPage() {
         duration: 30,
         price: '',
         isActive: true,
+        groupId: '',
       });
     }
     setModalType('service');
@@ -424,7 +724,34 @@ export default function ServicesPage() {
     saveStaffMutation.mutate(staffFormData);
   };
 
-  const isLoading = isLoadingServices || isLoadingStaff;
+  const moveService = (serviceId: string, direction: 'up' | 'down', groupId: string | null) => {
+    const ordered = [...services].sort((a, b) => a.sortOrder - b.sortOrder);
+    const scoped = ordered.filter((service) => (service.groupId ?? null) === groupId);
+    const scopedIndex = scoped.findIndex((service) => service.id === serviceId);
+    if (scopedIndex < 0) return;
+    const targetScopedIndex = direction === 'up' ? scopedIndex - 1 : scopedIndex + 1;
+    if (targetScopedIndex < 0 || targetScopedIndex >= scoped.length) return;
+
+    const targetId = scoped[targetScopedIndex].id;
+    const sourceGlobalIndex = ordered.findIndex((service) => service.id === serviceId);
+    const targetGlobalIndex = ordered.findIndex((service) => service.id === targetId);
+    if (sourceGlobalIndex < 0 || targetGlobalIndex < 0) return;
+
+    [ordered[sourceGlobalIndex], ordered[targetGlobalIndex]] = [ordered[targetGlobalIndex], ordered[sourceGlobalIndex]];
+    reorderServicesMutation.mutate(ordered.map((service) => service.id));
+  };
+
+  const moveGroup = (groupId: string, direction: 'up' | 'down') => {
+    const ordered = [...groups].sort((a, b) => a.sortOrder - b.sortOrder);
+    const index = ordered.findIndex((group) => group.id === groupId);
+    if (index < 0) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= ordered.length) return;
+    [ordered[index], ordered[targetIndex]] = [ordered[targetIndex], ordered[index]];
+    reorderGroupsMutation.mutate(ordered.map((group) => group.id));
+  };
+
+  const isLoading = isLoadingServices || isLoadingStaff || isLoadingGroups;
 
   if (isLoading) {
     return (
@@ -505,9 +832,23 @@ export default function ServicesPage() {
       {/* Tab Content */}
       {activeTab === 'services' ? (
         <ServicesTab 
-          services={services} 
+          services={services}
+          groups={groups}
           onEdit={openServiceModal}
           onDelete={(id) => deleteServiceMutation.mutate(id)}
+          onCreateGroup={(name) => createGroupMutation.mutate(name)}
+          onRenameGroup={(group) => {
+            const nextName = prompt('Rename group', group.name)?.trim();
+            if (!nextName || nextName === group.name) return;
+            updateGroupMutation.mutate({ id: group.id, updates: { name: nextName } });
+          }}
+          onDeleteGroup={(group) => {
+            if (confirm(`Delete group "${group.name}"? Services in this group will be moved to No group.`)) {
+              deleteGroupMutation.mutate(group.id);
+            }
+          }}
+          onMoveGroup={moveGroup}
+          onMoveService={moveService}
         />
       ) : (
         <StaffTab
@@ -559,6 +900,27 @@ export default function ServicesPage() {
                   rows={3}
                   placeholder="Brief description of what's included..."
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Service Group
+                </label>
+                <select
+                  value={serviceFormData.groupId}
+                  onChange={(e) => setServiceFormData({ ...serviceFormData, groupId: e.target.value })}
+                  className="input w-full"
+                >
+                  <option value="">No group</option>
+                  {groups
+                    .slice()
+                    .sort((a, b) => a.sortOrder - b.sortOrder)
+                    .map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name}
+                      </option>
+                    ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

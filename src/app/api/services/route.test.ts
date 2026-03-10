@@ -4,7 +4,8 @@ import { NextRequest } from 'next/server';
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: { findUnique: vi.fn() },
-    service: { findMany: vi.fn(), create: vi.fn() },
+    service: { findMany: vi.fn(), create: vi.fn(), aggregate: vi.fn() },
+    serviceGroup: { findFirst: vi.fn() },
   },
 }));
 
@@ -28,6 +29,8 @@ const mockSession = getServerSession as ReturnType<typeof vi.fn>;
 const mockBusiness = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockServiceFindMany = prisma.service.findMany as ReturnType<typeof vi.fn>;
 const mockServiceCreate = prisma.service.create as ReturnType<typeof vi.fn>;
+const mockServiceAggregate = prisma.service.aggregate as ReturnType<typeof vi.fn>;
+const mockServiceGroupFindFirst = prisma.serviceGroup.findFirst as ReturnType<typeof vi.fn>;
 
 // Services use session.user.email for business lookup, session.user.businessId for sub check
 const activeSession = { user: { businessId: 'biz-1', email: 'owner@test.com' } };
@@ -43,6 +46,7 @@ function makeRequest(body: Record<string, unknown> = { name: 'Haircut', duration
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockServiceAggregate.mockResolvedValue({ _max: { sortOrder: 0 } });
 });
 
 describe('GET /api/services', () => {
@@ -154,5 +158,49 @@ describe('POST /api/services', () => {
     const body = await res.json();
     expect(body.service.id).toBe('svc-1');
     expect(body.service.isActive).toBe(true);
+  });
+
+  it('returns 400 when groupId is not owned by business', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        subscriptionPlan: 'starter',
+        _count: { customers: 0, staff: 0, services: 0 },
+      })
+      .mockResolvedValueOnce(fakeBusiness);
+    mockServiceGroupFindFirst.mockResolvedValue(null);
+
+    const res = await POST(makeRequest({ name: 'Haircut', duration: 30, groupId: 'bad-group-id' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('persists groupId when creating a grouped service', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        subscriptionPlan: 'starter',
+        _count: { customers: 0, staff: 0, services: 0 },
+      })
+      .mockResolvedValueOnce(fakeBusiness);
+    mockServiceGroupFindFirst.mockResolvedValue({ id: 'group-1' });
+    mockServiceCreate.mockResolvedValue({
+      id: 'svc-1',
+      name: 'Haircut',
+      duration: 30,
+      groupId: 'group-1',
+      active: true,
+    });
+
+    const res = await POST(makeRequest({ name: 'Haircut', duration: 30, groupId: 'group-1' }));
+    expect(res.status).toBe(201);
+    expect(mockServiceCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          groupId: 'group-1',
+        }),
+      })
+    );
   });
 });

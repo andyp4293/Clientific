@@ -31,6 +31,15 @@ model Business {
   country                String?
   timezone               String         @default("America/New_York")
   logoUrl                String?
+  publicProfileHeadline  String?
+  publicProfileAbout     String?
+  publicProfileShowPhone Boolean        @default(true)
+  publicProfileShowEmail Boolean        @default(true)
+  publicProfileShowAddress Boolean      @default(true)
+  publicProfileShowHours Boolean        @default(true)
+  publicProfileShowServices Boolean     @default(true)
+  publicProfileShowTeam  Boolean        @default(false)
+  publicProfileShowSocialLinks Boolean  @default(true)
   googleReviewUrl        String?
   facebookPageUrl        String?
   yelpUrl                String?
@@ -78,6 +87,7 @@ model Business {
   notifications          Notification[]
   payments               Payment[]
   rewards                Reward[]
+  serviceGroups          ServiceGroup[]
   services               Service[]
   smsLogs                SmsLog[]       @relation("SmsLogs")
   smsAiSessions          SmsAiSession[] @relation("BusinessSmsAiSessions")
@@ -181,6 +191,7 @@ model Service {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   businessId   String
+  groupId      String?
   name         String
   description  String?
   duration     Int
@@ -191,8 +202,23 @@ model Service {
   checkIns     CheckIn[]
   deals        Deal[]
   business     Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  group        ServiceGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   @@index([businessId, active])
+  @@index([businessId, groupId, sortOrder])
+}
+
+model ServiceGroup {
+  id         String    @id @default(cuid())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  businessId String
+  name       String
+  sortOrder  Int       @default(0)
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  services   Service[]
+
+  @@index([businessId, sortOrder])
 }
 
 model Staff {

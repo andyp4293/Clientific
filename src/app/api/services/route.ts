@@ -9,24 +9,26 @@ import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }    // Get user's business
+    }
+
     const business = await prisma.business.findUnique({
       where: { email: session.user.email },
+      select: { id: true },
     });
 
     if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
-    }    // Fetch all services for this business
+    }
+
     const services = await prisma.service.findMany({
       where: { businessId: business.id },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
     });
 
-    // Map 'active' to 'isActive' for frontend compatibility
-    const servicesWithIsActive = services.map(service => ({
+    const servicesWithIsActive = services.map((service) => ({
       ...service,
       isActive: service.active,
     }));
@@ -45,7 +47,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -62,9 +64,8 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, description, duration, price, isActive } = body;
+    const { name, description, duration, price, isActive, groupId, sortOrder } = body;
 
-    // Validation
     if (!name || !duration) {
       return NextResponse.json(
         { error: 'Name and duration are required' },
@@ -85,26 +86,48 @@ export async function POST(request: Request) {
         { error: 'Duration must be at least 5 minutes' },
         { status: 400 }
       );
-    }    // Get user's business
+    }
+
     const business = await prisma.business.findUnique({
       where: { email: session.user.email },
+      select: { id: true },
     });
 
     if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
-    }    // Create service
+    }
+
+    if (groupId !== undefined && groupId !== null) {
+      const group = await prisma.serviceGroup.findFirst({
+        where: { id: groupId, businessId: business.id },
+        select: { id: true },
+      });
+      if (!group) {
+        return NextResponse.json({ error: 'Service group not found' }, { status: 400 });
+      }
+    }
+
+    const maxSort = await prisma.service.aggregate({
+      where: { businessId: business.id },
+      _max: { sortOrder: true },
+    });
+    const nextSortOrder = typeof sortOrder === 'number'
+      ? Math.max(0, Math.round(sortOrder))
+      : (maxSort._max.sortOrder ?? -1) + 1;
+
     const service = await prisma.service.create({
       data: {
         businessId: business.id,
+        groupId: groupId || null,
         name: name.trim(),
         description: description?.trim() || null,
         duration: parseInt(duration),
         price: price ? parseFloat(price) : null,
         active: isActive !== undefined ? isActive : true,
+        sortOrder: nextSortOrder,
       },
     });
 
-    // Map 'active' to 'isActive' for frontend compatibility
     const serviceWithIsActive = {
       ...service,
       isActive: service.active,

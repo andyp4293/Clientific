@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
-import { sendSMS, formatPhoneNumber, appendSmsComplianceFooter } from '@/lib/twilio';
+import { sendSMS, formatPhoneNumber, formatDealNotificationSMS } from '@/lib/twilio';
 import { APP_URL } from '@/lib/brand';
 
 export async function POST(
@@ -47,9 +47,11 @@ export async function POST(
       select: { phone: true },
     });
 
-    const message = appendSmsComplianceFooter(
-      `${deal.business.name}: ${deal.title} -- claim your deal: ${APP_URL}/d/${deal.id}`
-    );
+    const message = formatDealNotificationSMS({
+      businessName: deal.business.name,
+      dealTitle: deal.title,
+      dealUrl: `${APP_URL}/d/${deal.id}`,
+    });
 
     const results = await Promise.all(
       customers.map(c => sendSMS({ to: formatPhoneNumber(c.phone!), message }))

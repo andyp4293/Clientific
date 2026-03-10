@@ -103,6 +103,15 @@ interface Business {
   country: string | null;
   timezone: string;
   logoUrl: string | null;
+  publicProfileHeadline: string | null;
+  publicProfileAbout: string | null;
+  publicProfileShowPhone: boolean;
+  publicProfileShowEmail: boolean;
+  publicProfileShowAddress: boolean;
+  publicProfileShowHours: boolean;
+  publicProfileShowServices: boolean;
+  publicProfileShowTeam: boolean;
+  publicProfileShowSocialLinks: boolean;
   enableOnlineBooking: boolean;
   googleReviewUrl: string | null;
   facebookPageUrl: string | null;
@@ -588,6 +597,111 @@ export default function SettingsPage() {
                     <p className="text-xs text-gray-500 dark:text-gray-400">Allow customers to book appointments online</p>
                   </div>
                 </label>
+              </div>
+
+              <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700/40 rounded-lg border border-gray-200 dark:border-gray-700">
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Public Profile Content</h4>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                      Headline
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={90}
+                      value={formData.publicProfileHeadline || ''}
+                      onChange={(e) => handleInputChange('publicProfileHeadline', e.target.value)}
+                      className="input"
+                      placeholder="e.g., Precision nails and spa care in Brick, NJ."
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {`${(formData.publicProfileHeadline || '').length}/90`}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                      About
+                    </label>
+                    <textarea
+                      value={formData.publicProfileAbout || ''}
+                      onChange={(e) => handleInputChange('publicProfileAbout', e.target.value)}
+                      className="input"
+                      rows={4}
+                      maxLength={1200}
+                      placeholder="Share what customers can expect from your experience, specialties, and atmosphere."
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {`${(formData.publicProfileAbout || '').length}/1200`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Public Profile Visibility</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    {
+                      key: 'publicProfileShowPhone' as const,
+                      label: 'Show phone number',
+                      hint: 'Display tap-to-call on your public profile',
+                      defaultValue: true,
+                    },
+                    {
+                      key: 'publicProfileShowEmail' as const,
+                      label: 'Show email',
+                      hint: 'Display your public contact email',
+                      defaultValue: true,
+                    },
+                    {
+                      key: 'publicProfileShowAddress' as const,
+                      label: 'Show address',
+                      hint: 'Display map and directions link',
+                      defaultValue: true,
+                    },
+                    {
+                      key: 'publicProfileShowHours' as const,
+                      label: 'Show business hours',
+                      hint: 'Display weekly open and close times',
+                      defaultValue: true,
+                    },
+                    {
+                      key: 'publicProfileShowServices' as const,
+                      label: 'Show services',
+                      hint: 'Display service list on public profile',
+                      defaultValue: true,
+                    },
+                    {
+                      key: 'publicProfileShowTeam' as const,
+                      label: 'Show team members',
+                      hint: 'Display active staff members',
+                      defaultValue: false,
+                    },
+                    {
+                      key: 'publicProfileShowSocialLinks' as const,
+                      label: 'Show social links',
+                      hint: 'Display Google, Facebook, Yelp, and Instagram links',
+                      defaultValue: true,
+                    },
+                  ].map((item) => (
+                    <label
+                      key={item.key}
+                      className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/40 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={(formData[item.key] as boolean | undefined) ?? item.defaultValue}
+                        onChange={(e) => handleInputChange(item.key, e.target.checked)}
+                        className="w-4 h-4 mt-0.5 text-primary border-gray-300 dark:border-gray-600 rounded focus:ring-primary"
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">{item.label}</span>
+                        <span className="block text-xs text-gray-500 dark:text-gray-400">{item.hint}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
 

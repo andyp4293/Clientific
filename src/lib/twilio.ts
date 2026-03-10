@@ -70,6 +70,12 @@ interface ReviewRequestDetails {
   yelpUrl?: string | null;
 }
 
+interface DealNotificationDetails {
+  businessName: string;
+  dealTitle: string;
+  dealUrl: string;
+}
+
 const SMS_COMPLIANCE_FOOTER = 'Reply STOP to opt out, HELP for help.';
 
 export function appendSmsComplianceFooter(message: string): string {
@@ -338,6 +344,11 @@ export async function sendAppointmentRescheduled(
 export function formatReviewRequestSMS(details: ReviewRequestDetails): string {
   const link = details.googleReviewUrl || details.yelpUrl || '';
   const message = `${details.businessName}: Hi ${details.customerName}, thank you for your visit! We'd love your feedback. ${link}`;
+  return appendSmsComplianceFooter(message);
+}
+
+export function formatDealNotificationSMS(details: DealNotificationDetails): string {
+  const message = `${details.businessName}: ${details.dealTitle} is now available. Claim this offer here: ${details.dealUrl}`;
   return appendSmsComplianceFooter(message);
 }
 

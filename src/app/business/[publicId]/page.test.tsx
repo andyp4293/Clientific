@@ -1,8 +1,14 @@
-import { describe, it, expect } from 'vitest';
-import * as pageModule from './page';
+import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 
-describe('page module smoke test', () => {
-  it('exports a default page component', () => {
-    expect(typeof pageModule.default).toBe('function');
+describe('public business profile page source', () => {
+  it('removes legacy cluttered sections and keeps a single booking CTA label', () => {
+    const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+
+    expect(source).not.toContain('Back to Booking');
+    expect(source).not.toContain('Booking Policies');
+    expect(source).not.toContain('Quick Facts');
+    expect(source).not.toContain('Need Help?');
+    expect(source.match(/Book Appointment/g)?.length ?? 0).toBe(1);
   });
 });

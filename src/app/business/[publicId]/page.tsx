@@ -1,9 +1,21 @@
 'use client';
 
+import { useMemo } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import Link from 'next/link';
-import { MapPin, Phone, Mail, Clock, Globe, ArrowLeft } from 'lucide-react';
+import {
+  Clock3,
+  ExternalLink,
+  Globe2,
+  Mail,
+  MapPin,
+  Phone,
+  Sparkles,
+  Users,
+} from 'lucide-react';
+import { groupServicesForDisplay } from '@/lib/service-grouping';
+import { getPublicProfileVisibility } from '@/lib/public-profile-visibility';
 
 interface DayHours {
   isOpen: boolean;
@@ -25,7 +37,43 @@ interface Business {
   zipCode: string | null;
   logoUrl: string | null;
   timezone: string;
+  enableOnlineBooking: boolean;
   businessHours: { hours: Record<string, DayHours> } | null;
+  publicProfileHeadline: string | null;
+  publicProfileAbout: string | null;
+  publicProfileShowPhone: boolean;
+  publicProfileShowEmail: boolean;
+  publicProfileShowAddress: boolean;
+  publicProfileShowHours: boolean;
+  publicProfileShowServices: boolean;
+  publicProfileShowTeam: boolean;
+  publicProfileShowSocialLinks: boolean;
+  googleReviewUrl: string | null;
+  facebookPageUrl: string | null;
+  yelpUrl: string | null;
+  instagramUrl: string | null;
+}
+
+interface PublicService {
+  id: string;
+  name: string;
+  description: string | null;
+  duration: number;
+  price: number | null;
+  groupId: string | null;
+  sortOrder: number;
+}
+
+interface ServiceGroup {
+  id: string;
+  name: string;
+  sortOrder: number;
+}
+
+interface StaffMember {
+  id: string;
+  fullName: string;
+  role: string | null;
 }
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -35,9 +83,8 @@ export default function BusinessInfoPage() {
   const publicId = params.publicId as string;
   const apiBase = `/api/public/business-by-id/${publicId}`;
 
-  // Fetch business info — append infoOnly=true to bypass the enableOnlineBooking gate
   const { data: businessData, isLoading } = useQuery({
-    queryKey: ['business-info', publicId],
+    queryKey: ['business-profile', publicId],
     queryFn: async () => {
       const res = await fetch(`${apiBase}?infoOnly=true`);
       if (!res.ok) return null;
@@ -45,14 +92,46 @@ export default function BusinessInfoPage() {
     },
   });
 
-  const business: Business | null = businessData?.business;
+  const business: Business | null = businessData?.business ?? null;
+
+  const shouldFetchServices = Boolean(business && business.publicProfileShowServices);
+  const shouldFetchTeam = Boolean(business && business.publicProfileShowTeam);
+
+  const { data: servicesData } = useQuery({
+    queryKey: ['business-profile-services', publicId],
+    queryFn: async () => {
+      const res = await fetch(`${apiBase}/services?infoOnly=true`);
+      if (!res.ok) return { services: [], groups: [] };
+      return res.json();
+    },
+    enabled: shouldFetchServices,
+  });
+
+  const { data: staffData } = useQuery({
+    queryKey: ['business-profile-staff', publicId],
+    queryFn: async () => {
+      const res = await fetch(`${apiBase}/staff?infoOnly=true`);
+      if (!res.ok) return { staff: [] };
+      return res.json();
+    },
+    enabled: shouldFetchTeam,
+  });
+
+  const services: PublicService[] = servicesData?.services ?? [];
+  const groups: ServiceGroup[] = servicesData?.groups ?? [];
+  const staff: StaffMember[] = staffData?.staff ?? [];
+
+  const groupedServices = useMemo(
+    () => groupServicesForDisplay(services, groups),
+    [services, groups]
+  );
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading business information...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading business profile...</p>
         </div>
       </div>
     );
@@ -63,258 +142,283 @@ export default function BusinessInfoPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Business Not Found</h1>
-          <p className="text-gray-600 dark:text-gray-400">The business you&apos;re looking for doesn&apos;t exist.</p>
+          <p className="text-gray-600 dark:text-gray-400">The business profile you requested is unavailable.</p>
         </div>
       </div>
     );
   }
 
-  const hasAddress = business.street && business.city && business.state;
-  const hoursData: Record<string, DayHours> = (business.businessHours?.hours as Record<string, DayHours>) || {};
+  const hoursData: Record<string, DayHours> = business.businessHours?.hours ?? {};
+  const visibility = getPublicProfileVisibility({
+    publicProfileShowPhone: business.publicProfileShowPhone,
+    publicProfileShowEmail: business.publicProfileShowEmail,
+    publicProfileShowAddress: business.publicProfileShowAddress,
+    publicProfileShowHours: business.publicProfileShowHours,
+    publicProfileShowServices: business.publicProfileShowServices,
+    publicProfileShowTeam: business.publicProfileShowTeam,
+    publicProfileShowSocialLinks: business.publicProfileShowSocialLinks,
+    phone: business.phone,
+    businessEmail: business.businessEmail,
+    street: business.street,
+    city: business.city,
+    state: business.state,
+  });
+  const socialLinks = [
+    { label: 'Google Reviews', href: business.googleReviewUrl },
+    { label: 'Facebook', href: business.facebookPageUrl },
+    { label: 'Yelp', href: business.yelpUrl },
+    { label: 'Instagram', href: business.instagramUrl },
+  ].filter((item) => item.href);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-        <div className="max-w-5xl mx-auto px-4 py-6">
-          <Link
-            href={`/book/${business.publicId}`}
-            className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 font-medium mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Booking
-          </Link>
-
-          <div className="flex items-start gap-6">
-            {business.logoUrl && (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="border-b border-slate-200 dark:border-slate-800 bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900">
+        <div className="max-w-6xl mx-auto px-4 py-10 sm:py-14">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-5">
+            {business.logoUrl ? (
               <img
                 src={business.logoUrl}
                 alt={business.name}
-                className="w-20 h-20 rounded-xl object-cover border border-gray-200 dark:border-gray-700"
+                className="w-20 h-20 rounded-2xl object-cover border border-white/20 shadow-lg"
               />
+            ) : (
+              <div className="w-20 h-20 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center">
+                <Sparkles className="w-8 h-8 text-emerald-200" />
+              </div>
             )}
+
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">{business.name}</h1>
-              <p className="text-gray-600 dark:text-gray-400 capitalize">{business.businessType.replace('_', ' ')}</p>
+              <p className="text-sm uppercase tracking-[0.2em] text-emerald-200/90 mb-2">
+                {formatBusinessType(business.businessType)}
+              </p>
+              <h1 className="text-3xl sm:text-4xl font-bold text-white">{business.name}</h1>
+              {business.publicProfileHeadline && (
+                <p className="text-base sm:text-lg text-slate-100/90 mt-3 max-w-2xl">
+                  {business.publicProfileHeadline}
+                </p>
+              )}
             </div>
+
+            {business.enableOnlineBooking && (
+              <Link
+                href={`/book/${business.publicId}`}
+                className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-white text-slate-900 font-semibold hover:bg-emerald-50 transition-colors"
+              >
+                Book Appointment
+              </Link>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Contact Information */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Contact Information</h2>
-              <div className="space-y-4">
-                {business.phone && (
-                  <div className="flex items-start gap-3">
-                    <Phone className="w-5 h-5 text-primary dark:text-primary-400 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Phone</p>
-                      <a
-                        href={`tel:${business.phone}`}
-                        className="text-gray-900 dark:text-gray-100 hover:underline"
-                      >
-                        {business.phone}
-                      </a>
-                    </div>
-                  </div>
-                )}
+      <div className="max-w-6xl mx-auto px-4 py-8 sm:py-10 grid lg:grid-cols-3 gap-6">
+        <main className="lg:col-span-2 space-y-6">
+          {business.publicProfileAbout && (
+            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">About</h2>
+              <p className="text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                {business.publicProfileAbout}
+              </p>
+            </section>
+          )}
 
-                {business.businessEmail && (
-                  <div className="flex items-start gap-3">
-                    <Mail className="w-5 h-5 text-primary dark:text-primary-400 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</p>
-                      <a
-                        href={`mailto:${business.businessEmail}`}
-                        className="text-gray-900 dark:text-gray-100 hover:underline"
-                      >
-                        {business.businessEmail}
-                      </a>
-                    </div>
-                  </div>
-                )}
+          {visibility.showServices && (
+            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Services</h2>
 
-                {hasAddress && (
-                  <div className="flex items-start gap-3">
-                    <MapPin className="w-5 h-5 text-primary dark:text-primary-400 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Address</p>
-                      <address className="text-gray-900 dark:text-gray-100 not-italic">
-                        {business.street}<br />
-                        {business.city}, {business.state} {business.zipCode}
-                      </address>
-                      <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                          `${business.street}, ${business.city}, ${business.state} ${business.zipCode}`
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm font-medium mt-1 inline-block underline underline-offset-2 hover:opacity-70"
-                      >
-                        Get Directions →
-                      </a>
-                    </div>
-                  </div>
-                )}
+              {!services.length ? (
+                <p className="text-sm text-slate-500 dark:text-slate-400">No services published yet.</p>
+              ) : groupedServices.hasGroups ? (
+                <div className="space-y-5">
+                  {groupedServices.groupedSections.map((section) => (
+                    section.services.length > 0 ? (
+                      <div key={section.group.id}>
+                        <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+                          {section.group.name}
+                        </h3>
+                        <ServiceList services={section.services} />
+                      </div>
+                    ) : null
+                  ))}
 
-                <div className="flex items-start gap-3">
-                  <Globe className="w-5 h-5 text-primary dark:text-primary-400 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Timezone</p>
-                    <p className="text-gray-900 dark:text-gray-100">{business.timezone}</p>
-                  </div>
+                  {groupedServices.ungroupedServices.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+                        Other Services
+                      </h3>
+                      <ServiceList services={groupedServices.ungroupedServices} />
+                    </div>
+                  )}
                 </div>
-              </div>
-            </div>
+              ) : (
+                <ServiceList services={groupedServices.flatServices} />
+              )}
+            </section>
+          )}
 
-            {/* Business Hours */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                <Clock className="w-5 h-5" />
+          {visibility.showHours && (
+            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+                <Clock3 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 Business Hours
               </h2>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {DAYS.map((day, index) => {
-                  const hours = hoursData[index.toString()];
+                  const dayHours = hoursData[index.toString()];
                   const isToday = new Date().getDay() === index;
 
                   return (
                     <div
                       key={day}
-                      className={`flex justify-between items-center py-2 px-3 rounded-lg ${
-                        isToday ? 'bg-primary-50 dark:bg-primary/10 border border-primary-200 dark:border-primary-800' : ''
+                      className={`flex justify-between items-center px-3 py-2 rounded-lg ${
+                        isToday
+                          ? 'bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900'
+                          : 'bg-slate-50 dark:bg-slate-800/60'
                       }`}
                     >
-                      <span className={`font-medium ${isToday ? 'text-primary-900 dark:text-primary-300' : 'text-gray-900 dark:text-gray-100'}`}>
+                      <span className={`font-medium ${isToday ? 'text-emerald-900 dark:text-emerald-300' : 'text-slate-800 dark:text-slate-200'}`}>
                         {day}
-                        {isToday && <span className="ml-2 text-xs text-primary dark:text-primary-400">(Today)</span>}
+                        {isToday && <span className="ml-2 text-xs">(Today)</span>}
                       </span>
-                      {hours?.isOpen ? (
-                        <span className={isToday ? 'text-primary-900 dark:text-primary-300' : 'text-gray-700 dark:text-gray-300'}>
-                          {formatTime(hours.openTime!)} – {formatTime(hours.closeTime!)}
+                      {dayHours?.isOpen && dayHours.openTime && dayHours.closeTime ? (
+                        <span className={isToday ? 'text-emerald-800 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-300'}>
+                          {formatTime(dayHours.openTime)} - {formatTime(dayHours.closeTime)}
                         </span>
                       ) : (
-                        <span className="text-gray-400 dark:text-gray-500">Closed</span>
+                        <span className="text-slate-400 dark:text-slate-500">Closed</span>
                       )}
                     </div>
                   );
                 })}
               </div>
-            </div>
+            </section>
+          )}
 
-            {/* Policies */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Booking Policies</h2>
-              <div className="space-y-4 text-gray-700 dark:text-gray-300">
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Cancellation Policy</h3>
-                  <p className="text-sm">
-                    Please cancel or reschedule at least 24 hours in advance. Late cancellations
-                    may result in a fee.
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Late Arrivals</h3>
-                  <p className="text-sm">
-                    Please arrive 5–10 minutes before your scheduled appointment. If you arrive
-                    more than 15 minutes late, we may need to reschedule your appointment.
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">SMS Notifications</h3>
-                  <p className="text-sm">
-                    SMS appointment reminders are optional. During booking you can check the box to
-                    opt in to receiving SMS updates. Message and data rates may apply. Reply STOP at
-                    any time to opt out.
-                  </p>
-                  <div className="mt-2">
-                    <a href="/terms" target="_blank" className="text-sm underline underline-offset-2 hover:opacity-70 mr-4">
-                      Terms of Service
-                    </a>
-                    <a href="/privacy" target="_blank" className="text-sm underline underline-offset-2 hover:opacity-70">
-                      Privacy Policy
-                    </a>
+          {visibility.showTeam && staff.length > 0 && (
+            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+                <Users className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                Team
+              </h2>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {staff.map((member) => (
+                  <div
+                    key={member.id}
+                    className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-3"
+                  >
+                    <p className="font-medium text-slate-900 dark:text-slate-100">{member.fullName}</p>
+                    {member.role && (
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{member.role}</p>
+                    )}
                   </div>
-                </div>
+                ))}
               </div>
-            </div>
-          </div>
+            </section>
+          )}
+        </main>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Book Now CTA */}
-            <div className="bg-primary text-white rounded-2xl shadow-sm p-6">
-              <h3 className="text-lg font-bold mb-3">Ready to Book?</h3>
-              <p className="text-primary-100 text-sm mb-4">
-                Schedule your appointment online in just a few clicks.
-              </p>
-              <Link
-                href={`/book/${business.publicId}`}
-                className="block w-full py-3 bg-white text-primary rounded-xl font-semibold text-center hover:bg-primary-50 transition-colors"
-              >
-                Book Appointment
-              </Link>
-            </div>
-
-            {/* Quick Facts */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Quick Facts</h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Business Type</span>
-                  <span className="font-medium text-gray-900 dark:text-gray-100 capitalize">
-                    {business.businessType.replace('_', ' ')}
+        <aside className="space-y-4 lg:sticky lg:top-4 h-fit">
+          <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4">Contact</h2>
+            <div className="space-y-4">
+              {visibility.showPhone && business.phone && (
+                <a href={`tel:${business.phone}`} className="flex items-start gap-3 group">
+                  <Phone className="w-4 h-4 mt-1 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white">
+                    {business.phone}
                   </span>
-                </div>
+                </a>
+              )}
 
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Online Booking</span>
-                  <span className="font-medium text-green-600 dark:text-green-400">✓ Available</span>
-                </div>
+              {visibility.showEmail && business.businessEmail && (
+                <a href={`mailto:${business.businessEmail}`} className="flex items-start gap-3 group">
+                  <Mail className="w-4 h-4 mt-1 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-slate-700 dark:text-slate-300 break-all group-hover:text-slate-900 dark:group-hover:text-white">
+                    {business.businessEmail}
+                  </span>
+                </a>
+              )}
 
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">SMS Reminders</span>
-                  <span className="font-medium text-green-600 dark:text-green-400">✓ Optional</span>
+              {visibility.showAddress && (
+                <div className="space-y-1">
+                  <div className="flex items-start gap-3">
+                    <MapPin className="w-4 h-4 mt-1 text-emerald-600 dark:text-emerald-400" />
+                    <address className="not-italic text-slate-700 dark:text-slate-300 text-sm">
+                      {business.street}<br />
+                      {business.city}, {business.state} {business.zipCode}
+                    </address>
+                  </div>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                      `${business.street}, ${business.city}, ${business.state} ${business.zipCode}`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-sm font-medium text-emerald-700 dark:text-emerald-300 hover:underline ml-7"
+                  >
+                    Get Directions
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
                 </div>
+              )}
+
+              <div className="flex items-start gap-3">
+                <Globe2 className="w-4 h-4 mt-1 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-sm text-slate-600 dark:text-slate-300">{business.timezone}</span>
               </div>
             </div>
+          </section>
 
-            {/* Help */}
-            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-3">Need Help?</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Have questions about booking or our services? Get in touch!
-              </p>
+          {visibility.showSocialLinks && socialLinks.length > 0 && (
+            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-3">Find Us Online</h2>
               <div className="space-y-2">
-                {business.phone && (
+                {socialLinks.map((link) => (
                   <a
-                    href={`tel:${business.phone}`}
-                    className="block w-full py-2 px-4 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-600 text-center transition-colors"
+                    key={link.label}
+                    href={link.href!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                   >
-                    Call Us
+                    {link.label}
+                    <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
                   </a>
-                )}
-                {business.businessEmail && (
-                  <a
-                    href={`mailto:${business.businessEmail}`}
-                    className="block w-full py-2 px-4 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-600 text-center transition-colors"
-                  >
-                    Email Us
-                  </a>
-                )}
+                ))}
               </div>
-            </div>
-          </div>
-        </div>
+            </section>
+          )}
+        </aside>
       </div>
     </div>
+  );
+}
+
+function ServiceList({ services }: { services: PublicService[] }) {
+  return (
+    <ul className="space-y-2">
+      {services.map((service) => (
+        <li
+          key={service.id}
+          className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-3"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-medium text-slate-900 dark:text-slate-100">{service.name}</p>
+              {service.description && (
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{service.description}</p>
+              )}
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{service.duration} min</p>
+            </div>
+            {service.price != null && service.price > 0 && (
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                ${service.price.toFixed(2)}
+              </p>
+            )}
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -323,4 +427,11 @@ function formatTime(time: string): string {
   const period = hours >= 12 ? 'PM' : 'AM';
   const displayHours = hours % 12 || 12;
   return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+}
+
+function formatBusinessType(type: string): string {
+  return type
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

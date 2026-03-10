@@ -50,6 +50,15 @@ export async function GET(req: NextRequest) {
         country: true,
         timezone: true,
         logoUrl: true,
+        publicProfileHeadline: true,
+        publicProfileAbout: true,
+        publicProfileShowPhone: true,
+        publicProfileShowEmail: true,
+        publicProfileShowAddress: true,
+        publicProfileShowHours: true,
+        publicProfileShowServices: true,
+        publicProfileShowTeam: true,
+        publicProfileShowSocialLinks: true,
         enableOnlineBooking: true,
         subscriptionPlan: true,
         subscriptionStatus: true,
@@ -110,6 +119,15 @@ export async function PATCH(req: NextRequest) {
       country,
       timezone,
       logoUrl,
+      publicProfileHeadline,
+      publicProfileAbout,
+      publicProfileShowPhone,
+      publicProfileShowEmail,
+      publicProfileShowAddress,
+      publicProfileShowHours,
+      publicProfileShowServices,
+      publicProfileShowTeam,
+      publicProfileShowSocialLinks,
       enableOnlineBooking,
       googleReviewUrl,
       facebookPageUrl,
@@ -131,6 +149,8 @@ export async function PATCH(req: NextRequest) {
       { label: 'Business name', value: name },
       { label: 'Street', value: street },
       { label: 'City', value: city },
+      { label: 'Public profile headline', value: publicProfileHeadline },
+      { label: 'Public profile about', value: publicProfileAbout },
       { label: 'AI greeting', value: aiReceptionistGreeting },
       { label: 'AI FAQ', value: typeof aiReceptionistFaq === 'string' ? aiReceptionistFaq : null },
       { label: 'SMS AI greeting', value: smsAiGreeting },
@@ -138,6 +158,34 @@ export async function PATCH(req: NextRequest) {
 
     if (blockedField) {
       return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
+    }
+
+    if (publicProfileHeadline !== undefined && typeof publicProfileHeadline !== 'string') {
+      return NextResponse.json({ error: 'Public profile headline must be text' }, { status: 400 });
+    }
+    if (publicProfileAbout !== undefined && typeof publicProfileAbout !== 'string') {
+      return NextResponse.json({ error: 'Public profile about must be text' }, { status: 400 });
+    }
+    if (typeof publicProfileHeadline === 'string' && publicProfileHeadline.trim().length > 90) {
+      return NextResponse.json({ error: 'Public profile headline must be 90 characters or less' }, { status: 400 });
+    }
+    if (typeof publicProfileAbout === 'string' && publicProfileAbout.trim().length > 1200) {
+      return NextResponse.json({ error: 'Public profile about must be 1200 characters or less' }, { status: 400 });
+    }
+
+    const boolFields: Array<[string, unknown]> = [
+      ['publicProfileShowPhone', publicProfileShowPhone],
+      ['publicProfileShowEmail', publicProfileShowEmail],
+      ['publicProfileShowAddress', publicProfileShowAddress],
+      ['publicProfileShowHours', publicProfileShowHours],
+      ['publicProfileShowServices', publicProfileShowServices],
+      ['publicProfileShowTeam', publicProfileShowTeam],
+      ['publicProfileShowSocialLinks', publicProfileShowSocialLinks],
+    ];
+    for (const [field, value] of boolFields) {
+      if (value !== undefined && typeof value !== 'boolean') {
+        return NextResponse.json({ error: `${field} must be true or false` }, { status: 400 });
+      }
     }
 
     const current = await prisma.business.findUnique({
@@ -229,6 +277,15 @@ export async function PATCH(req: NextRequest) {
         ...(country !== undefined && { country }),
         ...(timezone && { timezone }),
         ...(logoUrl !== undefined && { logoUrl }),
+        ...(publicProfileHeadline !== undefined && { publicProfileHeadline: publicProfileHeadline?.trim() || null }),
+        ...(publicProfileAbout !== undefined && { publicProfileAbout: publicProfileAbout?.trim() || null }),
+        ...(publicProfileShowPhone !== undefined && { publicProfileShowPhone }),
+        ...(publicProfileShowEmail !== undefined && { publicProfileShowEmail }),
+        ...(publicProfileShowAddress !== undefined && { publicProfileShowAddress }),
+        ...(publicProfileShowHours !== undefined && { publicProfileShowHours }),
+        ...(publicProfileShowServices !== undefined && { publicProfileShowServices }),
+        ...(publicProfileShowTeam !== undefined && { publicProfileShowTeam }),
+        ...(publicProfileShowSocialLinks !== undefined && { publicProfileShowSocialLinks }),
         ...(enableOnlineBooking !== undefined && { enableOnlineBooking }),
         ...(googleReviewUrl !== undefined && { googleReviewUrl }),
         ...(facebookPageUrl !== undefined && { facebookPageUrl }),

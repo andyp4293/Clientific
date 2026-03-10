@@ -22,12 +22,16 @@ export async function GET(
       );
     }
 
-    if (!business.enableOnlineBooking) {
+    const infoOnly = req.nextUrl.searchParams.get('infoOnly') === 'true';
+
+    if (!business.enableOnlineBooking && !infoOnly) {
       return NextResponse.json(
         { error: 'Online booking is not enabled' },
         { status: 403 }
       );
-    }    const staff = await prisma.staff.findMany({
+    }
+
+    const staff = await prisma.staff.findMany({
       where: {
         businessId: business.id,
         active: true,
@@ -38,6 +42,7 @@ export async function GET(
       select: {
         id: true,
         fullName: true,
+        role: true,
       },
     });
 

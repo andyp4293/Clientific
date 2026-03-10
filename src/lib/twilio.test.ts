@@ -6,6 +6,7 @@ import {
   formatAppointmentConfirmationSMS,
   formatAppointmentReminderSMS,
   formatAppointmentRescheduledSMS,
+  formatDealNotificationSMS,
   formatReviewRequestSMS,
 } from './twilio';
 
@@ -98,6 +99,20 @@ describe('twilio sms formatting', () => {
       businessName: 'Test Salon',
       googleReviewUrl: 'https://example.com/review',
     });
+    expect(message).toContain(FOOTER);
+  });
+
+  it('formats deal notification with polished copy and url', () => {
+    const message = formatDealNotificationSMS({
+      businessName: 'Test Salon',
+      dealTitle: '20% Off Gel Manicure',
+      dealUrl: 'https://clientific.app/d/deal-1',
+    });
+
+    expect(message).toContain('Test Salon');
+    expect(message).toContain('20% Off Gel Manicure');
+    expect(message).toContain('https://clientific.app/d/deal-1');
+    expect(message).not.toContain('--');
     expect(message).toContain(FOOTER);
   });
 });

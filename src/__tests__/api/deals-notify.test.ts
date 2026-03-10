@@ -30,7 +30,9 @@ vi.mock('@/lib/subscription', () => ({
 vi.mock('@/lib/twilio', () => ({
   sendSMS: vi.fn().mockResolvedValue({ success: true }),
   formatPhoneNumber: vi.fn((p: string) => p),
-  appendSmsComplianceFooter: vi.fn((m: string) => `${m} Reply STOP to opt out, HELP for help.`),
+  formatDealNotificationSMS: vi.fn((details: { businessName: string; dealTitle: string; dealUrl: string }) =>
+    `${details.businessName}: ${details.dealTitle} is now available. Claim this offer here: ${details.dealUrl} Reply STOP to opt out, HELP for help.`
+  ),
 }));
 
 vi.mock('@/lib/brand', () => ({
@@ -39,7 +41,7 @@ vi.mock('@/lib/brand', () => ({
 
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-import { sendSMS } from '@/lib/twilio';
+import { formatDealNotificationSMS, sendSMS } from '@/lib/twilio';
 import { POST } from '@/app/api/deals/[id]/notify/route';
 
 const SESSION = { user: { id: 'biz-1' } };
@@ -155,10 +157,26 @@ describe('POST /api/deals/[id]/notify', () => {
   it('sends dedicated deal landing page URL', async () => {
     vi.mocked(prisma.customer.findMany).mockResolvedValue([{ phone: '5551111111' }] as any);
     await POST(notifyReq(), ctx('deal-1'));
+    expect(formatDealNotificationSMS).toHaveBeenCalledWith(
+      expect.objectContaining({
+        businessName: 'Test Salon',
+        dealTitle: 'Test Deal',
+        dealUrl: 'https://clientific.app/d/deal-1',
+      })
+    );
     expect(sendSMS).toHaveBeenCalledWith(
       expect.objectContaining({
         message: expect.stringContaining('https://clientific.app/d/deal-1'),
       })
     );
+  });
+
+  it('sends polished deal copy without dash separators', async () => {
+    vi.mocked(prisma.customer.findMany).mockResolvedValue([{ phone: '5551111111' }] as any);
+    await POST(notifyReq(), ctx('deal-1'));
+
+    const call = vi.mocked(sendSMS).mock.calls[0]?.[0];
+    expect(call?.message).toContain('Claim this offer here:');
+    expect(call?.message).not.toContain('--');
   });
 });

@@ -22,7 +22,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    const { name, description, duration, price, isActive } = body;
+    const { name, description, duration, price, isActive, groupId, sortOrder } = body;
 
     const blockedField = getBlockedFieldLabel([
       { label: 'Service name', value: name },
@@ -32,7 +32,6 @@ export async function PATCH(
       return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
     }
 
-    // Validation
     if (name !== undefined && !name.trim()) {
       return NextResponse.json(
         { error: 'Service name cannot be empty' },
@@ -45,26 +44,39 @@ export async function PATCH(
         { error: 'Duration must be at least 5 minutes' },
         { status: 400 }
       );
-    }    // Get user's business
+    }
+
     const business = await prisma.business.findUnique({
       where: { email: session.user.email },
+      select: { id: true },
     });
 
     if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
-    // Verify service belongs to this business
     const existingService = await prisma.service.findFirst({
       where: {
         id,
         businessId: business.id,
       },
+      select: { id: true },
     });
 
     if (!existingService) {
       return NextResponse.json({ error: 'Service not found' }, { status: 404 });
-    }    // Update service
+    }
+
+    if (groupId !== undefined && groupId !== null) {
+      const group = await prisma.serviceGroup.findFirst({
+        where: { id: groupId, businessId: business.id },
+        select: { id: true },
+      });
+      if (!group) {
+        return NextResponse.json({ error: 'Service group not found' }, { status: 400 });
+      }
+    }
+
     const service = await prisma.service.update({
       where: { id },
       data: {
@@ -73,10 +85,11 @@ export async function PATCH(
         ...(duration !== undefined && { duration: parseInt(duration) }),
         ...(price !== undefined && { price: price ? parseFloat(price) : null }),
         ...(isActive !== undefined && { active: isActive }),
+        ...(groupId !== undefined && { groupId: groupId || null }),
+        ...(sortOrder !== undefined && { sortOrder: Math.max(0, Math.round(Number(sortOrder))) }),
       },
     });
 
-    // Map 'active' to 'isActive' for frontend compatibility
     const serviceWithIsActive = {
       ...service,
       isActive: service.active,
@@ -94,7 +107,7 @@ export async function PATCH(
 
 // DELETE /api/services/[id] - Delete a service
 export async function DELETE(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -109,28 +122,27 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Get user's business
     const business = await prisma.business.findUnique({
       where: { email: session.user.email },
+      select: { id: true },
     });
 
     if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
-    // Verify service belongs to this business
     const existingService = await prisma.service.findFirst({
       where: {
         id,
         businessId: business.id,
       },
+      select: { id: true },
     });
 
     if (!existingService) {
       return NextResponse.json({ error: 'Service not found' }, { status: 404 });
     }
 
-    // Check if service has any appointments
     const appointmentCount = await prisma.appointment.count({
       where: { serviceId: id },
     });
@@ -142,7 +154,6 @@ export async function DELETE(
       );
     }
 
-    // Delete service
     await prisma.service.delete({
       where: { id },
     });
