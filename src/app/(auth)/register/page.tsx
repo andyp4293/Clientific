@@ -48,7 +48,6 @@ function RegisterForm() {
   const [notice, setNotice] = useState('');
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [isResendingVerification, setIsResendingVerification] = useState(false);
-  const [timezoneSource, setTimezoneSource] = useState<'browser' | 'location'>('browser');
   const [selectedCoordinates, setSelectedCoordinates] = useState<{
     latitude: number;
     longitude: number;
@@ -86,7 +85,6 @@ function RegisterForm() {
       ...prev,
       timezone: prev.timezone || browserTimezone,
     }));
-    setTimezoneSource('browser');
   }, []);
 
   const passwordChecks = useMemo(
@@ -263,7 +261,6 @@ function RegisterForm() {
       const locationTimezone = await resolveSubmittedTimezone();
       if (locationTimezone) {
         payload.timezone = locationTimezone;
-        setTimezoneSource('location');
       }
       if (!payload.timezone) {
         payload.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
@@ -577,7 +574,6 @@ function RegisterForm() {
                       country: address.country || 'United States',
                       ...(locationTimezone ? { timezone: locationTimezone } : {}),
                     });
-                    setTimezoneSource(locationTimezone ? 'location' : 'browser');
                     setSelectedCoordinates(
                       latitude !== null && longitude !== null
                         ? {
@@ -639,21 +635,6 @@ function RegisterForm() {
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="timezone" className="label">Timezone</label>
-                <input
-                  id="timezone"
-                  type="text"
-                  value={formData.timezone}
-                  className="input"
-                  readOnly
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {timezoneSource === 'location'
-                    ? 'Calculated from your selected business address'
-                    : 'Using your browser timezone until an address is selected'}
-                </p>
-              </div>
             </div>
           )}
 

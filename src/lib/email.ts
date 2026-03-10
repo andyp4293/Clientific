@@ -15,9 +15,15 @@ interface NewBookingDetails {
   timezone: string;
 }
 
+function getResendFromEmail(): string {
+  // Some env providers can preserve trailing newlines from copied values.
+  const raw = process.env.RESEND_FROM_EMAIL || 'noreply@clientific.app';
+  return raw.trim();
+}
+
 export async function sendNewBookingEmail(businessEmail: string, details: NewBookingDetails): Promise<void> {
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const FROM = process.env.RESEND_FROM_EMAIL || 'noreply@clientflow.com';
+  const FROM = getResendFromEmail();
 
   const dateStr = details.dateTime.toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
@@ -77,7 +83,7 @@ export async function sendNewBookingEmail(businessEmail: string, details: NewBoo
 
 export async function sendPasswordResetEmail(email: string, token: string) {
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const FROM = process.env.RESEND_FROM_EMAIL || 'noreply@clientflow.com';
+  const FROM = getResendFromEmail();
   const APP_URL = getConfiguredAppBaseUrl();
   const resetUrl = `${APP_URL}/reset-password?token=${token}`;
 
@@ -115,7 +121,7 @@ export async function sendPasswordResetEmail(email: string, token: string) {
 
 export async function sendEmailVerificationEmail(email: string, token: string) {
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const FROM = process.env.RESEND_FROM_EMAIL || 'noreply@clientflow.com';
+  const FROM = getResendFromEmail();
   const APP_URL = getConfiguredAppBaseUrl();
   const verifyUrl = `${APP_URL}/verify-email?token=${token}`;
 

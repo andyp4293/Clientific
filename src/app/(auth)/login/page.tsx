@@ -16,6 +16,7 @@ function LoginForm() {
   const [notice, setNotice] = useState('');
   const [isResendingVerification, setIsResendingVerification] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [canResendVerification, setCanResendVerification] = useState(false);
   const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === 'true';
   const oauthError = searchParams.get('error');
 
@@ -29,6 +30,7 @@ function LoginForm() {
   useEffect(() => {
     if (!oauthError) return;
     setError(getFriendlyErrorMessage(oauthError));
+    setCanResendVerification(oauthError.includes('EmailNotVerified'));
   }, [oauthError]);
 
   // Show loading while checking auth status
@@ -52,6 +54,7 @@ function LoginForm() {
     e.preventDefault();
     setError('');
     setNotice('');
+    setCanResendVerification(false);
     setIsLoading(true);
 
     try {
@@ -65,12 +68,14 @@ function LoginForm() {
         // Convert technical errors to user-friendly messages
         const userFriendlyError = getFriendlyErrorMessage(result.error);
         setError(userFriendlyError);
+        setCanResendVerification(result.error.includes('EmailNotVerified'));
       } else {
         router.push('/dashboard');
         router.refresh();
       }
     } catch (err) {
       setError('Unable to connect to the server. Please try again later.');
+      setCanResendVerification(false);
     } finally {
       setIsLoading(false);
     }
@@ -234,14 +239,16 @@ function LoginForm() {
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={handleResendVerification}
-            className="mt-3 text-sm font-medium text-primary hover:text-primary-700"
-            disabled={isResendingVerification}
-          >
-            {isResendingVerification ? 'Sending verification link...' : 'Resend verification email'}
-          </button>
+          {canResendVerification && (
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              className="mt-3 text-sm font-medium text-primary hover:text-primary-700"
+              disabled={isResendingVerification}
+            >
+              {isResendingVerification ? 'Sending verification link...' : 'Resend verification email'}
+            </button>
+          )}
 
           <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
             Don't have an account?{' '}
