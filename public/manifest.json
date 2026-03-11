@@ -1,6 +1,6 @@
 {
-  "name": "ClientFlow",
-  "short_name": "ClientFlow",
+  "name": "Clientific",
+  "short_name": "Clientific",
   "description": "Customer management, appointments, and loyalty for service businesses",
   "start_url": "/dashboard",
   "display": "standalone",

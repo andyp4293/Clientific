@@ -44,17 +44,21 @@ export async function POST(
         smsOptedOut: false,
         phone: { not: null },
       },
-      select: { phone: true },
-    });
-
-    const message = formatDealNotificationSMS({
-      businessName: deal.business.name,
-      dealTitle: deal.title,
-      dealUrl: `${APP_URL}/d/${deal.id}`,
+      select: { phone: true, name: true },
     });
 
     const results = await Promise.all(
-      customers.map(c => sendSMS({ to: formatPhoneNumber(c.phone!), message }))
+      customers.map((c) =>
+        sendSMS({
+          to: formatPhoneNumber(c.phone!),
+          message: formatDealNotificationSMS({
+            businessName: deal.business.name,
+            dealTitle: deal.title,
+            dealUrl: `${APP_URL}/d/${deal.id}`,
+            customerName: c.name ?? null,
+          }),
+        })
+      )
     );
 
     const sent = results.filter((r) => r.success).length;

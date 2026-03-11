@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { APP_NAME } from '@/lib/brand';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -45,7 +46,7 @@ export default function ForgotPasswordPage() {
             <div className="w-8 sm:w-10 h-8 sm:h-10 bg-primary rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xl sm:text-2xl">C</span>
             </div>
-            <span className="text-xl sm:text-2xl font-bold text-gray-900">ClientFlow</span>
+            <span className="text-xl sm:text-2xl font-bold text-gray-900">{APP_NAME}</span>
           </Link>
         </div>
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'clientflow-v1';
+const CACHE_NAME = 'clientific-v2';
 
 // Assets to cache on install (app shell)
 const PRECACHE_URLS = [

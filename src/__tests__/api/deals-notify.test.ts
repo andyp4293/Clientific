@@ -30,8 +30,8 @@ vi.mock('@/lib/subscription', () => ({
 vi.mock('@/lib/twilio', () => ({
   sendSMS: vi.fn().mockResolvedValue({ success: true }),
   formatPhoneNumber: vi.fn((p: string) => p),
-  formatDealNotificationSMS: vi.fn((details: { businessName: string; dealTitle: string; dealUrl: string }) =>
-    `${details.businessName}: ${details.dealTitle} is now available. Claim this offer here: ${details.dealUrl} Reply STOP to opt out, HELP for help.`
+  formatDealNotificationSMS: vi.fn((details: { businessName: string; dealTitle: string; dealUrl: string; customerName?: string | null }) =>
+    `Hi ${details.customerName ?? 'there'}, ${details.businessName} has a special offer for you: ${details.dealTitle}. Book your appointment here: ${details.dealUrl} Reply STOP to opt out, HELP for help.`
   ),
 }));
 
@@ -96,8 +96,8 @@ describe('POST /api/deals/[id]/notify', () => {
 
   it('sends SMS to eligible customers and returns count', async () => {
     vi.mocked(prisma.customer.findMany).mockResolvedValue([
-      { phone: '5551111111' },
-      { phone: '5552222222' },
+      { phone: '5551111111', name: 'Jane Doe' },
+      { phone: '5552222222', name: 'Alex' },
     ] as any);
 
     const res = await POST(notifyReq(), ctx('deal-1'));
@@ -109,8 +109,8 @@ describe('POST /api/deals/[id]/notify', () => {
 
   it('counts only successful sendSMS results', async () => {
     vi.mocked(prisma.customer.findMany).mockResolvedValue([
-      { phone: '5551111111' },
-      { phone: '5552222222' },
+      { phone: '5551111111', name: 'Jane Doe' },
+      { phone: '5552222222', name: 'Alex' },
     ] as any);
     vi.mocked(sendSMS)
       .mockResolvedValueOnce({ success: true } as any)
@@ -155,13 +155,14 @@ describe('POST /api/deals/[id]/notify', () => {
   });
 
   it('sends dedicated deal landing page URL', async () => {
-    vi.mocked(prisma.customer.findMany).mockResolvedValue([{ phone: '5551111111' }] as any);
+    vi.mocked(prisma.customer.findMany).mockResolvedValue([{ phone: '5551111111', name: 'Jane Doe' }] as any);
     await POST(notifyReq(), ctx('deal-1'));
     expect(formatDealNotificationSMS).toHaveBeenCalledWith(
       expect.objectContaining({
         businessName: 'Test Salon',
         dealTitle: 'Test Deal',
         dealUrl: 'https://clientific.app/d/deal-1',
+        customerName: 'Jane Doe',
       })
     );
     expect(sendSMS).toHaveBeenCalledWith(
@@ -172,11 +173,29 @@ describe('POST /api/deals/[id]/notify', () => {
   });
 
   it('sends polished deal copy without dash separators', async () => {
-    vi.mocked(prisma.customer.findMany).mockResolvedValue([{ phone: '5551111111' }] as any);
+    vi.mocked(prisma.customer.findMany).mockResolvedValue([{ phone: '5551111111', name: 'Jane Doe' }] as any);
     await POST(notifyReq(), ctx('deal-1'));
 
     const call = vi.mocked(sendSMS).mock.calls[0]?.[0];
-    expect(call?.message).toContain('Claim this offer here:');
+    expect(call?.message).toContain('Book your appointment here:');
     expect(call?.message).not.toContain('--');
+  });
+
+  it('passes customer name to formatter for per-recipient personalization', async () => {
+    vi.mocked(prisma.customer.findMany).mockResolvedValue([
+      { phone: '5551111111', name: 'Jane Doe' },
+      { phone: '5552222222', name: null },
+    ] as any);
+
+    await POST(notifyReq(), ctx('deal-1'));
+
+    expect(formatDealNotificationSMS).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ customerName: 'Jane Doe' })
+    );
+    expect(formatDealNotificationSMS).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ customerName: null })
+    );
   });
 });

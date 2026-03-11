@@ -51,13 +51,13 @@ export async function sendNewBookingEmail(businessEmail: string, details: NewBoo
     </tr>`).join('');
 
   await resend.emails.send({
-    from: `ClientFlow <${FROM}>`,
+    from: `${APP_NAME} <${FROM}>`,
     to: businessEmail,
     subject: `New booking request — ${details.customerName}`,
     html: `
       <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px;">
         <div style="margin-bottom: 24px;">
-          <span style="font-size: 22px; font-weight: 700; color: #111827;">ClientFlow</span>
+          <span style="font-size: 22px; font-weight: 700; color: #111827;">${APP_NAME}</span>
         </div>
         <h1 style="font-size: 20px; font-weight: 700; color: #111827; margin: 0 0 8px;">New Appointment Request</h1>
         <p style="color: #6b7280; margin: 0 0 24px;">
@@ -88,13 +88,13 @@ export async function sendPasswordResetEmail(email: string, token: string) {
   const resetUrl = `${APP_URL}/reset-password?token=${token}`;
 
   await resend.emails.send({
-    from: `ClientFlow <${FROM}>`,
+    from: `${APP_NAME} <${FROM}>`,
     to: email,
-    subject: 'Reset your ClientFlow password',
+    subject: `Reset your ${APP_NAME} password`,
     html: `
       <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
         <div style="margin-bottom: 24px;">
-          <span style="font-size: 22px; font-weight: 700; color: #111827;">ClientFlow</span>
+          <span style="font-size: 22px; font-weight: 700; color: #111827;">${APP_NAME}</span>
         </div>
         <h1 style="font-size: 20px; font-weight: 700; color: #111827; margin: 0 0 8px;">Reset your password</h1>
         <p style="color: #6b7280; margin: 0 0 24px;">
