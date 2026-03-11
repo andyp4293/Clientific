@@ -129,7 +129,7 @@ export default function HomePage() {
             FAQ
           </a>
           <Link href="/explore" className="whitespace-nowrap rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:text-gray-200">
-            Customer Deals
+            Book Services
           </Link>
         </div>
       </div>
@@ -155,7 +155,7 @@ export default function HomePage() {
             <div>
               <div className="inline-flex items-center gap-2 bg-white/[0.06] border border-white/[0.08] text-primary-300 text-xs font-semibold px-4 py-1.5 rounded-full mb-8 tracking-wide">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block shrink-0" />
-                AI-powered · Built for service businesses
+                AI-powered platform for service businesses
               </div>
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-7 leading-[1.05] tracking-tight">
                 Your business,<br />
@@ -169,6 +169,25 @@ export default function HomePage() {
               <p className="text-lg sm:text-xl text-gray-400 mb-10 max-w-lg leading-relaxed font-light">
                 {APP_NAME} answers your calls, books appointments, sends reminders, and tracks every customer — so you can focus on doing the work.
               </p>
+              <div className="mb-8 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Choose your path</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <Link
+                    href={isAuthenticated ? '/dashboard' : '/register'}
+                    aria-label="I run a business"
+                    className="rounded-xl border border-primary/40 bg-primary/15 px-4 py-3 text-sm font-semibold text-primary-100 transition-colors hover:bg-primary/25"
+                  >
+                    I run a business
+                  </Link>
+                  <Link
+                    href="/explore"
+                    aria-label="I'm looking to book"
+                    className="rounded-xl border border-white/20 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-gray-200 transition-colors hover:bg-white/[0.08]"
+                  >
+                    I&apos;m looking to book
+                  </Link>
+                </div>
+              </div>
               {isAuthenticated ? (
                 <Link
                   href="/dashboard"
@@ -183,7 +202,7 @@ export default function HomePage() {
                     className="inline-flex items-center gap-2 bg-primary text-white font-semibold px-8 py-4 rounded-xl hover:bg-primary-500 transition-all duration-200 text-base"
                     style={{ boxShadow: '0 0 40px rgba(123,34,212,0.5)' }}
                   >
-                    Start Free — 14 Days <ArrowRight />
+                    Start Free - 14 Days <ArrowRight />
                   </Link>
                   <div className="flex items-center gap-1.5 text-sm text-gray-500">
                     <svg className="w-3.5 h-3.5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">

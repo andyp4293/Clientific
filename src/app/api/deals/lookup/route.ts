@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { getSessionBusinessId } from '@/lib/session-business';
 
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const businessId = getSessionBusinessId(session);
+    if (!businessId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -29,7 +31,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Code not found' }, { status: 404 });
     }
 
-    if (redemption.deal.businessId !== session.user.id) {
+    if (redemption.deal.businessId !== businessId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

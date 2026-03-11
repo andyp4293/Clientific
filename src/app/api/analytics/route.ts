@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { getSessionBusinessId } from '@/lib/session-business';
 
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const businessId = getSessionBusinessId(session);
+    if (!businessId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -14,7 +16,6 @@ export async function GET(req: NextRequest) {
     const range = searchParams.get('range') || '30d';
     const days = range === '7d' ? 7 : range === '90d' ? 90 : 30;
     const rangeStart = new Date(Date.now() - days * 86400000);
-    const businessId = session.user.id;
 
     // Run all queries in parallel
     const [

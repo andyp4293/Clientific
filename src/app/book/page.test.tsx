@@ -1,8 +1,20 @@
-﻿import { describe, it, expect } from 'vitest';
-import * as pageModule from './page';
+import { describe, expect, it, vi } from 'vitest';
 
-describe('page module smoke test', () => {
-  it('exports a default page component', () => {
-    expect(typeof pageModule.default).toBe('function');
+const { mockRedirect } = vi.hoisted(() => ({
+  mockRedirect: vi.fn(() => {
+    throw new Error('NEXT_REDIRECT');
+  }),
+}));
+
+vi.mock('next/navigation', () => ({
+  redirect: mockRedirect,
+}));
+
+import BookIndexPage from './page';
+
+describe('BookIndexPage', () => {
+  it('redirects /book to /explore for customer intent', () => {
+    expect(() => BookIndexPage()).toThrow('NEXT_REDIRECT');
+    expect(mockRedirect).toHaveBeenCalledWith('/explore');
   });
 });
