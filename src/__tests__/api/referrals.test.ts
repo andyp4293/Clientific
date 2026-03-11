@@ -110,7 +110,7 @@ describe('POST /api/auth/register — referral code handling', () => {
     expect(res.status).toBe(200);
 
     const createCall = vi.mocked(prisma.business.create).mock.calls[0][0];
-    const trialEndsAt: Date = createCall.data.trialEndsAt;
+    const trialEndsAt = new Date(createCall.data.trialEndsAt as string | number | Date);
     const daysDiff = Math.round((trialEndsAt.getTime() - Date.now()) / 86400000);
     expect(daysDiff).toBeGreaterThanOrEqual(13);
     expect(daysDiff).toBeLessThanOrEqual(14);
@@ -126,17 +126,17 @@ describe('POST /api/auth/register — referral code handling', () => {
       name: 'Referring Salon',
     };
     // findUnique returns null for all calls EXCEPT the referral code lookup
-    vi.mocked(prisma.business.findUnique).mockImplementation(({ where }: any) => {
+    vi.mocked(prisma.business.findUnique).mockImplementation((({ where }: any) => {
       if (where.referralCode === 'ABCD1234') return Promise.resolve(referrer as any);
       return Promise.resolve(null);
-    });
+    }) as any);
 
     const res = await registerPOST(req('POST', { ...VALID_REGISTER_BODY, referralCode: 'ABCD1234' }));
     expect(res.status).toBe(200);
 
     // Trial should be ~44 days
     const createCall = vi.mocked(prisma.business.create).mock.calls[0][0];
-    const trialEndsAt: Date = createCall.data.trialEndsAt;
+    const trialEndsAt = new Date(createCall.data.trialEndsAt as string | number | Date);
     const daysDiff = Math.round((trialEndsAt.getTime() - Date.now()) / 86400000);
     expect(daysDiff).toBeGreaterThanOrEqual(43);
     expect(daysDiff).toBeLessThanOrEqual(44);
@@ -157,7 +157,7 @@ describe('POST /api/auth/register — referral code handling', () => {
     expect(res.status).toBe(200);
 
     const createCall = vi.mocked(prisma.business.create).mock.calls[0][0];
-    const trialEndsAt: Date = createCall.data.trialEndsAt;
+    const trialEndsAt = new Date(createCall.data.trialEndsAt as string | number | Date);
     const daysDiff = Math.round((trialEndsAt.getTime() - Date.now()) / 86400000);
     expect(daysDiff).toBeLessThanOrEqual(14);
 

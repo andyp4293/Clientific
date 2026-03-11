@@ -37,6 +37,10 @@ function makeRequest(body: Record<string, unknown> = { fullName: 'John Doe' }) {
   });
 }
 
+function makeGetRequest() {
+  return new NextRequest('http://localhost/api/staff', { method: 'GET' });
+}
+
 const activeSession = { user: { id: 'biz-1' } };
 
 beforeEach(() => {
@@ -46,14 +50,14 @@ beforeEach(() => {
 describe('GET /api/staff', () => {
   it('returns 401 when unauthenticated', async () => {
     mockSession.mockResolvedValue(null);
-    const res = await GET();
+    const res = await GET(makeGetRequest());
     expect(res.status).toBe(401);
   });
 
   it('returns staff list for authenticated business', async () => {
     mockSession.mockResolvedValue(activeSession);
     mockStaffFindMany.mockResolvedValue([{ id: 'staff-1', fullName: 'John Doe' }]);
-    const res = await GET();
+    const res = await GET(makeGetRequest());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.staff).toHaveLength(1);

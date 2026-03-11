@@ -178,7 +178,7 @@ describe('POST /api/auth/register — affiliate code handling', () => {
 
     // Trial should be ~44 days
     const createCall = vi.mocked(prisma.business.create).mock.calls[0][0];
-    const trialEndsAt: Date = createCall.data.trialEndsAt;
+    const trialEndsAt = new Date(createCall.data.trialEndsAt as string | number | Date);
     const daysDiff = Math.round((trialEndsAt.getTime() - Date.now()) / 86400000);
     expect(daysDiff).toBeGreaterThanOrEqual(43);
     expect(daysDiff).toBeLessThanOrEqual(44);
@@ -197,7 +197,7 @@ describe('POST /api/auth/register — affiliate code handling', () => {
     expect(res.status).toBe(200);
 
     const createCall = vi.mocked(prisma.business.create).mock.calls[0][0];
-    const trialEndsAt: Date = createCall.data.trialEndsAt;
+    const trialEndsAt = new Date(createCall.data.trialEndsAt as string | number | Date);
     const daysDiff = Math.round((trialEndsAt.getTime() - Date.now()) / 86400000);
     expect(daysDiff).toBeLessThanOrEqual(14);
 
@@ -206,10 +206,10 @@ describe('POST /api/auth/register — affiliate code handling', () => {
 
   it('referralCode takes priority over affiliateCode when both supplied', async () => {
     const referrer = { id: 'biz-referrer', referralCode: 'REFCODE1', name: 'Referring Salon' };
-    vi.mocked(prisma.business.findUnique).mockImplementation(({ where }: any) => {
+    vi.mocked(prisma.business.findUnique).mockImplementation((({ where }: any) => {
       if (where.referralCode === 'REFCODE1') return Promise.resolve(referrer as any);
       return Promise.resolve(null);
-    });
+    }) as any);
     vi.mocked(prisma.affiliate.findUnique).mockResolvedValue({ id: 'aff-1', code: 'AFFCODE1' } as any);
 
     const res = await registerPOST(req('POST', {
