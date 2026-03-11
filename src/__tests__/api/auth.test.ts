@@ -248,7 +248,7 @@ describe('POST /api/auth/forgot-password', () => {
     const res = await forgotPasswordPOST(req('/api/auth/forgot-password', {}));
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toMatch(/email is required/i);
+    expect(body.error).toMatch(/valid email is required/i);
   });
 
   it('returns success even when email is not found (prevents enumeration)', async () => {

@@ -79,4 +79,17 @@ describe('POST /api/auth/verify-email/send', () => {
     );
     expect(sendEmailVerificationEmail).toHaveBeenCalledWith('owner@example.com', expect.any(String));
   });
+
+  it('returns 500 when provider send fails', async () => {
+    vi.mocked(prisma.business.findUnique).mockResolvedValue({
+      id: 'biz-1',
+      email: 'owner@example.com',
+      emailVerifiedAt: null,
+    } as any);
+    vi.mocked(prisma.business.update).mockResolvedValue({} as any);
+    vi.mocked(sendEmailVerificationEmail).mockRejectedValueOnce(new Error('Missing API key'));
+
+    const res = await POST(req({ email: 'owner@example.com' }));
+    expect(res.status).toBe(500);
+  });
 });
