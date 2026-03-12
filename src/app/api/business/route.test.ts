@@ -88,6 +88,7 @@ beforeEach(() => {
 
   mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
   delete process.env.VAPI_PRIVATE_KEY;
+  delete process.env.NEXT_PUBLIC_APP_URL;
   process.env.TWILIO_ACCOUNT_SID = 'AC_test';
   process.env.TWILIO_AUTH_TOKEN = 'twilio_test_token';
 
@@ -239,6 +240,160 @@ describe('PATCH /api/business', () => {
         }),
       })
     );
+  });
+
+  it('skips Twilio SMS webhook setup for localhost app URLs and still enables AI receptionist', async () => {
+    process.env.VAPI_PRIVATE_KEY = 'vapi_test_key';
+    process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000';
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        ...fakeBusiness,
+        smsAiEnabled: false,
+        smsAiPhoneNumber: null,
+        vapiPhoneNumberId: null,
+      });
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => ({ id: 'vapi-pn-1', number: '+18557654989' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ server: { url: 'http://localhost:3000/api/webhooks/vapi' } }),
+      });
+
+    mockBusinessUpdate.mockResolvedValue({
+      ...fakeBusiness,
+      aiReceptionistEnabled: true,
+      vapiPhoneNumberId: 'vapi-pn-1',
+      vapiPhoneNumber: '+18557654989',
+      smsAiEnabled: true,
+      smsAiPhoneNumber: '+18557654989',
+    });
+
+    const res = await PATCH(makePatchRequest({ aiReceptionistEnabled: true }));
+
+    expect(res.status).toBe(200);
+    expect(mockTwilioIncomingUpdate).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[twilio] Skipping sms webhook configuration because app URL is not publicly reachable:',
+      'http://localhost:3000'
+    );
+    warnSpy.mockRestore();
+  });
+
+  it('keeps AI receptionist enable successful when Twilio rejects webhook URL with 21402', async () => {
+    process.env.VAPI_PRIVATE_KEY = 'vapi_test_key';
+    mockTwilioIncomingUpdate.mockRejectedValueOnce({
+      status: 400,
+      code: 21402,
+      message: 'SmsUrl is not valid',
+    });
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        ...fakeBusiness,
+        smsAiEnabled: false,
+        smsAiPhoneNumber: null,
+        vapiPhoneNumberId: null,
+      });
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => ({ id: 'vapi-pn-1', number: '+18557654989' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ server: { url: 'https://clientific.app/api/webhooks/vapi' } }),
+      });
+
+    mockBusinessUpdate.mockResolvedValue({
+      ...fakeBusiness,
+      aiReceptionistEnabled: true,
+      vapiPhoneNumberId: 'vapi-pn-1',
+      vapiPhoneNumber: '+18557654989',
+      smsAiEnabled: true,
+      smsAiPhoneNumber: '+18557654989',
+    });
+
+    const res = await PATCH(makePatchRequest({ aiReceptionistEnabled: true }));
+
+    expect(res.status).toBe(200);
+    expect(mockBusinessUpdate).toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[twilio] Skipping sms webhook configuration because Twilio rejected the SMS URL:',
+      'https://clientific.app/api/webhooks/twilio-sms'
+    );
+    warnSpy.mockRestore();
+  });
+
+  it('rolls back the purchased Twilio number when webhook setup fails with a non-21402 error', async () => {
+    process.env.VAPI_PRIVATE_KEY = 'vapi_test_key';
+    mockTwilioIncomingUpdate.mockRejectedValueOnce({
+      status: 500,
+      code: 20003,
+      message: 'Auth error',
+    });
+
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        ...fakeBusiness,
+        smsAiEnabled: false,
+        smsAiPhoneNumber: null,
+        vapiPhoneNumberId: null,
+      });
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => ({ id: 'vapi-pn-1', number: '+18557654989' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ server: { url: 'https://clientific.app/api/webhooks/vapi' } }),
+      });
+
+    const res = await PATCH(makePatchRequest({ aiReceptionistEnabled: true }));
+
+    expect(res.status).toBe(500);
+    expect(mockBusinessUpdate).not.toHaveBeenCalled();
+    expect(mockTwilioIncomingRemove).toHaveBeenCalled();
+  });
+
+  it('returns 500 when Twilio credentials are missing while enabling AI receptionist', async () => {
+    process.env.VAPI_PRIVATE_KEY = 'vapi_test_key';
+    delete process.env.TWILIO_ACCOUNT_SID;
+    delete process.env.TWILIO_AUTH_TOKEN;
+
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({ ...fakeBusiness, vapiPhoneNumberId: null });
+
+    const res = await PATCH(makePatchRequest({ aiReceptionistEnabled: true }));
+
+    expect(res.status).toBe(500);
+    expect(mockBusinessUpdate).not.toHaveBeenCalled();
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it('tries matching business area code before falling back to toll-free', async () => {

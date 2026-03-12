@@ -12,6 +12,34 @@ type TwilioProvisionedNumber = {
   phoneNumber: string;
 };
 
+function isLocalHostname(hostname: string): boolean {
+  const normalized = hostname.trim().toLowerCase();
+  return (
+    normalized === 'localhost' ||
+    normalized === '127.0.0.1' ||
+    normalized === '::1' ||
+    normalized.endsWith('.local')
+  );
+}
+
+function getPublicTwilioSmsWebhookUrl(appUrl: string): string | null {
+  try {
+    const parsed = new URL(appUrl);
+    if (parsed.protocol !== 'https:' || isLocalHostname(parsed.hostname)) {
+      return null;
+    }
+    return `${parsed.origin}/api/webhooks/twilio-sms`;
+  } catch {
+    return null;
+  }
+}
+
+function isTwilioInvalidSmsUrlError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const maybeCode = (error as Record<string, unknown>).code;
+  return String(maybeCode ?? '') === '21402';
+}
+
 function parseAreaCode(phone: string | null | undefined): string | null {
   if (!phone) return null;
   const digits = phone.replace(/\D/g, '');
@@ -73,10 +101,10 @@ async function provisionTwilioPhoneNumber(preferredAreaCode?: string | null): Pr
   };
 }
 
-async function setTwilioSmsWebhook(numberSid: string, appUrl: string): Promise<void> {
+async function setTwilioSmsWebhook(numberSid: string, smsWebhookUrl: string): Promise<void> {
   const client = getTwilioClient();
   await client.incomingPhoneNumbers(numberSid).update({
-    smsUrl: `${appUrl}/api/webhooks/twilio-sms`,
+    smsUrl: smsWebhookUrl,
     smsMethod: 'POST',
   });
 }
@@ -439,7 +467,24 @@ export async function PATCH(req: NextRequest) {
           throw new Error('AI receptionist number provisioning failed: number is blocked in Vapi');
         }
 
-        await setTwilioSmsWebhook(twilioNumber.sid, appUrl);
+        const smsWebhookUrl = getPublicTwilioSmsWebhookUrl(appUrl);
+        if (!smsWebhookUrl) {
+          console.warn(
+            '[twilio] Skipping sms webhook configuration because app URL is not publicly reachable:',
+            appUrl
+          );
+        } else {
+          await setTwilioSmsWebhook(twilioNumber.sid, smsWebhookUrl).catch((error: any) => {
+            if (isTwilioInvalidSmsUrlError(error)) {
+              console.warn(
+                '[twilio] Skipping sms webhook configuration because Twilio rejected the SMS URL:',
+                smsWebhookUrl
+              );
+              return;
+            }
+            throw error;
+          });
+        }
 
         return {
           phoneNumberId: initialState.id,
