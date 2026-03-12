@@ -19,6 +19,34 @@ vi.mock('@/lib/stripe', () => ({
 vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
 vi.mock('@/app/api/auth/[...nextauth]/route', () => ({ authOptions: {} }));
 
+const mockTwilioAvailableList = vi.fn();
+const mockTwilioAvailableLocalList = vi.fn();
+const mockTwilioIncomingCreate = vi.fn();
+const mockTwilioIncomingUpdate = vi.fn();
+const mockTwilioIncomingList = vi.fn();
+const mockTwilioIncomingRemove = vi.fn();
+
+vi.mock('twilio', () => {
+  const twilioFactory = vi.fn(() => {
+    const incomingPhoneNumbers = ((_: string) => ({
+      update: mockTwilioIncomingUpdate,
+      remove: mockTwilioIncomingRemove,
+    })) as any;
+    incomingPhoneNumbers.create = mockTwilioIncomingCreate;
+    incomingPhoneNumbers.list = mockTwilioIncomingList;
+
+    return {
+      availablePhoneNumbers: vi.fn(() => ({
+        local: { list: mockTwilioAvailableLocalList },
+        tollFree: { list: mockTwilioAvailableList },
+      })),
+      incomingPhoneNumbers,
+    };
+  });
+
+  return { default: twilioFactory };
+});
+
 const mockFetch = vi.fn();
 global.fetch = mockFetch as any;
 
@@ -60,6 +88,15 @@ beforeEach(() => {
 
   mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
   delete process.env.VAPI_PRIVATE_KEY;
+  process.env.TWILIO_ACCOUNT_SID = 'AC_test';
+  process.env.TWILIO_AUTH_TOKEN = 'twilio_test_token';
+
+  mockTwilioAvailableLocalList.mockResolvedValue([]);
+  mockTwilioAvailableList.mockResolvedValue([{ phoneNumber: '+18557654989' }]);
+  mockTwilioIncomingCreate.mockResolvedValue({ sid: 'PN_test_1', phoneNumber: '+18557654989' });
+  mockTwilioIncomingUpdate.mockResolvedValue({});
+  mockTwilioIncomingList.mockResolvedValue([{ sid: 'PN_test_1' }]);
+  mockTwilioIncomingRemove.mockResolvedValue({});
 });
 
 describe('GET /api/business', () => {
@@ -187,7 +224,10 @@ describe('PATCH /api/business', () => {
     expect(res.status).toBe(200);
 
     const createPayload = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
-    expect(createPayload.provider).toBe('vapi');
+    expect(createPayload.provider).toBe('twilio');
+    expect(createPayload.number).toBe('+18557654989');
+    expect(createPayload.twilioAccountSid).toBe('AC_test');
+    expect(createPayload.twilioAuthToken).toBe('twilio_test_token');
 
     expect(mockBusinessUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -199,6 +239,62 @@ describe('PATCH /api/business', () => {
         }),
       })
     );
+  });
+
+  it('tries matching business area code before falling back to toll-free', async () => {
+    process.env.VAPI_PRIVATE_KEY = 'vapi_test_key';
+
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        ...fakeBusiness,
+        phone: '4155551234',
+        smsAiEnabled: false,
+        smsAiPhoneNumber: null,
+        vapiPhoneNumberId: null,
+      });
+
+    mockTwilioAvailableLocalList.mockResolvedValueOnce([{ phoneNumber: '+14155550123' }]);
+    mockTwilioIncomingCreate.mockResolvedValueOnce({
+      sid: 'PN_local_1',
+      phoneNumber: '+14155550123',
+    });
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => ({ id: 'vapi-pn-1', number: '+14155550123' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ server: { url: 'https://clientific.app/api/webhooks/vapi' } }),
+      });
+
+    mockBusinessUpdate.mockResolvedValue({
+      ...fakeBusiness,
+      aiReceptionistEnabled: true,
+      vapiPhoneNumberId: 'vapi-pn-1',
+      vapiPhoneNumber: '+14155550123',
+      smsAiEnabled: true,
+      smsAiPhoneNumber: '+14155550123',
+    });
+
+    const res = await PATCH(makePatchRequest({ aiReceptionistEnabled: true }));
+
+    expect(res.status).toBe(200);
+    expect(mockTwilioAvailableLocalList).toHaveBeenCalledWith({
+      areaCode: 415,
+      smsEnabled: true,
+      voiceEnabled: true,
+      limit: 1,
+    });
+    expect(mockTwilioAvailableList).not.toHaveBeenCalled();
+
+    const createPayload = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
+    expect(createPayload.number).toBe('+14155550123');
   });
 
   it('hydrates a provisioned Vapi number when the create response omits number', async () => {
@@ -261,7 +357,7 @@ describe('PATCH /api/business', () => {
     );
   });
 
-  it('keeps setup pending when Vapi number is still activating', async () => {
+  it('uses the Twilio number when Vapi is still activating', async () => {
     process.env.VAPI_PRIVATE_KEY = 'vapi_test_key';
 
     const timeoutSpy = vi
@@ -303,9 +399,9 @@ describe('PATCH /api/business', () => {
       ...fakeBusiness,
       aiReceptionistEnabled: true,
       vapiPhoneNumberId: 'vapi-pn-1',
-      vapiPhoneNumber: null,
-      smsAiEnabled: false,
-      smsAiPhoneNumber: null,
+      vapiPhoneNumber: '+18557654989',
+      smsAiEnabled: true,
+      smsAiPhoneNumber: '+18557654989',
     });
 
     const res = await PATCH(makePatchRequest({ aiReceptionistEnabled: true }));
@@ -315,9 +411,9 @@ describe('PATCH /api/business', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           vapiPhoneNumberId: 'vapi-pn-1',
-          vapiPhoneNumber: null,
-          smsAiEnabled: false,
-          smsAiPhoneNumber: null,
+          vapiPhoneNumber: '+18557654989',
+          smsAiEnabled: true,
+          smsAiPhoneNumber: '+18557654989',
         }),
       })
     );
@@ -360,7 +456,9 @@ describe('PATCH /api/business', () => {
         smsAiPhoneNumber: '+18557654989',
       });
 
-    mockFetch.mockResolvedValueOnce({ ok: true, status: 204 });
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, status: 204 })
+      .mockResolvedValueOnce({ ok: false, status: 404 });
     mockBusinessUpdate.mockResolvedValue({
       ...fakeBusiness,
       aiReceptionistEnabled: false,
@@ -377,6 +475,16 @@ describe('PATCH /api/business', () => {
       expect.stringContaining('/phone-number/vapi-pn-1'),
       expect.objectContaining({ method: 'DELETE' })
     );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('/phone-number/vapi-pn-1'),
+      expect.objectContaining({ method: 'GET' })
+    );
+    expect(mockTwilioIncomingList).toHaveBeenCalledWith({
+      phoneNumber: '+18557654989',
+      limit: 1,
+    });
+    expect(mockTwilioIncomingRemove).toHaveBeenCalled();
     expect(mockBusinessUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -387,6 +495,43 @@ describe('PATCH /api/business', () => {
         }),
       })
     );
+  });
+
+  it('returns 500 and does not disable when Vapi number deletion is not confirmed', async () => {
+    process.env.VAPI_PRIVATE_KEY = 'vapi_test_key';
+
+    const timeoutSpy = vi
+      .spyOn(global, 'setTimeout')
+      .mockImplementation(((fn: (...args: any[]) => unknown) => {
+        fn();
+        return 0 as any;
+      }) as any);
+
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        ...fakeBusiness,
+        aiReceptionistEnabled: true,
+        vapiPhoneNumberId: 'vapi-pn-1',
+        vapiPhoneNumber: '+18557654989',
+        smsAiEnabled: true,
+        smsAiPhoneNumber: '+18557654989',
+      });
+
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, status: 204 })
+      .mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'vapi-pn-1', number: '+18557654989' }),
+      });
+
+    const res = await PATCH(makePatchRequest({ aiReceptionistEnabled: false }));
+
+    expect(res.status).toBe(500);
+    expect(mockBusinessUpdate).not.toHaveBeenCalled();
+    timeoutSpy.mockRestore();
   });
 
   it('re-syncs existing AI number into SMS settings when already enabled', async () => {

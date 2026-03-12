@@ -131,6 +131,36 @@ interface Business {
   pointsPerVisit: number;
 }
 
+export const AI_RECEPTIONIST_ACTIVATION_WINDOW_MS = 2 * 60 * 1000;
+
+export function getAiReceptionistActivationStorageKey(
+  businessId?: string | null
+): string | null {
+  const id = businessId?.trim();
+  if (!id) return null;
+  return `clientific.aiReceptionist.activationUntil.${id}`;
+}
+
+export function readAiReceptionistActivationUntil(
+  storage: Pick<Storage, 'getItem' | 'removeItem'>,
+  businessId?: string | null,
+  nowMs = Date.now()
+): Date | null {
+  const key = getAiReceptionistActivationStorageKey(businessId);
+  if (!key) return null;
+
+  const raw = storage.getItem(key);
+  if (!raw) return null;
+
+  const until = new Date(raw);
+  if (Number.isNaN(until.getTime()) || until.getTime() <= nowMs) {
+    storage.removeItem(key);
+    return null;
+  }
+
+  return until;
+}
+
 export function getAiReceptionistSetupState(
   formData: Partial<Business>,
   isPending: boolean,
@@ -207,6 +237,22 @@ export default function SettingsPage() {
   }, [data]);
 
   const business: Business | undefined = data?.business;
+  const activationStorageKey = getAiReceptionistActivationStorageKey(formData.id ?? business?.id);
+
+  const startActivationCountdown = useCallback(() => {
+    const until = new Date(Date.now() + AI_RECEPTIONIST_ACTIVATION_WINDOW_MS);
+    setActivatingUntil(until);
+    if (typeof window !== 'undefined' && activationStorageKey) {
+      window.localStorage.setItem(activationStorageKey, until.toISOString());
+    }
+  }, [activationStorageKey]);
+
+  const clearActivationCountdown = useCallback(() => {
+    setActivatingUntil(null);
+    if (typeof window !== 'undefined' && activationStorageKey) {
+      window.localStorage.removeItem(activationStorageKey);
+    }
+  }, [activationStorageKey]);
 
   // Update mutation
   const updateMutation = useMutation({
@@ -247,19 +293,19 @@ export default function SettingsPage() {
     },
     onSuccess: (data) => {
       const newNumber = data.business.vapiPhoneNumber ?? null;
-      setFormData(prev => {
-        if (newNumber && !prev.vapiPhoneNumber) {
-          // Number was just provisioned — start 2-minute activation countdown
-          setActivatingUntil(new Date(Date.now() + 2 * 60 * 1000));
-        }
-        return {
-          ...prev,
-          aiReceptionistEnabled: data.business.aiReceptionistEnabled,
-          vapiPhoneNumber: newNumber,
-          smsAiEnabled: Boolean(data.business.smsAiEnabled),
-          smsAiPhoneNumber: data.business.smsAiPhoneNumber ?? newNumber,
-        };
-      });
+      const unifiedNumber = (data.business.vapiPhoneNumber || data.business.smsAiPhoneNumber || '').trim();
+      setFormData(prev => ({
+        ...prev,
+        aiReceptionistEnabled: data.business.aiReceptionistEnabled,
+        vapiPhoneNumber: newNumber,
+        smsAiEnabled: Boolean(data.business.smsAiEnabled),
+        smsAiPhoneNumber: data.business.smsAiPhoneNumber ?? newNumber,
+      }));
+      if (data.business.aiReceptionistEnabled && !unifiedNumber) {
+        startActivationCountdown();
+      } else {
+        clearActivationCountdown();
+      }
       queryClient.invalidateQueries({ queryKey: ['business-info'] });
     },
   });
@@ -267,7 +313,7 @@ export default function SettingsPage() {
   const handleEnableConfirm = () => {
     setShowEnableModal(false);
     setFormData(prev => ({ ...prev, aiReceptionistEnabled: true }));
-    setActivatingUntil(new Date(Date.now() + 2 * 60 * 1000));
+    startActivationCountdown();
     aiToggleMutation.mutate(true);
   };
 
@@ -280,9 +326,9 @@ export default function SettingsPage() {
       smsAiEnabled: false,
       smsAiPhoneNumber: null,
     }));
+    clearActivationCountdown();
     aiToggleMutation.mutate(false);
   };
-
   const handleInputChange = (field: keyof Business, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -370,6 +416,32 @@ export default function SettingsPage() {
     'Professional Services',
     'Other',
   ];
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const persisted = readAiReceptionistActivationUntil(
+      window.localStorage,
+      data?.business?.id
+    );
+    if (persisted) {
+      setActivatingUntil(persisted);
+      return;
+    }
+
+    const unified = (data?.business?.vapiPhoneNumber || data?.business?.smsAiPhoneNumber || '').trim();
+    if (!data?.business?.aiReceptionistEnabled || unified) {
+      setActivatingUntil(null);
+      const key = getAiReceptionistActivationStorageKey(data?.business?.id);
+      if (key) {
+        window.localStorage.removeItem(key);
+      }
+    }
+  }, [
+    data?.business?.id,
+    data?.business?.aiReceptionistEnabled,
+    data?.business?.vapiPhoneNumber,
+    data?.business?.smsAiPhoneNumber,
+  ]);
 
   if (isLoading) {
     return (
@@ -922,6 +994,11 @@ export default function SettingsPage() {
                   <div>
                     <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Enable AI Receptionist</span>
                     <p className="text-xs text-gray-500 dark:text-gray-400">A dedicated phone number will be set up for your business</p>
+                    {(formData.aiReceptionistEnabled ?? false) && !unifiedBusinessAiNumber && activatingUntil && (
+                      <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                        Setup in progress: {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')} remaining
+                      </p>
+                    )}
                   </div>
                 </label>
               </div>
@@ -1440,3 +1517,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+

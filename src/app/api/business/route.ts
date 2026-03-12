@@ -5,6 +5,95 @@ import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
+import twilio from 'twilio';
+
+type TwilioProvisionedNumber = {
+  sid: string;
+  phoneNumber: string;
+};
+
+function parseAreaCode(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 11 && digits[0] === '1') return digits.slice(1, 4);
+  if (digits.length === 10) return digits.slice(0, 3);
+  return null;
+}
+
+function getTwilioClient() {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+
+  if (!accountSid || !authToken) {
+    throw new Error('Twilio credentials are required for AI receptionist number provisioning');
+  }
+
+  return twilio(accountSid, authToken);
+}
+
+async function provisionTwilioPhoneNumber(preferredAreaCode?: string | null): Promise<TwilioProvisionedNumber> {
+  const client = getTwilioClient();
+  const areaCode = preferredAreaCode && /^\d{3}$/.test(preferredAreaCode)
+    ? Number(preferredAreaCode)
+    : null;
+
+  let candidate: string | undefined;
+  if (areaCode) {
+    const local = await client.availablePhoneNumbers('US').local.list({
+      areaCode,
+      smsEnabled: true,
+      voiceEnabled: true,
+      limit: 1,
+    });
+    candidate = local[0]?.phoneNumber;
+  }
+
+  if (!candidate) {
+    const tollFree = await client.availablePhoneNumbers('US').tollFree.list({
+      smsEnabled: true,
+      voiceEnabled: true,
+      limit: 1,
+    });
+    candidate = tollFree[0]?.phoneNumber;
+  }
+
+  if (!candidate) {
+    throw new Error('No compatible Twilio phone numbers are currently available');
+  }
+
+  const purchased = await client.incomingPhoneNumbers.create({ phoneNumber: candidate });
+
+  if (!purchased.sid || !purchased.phoneNumber) {
+    throw new Error('Twilio returned an invalid purchased number payload');
+  }
+
+  return {
+    sid: purchased.sid,
+    phoneNumber: purchased.phoneNumber,
+  };
+}
+
+async function setTwilioSmsWebhook(numberSid: string, appUrl: string): Promise<void> {
+  const client = getTwilioClient();
+  await client.incomingPhoneNumbers(numberSid).update({
+    smsUrl: `${appUrl}/api/webhooks/twilio-sms`,
+    smsMethod: 'POST',
+  });
+}
+
+async function releaseTwilioNumberBySid(numberSid: string): Promise<void> {
+  const client = getTwilioClient();
+  await client.incomingPhoneNumbers(numberSid).remove();
+}
+
+async function releaseTwilioNumberByPhone(phoneNumber: string | null | undefined): Promise<void> {
+  if (!phoneNumber) return;
+  const client = getTwilioClient();
+  const matches = await client.incomingPhoneNumbers.list({ phoneNumber, limit: 1 });
+  const sid = matches[0]?.sid;
+  if (!sid) return;
+  await client.incomingPhoneNumbers(sid).remove();
+}
 
 async function vapiRequest(method: string, path: string, body?: object) {
   const res = await fetch(`https://api.vapi.ai${path}`, {
@@ -277,53 +366,94 @@ export async function PATCH(req: NextRequest) {
       return latest;
     };
 
+    const waitForVapiDeletion = async (
+      phoneNumberId: string,
+      attempts = 4,
+      delayMs = 800
+    ): Promise<boolean> => {
+      for (let i = 0; i < attempts; i++) {
+        const details = await vapiRequest('GET', `/phone-number/${phoneNumberId}`);
+        if (!details) return true;
+        if (i < attempts - 1) {
+          await sleep(delayMs);
+        }
+      }
+      return false;
+    };
+
     const provisionVapiNumber = async (): Promise<{
       phoneNumberId: string;
       phoneNumber: string | null;
       status: string | null;
     }> => {
-      const phoneNumber = await vapiRequest('POST', '/phone-number', {
-        provider: 'vapi',
-        name: `${name ?? current.name} Receptionist`,
-        server: { url: serverUrl },
-      });
-
-      const initialState = toVapiNumberState(phoneNumber);
-      if (!initialState?.id) {
-        throw new Error('AI receptionist number provisioning failed');
+      const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
+      const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
+      if (!twilioAccountSid || !twilioAuthToken) {
+        throw new Error('Twilio credentials are required to provision an AI receptionist number');
       }
 
-      const patchResult = await vapiRequest('PATCH', `/phone-number/${initialState.id}`, {
-        server: { url: serverUrl },
-      }).catch((e: any) => {
-        console.error('[vapi] Failed to sync freshly provisioned number server URL:', e);
-        return null;
-      });
+      let twilioNumber: TwilioProvisionedNumber | null = null;
+      try {
+        const preferredAreaCode = parseAreaCode(phone ?? current.phone);
+        twilioNumber = await provisionTwilioPhoneNumber(preferredAreaCode);
 
-      const patchState = toVapiNumberState(patchResult, initialState.id);
-      const syncedState: VapiNumberState = {
-        id: initialState.id,
-        number: patchState?.number ?? initialState.number,
-        status: patchState?.status ?? initialState.status,
-      };
-      console.log('[vapi] provisioned number, server.url confirmed:', patchResult?.server?.url ?? 'error');
+        const phoneNumber = await vapiRequest('POST', '/phone-number', {
+          provider: 'twilio',
+          number: twilioNumber.phoneNumber,
+          twilioAccountSid,
+          twilioAuthToken,
+          smsEnabled: false,
+          name: `${name ?? current.name} Receptionist`,
+          server: { url: serverUrl },
+        });
 
-      let readyState = syncedState;
-      if (!readyState.number) {
-        readyState = (await waitForVapiNumber(initialState.id).catch((e: any) => {
-          console.error('[vapi] Failed to poll provisioned phone number details:', e);
-          return syncedState;
-        })) ?? syncedState;
+        const initialState = toVapiNumberState(phoneNumber);
+        if (!initialState?.id) {
+          throw new Error('AI receptionist number provisioning failed');
+        }
+
+        const patchResult = await vapiRequest('PATCH', `/phone-number/${initialState.id}`, {
+          server: { url: serverUrl },
+        }).catch((e: any) => {
+          console.error('[vapi] Failed to sync freshly provisioned number server URL:', e);
+          return null;
+        });
+
+        const patchState = toVapiNumberState(patchResult, initialState.id);
+        const syncedState: VapiNumberState = {
+          id: initialState.id,
+          number: patchState?.number ?? initialState.number,
+          status: patchState?.status ?? initialState.status,
+        };
+        console.log('[vapi] provisioned number, server.url confirmed:', patchResult?.server?.url ?? 'error');
+
+        let readyState = syncedState;
+        if (!readyState.number) {
+          readyState = (await waitForVapiNumber(initialState.id).catch((e: any) => {
+            console.error('[vapi] Failed to poll provisioned phone number details:', e);
+            return syncedState;
+          })) ?? syncedState;
+        }
+
+        if (readyState?.status === 'blocked') {
+          throw new Error('AI receptionist number provisioning failed: number is blocked in Vapi');
+        }
+
+        await setTwilioSmsWebhook(twilioNumber.sid, appUrl);
+
+        return {
+          phoneNumberId: initialState.id,
+          phoneNumber: readyState?.number ?? twilioNumber.phoneNumber,
+          status: readyState?.status ?? syncedState.status ?? null,
+        };
+      } catch (error) {
+        if (twilioNumber?.sid) {
+          await releaseTwilioNumberBySid(twilioNumber.sid).catch((releaseError) => {
+            console.error('[twilio] rollback failed after provisioning error:', releaseError);
+          });
+        }
+        throw error;
       }
-
-      if (readyState?.status === 'blocked') {
-        throw new Error('AI receptionist number provisioning failed: number is blocked in Vapi');
-      }
-      return {
-        phoneNumberId: initialState.id,
-        phoneNumber: readyState?.number ?? null,
-        status: readyState?.status ?? syncedState.status ?? null,
-      };
     };
 
     const vapiConfigured = !!process.env.VAPI_PRIVATE_KEY;
@@ -347,6 +477,17 @@ export async function PATCH(req: NextRequest) {
       }
     } else if (vapiConfigured && !finalEnabled && current.vapiPhoneNumberId) {
       await vapiRequest('DELETE', `/phone-number/${current.vapiPhoneNumberId}`);
+      const deleted = await waitForVapiDeletion(current.vapiPhoneNumberId).catch((e: any) => {
+        console.error('[vapi] Failed to verify phone number deletion:', e);
+        return false;
+      });
+      if (!deleted) {
+        throw new Error('AI receptionist number deletion did not complete');
+      }
+      await releaseTwilioNumberByPhone(current.vapiPhoneNumber).catch((e: any) => {
+        console.error('[twilio] Failed to release toll-free number on disable:', e);
+        throw e;
+      });
 
       vapiUpdates.vapiPhoneNumberId = null;
       vapiUpdates.vapiPhoneNumber = null;
