@@ -131,6 +131,20 @@ interface Business {
   pointsPerVisit: number;
 }
 
+export function getAiReceptionistSetupState(
+  formData: Partial<Business>,
+  isPending: boolean
+): { unifiedNumber: string; state: 'active' | 'pending' | 'error' } {
+  const unifiedNumber = (formData.vapiPhoneNumber || formData.smsAiPhoneNumber || '').trim();
+  if (unifiedNumber) {
+    return { unifiedNumber, state: 'active' };
+  }
+  if (isPending) {
+    return { unifiedNumber: '', state: 'pending' };
+  }
+  return { unifiedNumber: '', state: 'error' };
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -365,7 +379,8 @@ export default function SettingsPage() {
     { id: 'ai-receptionist', label: 'AI Receptionist', icon: 'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z' },
     { id: 'loyalty', label: 'Loyalty Points', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
   ];
-  const unifiedBusinessAiNumber = formData.vapiPhoneNumber || formData.smsAiPhoneNumber || '';
+  const aiSetupState = getAiReceptionistSetupState(formData, aiToggleMutation.isPending);
+  const unifiedBusinessAiNumber = aiSetupState.unifiedNumber;
 
   return (
     <div>
@@ -1071,7 +1086,7 @@ export default function SettingsPage() {
               {/* Vapi phone number */}
               {formData.aiReceptionistEnabled && (
                 <div className="mb-6">
-                  {formData.vapiPhoneNumber ? (
+                  {aiSetupState.state === 'active' ? (
                     <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                       <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-1">Your AI Receptionist Number</p>
                       {activatingUntil ? (
@@ -1090,14 +1105,14 @@ export default function SettingsPage() {
                       <div className="flex items-center gap-2 mb-3">
                         <input
                           type="text"
-                          value={formData.vapiPhoneNumber}
+                          value={unifiedBusinessAiNumber}
                           readOnly
                           className="input flex-1 bg-white dark:bg-gray-800 text-sm font-mono"
                         />
                         <button
                           type="button"
                           onClick={() => {
-                            navigator.clipboard.writeText(formData.vapiPhoneNumber!);
+                            navigator.clipboard.writeText(unifiedBusinessAiNumber);
                             toast.success('Copied to clipboard!');
                           }}
                           className="btn-outline whitespace-nowrap"
@@ -1113,14 +1128,14 @@ export default function SettingsPage() {
                           Already have a number? Forward calls to this number
                         </summary>
                         <div className="px-3 pb-3 pt-2 space-y-1 text-xs text-gray-600 dark:text-gray-400">
-                          <p><strong>iPhone:</strong> Settings → Phone → Call Forwarding → enter {formData.vapiPhoneNumber}</p>
-                          <p><strong>Android:</strong> Phone app → Settings → Call Forwarding → Always forward → enter {formData.vapiPhoneNumber}</p>
+                          <p><strong>iPhone:</strong> Settings → Phone → Call Forwarding → enter {unifiedBusinessAiNumber}</p>
+                          <p><strong>Android:</strong> Phone app → Settings → Call Forwarding → Always forward → enter {unifiedBusinessAiNumber}</p>
                           <p><strong>Google Voice:</strong> Settings → Calls → Forward calls → Add forwarding number</p>
-                          <p><strong>Other VoIP:</strong> Go to your provider&apos;s call forwarding or routing settings and enter {formData.vapiPhoneNumber}</p>
+                          <p><strong>Other VoIP:</strong> Go to your provider&apos;s call forwarding or routing settings and enter {unifiedBusinessAiNumber}</p>
                         </div>
                       </details>
                     </div>
-                  ) : aiToggleMutation.isPending ? (
+                  ) : aiSetupState.state === 'pending' ? (
                     <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center gap-3">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary flex-shrink-0" />
                       <p className="text-sm text-gray-600 dark:text-gray-400">Setting up your AI receptionist number…</p>
