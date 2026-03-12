@@ -216,6 +216,17 @@ export async function PATCH(req: NextRequest) {
       smsAiEnabled?: boolean;
     } = {};
 
+    const normalizePhoneNumber = (value: unknown): string | null => {
+      if (typeof value !== 'string') return null;
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    };
+
+    const fetchVapiNumberById = async (phoneNumberId: string): Promise<string | null> => {
+      const details = await vapiRequest('GET', `/phone-number/${phoneNumberId}`);
+      return normalizePhoneNumber(details?.number);
+    };
+
     const vapiConfigured = !!process.env.VAPI_PRIVATE_KEY;
     const appUrl = getConfiguredAppBaseUrl();
     const serverUrl = `${appUrl}/api/webhooks/vapi`;
@@ -237,10 +248,18 @@ export async function PATCH(req: NextRequest) {
 
       console.log('[vapi] provisioned number, server.url confirmed:', patchResult?.server?.url);
 
+      let resolvedPhoneNumber = normalizePhoneNumber(phoneNumber.number);
+      if (!resolvedPhoneNumber) {
+        resolvedPhoneNumber = await fetchVapiNumberById(phoneNumber.id);
+      }
+      if (!resolvedPhoneNumber) {
+        throw new Error('AI receptionist number provisioning failed: missing phone number');
+      }
+
       vapiUpdates.vapiPhoneNumberId = phoneNumber.id;
-      vapiUpdates.vapiPhoneNumber = phoneNumber.number ?? null;
-      vapiUpdates.smsAiPhoneNumber = phoneNumber.number ?? null;
-      vapiUpdates.smsAiEnabled = Boolean(phoneNumber.number);
+      vapiUpdates.vapiPhoneNumber = resolvedPhoneNumber;
+      vapiUpdates.smsAiPhoneNumber = resolvedPhoneNumber;
+      vapiUpdates.smsAiEnabled = true;
     } else if (vapiConfigured && !finalEnabled && current.vapiPhoneNumberId) {
       await vapiRequest('DELETE', `/phone-number/${current.vapiPhoneNumberId}`);
 
@@ -257,10 +276,20 @@ export async function PATCH(req: NextRequest) {
       });
 
       console.log('[vapi] synced phone number server.url:', syncResult?.server?.url ?? 'error');
-      if (current.vapiPhoneNumber) {
-        vapiUpdates.smsAiPhoneNumber = current.vapiPhoneNumber;
-        vapiUpdates.smsAiEnabled = true;
+      let resolvedPhoneNumber = normalizePhoneNumber(syncResult?.number) ?? normalizePhoneNumber(current.vapiPhoneNumber);
+      if (!resolvedPhoneNumber) {
+        resolvedPhoneNumber = await fetchVapiNumberById(current.vapiPhoneNumberId).catch((e: any) => {
+          console.error('[vapi] Failed to fetch phone number details:', e);
+          return null;
+        });
       }
+      if (!resolvedPhoneNumber) {
+        throw new Error('AI receptionist number sync failed: missing phone number');
+      }
+
+      vapiUpdates.vapiPhoneNumber = resolvedPhoneNumber;
+      vapiUpdates.smsAiPhoneNumber = resolvedPhoneNumber;
+      vapiUpdates.smsAiEnabled = true;
     }
 
     const business = await prisma.business.update({
