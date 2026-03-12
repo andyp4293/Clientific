@@ -432,8 +432,13 @@ describe('POST /api/auth/verify-email/send', () => {
     expect(mockSendVerificationEmail).not.toHaveBeenCalled();
   });
 
-  it('rotates token and sends email when account exists and is unverified', async () => {
-    mockFindUnique.mockResolvedValue({ id: 'biz-1', email: 'owner@example.com', emailVerifiedAt: null });
+  it('rotates code and sends email when account exists and is unverified', async () => {
+    mockFindUnique.mockResolvedValue({
+      id: 'biz-1',
+      email: 'owner@example.com',
+      emailVerifiedAt: null,
+      verificationSentAt: null,
+    });
     mockUpdate.mockResolvedValue({});
 
     const res = await sendVerifyEmailPOST(req('/api/auth/verify-email/send', { email: 'owner@example.com' }));
@@ -442,7 +447,7 @@ describe('POST /api/auth/verify-email/send', () => {
       expect.objectContaining({
         where: { id: 'biz-1' },
         data: expect.objectContaining({
-          emailVerificationTokenHash: expect.any(String),
+          emailVerificationTokenHash: expect.stringMatching(/^[a-f0-9]{64}:\d+$/),
           emailVerificationTokenExpiry: expect.any(Date),
           verificationSentAt: expect.any(Date),
         }),
@@ -453,22 +458,44 @@ describe('POST /api/auth/verify-email/send', () => {
 });
 
 describe('POST /api/auth/verify-email/confirm', () => {
-  it('returns 400 when token is missing', async () => {
+  it('returns 400 when code payload is missing', async () => {
     const res = await confirmVerifyEmailPOST(req('/api/auth/verify-email/confirm', {}));
     expect(res.status).toBe(400);
   });
 
-  it('returns 400 when token is invalid or expired', async () => {
-    mockFindFirst.mockResolvedValue(null);
-    const res = await confirmVerifyEmailPOST(req('/api/auth/verify-email/confirm', { token: 'valid-token-1234567890' }));
+  it('returns 400 when code is invalid', async () => {
+    mockFindUnique.mockResolvedValue({
+      id: 'biz-1',
+      email: 'owner@example.com',
+      emailVerifiedAt: null,
+      emailVerificationTokenHash:
+        'f4f496f5ef0f423d76ef4f6ea3f8f8f2421f3f01f8f4bb0d5f6dd8f141f8d5f8:0',
+      emailVerificationTokenExpiry: new Date(Date.now() + 60_000),
+    });
+    mockUpdate.mockResolvedValue({});
+
+    const res = await confirmVerifyEmailPOST(
+      req('/api/auth/verify-email/confirm', { email: 'owner@example.com', code: '111111' })
+    );
     expect(res.status).toBe(400);
   });
 
-  it('marks business as verified for a valid token', async () => {
-    mockFindFirst.mockResolvedValue({ id: 'biz-1', email: 'owner@example.com' });
+  it('marks business as verified for a valid code', async () => {
+    const code = '654321';
+    const crypto = await import('crypto');
+    const codeHash = crypto.createHash('sha256').update(code).digest('hex');
+    mockFindUnique.mockResolvedValue({
+      id: 'biz-1',
+      email: 'owner@example.com',
+      emailVerifiedAt: null,
+      emailVerificationTokenHash: `${codeHash}:0`,
+      emailVerificationTokenExpiry: new Date(Date.now() + 60_000),
+    });
     mockUpdate.mockResolvedValue({});
 
-    const res = await confirmVerifyEmailPOST(req('/api/auth/verify-email/confirm', { token: 'valid-token-1234567890' }));
+    const res = await confirmVerifyEmailPOST(
+      req('/api/auth/verify-email/confirm', { email: 'owner@example.com', code })
+    );
     expect(res.status).toBe(200);
     expect(mockUpdate).toHaveBeenCalledWith(
       expect.objectContaining({

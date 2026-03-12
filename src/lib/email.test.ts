@@ -26,13 +26,15 @@ describe('email sender configuration', () => {
   it('trims RESEND_FROM_EMAIL before sending verification email', async () => {
     process.env.RESEND_FROM_EMAIL = 'noreply@clientific.app\n';
 
-    await sendEmailVerificationEmail('owner@example.com', 'token-123');
+    await sendEmailVerificationEmail('owner@example.com', '123456');
 
     expect(mockResendCtor).toHaveBeenCalledWith('re_test_key');
     expect(mockSend).toHaveBeenCalledWith(
       expect.objectContaining({
         from: 'Clientific <noreply@clientific.app>',
         to: 'owner@example.com',
+        subject: expect.stringContaining('verification code'),
+        html: expect.stringContaining('123456'),
       })
     );
   });

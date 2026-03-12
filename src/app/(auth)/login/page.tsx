@@ -83,7 +83,7 @@ function LoginForm() {
 
   const getFriendlyErrorMessage = (error: string): string => {
     if (error.includes('EmailNotVerified')) {
-      return 'Please verify your email before logging in. Use "Resend verification email" below if needed.';
+      return 'Please verify your email before logging in. Use "Resend verification code" below if needed.';
     }
     if (error.includes('GoogleEmailNotVerified')) {
       return 'Your Google account email is not verified. Please verify it with Google first.';
@@ -116,7 +116,7 @@ function LoginForm() {
 
   const handleResendVerification = async () => {
     if (!email) {
-      setError('Enter your email address to resend the verification link.');
+      setError('Enter your email address to resend the verification code.');
       return;
     }
     setIsResendingVerification(true);
@@ -130,11 +130,11 @@ function LoginForm() {
       });
       const body = await res.json();
       if (!res.ok) {
-        throw new Error(body.error || 'Unable to resend verification email');
+        throw new Error(body.error || 'Unable to resend verification code');
       }
-      setNotice('If an account exists, we sent a new verification link to your inbox.');
+      setNotice('If an account exists, we sent a new verification code to your inbox.');
     } catch (err: any) {
-      setError(err.message || 'Unable to resend verification email');
+      setError(err.message || 'Unable to resend verification code');
     } finally {
       setIsResendingVerification(false);
     }
@@ -246,7 +246,7 @@ function LoginForm() {
               className="mt-3 text-sm font-medium text-primary hover:text-primary-700"
               disabled={isResendingVerification}
             >
-              {isResendingVerification ? 'Sending verification link...' : 'Resend verification email'}
+              {isResendingVerification ? 'Sending verification code...' : 'Resend verification code'}
             </button>
           )}
 

@@ -89,7 +89,7 @@ function req(method: string, body?: Record<string, unknown>) {
 
 const VALID_REGISTER_BODY = {
   email: 'new@salon.com',
-  password: 'SecurePass1',
+  password: 'SecurePass1!',
   businessName: 'New Salon',
   phone: '5551234567',
 };

@@ -254,7 +254,7 @@ describe('POST /api/auth/register — input validation', () => {
 
     const res = await registerPOST(req('POST', {
       email: 'new@test.com',
-      password: 'ValidPass123',
+      password: 'ValidPass123!',
       businessName: 'Test Salon',
       phone: '5551234567',
     }));

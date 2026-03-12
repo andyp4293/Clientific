@@ -49,6 +49,7 @@ describe('POST /api/auth/verify-email/send', () => {
       id: 'biz-1',
       email: 'owner@example.com',
       emailVerifiedAt: new Date(),
+      verificationSentAt: null,
     } as any);
 
     const res = await POST(req({ email: 'owner@example.com' }));
@@ -57,11 +58,12 @@ describe('POST /api/auth/verify-email/send', () => {
     expect(sendEmailVerificationEmail).not.toHaveBeenCalled();
   });
 
-  it('rotates token and sends email for unverified account', async () => {
+  it('rotates code and sends email for unverified account', async () => {
     vi.mocked(prisma.business.findUnique).mockResolvedValue({
       id: 'biz-1',
       email: 'owner@example.com',
       emailVerifiedAt: null,
+      verificationSentAt: null,
     } as any);
     vi.mocked(prisma.business.update).mockResolvedValue({} as any);
 
@@ -71,7 +73,7 @@ describe('POST /api/auth/verify-email/send', () => {
       expect.objectContaining({
         where: { id: 'biz-1' },
         data: expect.objectContaining({
-          emailVerificationTokenHash: expect.any(String),
+          emailVerificationTokenHash: expect.stringMatching(/^[a-f0-9]{64}:\d+$/),
           emailVerificationTokenExpiry: expect.any(Date),
           verificationSentAt: expect.any(Date),
         }),
@@ -80,11 +82,26 @@ describe('POST /api/auth/verify-email/send', () => {
     expect(sendEmailVerificationEmail).toHaveBeenCalledWith('owner@example.com', expect.any(String));
   });
 
+  it('does not send a new code during resend cooldown window', async () => {
+    vi.mocked(prisma.business.findUnique).mockResolvedValue({
+      id: 'biz-1',
+      email: 'owner@example.com',
+      emailVerifiedAt: null,
+      verificationSentAt: new Date(),
+    } as any);
+
+    const res = await POST(req({ email: 'owner@example.com' }));
+    expect(res.status).toBe(200);
+    expect(prisma.business.update).not.toHaveBeenCalled();
+    expect(sendEmailVerificationEmail).not.toHaveBeenCalled();
+  });
+
   it('returns 500 when provider send fails', async () => {
     vi.mocked(prisma.business.findUnique).mockResolvedValue({
       id: 'biz-1',
       email: 'owner@example.com',
       emailVerifiedAt: null,
+      verificationSentAt: null,
     } as any);
     vi.mocked(prisma.business.update).mockResolvedValue({} as any);
     vi.mocked(sendEmailVerificationEmail).mockRejectedValueOnce(new Error('Missing API key'));

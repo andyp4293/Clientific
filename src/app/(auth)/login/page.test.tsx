@@ -34,7 +34,7 @@ describe('Login page verification actions', () => {
   it('does not show resend verification button by default', () => {
     render(<LoginPage />);
     expect(
-      screen.queryByRole('button', { name: /resend verification email/i })
+      screen.queryByRole('button', { name: /resend verification code/i })
     ).not.toBeInTheDocument();
   });
 
@@ -60,7 +60,7 @@ describe('Login page verification actions', () => {
     });
 
     expect(
-      await screen.findByRole('button', { name: /resend verification email/i })
+      await screen.findByRole('button', { name: /resend verification code/i })
     ).toBeInTheDocument();
   });
 });

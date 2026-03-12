@@ -48,6 +48,9 @@ function RegisterForm() {
   const [notice, setNotice] = useState('');
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [isResendingVerification, setIsResendingVerification] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
   const [selectedCoordinates, setSelectedCoordinates] = useState<{
     latitude: number;
     longitude: number;
@@ -278,8 +281,10 @@ function RegisterForm() {
       }
 
       setCurrentStep(4);
+      setEmailVerified(false);
+      setVerificationCode('');
       if (!data.verificationEmailSent) {
-        setNotice('Account created. Use resend below if your verification email did not arrive.');
+        setNotice('Account created. Use resend below if your verification code did not arrive.');
       }
     } catch (err: any) {
       setError(err.message);
@@ -300,13 +305,45 @@ function RegisterForm() {
       });
       const body = await res.json();
       if (!res.ok) {
-        throw new Error(body.error || 'Unable to resend verification email');
+        throw new Error(body.error || 'Unable to resend verification code');
       }
-      setNotice('If your account exists and is not verified, a new link has been sent.');
+      setNotice('If your account exists and is not verified, a new verification code has been sent.');
     } catch (err: any) {
-      setError(err.message || 'Unable to resend verification email');
+      setError(err.message || 'Unable to resend verification code');
     } finally {
       setIsResendingVerification(false);
+    }
+  };
+
+  const verifyEmailCode = async () => {
+    const cleanedCode = verificationCode.replace(/\D/g, '');
+    if (cleanedCode.length !== 6) {
+      setError('Enter the 6-digit verification code from your email.');
+      return;
+    }
+
+    setIsVerifyingCode(true);
+    setError('');
+    setNotice('');
+    try {
+      const res = await fetch('/api/auth/verify-email/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email.trim().toLowerCase(),
+          code: cleanedCode,
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        throw new Error(body.error || 'Unable to verify email');
+      }
+      setEmailVerified(true);
+      setNotice('Email verified successfully. You can now log in.');
+    } catch (err: any) {
+      setError(err.message || 'Unable to verify email');
+    } finally {
+      setIsVerifyingCode(false);
     }
   };
 
@@ -646,31 +683,71 @@ function RegisterForm() {
                 </svg>
               </div>
 
-              <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-gray-100">Check Your Email</h2>
+              <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-gray-100">
+                {emailVerified ? 'Email Verified' : 'Check Your Email'}
+              </h2>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
-                We sent a verification link to <strong>{formData.email}</strong>. Verify your email before logging in.
+                {emailVerified ? (
+                  <>Your account is now verified for <strong>{formData.email}</strong>.</>
+                ) : (
+                  <>We sent a 6-digit verification code to <strong>{formData.email}</strong>.</>
+                )}
               </p>
+
+              {!emailVerified && (
+                <div className="max-w-xs mx-auto mb-6">
+                  <label htmlFor="verificationCode" className="label text-left block">
+                    Verification Code
+                  </label>
+                  <input
+                    id="verificationCode"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                    className="input text-center tracking-[0.35em] font-semibold"
+                    placeholder="000000"
+                  />
+                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 text-left">
+                    Code expires in 10 minutes.
+                  </p>
+                </div>
+              )}
 
               <div className="card bg-primary-50 p-6 text-left mb-8">
                 <h3 className="font-semibold mb-3">Activation checklist</h3>
                 <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
                   <li>1. Open the verification email.</li>
-                  <li>2. Click the verification link.</li>
-                  <li>3. Return here and log in to your dashboard.</li>
+                  <li>2. Enter the 6-digit verification code above.</li>
+                  <li>3. Continue to login and access your dashboard.</li>
                 </ul>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button
-                  type="button"
-                  onClick={resendVerification}
-                  className="btn-outline px-8 py-3"
-                  disabled={isResendingVerification}
-                >
-                  {isResendingVerification ? 'Sending...' : 'Resend Verification Email'}
-                </button>
+                {!emailVerified && (
+                  <button
+                    type="button"
+                    onClick={verifyEmailCode}
+                    className="btn-primary px-8 py-3"
+                    disabled={isVerifyingCode}
+                  >
+                    {isVerifyingCode ? 'Verifying...' : 'Verify Code'}
+                  </button>
+                )}
+                {!emailVerified && (
+                  <button
+                    type="button"
+                    onClick={resendVerification}
+                    className="btn-outline px-8 py-3"
+                    disabled={isResendingVerification}
+                  >
+                    {isResendingVerification ? 'Sending...' : 'Resend Verification Code'}
+                  </button>
+                )}
                 <Link href="/login" className="btn-primary px-8 py-3 text-center">
-                  Go to Login
+                  {emailVerified ? 'Continue to Login' : 'Go to Login'}
                 </Link>
               </div>
             </div>

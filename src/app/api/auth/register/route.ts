@@ -3,7 +3,12 @@ import { prisma } from '@/lib/prisma';
 import { hashPassword, generateSlug, generatePublicBusinessId } from '@/lib/utils';
 import { generateReferralCode } from '@/lib/referral';
 import { addDays } from 'date-fns';
-import { createEmailVerificationToken, isValidEmail } from '@/lib/auth-verification';
+import {
+  createEmailVerificationCode,
+  isValidEmail,
+  normalizeEmail,
+  packVerificationHash,
+} from '@/lib/auth-verification';
 import { sendEmailVerificationEmail } from '@/lib/email';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 
@@ -37,8 +42,10 @@ export async function POST(request: Request) {
       );
     }
 
+    const normalizedEmail = typeof email === 'string' ? normalizeEmail(email) : '';
+
     // Input length guards
-    if (typeof email !== 'string' || email.length > 254 || !isValidEmail(email)) {
+    if (!normalizedEmail || normalizedEmail.length > 254 || !isValidEmail(normalizedEmail)) {
       return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
     }
     if (typeof businessName !== 'string' || businessName.trim().length === 0 || businessName.length > 100) {
@@ -47,6 +54,19 @@ export async function POST(request: Request) {
     if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
       return NextResponse.json(
         { error: 'Password must be 8–128 characters' },
+        { status: 400 }
+      );
+    }
+
+    if (!/[0-9]/.test(password)) {
+      return NextResponse.json(
+        { error: 'Password must include at least one number' },
+        { status: 400 }
+      );
+    }
+    if (!/[!@#$%^&*]/.test(password)) {
+      return NextResponse.json(
+        { error: 'Password must include at least one special character (!@#$%^&*)' },
         { status: 400 }
       );
     }
@@ -62,7 +82,7 @@ export async function POST(request: Request) {
 
     // Check if email already exists
     const existingBusiness = await prisma.business.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: normalizedEmail },
     });
 
     if (existingBusiness) {
@@ -109,14 +129,14 @@ export async function POST(request: Request) {
 
     // Generate this new business's own unique referral code
     const newReferralCode = await generateReferralCode();
-    const { token: verificationToken, tokenHash, expiresAt: verificationExpiry } =
-      createEmailVerificationToken();
+    const { token: verificationCode, tokenHash, expiresAt: verificationExpiry } =
+      createEmailVerificationCode();
 
     // Create business account
     const business = await prisma.business.create({
       data: {
-        email: email.toLowerCase(),
-        emailVerificationTokenHash: tokenHash,
+        email: normalizedEmail,
+        emailVerificationTokenHash: packVerificationHash(tokenHash, 0),
         emailVerificationTokenExpiry: verificationExpiry,
         verificationSentAt: new Date(),
         passwordHash,
@@ -125,7 +145,7 @@ export async function POST(request: Request) {
         publicId,
         businessType,
         phone,
-        businessEmail: businessEmail || email.toLowerCase(),
+        businessEmail: businessEmail || normalizedEmail,
         street,
         city,
         state,
@@ -185,7 +205,7 @@ export async function POST(request: Request) {
     }
     let verificationEmailSent = false;
     try {
-      await sendEmailVerificationEmail(business.email, verificationToken);
+      await sendEmailVerificationEmail(business.email, verificationCode);
       verificationEmailSent = true;
     } catch (emailError) {
       console.error('Failed to send verification email:', emailError);

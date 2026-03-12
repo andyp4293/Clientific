@@ -119,33 +119,35 @@ export async function sendPasswordResetEmail(email: string, token: string) {
   });
 }
 
-export async function sendEmailVerificationEmail(email: string, token: string) {
+export async function sendEmailVerificationEmail(email: string, code: string) {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const FROM = getResendFromEmail();
   const APP_URL = getConfiguredAppBaseUrl();
-  const verifyUrl = `${APP_URL}/verify-email?token=${token}`;
+  const verifyUrl = `${APP_URL}/verify-email?email=${encodeURIComponent(email)}`;
 
   await resend.emails.send({
     from: `${APP_NAME} <${FROM}>`,
     to: email,
-    subject: `Verify your ${APP_NAME} account`,
+    subject: `Your ${APP_NAME} verification code`,
     html: `
       <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px;">
         <h1 style="font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 12px;">Verify your email</h1>
         <p style="color: #4b5563; margin: 0 0 20px;">
-          Thanks for signing up for ${APP_NAME}. Confirm your email to activate your account.
+          Thanks for signing up for ${APP_NAME}. Enter this one-time code to verify your email.
+        </p>
+        <div style="margin: 0 0 20px; padding: 16px; background: #f3f4f6; border-radius: 8px; text-align: center;">
+          <span style="font-size: 32px; letter-spacing: 4px; font-weight: 700; color: #111827;">${code}</span>
+        </div>
+        <p style="color: #6b7280; font-size: 13px; margin: 0 0 20px;">
+          This code expires in 10 minutes and can only be used once.
         </p>
         <a href="${verifyUrl}"
            style="display: inline-block; background: #2563eb; color: #fff; font-weight: 600;
                   padding: 12px 24px; border-radius: 6px; text-decoration: none; margin-bottom: 20px;">
-          Verify email
+          Enter code in app
         </a>
-        <p style="color: #6b7280; font-size: 13px; margin: 0;">
-          This link expires in 24 hours.
-        </p>
-        <p style="color: #9ca3af; font-size: 12px; margin-top: 18px;">
-          If the button doesn&apos;t work, use this link:<br />
-          <a href="${verifyUrl}" style="color: #2563eb;">${verifyUrl}</a>
+        <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+          If you didn't request this, you can ignore this email.
         </p>
       </div>
     `,
