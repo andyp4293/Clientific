@@ -222,9 +222,108 @@ export async function PATCH(req: NextRequest) {
       return trimmed.length > 0 ? trimmed : null;
     };
 
-    const fetchVapiNumberById = async (phoneNumberId: string): Promise<string | null> => {
-      const details = await vapiRequest('GET', `/phone-number/${phoneNumberId}`);
-      return normalizePhoneNumber(details?.number);
+    const normalizeVapiStatus = (value: unknown): string | null => {
+      if (typeof value !== 'string') return null;
+      const trimmed = value.trim().toLowerCase();
+      return trimmed.length > 0 ? trimmed : null;
+    };
+
+    type VapiNumberState = {
+      id: string;
+      number: string | null;
+      status: string | null;
+    };
+
+    const toVapiNumberState = (
+      value: unknown,
+      fallbackId?: string
+    ): VapiNumberState | null => {
+      if (!value || typeof value !== 'object') return null;
+      const parsed = value as Record<string, unknown>;
+      const id =
+        (typeof parsed.id === 'string' && parsed.id.trim()) ||
+        (fallbackId?.trim() || null);
+      if (!id) return null;
+      return {
+        id,
+        number: normalizePhoneNumber(parsed.number),
+        status: normalizeVapiStatus(parsed.status),
+      };
+    };
+
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    // Vapi numbers can be returned as activating before the final number is attached.
+    // Poll a few times so we don't treat this eventual-consistency window as a hard failure.
+    const waitForVapiNumber = async (
+      phoneNumberId: string,
+      attempts = 4,
+      delayMs = 1200
+    ): Promise<VapiNumberState | null> => {
+      let latest: VapiNumberState | null = null;
+      for (let i = 0; i < attempts; i++) {
+        const details = await vapiRequest('GET', `/phone-number/${phoneNumberId}`);
+        if (!details) {
+          return null;
+        }
+        latest = toVapiNumberState(details, phoneNumberId);
+        if (latest?.number || latest?.status === 'blocked') {
+          return latest;
+        }
+        if (i < attempts - 1) {
+          await sleep(delayMs);
+        }
+      }
+      return latest;
+    };
+
+    const provisionVapiNumber = async (): Promise<{
+      phoneNumberId: string;
+      phoneNumber: string | null;
+      status: string | null;
+    }> => {
+      const phoneNumber = await vapiRequest('POST', '/phone-number', {
+        provider: 'vapi',
+        name: `${name ?? current.name} Receptionist`,
+        server: { url: serverUrl },
+      });
+
+      const initialState = toVapiNumberState(phoneNumber);
+      if (!initialState?.id) {
+        throw new Error('AI receptionist number provisioning failed');
+      }
+
+      const patchResult = await vapiRequest('PATCH', `/phone-number/${initialState.id}`, {
+        server: { url: serverUrl },
+      }).catch((e: any) => {
+        console.error('[vapi] Failed to sync freshly provisioned number server URL:', e);
+        return null;
+      });
+
+      const patchState = toVapiNumberState(patchResult, initialState.id);
+      const syncedState: VapiNumberState = {
+        id: initialState.id,
+        number: patchState?.number ?? initialState.number,
+        status: patchState?.status ?? initialState.status,
+      };
+      console.log('[vapi] provisioned number, server.url confirmed:', patchResult?.server?.url ?? 'error');
+
+      let readyState = syncedState;
+      if (!readyState.number) {
+        readyState = (await waitForVapiNumber(initialState.id).catch((e: any) => {
+          console.error('[vapi] Failed to poll provisioned phone number details:', e);
+          return syncedState;
+        })) ?? syncedState;
+      }
+
+      if (readyState?.status === 'blocked') {
+        throw new Error('AI receptionist number provisioning failed: number is blocked in Vapi');
+      }
+      return {
+        phoneNumberId: initialState.id,
+        phoneNumber: readyState?.number ?? null,
+        status: readyState?.status ?? syncedState.status ?? null,
+      };
     };
 
     const vapiConfigured = !!process.env.VAPI_PRIVATE_KEY;
@@ -232,34 +331,20 @@ export async function PATCH(req: NextRequest) {
     const serverUrl = `${appUrl}/api/webhooks/vapi`;
 
     if (vapiConfigured && finalEnabled && !current.vapiPhoneNumberId) {
-      const phoneNumber = await vapiRequest('POST', '/phone-number', {
-        provider: 'vapi',
-        name: `${name ?? current.name} Receptionist`,
-        server: { url: serverUrl },
-      });
+      const provisioned = await provisionVapiNumber();
 
-      if (!phoneNumber?.id) {
-        throw new Error('AI receptionist number provisioning failed');
+      vapiUpdates.vapiPhoneNumberId = provisioned.phoneNumberId;
+      if (provisioned.phoneNumber) {
+        vapiUpdates.vapiPhoneNumber = provisioned.phoneNumber;
+        vapiUpdates.smsAiPhoneNumber = provisioned.phoneNumber;
+        vapiUpdates.smsAiEnabled = true;
+      } else {
+        // Leave receptionist enabled and allow UI to show "pending setup" until number is assigned.
+        vapiUpdates.vapiPhoneNumber = null;
+        vapiUpdates.smsAiPhoneNumber = null;
+        vapiUpdates.smsAiEnabled = false;
+        console.warn('[vapi] Number is still activating after provisioning; setup remains pending');
       }
-
-      const patchResult = await vapiRequest('PATCH', `/phone-number/${phoneNumber.id}`, {
-        server: { url: serverUrl },
-      });
-
-      console.log('[vapi] provisioned number, server.url confirmed:', patchResult?.server?.url);
-
-      let resolvedPhoneNumber = normalizePhoneNumber(phoneNumber.number);
-      if (!resolvedPhoneNumber) {
-        resolvedPhoneNumber = await fetchVapiNumberById(phoneNumber.id);
-      }
-      if (!resolvedPhoneNumber) {
-        throw new Error('AI receptionist number provisioning failed: missing phone number');
-      }
-
-      vapiUpdates.vapiPhoneNumberId = phoneNumber.id;
-      vapiUpdates.vapiPhoneNumber = resolvedPhoneNumber;
-      vapiUpdates.smsAiPhoneNumber = resolvedPhoneNumber;
-      vapiUpdates.smsAiEnabled = true;
     } else if (vapiConfigured && !finalEnabled && current.vapiPhoneNumberId) {
       await vapiRequest('DELETE', `/phone-number/${current.vapiPhoneNumberId}`);
 
@@ -276,20 +361,44 @@ export async function PATCH(req: NextRequest) {
       });
 
       console.log('[vapi] synced phone number server.url:', syncResult?.server?.url ?? 'error');
-      let resolvedPhoneNumber = normalizePhoneNumber(syncResult?.number) ?? normalizePhoneNumber(current.vapiPhoneNumber);
+      const syncState = toVapiNumberState(syncResult, current.vapiPhoneNumberId);
+      let knownState: VapiNumberState | null = syncState;
+      let resolvedPhoneNumber =
+        syncState?.number ?? normalizePhoneNumber(current.vapiPhoneNumber);
       if (!resolvedPhoneNumber) {
-        resolvedPhoneNumber = await fetchVapiNumberById(current.vapiPhoneNumberId).catch((e: any) => {
+        knownState = await waitForVapiNumber(current.vapiPhoneNumberId).catch((e: any) => {
           console.error('[vapi] Failed to fetch phone number details:', e);
           return null;
         });
+        resolvedPhoneNumber = knownState?.number ?? null;
       }
-      if (!resolvedPhoneNumber) {
-        throw new Error('AI receptionist number sync failed: missing phone number');
+      if (!resolvedPhoneNumber && knownState?.status === 'blocked') {
+        throw new Error('AI receptionist number is blocked in Vapi');
       }
-
-      vapiUpdates.vapiPhoneNumber = resolvedPhoneNumber;
-      vapiUpdates.smsAiPhoneNumber = resolvedPhoneNumber;
-      vapiUpdates.smsAiEnabled = true;
+      if (!resolvedPhoneNumber && !knownState) {
+        console.warn('[vapi] Existing phone number was missing; provisioning replacement number');
+        const replacement = await provisionVapiNumber();
+        vapiUpdates.vapiPhoneNumberId = replacement.phoneNumberId;
+        if (replacement.phoneNumber) {
+          vapiUpdates.vapiPhoneNumber = replacement.phoneNumber;
+          vapiUpdates.smsAiPhoneNumber = replacement.phoneNumber;
+          vapiUpdates.smsAiEnabled = true;
+        } else {
+          vapiUpdates.vapiPhoneNumber = null;
+          vapiUpdates.smsAiPhoneNumber = null;
+          vapiUpdates.smsAiEnabled = false;
+          console.warn('[vapi] Replacement number is still activating; setup remains pending');
+        }
+      } else if (!resolvedPhoneNumber) {
+        vapiUpdates.vapiPhoneNumber = null;
+        vapiUpdates.smsAiPhoneNumber = null;
+        vapiUpdates.smsAiEnabled = false;
+        console.warn('[vapi] Existing number is still activating; setup remains pending');
+      } else {
+        vapiUpdates.vapiPhoneNumber = resolvedPhoneNumber;
+        vapiUpdates.smsAiPhoneNumber = resolvedPhoneNumber;
+        vapiUpdates.smsAiEnabled = true;
+      }
     }
 
     const business = await prisma.business.update({

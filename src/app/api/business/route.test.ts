@@ -261,6 +261,70 @@ describe('PATCH /api/business', () => {
     );
   });
 
+  it('keeps setup pending when Vapi number is still activating', async () => {
+    process.env.VAPI_PRIVATE_KEY = 'vapi_test_key';
+
+    const timeoutSpy = vi
+      .spyOn(global, 'setTimeout')
+      .mockImplementation(((fn: (...args: any[]) => unknown) => {
+        fn();
+        return 0 as any;
+      }) as any);
+
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        ...fakeBusiness,
+        smsAiEnabled: false,
+        smsAiPhoneNumber: null,
+        vapiPhoneNumberId: null,
+        vapiPhoneNumber: null,
+      });
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => ({ id: 'vapi-pn-1', status: 'activating' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ server: { url: 'https://clientific.app/api/webhooks/vapi' } }),
+      })
+      .mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'vapi-pn-1', status: 'activating', number: null }),
+      });
+
+    mockBusinessUpdate.mockResolvedValue({
+      ...fakeBusiness,
+      aiReceptionistEnabled: true,
+      vapiPhoneNumberId: 'vapi-pn-1',
+      vapiPhoneNumber: null,
+      smsAiEnabled: false,
+      smsAiPhoneNumber: null,
+    });
+
+    const res = await PATCH(makePatchRequest({ aiReceptionistEnabled: true }));
+
+    expect(res.status).toBe(200);
+    expect(mockBusinessUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          vapiPhoneNumberId: 'vapi-pn-1',
+          vapiPhoneNumber: null,
+          smsAiEnabled: false,
+          smsAiPhoneNumber: null,
+        }),
+      })
+    );
+
+    timeoutSpy.mockRestore();
+  });
+
   it('returns 500 and does not persist when Vapi number provisioning fails', async () => {
     process.env.VAPI_PRIVATE_KEY = 'vapi_test_key';
 
@@ -415,7 +479,7 @@ describe('PATCH /api/business', () => {
     );
   });
 
-  it('returns 500 when synced AI number is still missing after fetch fallback', async () => {
+  it('provisions a replacement number when synced AI number is missing after fetch fallback', async () => {
     process.env.VAPI_PRIVATE_KEY = 'vapi_test_key';
 
     mockSession.mockResolvedValue(activeSession);
@@ -432,24 +496,90 @@ describe('PATCH /api/business', () => {
 
     mockFetch
       .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
+        ok: false,
+        status: 404,
         json: async () => ({ server: { url: 'https://clientific.app/api/webhooks/vapi' } }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => ({ id: 'vapi-pn-1', number: null }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => ({ id: 'vapi-pn-2', number: '+18557654989' }),
       })
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
+        json: async () => ({ server: { url: 'https://clientific.app/api/webhooks/vapi' } }),
+      });
+
+    mockBusinessUpdate.mockResolvedValue({
+      ...fakeBusiness,
+      aiReceptionistEnabled: true,
+      vapiPhoneNumberId: 'vapi-pn-2',
+      vapiPhoneNumber: '+18557654989',
+      smsAiEnabled: true,
+      smsAiPhoneNumber: '+18557654989',
+    });
+
+    const res = await PATCH(makePatchRequest({ aiReceptionistEnabled: true }));
+
+    expect(res.status).toBe(200);
+    expect(mockBusinessUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          vapiPhoneNumberId: 'vapi-pn-2',
+          vapiPhoneNumber: '+18557654989',
+          smsAiEnabled: true,
+          smsAiPhoneNumber: '+18557654989',
+        }),
+      })
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('/phone-number/vapi-pn-1'),
+      expect.objectContaining({ method: 'GET' })
+    );
+  });
+
+  it('returns 500 when replacement provisioning fails after stale-id recovery', async () => {
+    process.env.VAPI_PRIVATE_KEY = 'vapi_test_key';
+
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        ...fakeBusiness,
+        aiReceptionistEnabled: true,
+        vapiPhoneNumberId: 'vapi-pn-1',
+        vapiPhoneNumber: null,
+        smsAiEnabled: false,
+        smsAiPhoneNumber: null,
+      });
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => ({ server: { url: 'https://clientific.app/api/webhooks/vapi' } }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
         json: async () => ({ id: 'vapi-pn-1', number: null }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        text: async () => 'vapi boom',
       });
 
     const res = await PATCH(makePatchRequest({ aiReceptionistEnabled: true }));
 
     expect(res.status).toBe(500);
     expect(mockBusinessUpdate).not.toHaveBeenCalled();
-    expect(mockFetch).toHaveBeenNthCalledWith(
-      2,
-      expect.stringContaining('/phone-number/vapi-pn-1'),
-      expect.objectContaining({ method: 'GET' })
-    );
   });
 });

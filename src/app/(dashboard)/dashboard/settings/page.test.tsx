@@ -29,4 +29,17 @@ describe('settings page module', () => {
       state: 'error',
     });
   });
+
+  it('returns pending when AI is enabled and number is still provisioning', () => {
+    const state = pageModule.getAiReceptionistSetupState(
+      { aiReceptionistEnabled: true, vapiPhoneNumber: null, smsAiPhoneNumber: null } as any,
+      false,
+      false
+    );
+
+    expect(state).toEqual({
+      unifiedNumber: '',
+      state: 'pending',
+    });
+  });
 });
