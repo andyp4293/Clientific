@@ -173,6 +173,36 @@ describe('PATCH /api/business', () => {
     expect(body.error).toMatch(/disallowed content/i);
   });
 
+  it('allows null public profile text fields when saving settings', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({ ...fakeBusiness });
+    mockBusinessUpdate.mockResolvedValue({
+      ...fakeBusiness,
+      publicProfileHeadline: null,
+      publicProfileAbout: null,
+      notifyNewBookingEmail: true,
+    });
+
+    const res = await PATCH(makePatchRequest({
+      publicProfileHeadline: null,
+      publicProfileAbout: null,
+      notifyNewBookingEmail: true,
+    }));
+
+    expect(res.status).toBe(200);
+    expect(mockBusinessUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          publicProfileHeadline: null,
+          publicProfileAbout: null,
+          notifyNewBookingEmail: true,
+        }),
+      })
+    );
+  });
+
   it('does not call Vapi when VAPI_PRIVATE_KEY is not set', async () => {
     delete process.env.VAPI_PRIVATE_KEY;
     mockSession.mockResolvedValue(activeSession);

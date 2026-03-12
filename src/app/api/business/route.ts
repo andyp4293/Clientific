@@ -40,6 +40,10 @@ function isTwilioInvalidSmsUrlError(error: unknown): boolean {
   return String(maybeCode ?? '') === '21402';
 }
 
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === 'string';
+}
+
 function parseAreaCode(phone: string | null | undefined): string | null {
   if (!phone) return null;
   const digits = phone.replace(/\D/g, '');
@@ -277,10 +281,10 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
     }
 
-    if (publicProfileHeadline !== undefined && typeof publicProfileHeadline !== 'string') {
+    if (publicProfileHeadline !== undefined && !isNullableString(publicProfileHeadline)) {
       return NextResponse.json({ error: 'Public profile headline must be text' }, { status: 400 });
     }
-    if (publicProfileAbout !== undefined && typeof publicProfileAbout !== 'string') {
+    if (publicProfileAbout !== undefined && !isNullableString(publicProfileAbout)) {
       return NextResponse.json({ error: 'Public profile about must be text' }, { status: 400 });
     }
     if (typeof publicProfileHeadline === 'string' && publicProfileHeadline.trim().length > 90) {
