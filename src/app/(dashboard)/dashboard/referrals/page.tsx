@@ -56,7 +56,7 @@ export default function ReferralsPage() {
     <div className="p-4 md:p-6 max-w-2xl mx-auto pb-28 md:pb-8">
 
       {/* Hero banner */}
-      <div className="rounded-2xl bg-gradient-to-br from-primary via-primary to-violet-700 p-6 mb-6 text-white shadow-lg shadow-primary/20">
+      <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-primary-900 p-6 mb-6 text-white shadow-lg shadow-primary/20">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
             <Gift className="w-5 h-5 text-white" />

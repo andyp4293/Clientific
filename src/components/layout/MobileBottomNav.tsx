@@ -30,10 +30,10 @@ export function MobileBottomNav() {
         <>
           <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setShowMoreMenu(false)} />
           <div
-            className="fixed left-0 right-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900"
+            className="fixed left-0 right-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-gray-200 bg-white/92 shadow-2xl backdrop-blur-2xl dark:border-gray-800 dark:bg-gray-900/92"
             style={{ bottom: 'calc(3rem + env(safe-area-inset-bottom) + 2px)' }}
           >
-            <div className="sticky top-0 flex items-center justify-between rounded-t-2xl border-b border-gray-100 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900">
+            <div className="sticky top-0 flex items-center justify-between rounded-t-2xl border-b border-gray-100 bg-white/92 px-4 py-3 backdrop-blur-2xl dark:border-gray-800 dark:bg-gray-900/92">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Menu</h3>
               <button
                 onClick={() => setShowMoreMenu(false)}
@@ -76,7 +76,7 @@ export function MobileBottomNav() {
                           className={`flex items-center px-4 py-3 text-sm font-medium transition-colors ${
                             isActive
                               ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white'
-                              : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'
+                              : 'text-gray-700 hover:bg-primary-50 dark:text-gray-300 dark:hover:bg-gray-700'
                           }`}
                         >
                           <span className={`mr-3 ${isActive ? 'text-primary' : 'text-gray-500 dark:text-gray-400'}`}>
@@ -94,7 +94,7 @@ export function MobileBottomNav() {
             <div className="border-t border-gray-100 p-4 dark:border-gray-700">
               <button
                 onClick={() => signOut({ callbackUrl: '/login' })}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-50 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-50 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

@@ -38,8 +38,8 @@ export default async function DashboardLayout({
   // Locked layout for subscribe page — no nav, no sidebar, just logo + sign out
   if (isSubscribePage) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-        <header className="fixed top-0 left-0 right-0 h-14 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6">
+      <div className="min-h-screen brand-shell">
+        <header className="fixed top-0 left-0 right-0 h-14 z-50 brand-panel border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6">
           <div className="flex items-center space-x-2">
             <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-base">C</span>
@@ -62,14 +62,14 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="dashboard-shell lg:min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="dashboard-shell lg:min-h-screen brand-shell">
       {/* Mobile Header */}
       <div className="lg:hidden shrink-0">
         <DashboardHeader />
       </div>
 
       {/* Desktop Top Bar */}
-      <div className="hidden lg:flex fixed top-0 left-0 right-0 h-16 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 items-center justify-between px-6">
+      <div className="hidden lg:flex fixed top-0 left-0 right-0 h-16 z-50 brand-panel border-b border-gray-200 dark:border-gray-800 items-center justify-between px-6">
         <Link href="/dashboard" className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
             <span className="text-white font-bold text-xl">C</span>
@@ -94,7 +94,7 @@ export default async function DashboardLayout({
 
       {/* Mobile Bottom Nav */}
       <div
-        className="dashboard-nav-bar lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-lg z-50"
+        className="dashboard-nav-bar lg:hidden fixed bottom-0 left-0 right-0 brand-panel border-t border-gray-200 dark:border-gray-800 z-50"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 2px)' }}
       >
         <MobileBottomNav />

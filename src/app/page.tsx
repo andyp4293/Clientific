@@ -86,13 +86,13 @@ const StarIcon = () => (
 );
 
 const CheckIcon = () => (
-  <svg className="w-4 h-4 text-emerald-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+  <svg className="w-4 h-4 text-primary shrink-0" fill="currentColor" viewBox="0 0 20 20">
     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
   </svg>
 );
 
 const CheckIconLight = () => (
-  <svg className="w-4 h-4 text-emerald-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+  <svg className="w-4 h-4 text-primary-300 shrink-0" fill="currentColor" viewBox="0 0 20 20">
     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
   </svg>
 );
@@ -135,10 +135,10 @@ export default function HomePage() {
       </div>
 
       {/* ── Hero ── */}
-      <section className="relative overflow-hidden bg-[#030712]">
+      <section className="relative overflow-hidden bg-gray-950">
         {/* Multi-point glow */}
         <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[1100px] h-[800px] rounded-full bg-primary/12 blur-[140px] pointer-events-none" />
-        <div className="absolute top-1/2 -right-40 w-[500px] h-[500px] rounded-full bg-blue-600/8 blur-[100px] pointer-events-none" />
+        <div className="absolute top-1/2 -right-40 w-[500px] h-[500px] rounded-full bg-primary/10 blur-[100px] pointer-events-none" />
         <div className="absolute top-1/2 -left-40 w-[400px] h-[400px] rounded-full bg-primary/8 blur-[100px] pointer-events-none" />
         {/* Dot grid */}
         <div
@@ -154,14 +154,14 @@ export default function HomePage() {
             {/* Copy */}
             <div>
               <div className="inline-flex items-center gap-2 bg-white/[0.06] border border-white/[0.08] text-primary-300 text-xs font-semibold px-4 py-1.5 rounded-full mb-8 tracking-wide">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block shrink-0" />
+                <span className="w-1.5 h-1.5 rounded-full bg-primary-300 animate-pulse inline-block shrink-0" />
                 AI-powered platform for service businesses
               </div>
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-7 leading-[1.05] tracking-tight">
                 Your business,<br />
                 <span
                   className="bg-clip-text text-transparent"
-                  style={{ backgroundImage: 'linear-gradient(135deg, #BC87F3 0%, #7B22D4 40%, #A65FEF 70%, #BC87F3 100%)', backgroundSize: '200% 200%' }}
+                  style={{ backgroundImage: 'linear-gradient(135deg, rgb(var(--color-primary-300)) 0%, rgb(var(--color-primary-600)) 40%, rgb(var(--color-primary-400)) 70%, rgb(var(--color-primary-300)) 100%)', backgroundSize: '200% 200%' }}
                 >
                   on autopilot
                 </span>
@@ -200,12 +200,12 @@ export default function HomePage() {
                   <Link
                     href="/register"
                     className="inline-flex items-center gap-2 bg-primary text-white font-semibold px-8 py-4 rounded-xl hover:bg-primary-500 transition-all duration-200 text-base"
-                    style={{ boxShadow: '0 0 40px rgba(123,34,212,0.5)' }}
+                    style={{ boxShadow: '0 0 40px rgb(var(--color-primary-600) / 0.5)' }}
                   >
                     Start Free - 14 Days <ArrowRight />
                   </Link>
                   <div className="flex items-center gap-1.5 text-sm text-gray-500">
-                    <svg className="w-3.5 h-3.5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-3.5 h-3.5 text-primary" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                     No credit card required
@@ -239,9 +239,9 @@ export default function HomePage() {
                   <div className="bg-gray-800/80 border-b border-white/10 px-4 py-3 flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-red-500/70" />
                     <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
-                    <div className="w-3 h-3 rounded-full bg-emerald-500/70" />
+                    <div className="w-3 h-3 rounded-full bg-primary-400/70" />
                     <div className="flex-1 mx-4 bg-gray-700/60 rounded-md h-5 flex items-center px-3">
-                      <div className="w-2 h-2 rounded-full bg-emerald-400/80 mr-1.5 shrink-0" />
+                      <div className="w-2 h-2 rounded-full bg-primary-300/80 mr-1.5 shrink-0" />
                       <span className="text-[10px] text-gray-500 font-mono">{APP_DOMAIN}/dashboard</span>
                     </div>
                   </div>
@@ -257,9 +257,9 @@ export default function HomePage() {
                     </div>
                     <div className="grid grid-cols-3 gap-3 mb-5">
                       {[
-                        { label: "Today's Appts", val: '8', icon: '📅', color: 'border-blue-500/20 bg-blue-500/10', text: 'text-blue-300' },
-                        { label: 'Customers', val: '247', icon: '👥', color: 'border-emerald-500/20 bg-emerald-500/10', text: 'text-emerald-300' },
-                        { label: 'AI Calls', val: '12', icon: '🤖', color: 'border-purple-500/20 bg-purple-500/10', text: 'text-purple-300' },
+                        { label: "Today's Appts", val: '8', icon: '📅', color: 'border-primary/25 bg-primary/12', text: 'text-primary-200' },
+                        { label: 'Customers', val: '247', icon: '👥', color: 'border-primary/20 bg-primary/10', text: 'text-primary-300' },
+                        { label: 'AI Calls', val: '12', icon: '🤖', color: 'border-primary/30 bg-primary/16', text: 'text-primary-100' },
                       ].map(stat => (
                         <div key={stat.label} className={`border ${stat.color} rounded-xl p-3`}>
                           <div className={`text-xl font-bold tabular-nums ${stat.text}`}>{stat.val}</div>
@@ -269,7 +269,7 @@ export default function HomePage() {
                     </div>
                     <div className="flex items-center justify-between mb-2.5">
                       <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Today&apos;s Schedule</p>
-                      <span className="text-[9px] text-emerald-400 font-semibold bg-emerald-400/10 px-2 py-0.5 rounded-full">LIVE</span>
+                      <span className="text-[9px] text-primary-300 font-semibold bg-primary/12 px-2 py-0.5 rounded-full">LIVE</span>
                     </div>
                     <div className="space-y-2">
                       {[
@@ -288,7 +288,7 @@ export default function HomePage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-1.5">
-                            <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${appt.source === 'AI' ? 'bg-purple-500/20 text-purple-300' : 'bg-blue-500/20 text-blue-300'}`}>
+                            <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${appt.source === 'AI' ? 'bg-primary/20 text-primary-200' : 'bg-primary/12 text-primary-300'}`}>
                               {appt.source}
                             </span>
                             <span className="text-[10px] font-semibold text-gray-300 bg-gray-700/60 px-2 py-0.5 rounded-full">{appt.time}</span>
@@ -342,7 +342,7 @@ export default function HomePage() {
                 key={feat.title}
                 className="group bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 hover:border-primary/30 dark:hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 dark:hover:shadow-primary/10 transition-all duration-300"
               >
-                <div className="w-11 h-11 bg-gradient-to-br from-primary-50 to-blue-100 dark:from-primary/20 dark:to-primary-900/30 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200">
+                <div className="w-11 h-11 bg-gradient-to-br from-primary-50 to-gray-100 dark:from-primary/20 dark:to-gray-800 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200">
                   <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     {feat.icon}
                   </svg>
@@ -388,7 +388,7 @@ export default function HomePage() {
               <div key={step.step} className="text-center relative">
                 <div
                   className="w-20 h-20 bg-gradient-to-br from-primary to-primary-700 rounded-2xl flex items-center justify-center mx-auto mb-6"
-                  style={{ boxShadow: '0 8px 32px rgba(123,34,212,0.3)' }}
+                  style={{ boxShadow: '0 8px 32px rgb(var(--color-primary-600) / 0.3)' }}
                 >
                   <span className="text-3xl font-bold text-white">{step.step}</span>
                 </div>
@@ -438,7 +438,7 @@ export default function HomePage() {
             {/* Pro — dark featured card */}
             <div
               className="rounded-2xl p-8 flex flex-col relative bg-gray-950 border border-primary/40"
-              style={{ boxShadow: '0 0 50px rgba(123,34,212,0.18)' }}
+              style={{ boxShadow: '0 0 50px rgb(var(--color-primary-600) / 0.18)' }}
             >
               <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                 <span className="bg-primary text-white px-4 py-1 rounded-full text-xs font-semibold shadow-lg" style={{ boxShadow: '0 2px 12px rgba(59,130,246,0.5)' }}>
@@ -459,11 +459,11 @@ export default function HomePage() {
                 ))}
               </ul>
               {isAuthenticated ? (
-                <Link href="/pricing" className="bg-primary text-white font-semibold text-center w-full py-3 rounded-xl hover:bg-primary-600 transition-colors" style={{ boxShadow: '0 0 20px rgba(123,34,212,0.35)' }}>
+                <Link href="/pricing" className="bg-primary text-white font-semibold text-center w-full py-3 rounded-xl hover:bg-primary-600 transition-colors" style={{ boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' }}>
                   View Plans
                 </Link>
               ) : (
-                <Link href="/register?plan=pro" className="bg-primary text-white font-semibold text-center w-full py-3 rounded-xl hover:bg-primary-600 transition-colors" style={{ boxShadow: '0 0 20px rgba(123,34,212,0.35)' }}>
+                <Link href="/register?plan=pro" className="bg-primary text-white font-semibold text-center w-full py-3 rounded-xl hover:bg-primary-600 transition-colors" style={{ boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' }}>
                   Start Free Trial
                 </Link>
               )}

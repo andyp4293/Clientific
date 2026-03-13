@@ -170,8 +170,8 @@ export default function BusinessInfoPage() {
   ].filter((item) => item.href);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <div className="border-b border-slate-200 dark:border-slate-800 bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="border-b border-gray-200 dark:border-gray-800 bg-gradient-to-br from-gray-900 via-gray-800 to-primary-900">
         <div className="max-w-6xl mx-auto px-4 py-10 sm:py-14">
           <div className="flex flex-col sm:flex-row sm:items-start gap-5">
             {business.logoUrl ? (
@@ -182,17 +182,17 @@ export default function BusinessInfoPage() {
               />
             ) : (
               <div className="w-20 h-20 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center">
-                <Sparkles className="w-8 h-8 text-emerald-200" />
+                <Sparkles className="w-8 h-8 text-primary-200" />
               </div>
             )}
 
             <div className="flex-1">
-              <p className="text-sm uppercase tracking-[0.2em] text-emerald-200/90 mb-2">
+              <p className="text-sm uppercase tracking-[0.2em] text-primary-200/90 mb-2">
                 {formatBusinessType(business.businessType)}
               </p>
               <h1 className="text-3xl sm:text-4xl font-bold text-white">{business.name}</h1>
               {business.publicProfileHeadline && (
-                <p className="text-base sm:text-lg text-slate-100/90 mt-3 max-w-2xl">
+                <p className="text-base sm:text-lg text-gray-100/90 mt-3 max-w-2xl">
                   {business.publicProfileHeadline}
                 </p>
               )}
@@ -201,7 +201,7 @@ export default function BusinessInfoPage() {
             {business.enableOnlineBooking && (
               <Link
                 href={`/book/${business.publicId}`}
-                className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-white text-slate-900 font-semibold hover:bg-emerald-50 transition-colors"
+                className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-white text-gray-900 font-semibold hover:bg-primary-50 transition-colors"
               >
                 Book Appointment
               </Link>
@@ -213,26 +213,26 @@ export default function BusinessInfoPage() {
       <div className="max-w-6xl mx-auto px-4 py-8 sm:py-10 grid lg:grid-cols-3 gap-6">
         <main className="lg:col-span-2 space-y-6">
           {business.publicProfileAbout && (
-            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">About</h2>
-              <p className="text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+            <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">About</h2>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
                 {business.publicProfileAbout}
               </p>
             </section>
           )}
 
           {visibility.showServices && (
-            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Services</h2>
+            <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Services</h2>
 
               {!services.length ? (
-                <p className="text-sm text-slate-500 dark:text-slate-400">No services published yet.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">No services published yet.</p>
               ) : groupedServices.hasGroups ? (
                 <div className="space-y-5">
                   {groupedServices.groupedSections.map((section) => (
                     section.services.length > 0 ? (
                       <div key={section.group.id}>
-                        <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+                        <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
                           {section.group.name}
                         </h3>
                         <ServiceList services={section.services} />
@@ -242,7 +242,7 @@ export default function BusinessInfoPage() {
 
                   {groupedServices.ungroupedServices.length > 0 && (
                     <div>
-                      <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+                      <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
                         Other Services
                       </h3>
                       <ServiceList services={groupedServices.ungroupedServices} />
@@ -256,9 +256,9 @@ export default function BusinessInfoPage() {
           )}
 
           {visibility.showHours && (
-            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
-                <Clock3 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                <Clock3 className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                 Business Hours
               </h2>
               <div className="space-y-2">
@@ -271,20 +271,20 @@ export default function BusinessInfoPage() {
                       key={day}
                       className={`flex justify-between items-center px-3 py-2 rounded-lg ${
                         isToday
-                          ? 'bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900'
-                          : 'bg-slate-50 dark:bg-slate-800/60'
+                          ? 'bg-primary-50 dark:bg-primary-950/40 border border-primary-200 dark:border-primary-900'
+                          : 'bg-gray-50 dark:bg-gray-800/60'
                       }`}
                     >
-                      <span className={`font-medium ${isToday ? 'text-emerald-900 dark:text-emerald-300' : 'text-slate-800 dark:text-slate-200'}`}>
+                      <span className={`font-medium ${isToday ? 'text-primary-900 dark:text-primary-300' : 'text-gray-800 dark:text-gray-200'}`}>
                         {day}
                         {isToday && <span className="ml-2 text-xs">(Today)</span>}
                       </span>
                       {dayHours?.isOpen && dayHours.openTime && dayHours.closeTime ? (
-                        <span className={isToday ? 'text-emerald-800 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-300'}>
+                        <span className={isToday ? 'text-primary-800 dark:text-primary-300' : 'text-gray-600 dark:text-gray-300'}>
                           {formatTime(dayHours.openTime)} - {formatTime(dayHours.closeTime)}
                         </span>
                       ) : (
-                        <span className="text-slate-400 dark:text-slate-500">Closed</span>
+                        <span className="text-gray-400 dark:text-gray-500">Closed</span>
                       )}
                     </div>
                   );
@@ -294,20 +294,20 @@ export default function BusinessInfoPage() {
           )}
 
           {visibility.showTeam && staff.length > 0 && (
-            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
-                <Users className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                <Users className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                 Team
               </h2>
               <div className="grid sm:grid-cols-2 gap-3">
                 {staff.map((member) => (
                   <div
                     key={member.id}
-                    className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-3"
+                    className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 px-4 py-3"
                   >
-                    <p className="font-medium text-slate-900 dark:text-slate-100">{member.fullName}</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{member.fullName}</p>
                     {member.role && (
-                      <p className="text-sm text-slate-500 dark:text-slate-400">{member.role}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{member.role}</p>
                     )}
                   </div>
                 ))}
@@ -317,13 +317,13 @@ export default function BusinessInfoPage() {
         </main>
 
         <aside className="space-y-4 lg:sticky lg:top-4 h-fit">
-          <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
-            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4">Contact</h2>
+          <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Contact</h2>
             <div className="space-y-4">
               {visibility.showPhone && business.phone && (
                 <a href={`tel:${business.phone}`} className="flex items-start gap-3 group">
-                  <Phone className="w-4 h-4 mt-1 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white">
+                  <Phone className="w-4 h-4 mt-1 text-primary-600 dark:text-primary-400" />
+                  <span className="text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white">
                     {business.phone}
                   </span>
                 </a>
@@ -331,8 +331,8 @@ export default function BusinessInfoPage() {
 
               {visibility.showEmail && business.businessEmail && (
                 <a href={`mailto:${business.businessEmail}`} className="flex items-start gap-3 group">
-                  <Mail className="w-4 h-4 mt-1 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-slate-700 dark:text-slate-300 break-all group-hover:text-slate-900 dark:group-hover:text-white">
+                  <Mail className="w-4 h-4 mt-1 text-primary-600 dark:text-primary-400" />
+                  <span className="text-gray-700 dark:text-gray-300 break-all group-hover:text-gray-900 dark:group-hover:text-white">
                     {business.businessEmail}
                   </span>
                 </a>
@@ -341,8 +341,8 @@ export default function BusinessInfoPage() {
               {visibility.showAddress && (
                 <div className="space-y-1">
                   <div className="flex items-start gap-3">
-                    <MapPin className="w-4 h-4 mt-1 text-emerald-600 dark:text-emerald-400" />
-                    <address className="not-italic text-slate-700 dark:text-slate-300 text-sm">
+                    <MapPin className="w-4 h-4 mt-1 text-primary-600 dark:text-primary-400" />
+                    <address className="not-italic text-gray-700 dark:text-gray-300 text-sm">
                       {business.street}<br />
                       {business.city}, {business.state} {business.zipCode}
                     </address>
@@ -353,7 +353,7 @@ export default function BusinessInfoPage() {
                     )}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-sm font-medium text-emerald-700 dark:text-emerald-300 hover:underline ml-7"
+                    className="inline-flex items-center gap-1 text-sm font-medium text-primary-700 dark:text-primary-300 hover:underline ml-7"
                   >
                     Get Directions
                     <ExternalLink className="w-3.5 h-3.5" />
@@ -364,8 +364,8 @@ export default function BusinessInfoPage() {
           </section>
 
           {visibility.showSocialLinks && socialLinks.length > 0 && (
-            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
-              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-3">Find Us Online</h2>
+            <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">Find Us Online</h2>
               <div className="space-y-2">
                 {socialLinks.map((link) => (
                   <a
@@ -373,10 +373,10 @@ export default function BusinessInfoPage() {
                     href={link.href!}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                   >
                     {link.label}
-                    <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                    <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
                   </a>
                 ))}
               </div>
@@ -394,18 +394,18 @@ function ServiceList({ services }: { services: PublicService[] }) {
       {services.map((service) => (
         <li
           key={service.id}
-          className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-3"
+          className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 px-4 py-3"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="font-medium text-slate-900 dark:text-slate-100">{service.name}</p>
+              <p className="font-medium text-gray-900 dark:text-gray-100">{service.name}</p>
               {service.description && (
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{service.description}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{service.description}</p>
               )}
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{service.duration} min</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{service.duration} min</p>
             </div>
             {service.price != null && service.price > 0 && (
-              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                 ${service.price.toFixed(2)}
               </p>
             )}
@@ -429,3 +429,4 @@ function formatBusinessType(type: string): string {
     .replace(/\s+/g, ' ')
     .trim();
 }
+

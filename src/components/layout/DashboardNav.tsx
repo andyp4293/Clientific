@@ -19,7 +19,7 @@ export function DashboardNav() {
   const { data: session, status } = useSession();
 
   return (
-    <div className="flex h-full flex-col border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+    <div className="flex h-full flex-col border-r border-gray-200 bg-white/80 backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900/84">
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-3">
         {SECTION_ORDER.map((section) => {
           const items = DASHBOARD_DESKTOP_NAV.filter((item) => item.section === section);
@@ -40,8 +40,8 @@ export function DashboardNav() {
                       href={item.href}
                       className={`flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-all ${
                         isActive
-                          ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white'
-                          : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100'
+                          ? 'bg-primary-50 text-gray-900 dark:bg-primary/12 dark:text-white'
+                          : 'text-gray-500 hover:bg-primary-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100'
                       }`}
                     >
                       <span
@@ -77,7 +77,7 @@ export function DashboardNav() {
           <ThemeToggle />
           <button
             onClick={() => signOut({ callbackUrl: '/login' })}
-            className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-all hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-600 transition-all hover:bg-primary-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
           >
             Sign Out
           </button>

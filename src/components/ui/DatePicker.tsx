@@ -126,7 +126,7 @@ export function DatePicker({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-left font-medium text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all flex items-center justify-between"
+        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-left font-medium text-gray-900 dark:text-gray-100 bg-white/92 dark:bg-gray-900/82 hover:bg-primary-50 dark:hover:bg-gray-800 focus:ring-2 focus:ring-primary/30 focus:border-transparent transition-all flex items-center justify-between"
       >
         <span className={!value ? 'text-gray-500 dark:text-gray-400' : ''}>{selectedDateStr}</span>
         <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -135,7 +135,7 @@ export function DatePicker({
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+        <div className="absolute top-full left-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] brand-panel p-4">
           {/* Month Navigation */}
           <div className="flex items-center justify-between mb-4">
             <button
@@ -180,8 +180,8 @@ export function DatePicker({
                   p-2 rounded-lg text-sm font-medium transition-all
                   ${!day ? 'invisible' : ''}
                   ${isDateDisabled(day) ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : ''}
-                  ${isSelected(day) ? 'bg-blue-600 text-white shadow-md' : ''}
-                  ${isToday(day) && !isSelected(day) ? 'border-2 border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20' : ''}
+                  ${isSelected(day) ? 'bg-primary text-white shadow-md' : ''}
+                  ${isToday(day) && !isSelected(day) ? 'border-2 border-primary text-primary dark:text-primary-300 bg-primary-50 dark:bg-primary/10' : ''}
                   ${!isSelected(day) && !isToday(day) && !isDateDisabled(day) ? 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700' : ''}
                 `}
               >
@@ -213,7 +213,7 @@ export function DatePicker({
                 setDisplayMonth(new Date(today.getFullYear(), today.getMonth()));
                 setIsOpen(false);
               }}
-              className="ml-auto rounded-lg px-3 py-2 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+              className="ml-auto rounded-lg px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary-50 dark:text-primary-300 dark:hover:bg-primary/10"
             >
               Today
             </button>

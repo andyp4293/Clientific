@@ -82,7 +82,7 @@ export function TimePicker({ value, onChange, label }: TimePickerProps) {
     <div className="relative" ref={containerRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-left font-medium text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all flex items-center justify-between"
+        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-left font-medium text-gray-900 dark:text-gray-100 bg-white/92 dark:bg-gray-900/82 hover:bg-primary-50 dark:hover:bg-gray-800 focus:ring-2 focus:ring-primary/30 focus:border-transparent transition-all flex items-center justify-between"
       >
         <span>{displayTime}</span>
         <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -91,7 +91,7 @@ export function TimePicker({ value, onChange, label }: TimePickerProps) {
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50 p-4 w-64">
+        <div className="absolute top-full left-0 mt-2 brand-panel z-50 p-4 w-64">
           <div className="space-y-4">
             {/* Hours with AM/PM toggle */}
             <div>
@@ -164,7 +164,7 @@ export function TimePicker({ value, onChange, label }: TimePickerProps) {
                 {/* AM/PM Toggle */}
                 <button
                   onClick={handlePeriodToggle}
-                  className="px-3 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                  className="px-3 py-2 bg-primary text-white font-semibold rounded-lg hover:bg-primary-500 transition-colors text-sm"
                 >
                   {period}
                 </button>
@@ -202,7 +202,7 @@ export function TimePicker({ value, onChange, label }: TimePickerProps) {
             {/* Close button */}
             <button
               onClick={() => setIsOpen(false)}
-              className="w-full py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+              className="w-full py-2 text-sm font-medium text-primary dark:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary/10 rounded-lg transition-colors"
             >
               Done
             </button>

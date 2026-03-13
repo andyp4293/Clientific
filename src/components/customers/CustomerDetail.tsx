@@ -215,7 +215,7 @@ export default function CustomerDetail({
             <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
               Appointments
             </div>
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold text-primary">
               {customer._count.appointments}
             </div>
           </div>

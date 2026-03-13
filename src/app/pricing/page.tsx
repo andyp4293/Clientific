@@ -58,7 +58,7 @@ function PricingContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-gray-100 dark:from-gray-950 dark:to-gray-900">
       <PublicSiteHeader
         active="pricing"
         ctaLabel={isAuthenticated ? 'Dashboard' : 'Start Free Trial'}

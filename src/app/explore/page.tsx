@@ -121,7 +121,13 @@ export default function ExplorePage() {
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(123,34,212,0.15),transparent_45%),radial-gradient(circle_at_top_left,rgba(15,23,42,0.06),transparent_35%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(123,34,212,0.22),transparent_45%),radial-gradient(circle_at_top_left,rgba(59,130,246,0.12),transparent_35%)]" />
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(circle at top right, rgb(var(--color-primary-500) / 0.16), transparent 45%), radial-gradient(circle at top left, rgb(var(--color-gray-800) / 0.08), transparent 35%)',
+        }}
+      />
 
       <PublicSiteHeader active="explore" />
 
@@ -129,7 +135,7 @@ export default function ExplorePage() {
         <section className="mb-8 overflow-hidden rounded-3xl border border-gray-200 bg-white/80 shadow-xl shadow-gray-200/60 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80 dark:shadow-black/30">
           <div className="relative p-6 sm:p-8 lg:p-10">
             <div className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-primary/15 blur-2xl dark:bg-primary/25" />
-            <div className="pointer-events-none absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-blue-500/10 blur-2xl dark:bg-blue-500/20" />
+            <div className="pointer-events-none absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-primary/12 blur-2xl dark:bg-primary/22" />
 
             <div className="relative grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
               <div>
@@ -264,7 +270,7 @@ export default function ExplorePage() {
                     <p className="mt-4 flex-1 text-sm leading-relaxed text-gray-700 dark:text-gray-300">{deal.title}</p>
 
                     <div className="mt-5 flex items-center justify-between gap-3">
-                      <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-primary-100 px-2.5 py-1 text-xs font-semibold text-primary-700 dark:bg-primary/16 dark:text-primary-200">
                         <Tag className="h-3.5 w-3.5" />
                         {discountLabel(deal.discountType, deal.discountValue)}
                       </span>

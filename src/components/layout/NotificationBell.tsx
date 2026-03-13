@@ -93,7 +93,7 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
+        <div className="absolute right-0 mt-2 w-80 brand-panel z-50 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
             <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Notifications</span>
             {notifications.length > 0 && (
@@ -115,12 +115,12 @@ export function NotificationBell() {
                   key={n.id}
                   onClick={() => handleNotificationClick(n)}
                   className={`w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
-                    !n.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''
+                    !n.read ? 'bg-primary-50/80 dark:bg-primary/10' : ''
                   }`}
                 >
                   <div className="flex items-start gap-2">
                     {!n.read && (
-                      <span className="mt-1.5 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
+                      <span className="mt-1.5 w-2 h-2 rounded-full bg-primary flex-shrink-0" />
                     )}
                     <div className={!n.read ? '' : 'ml-4'}>
                       <p className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-snug">{n.title}</p>

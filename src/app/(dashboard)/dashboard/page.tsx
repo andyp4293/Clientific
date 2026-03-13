@@ -221,13 +221,13 @@ export default async function DashboardPage({
           <div>
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Customers</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 tabular-nums leading-tight">{stats.totalCustomers}</p>
-            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">+{stats.newCustomersThisMonth} this month</p>
+            <p className="text-xs text-primary dark:text-primary-300 font-medium mt-0.5">+{stats.newCustomersThisMonth} this month</p>
           </div>
         </div>
 
-        <div className="card p-5 flex items-center gap-4 border-l-4 border-l-blue-500">
-          <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-500/20 flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="card p-5 flex items-center gap-4 border-l-4 border-l-primary">
+          <div className="w-11 h-11 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center shrink-0">
+            <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           </div>
@@ -238,9 +238,9 @@ export default async function DashboardPage({
           </div>
         </div>
 
-        <div className="card p-5 flex items-center gap-4 border-l-4 border-l-emerald-500">
-          <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="card p-5 flex items-center gap-4 border-l-4 border-l-primary">
+          <div className="w-11 h-11 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center shrink-0">
+            <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
             </svg>
           </div>
@@ -251,9 +251,9 @@ export default async function DashboardPage({
           </div>
         </div>
 
-        <div className="card p-5 flex items-center gap-4 border-l-4 border-l-amber-500">
-          <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-500/20 flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="card p-5 flex items-center gap-4 border-l-4 border-l-primary">
+          <div className="w-11 h-11 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center shrink-0">
+            <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
             </svg>
           </div>
@@ -273,8 +273,8 @@ export default async function DashboardPage({
             { href: '/dashboard/appointments', label: 'View Schedule', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
             { href: '/dashboard/analytics', label: 'Analytics', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
           ].map(action => (
-            <Link key={action.label} href={action.href} className="flex flex-col items-center gap-2 p-4 rounded-xl transition-colors bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-900 dark:hover:text-gray-200 shadow-sm">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <Link key={action.label} href={action.href} className="flex flex-col items-center gap-2 p-4 rounded-xl transition-colors bg-white/88 dark:bg-gray-900/78 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-primary/30 hover:bg-primary-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200 shadow-sm backdrop-blur-sm">
+              <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d={action.icon} />
               </svg>
               <span className="text-xs font-medium text-center leading-tight">{action.label}</span>
@@ -298,9 +298,9 @@ export default async function DashboardPage({
             <div className="space-y-2">
               {Object.entries(stats.segments).map(([segment, count]: [string, number]) => {
                 const config: Record<string, { label: string; bar: string; badge: string }> = {
-                  NEW:      { label: 'New',      bar: 'bg-blue-500',   badge: 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300' },
-                  REGULAR:  { label: 'Regular',  bar: 'bg-emerald-500', badge: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' },
-                  VIP:      { label: 'VIP',      bar: 'bg-amber-500',  badge: 'bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300' },
+                  NEW:      { label: 'New',      bar: 'bg-primary-300', badge: 'bg-primary-50 dark:bg-primary/10 text-primary-700 dark:text-primary-300' },
+                  REGULAR:  { label: 'Regular',  bar: 'bg-primary-500', badge: 'bg-primary-50 dark:bg-primary/12 text-primary-700 dark:text-primary-300' },
+                  VIP:      { label: 'VIP',      bar: 'bg-primary-700', badge: 'bg-primary-100 dark:bg-primary/16 text-primary-800 dark:text-primary-200' },
                   AT_RISK:  { label: 'At Risk',  bar: 'bg-orange-500', badge: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300' },
                   CHURNED:  { label: 'Churned',  bar: 'bg-red-500',    badge: 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300' },
                 };

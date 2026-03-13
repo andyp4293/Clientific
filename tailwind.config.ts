@@ -1,5 +1,7 @@
 import type { Config } from "tailwindcss";
 
+const colorVar = (token: string) => `rgb(var(${token}) / <alpha-value>)`;
+
 const config: Config = {
   darkMode: "class",
   content: [
@@ -11,34 +13,34 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: "#7B22D4",
-          50: "#F4EBFD",
-          100: "#E9D7FB",
-          200: "#D3AFF7",
-          300: "#BC87F3",
-          400: "#A65FEF",
-          500: "#9037EB",
-          600: "#7B22D4",
-          700: "#6419B3",
-          800: "#4E1192",
-          900: "#380B70",
+          DEFAULT: colorVar("--color-primary-600"),
+          50: colorVar("--color-primary-50"),
+          100: colorVar("--color-primary-100"),
+          200: colorVar("--color-primary-200"),
+          300: colorVar("--color-primary-300"),
+          400: colorVar("--color-primary-400"),
+          500: colorVar("--color-primary-500"),
+          600: colorVar("--color-primary-600"),
+          700: colorVar("--color-primary-700"),
+          800: colorVar("--color-primary-800"),
+          900: colorVar("--color-primary-900"),
         },
         gray: {
-          50: "#FAFAFA",
-          100: "#F4F4F5",
-          200: "#E4E4E7",
-          300: "#D4D4D8",
-          400: "#A1A1AA",
-          500: "#71717A",
-          600: "#52525B",
-          700: "#3F3F46",
-          800: "#27272A",
-          900: "#18181B",
-          950: "#09090B",
+          50: colorVar("--color-gray-50"),
+          100: colorVar("--color-gray-100"),
+          200: colorVar("--color-gray-200"),
+          300: colorVar("--color-gray-300"),
+          400: colorVar("--color-gray-400"),
+          500: colorVar("--color-gray-500"),
+          600: colorVar("--color-gray-600"),
+          700: colorVar("--color-gray-700"),
+          800: colorVar("--color-gray-800"),
+          900: colorVar("--color-gray-900"),
+          950: colorVar("--color-gray-950"),
         },
-        success: "#10B981",
-        warning: "#F59E0B",
-        danger: "#EF4444",
+        success: colorVar("--color-success"),
+        warning: colorVar("--color-warning"),
+        danger: colorVar("--color-danger"),
       },
       borderRadius: {
         lg: "8px",

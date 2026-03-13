@@ -190,7 +190,7 @@ export default function CheckInsPage() {
 
         {isLoadingCheckIns ? (
           <div className="p-8 sm:p-12 text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         ) : checkIns.length === 0 ? (
           <div className="p-8 sm:p-12 text-center">
