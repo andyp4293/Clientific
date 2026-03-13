@@ -30,16 +30,16 @@ export function MobileBottomNav() {
         <>
           <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setShowMoreMenu(false)} />
           <div
-            className="fixed left-0 right-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-gray-200 bg-white/92 shadow-2xl backdrop-blur-2xl dark:border-gray-800 dark:bg-gray-900/92"
+            className="brand-panel fixed left-0 right-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-2xl rounded-b-none border-x-0 border-b-0 border-t shadow-2xl backdrop-blur-2xl"
             style={{ bottom: 'calc(3rem + env(safe-area-inset-bottom) + 2px)' }}
           >
-            <div className="sticky top-0 flex items-center justify-between rounded-t-2xl border-b border-gray-100 bg-white/92 px-4 py-3 backdrop-blur-2xl dark:border-gray-800 dark:bg-gray-900/92">
+            <div className="brand-panel sticky top-0 flex items-center justify-between rounded-t-2xl rounded-b-none border-x-0 border-t-0 border-b px-4 py-3 backdrop-blur-2xl">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Menu</h3>
               <button
                 onClick={() => setShowMoreMenu(false)}
                 className="rounded-lg p-1 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
               >
-                <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-5 w-5 text-gray-600 dark:text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -51,7 +51,7 @@ export function MobileBottomNav() {
               </div>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{session?.user?.name || 'User'}</p>
-                <p className="truncate text-xs text-gray-500 dark:text-gray-400">{session?.user?.email || ''}</p>
+                <p className="truncate text-xs text-gray-600 dark:text-gray-300">{session?.user?.email || ''}</p>
               </div>
             </div>
 
@@ -62,7 +62,7 @@ export function MobileBottomNav() {
 
                 return (
                   <div key={section} className="py-1">
-                    <p className="px-4 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                    <p className="px-4 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">
                       {DASHBOARD_SECTION_LABELS[section]}
                     </p>
                     {pages.map((page) => {
@@ -76,10 +76,10 @@ export function MobileBottomNav() {
                           className={`flex items-center px-4 py-3 text-sm font-medium transition-colors ${
                             isActive
                               ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white'
-                              : 'text-gray-700 hover:bg-primary-50 dark:text-gray-300 dark:hover:bg-gray-700'
+                              : 'text-gray-700 hover:bg-primary-50 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-white'
                           }`}
                         >
-                          <span className={`mr-3 ${isActive ? 'text-primary' : 'text-gray-500 dark:text-gray-400'}`}>
+                          <span className={`mr-3 ${isActive ? 'text-primary dark:text-primary-300' : 'text-gray-600 dark:text-gray-300'}`}>
                             <DashboardIcon icon={page.icon} className="h-5 w-5" />
                           </span>
                           {page.name}
@@ -117,15 +117,15 @@ export function MobileBottomNav() {
               className={`flex min-w-0 flex-1 flex-col items-center justify-start px-1 pt-2 transition-colors ${
                 isActive
                   ? 'text-gray-900 dark:text-white'
-                  : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
+                  : 'text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white'
               }`}
             >
-              <div className={`mb-1 ${isActive ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+              <div className={`mb-1 ${isActive ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-200'}`}>
                 <DashboardIcon icon={item.icon} className="h-6 w-6" />
               </div>
               <span
                 className={`w-full truncate text-center text-[10px] font-medium ${
-                  isActive ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
+                  isActive ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-200'
                 }`}
               >
                 {item.name}
@@ -139,12 +139,12 @@ export function MobileBottomNav() {
           className={`flex min-w-0 flex-1 flex-col items-center justify-start px-1 pt-2 transition-colors ${
             isOnMorePage || showMoreMenu
               ? 'text-gray-900 dark:text-white'
-              : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
+              : 'text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white'
           }`}
         >
           <div
             className={`mb-1 ${
-              isOnMorePage || showMoreMenu ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
+              isOnMorePage || showMoreMenu ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-200'
             }`}
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -155,7 +155,7 @@ export function MobileBottomNav() {
             className={`w-full truncate text-center text-[10px] font-medium ${
               isOnMorePage || showMoreMenu
                 ? 'text-gray-900 dark:text-white'
-                : 'text-gray-500 dark:text-gray-400'
+                : 'text-gray-700 dark:text-gray-200'
             }`}
           >
             More

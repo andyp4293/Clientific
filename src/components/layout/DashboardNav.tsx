@@ -19,7 +19,7 @@ export function DashboardNav() {
   const { data: session, status } = useSession();
 
   return (
-    <div className="flex h-full flex-col border-r border-gray-200 bg-white/80 backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900/84">
+    <div className="brand-panel flex h-full flex-col rounded-none border-y-0 border-l-0 border-r">
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-3">
         {SECTION_ORDER.map((section) => {
           const items = DASHBOARD_DESKTOP_NAV.filter((item) => item.section === section);
@@ -27,7 +27,7 @@ export function DashboardNav() {
 
           return (
             <div key={section}>
-              <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+              <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">
                 {DASHBOARD_SECTION_LABELS[section]}
               </p>
               <div className="space-y-px">
@@ -40,13 +40,13 @@ export function DashboardNav() {
                       href={item.href}
                       className={`flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-all ${
                         isActive
-                          ? 'bg-primary-50 text-gray-900 dark:bg-primary/12 dark:text-white'
-                          : 'text-gray-500 hover:bg-primary-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100'
+                          ? 'bg-primary-50 text-gray-900 dark:bg-primary/15 dark:text-white'
+                          : 'text-gray-700 hover:bg-primary-50 hover:text-gray-900 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-white'
                       }`}
                     >
                       <span
                         className={`mr-3 ${
-                          isActive ? 'text-primary dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'
+                          isActive ? 'text-primary dark:text-primary-300' : 'text-gray-600 dark:text-gray-300'
                         }`}
                       >
                         <DashboardIcon icon={item.icon} className="h-5 w-5" />
@@ -71,13 +71,13 @@ export function DashboardNav() {
               <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
                 {session?.user?.name || 'User'}
               </p>
-              <p className="truncate text-xs text-gray-500 dark:text-gray-500">{session?.user?.email || ''}</p>
+              <p className="truncate text-xs text-gray-600 dark:text-gray-300">{session?.user?.email || ''}</p>
             </div>
           </div>
           <ThemeToggle />
           <button
             onClick={() => signOut({ callbackUrl: '/login' })}
-            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-600 transition-all hover:bg-primary-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 transition-all hover:bg-primary-50 hover:text-gray-900 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-white"
           >
             Sign Out
           </button>

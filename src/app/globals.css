@@ -184,7 +184,7 @@
 
 @layer utilities {
   .text-gray-400 {
-    color: rgb(var(--color-gray-700) / 1) !important;
+    color: rgb(var(--color-gray-800) / 1) !important;
   }
 
   .text-gray-500 {
@@ -204,7 +204,7 @@
   }
 
   .dark .text-gray-500 {
-    color: rgb(var(--color-gray-100) / 1) !important;
+    color: rgb(var(--color-gray-50) / 1) !important;
   }
 
   .dark .text-gray-600 {
@@ -224,10 +224,10 @@
   }
 
   .dark .dark\:text-gray-500 {
-    color: rgb(var(--color-gray-100) / 1) !important;
+    color: rgb(var(--color-gray-50) / 1) !important;
   }
 
   .dark .dark\:text-gray-600 {
-    color: rgb(var(--color-gray-200) / 1) !important;
+    color: rgb(var(--color-gray-100) / 1) !important;
   }
 }

@@ -234,7 +234,7 @@ export default async function DashboardPage({
           <div>
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Appts Today</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 tabular-nums leading-tight">{stats.upcomingAppointments.length}</p>
-            <p className="text-xs text-gray-400 mt-0.5">scheduled</p>
+            <p className="text-xs text-gray-500 dark:text-gray-300 mt-0.5">scheduled</p>
           </div>
         </div>
 
@@ -247,7 +247,7 @@ export default async function DashboardPage({
           <div>
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Check-Ins</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 tabular-nums leading-tight">{stats.checkInsToday}</p>
-            <p className="text-xs text-gray-400 mt-0.5">Today · {stats.checkInsThisWeek} this week</p>
+            <p className="text-xs text-gray-500 dark:text-gray-300 mt-0.5">Today - {stats.checkInsThisWeek} this week</p>
           </div>
         </div>
 
@@ -260,7 +260,7 @@ export default async function DashboardPage({
           <div>
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Points Issued</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 tabular-nums leading-tight">{stats.pointsThisMonth}</p>
-            <p className="text-xs text-gray-400 mt-0.5">This month</p>
+            <p className="text-xs text-gray-500 dark:text-gray-300 mt-0.5">This month</p>
           </div>
         </div>
       </div>      {/* Quick Actions */}
@@ -273,7 +273,7 @@ export default async function DashboardPage({
             { href: '/dashboard/appointments', label: 'View Schedule', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
             { href: '/dashboard/analytics', label: 'Analytics', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
           ].map(action => (
-            <Link key={action.label} href={action.href} className="flex flex-col items-center gap-2 p-4 rounded-xl transition-colors bg-white/88 dark:bg-gray-900/78 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-primary/30 hover:bg-primary-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200 shadow-sm backdrop-blur-sm">
+            <Link key={action.label} href={action.href} className="flex flex-col items-center gap-2 p-4 rounded-xl transition-colors bg-white/90 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-primary/30 hover:bg-primary-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white shadow-sm backdrop-blur-sm">
               <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d={action.icon} />
               </svg>
@@ -374,3 +374,4 @@ export default async function DashboardPage({
     </div>
   );
 }
+

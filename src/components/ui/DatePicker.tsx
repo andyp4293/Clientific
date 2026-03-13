@@ -126,7 +126,7 @@ export function DatePicker({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-left font-medium text-gray-900 dark:text-gray-100 bg-white/92 dark:bg-gray-900/82 hover:bg-primary-50 dark:hover:bg-gray-800 focus:ring-2 focus:ring-primary/30 focus:border-transparent transition-all flex items-center justify-between"
+        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-left font-medium text-gray-900 dark:text-gray-50 bg-white/90 dark:bg-gray-900/80 hover:bg-primary-50 dark:hover:bg-gray-800 focus:ring-2 focus:ring-primary/30 focus:border-transparent transition-all flex items-center justify-between"
       >
         <span className={!value ? 'text-gray-500 dark:text-gray-400' : ''}>{selectedDateStr}</span>
         <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
