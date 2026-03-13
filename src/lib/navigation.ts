@@ -146,6 +146,13 @@ export const DASHBOARD_MOBILE_MORE_NAV = DASHBOARD_NAV_ITEMS.filter(
   (item) => !item.mobilePrimary
 );
 
+export const DASHBOARD_SECTION_ORDER: DashboardNavSection[] = [
+  'core',
+  'operations',
+  'growth',
+  'account',
+];
+
 export function normalizePathname(pathname: string): string {
   if (!pathname) return '/';
 

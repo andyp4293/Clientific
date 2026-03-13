@@ -5,14 +5,12 @@ import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import {
   DASHBOARD_DESKTOP_NAV,
+  DASHBOARD_SECTION_ORDER,
   DASHBOARD_SECTION_LABELS,
-  DashboardNavSection,
   isDashboardRouteActive,
 } from '@/lib/navigation';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { DashboardIcon } from '@/components/layout/nav-icons';
-
-const SECTION_ORDER: DashboardNavSection[] = ['core', 'growth', 'operations', 'account'];
 
 export function DashboardNav() {
   const pathname = usePathname();
@@ -21,7 +19,7 @@ export function DashboardNav() {
   return (
     <div className="brand-panel flex h-full flex-col rounded-none border-y-0 border-l-0 border-r">
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-3">
-        {SECTION_ORDER.map((section) => {
+        {DASHBOARD_SECTION_ORDER.map((section) => {
           const items = DASHBOARD_DESKTOP_NAV.filter((item) => item.section === section);
           if (items.length === 0) return null;
 

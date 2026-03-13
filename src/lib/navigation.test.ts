@@ -3,6 +3,7 @@ import {
   DASHBOARD_MOBILE_MORE_NAV,
   DASHBOARD_MOBILE_PRIMARY_NAV,
   DASHBOARD_NAV_ITEMS,
+  DASHBOARD_SECTION_ORDER,
   DashboardNavItem,
   getActiveDashboardRoute,
   isDashboardRouteActive,
@@ -171,5 +172,9 @@ describe('navigation config integrity', () => {
       ...DASHBOARD_MOBILE_MORE_NAV.map((item) => item.key),
     ];
     expect(new Set(allKeys).size).toBe(DASHBOARD_NAV_ITEMS.length);
+  });
+
+  it('orders operations before growth in grouped dashboard navigation', () => {
+    expect(DASHBOARD_SECTION_ORDER).toEqual(['core', 'operations', 'growth', 'account']);
   });
 });

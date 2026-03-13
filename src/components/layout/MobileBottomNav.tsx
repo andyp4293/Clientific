@@ -7,13 +7,11 @@ import { useSession, signOut } from 'next-auth/react';
 import {
   DASHBOARD_MOBILE_MORE_NAV,
   DASHBOARD_MOBILE_PRIMARY_NAV,
+  DASHBOARD_SECTION_ORDER,
   DASHBOARD_SECTION_LABELS,
-  DashboardNavSection,
   isDashboardRouteActive,
 } from '@/lib/navigation';
 import { DashboardIcon } from '@/components/layout/nav-icons';
-
-const SECTION_ORDER: DashboardNavSection[] = ['core', 'growth', 'operations', 'account'];
 
 export function MobileBottomNav() {
   const pathname = usePathname();
@@ -56,7 +54,7 @@ export function MobileBottomNav() {
             </div>
 
             <div className="py-2">
-              {SECTION_ORDER.map((section) => {
+              {DASHBOARD_SECTION_ORDER.map((section) => {
                 const pages = DASHBOARD_MOBILE_MORE_NAV.filter((page) => page.section === section);
                 if (pages.length === 0) return null;
 
