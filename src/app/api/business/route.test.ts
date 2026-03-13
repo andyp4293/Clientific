@@ -253,6 +253,14 @@ describe('PATCH /api/business', () => {
     const res = await PATCH(makePatchRequest({ aiReceptionistEnabled: true }));
 
     expect(res.status).toBe(200);
+    expect(mockTwilioIncomingUpdate).toHaveBeenCalledWith({
+      voiceUrl: 'https://api.vapi.ai/twilio/inbound_call',
+      voiceMethod: 'POST',
+      statusCallback: 'https://api.vapi.ai/twilio/status',
+      statusCallbackMethod: 'POST',
+      smsUrl: 'https://clientific.app/api/webhooks/twilio-sms',
+      smsMethod: 'POST',
+    });
 
     const createPayload = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
     expect(createPayload.provider).toBe('twilio');
@@ -312,7 +320,12 @@ describe('PATCH /api/business', () => {
     const res = await PATCH(makePatchRequest({ aiReceptionistEnabled: true }));
 
     expect(res.status).toBe(200);
-    expect(mockTwilioIncomingUpdate).not.toHaveBeenCalled();
+    expect(mockTwilioIncomingUpdate).toHaveBeenCalledWith({
+      voiceUrl: 'https://api.vapi.ai/twilio/inbound_call',
+      voiceMethod: 'POST',
+      statusCallback: 'https://api.vapi.ai/twilio/status',
+      statusCallbackMethod: 'POST',
+    });
     expect(warnSpy).toHaveBeenCalledWith(
       '[twilio] Skipping sms webhook configuration because app URL is not publicly reachable:',
       'http://localhost:3000'
@@ -364,6 +377,20 @@ describe('PATCH /api/business', () => {
     const res = await PATCH(makePatchRequest({ aiReceptionistEnabled: true }));
 
     expect(res.status).toBe(200);
+    expect(mockTwilioIncomingUpdate).toHaveBeenNthCalledWith(1, {
+      voiceUrl: 'https://api.vapi.ai/twilio/inbound_call',
+      voiceMethod: 'POST',
+      statusCallback: 'https://api.vapi.ai/twilio/status',
+      statusCallbackMethod: 'POST',
+      smsUrl: 'https://clientific.app/api/webhooks/twilio-sms',
+      smsMethod: 'POST',
+    });
+    expect(mockTwilioIncomingUpdate).toHaveBeenNthCalledWith(2, {
+      voiceUrl: 'https://api.vapi.ai/twilio/inbound_call',
+      voiceMethod: 'POST',
+      statusCallback: 'https://api.vapi.ai/twilio/status',
+      statusCallbackMethod: 'POST',
+    });
     expect(mockBusinessUpdate).toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledWith(
       '[twilio] Skipping sms webhook configuration because Twilio rejected the SMS URL:',
@@ -406,6 +433,11 @@ describe('PATCH /api/business', () => {
 
     expect(res.status).toBe(500);
     expect(mockBusinessUpdate).not.toHaveBeenCalled();
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining('/phone-number/vapi-pn-1'),
+      expect.objectContaining({ method: 'DELETE' })
+    );
     expect(mockTwilioIncomingRemove).toHaveBeenCalled();
   });
 
@@ -480,6 +512,58 @@ describe('PATCH /api/business', () => {
 
     const createPayload = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
     expect(createPayload.number).toBe('+14155550123');
+  });
+
+  it('repairs Twilio voice routing for an existing AI number when saving settings', async () => {
+    process.env.VAPI_PRIVATE_KEY = 'vapi_test_key';
+
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        ...fakeBusiness,
+        aiReceptionistEnabled: true,
+        vapiPhoneNumberId: 'vapi-pn-1',
+        vapiPhoneNumber: '+19084184377',
+        smsAiEnabled: true,
+        smsAiPhoneNumber: '+19084184377',
+      });
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: 'vapi-pn-1',
+        number: '+19084184377',
+        server: { url: 'https://clientific.app/api/webhooks/vapi' },
+      }),
+    });
+
+    mockBusinessUpdate.mockResolvedValue({
+      ...fakeBusiness,
+      name: 'Updated Salon',
+      aiReceptionistEnabled: true,
+      vapiPhoneNumberId: 'vapi-pn-1',
+      vapiPhoneNumber: '+19084184377',
+      smsAiEnabled: true,
+      smsAiPhoneNumber: '+19084184377',
+    });
+
+    const res = await PATCH(makePatchRequest({ name: 'Updated Salon' }));
+
+    expect(res.status).toBe(200);
+    expect(mockTwilioIncomingList).toHaveBeenCalledWith({
+      phoneNumber: '+19084184377',
+      limit: 1,
+    });
+    expect(mockTwilioIncomingUpdate).toHaveBeenCalledWith({
+      voiceUrl: 'https://api.vapi.ai/twilio/inbound_call',
+      voiceMethod: 'POST',
+      statusCallback: 'https://api.vapi.ai/twilio/status',
+      statusCallbackMethod: 'POST',
+      smsUrl: 'https://clientific.app/api/webhooks/twilio-sms',
+      smsMethod: 'POST',
+    });
   });
 
   it('hydrates a provisioned Vapi number when the create response omits number', async () => {
