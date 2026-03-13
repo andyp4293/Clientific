@@ -163,22 +163,22 @@ export default function AddressAutocomplete({
       )}
 
       {isOpen && suggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900">
           {suggestions.map((feature, index) => (
             <button
               key={index}
               type="button"
               onClick={() => handleSelectAddress(feature)}
-              className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none transition-colors"
+              className="w-full px-4 py-2 text-left transition-colors hover:bg-gray-100 focus:bg-gray-100 focus:outline-none dark:hover:bg-gray-800 dark:focus:bg-gray-800"
             >
-              <div className="text-sm text-gray-900">{feature.place_name}</div>
+              <div className="text-sm text-gray-900 dark:text-gray-100">{feature.place_name}</div>
             </button>
           ))}
         </div>
       )}
 
       {isMounted && !MAPBOX_TOKEN && (
-        <p className="text-xs text-red-500 mt-1">
+        <p className="mt-1 text-xs text-red-600 dark:text-red-400">
           Mapbox token not configured. Address autocomplete is disabled.
         </p>
       )}

@@ -19,8 +19,8 @@ function ResetPasswordForm() {
   if (!token) {
     return (
       <div className="text-center">
-        <h1 className="text-xl font-bold text-gray-900 mb-2">Invalid reset link</h1>
-        <p className="text-gray-600 text-sm mb-6">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-2">Invalid reset link</h1>
+        <p className="text-gray-700 dark:text-gray-100 text-sm mb-6">
           This reset link is missing or invalid. Please request a new one.
         </p>
         <Link href="/forgot-password" className="btn-primary inline-block">
@@ -71,13 +71,13 @@ function ResetPasswordForm() {
   if (success) {
     return (
       <div className="text-center">
-        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 dark:bg-green-900/30">
+          <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h1 className="text-xl font-bold text-gray-900 mb-2">Password updated</h1>
-        <p className="text-gray-600 text-sm mb-4">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-2">Password updated</h1>
+        <p className="text-gray-700 dark:text-gray-100 text-sm mb-4">
           Your password has been reset. Redirecting you to login...
         </p>
         <Link href="/login" className="text-primary hover:text-primary-700 text-sm font-medium">
@@ -89,13 +89,13 @@ function ResetPasswordForm() {
 
   return (
     <>
-      <h1 className="text-xl sm:text-2xl font-bold text-center mb-2">Set new password</h1>
-      <p className="text-gray-600 text-sm text-center mb-6">
+      <h1 className="text-xl sm:text-2xl font-bold text-center text-gray-900 dark:text-gray-50 mb-2">Set new password</h1>
+      <p className="text-gray-700 dark:text-gray-100 text-sm text-center mb-6">
         Choose a strong password for your account.
       </p>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4 text-sm">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4 text-sm dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
           {error}
         </div>
       )}
@@ -139,7 +139,7 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-gray-100 flex items-center justify-center p-4">
+    <div className="brand-shell min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-6 sm:mb-8">
@@ -147,12 +147,12 @@ export default function ResetPasswordPage() {
             <div className="w-8 sm:w-10 h-8 sm:h-10 bg-primary rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xl sm:text-2xl">C</span>
             </div>
-            <span className="text-xl sm:text-2xl font-bold text-gray-900">{APP_NAME}</span>
+            <span className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-50">{APP_NAME}</span>
           </Link>
         </div>
 
         <div className="card p-6 sm:p-8">
-          <Suspense fallback={<div className="text-center text-gray-500 text-sm">Loading...</div>}>
+          <Suspense fallback={<div className="text-center text-gray-700 dark:text-gray-100 text-sm">Loading...</div>}>
             <ResetPasswordForm />
           </Suspense>
         </div>

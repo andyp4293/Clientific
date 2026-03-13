@@ -3,32 +3,32 @@ import { APP_NAME, APP_SUPPORT_EMAIL, APP_PRIVACY_EMAIL } from '@/lib/brand';
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm p-8">
+    <div className="brand-shell min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+      <div className="brand-panel max-w-4xl mx-auto p-8">
         {/* Header */}
         <div className="mb-8">
           <Link href="/" className="text-primary hover:text-primary-700 font-medium mb-4 inline-block">
             ← Back to Home
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Privacy Policy</h1>
-          <p className="text-gray-600">Last updated: March 6, 2026</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50 mb-2">Privacy Policy</h1>
+          <p className="text-gray-700 dark:text-gray-100">Last updated: March 6, 2026</p>
         </div>
 
         {/* Content */}
-        <div className="prose prose-blue max-w-none space-y-6">
+        <div className="prose prose-slate dark:prose-invert max-w-none space-y-6">
           <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">1. Introduction</h2>
-            <p className="text-gray-700 leading-relaxed">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">1. Introduction</h2>
+            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
               {APP_NAME} (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) is committed to protecting your privacy. This Privacy Policy
               explains how we collect, use, disclose, and safeguard your information when you use our Service.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">2. Information We Collect</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">2. Information We Collect</h2>
             
-            <h3 className="text-xl font-semibold text-gray-800 mb-3 mt-4">2.1 Account Information</h3>
-            <div className="text-gray-700 leading-relaxed space-y-2">
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-3 mt-4">2.1 Account Information</h3>
+            <div className="text-gray-800 dark:text-gray-100 leading-relaxed space-y-2">
               <p>When you register for {APP_NAME}, we collect:</p>
               <ul className="list-disc pl-6 space-y-1">
                 <li>Business name and contact information</li>
@@ -39,11 +39,11 @@ export default function PrivacyPolicyPage() {
               </ul>
             </div>
 
-            <h3 className="text-xl font-semibold text-gray-800 mb-3 mt-4">2.2 Customer Data</h3>
-            <p className="text-gray-700 leading-relaxed">
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-3 mt-4">2.2 Customer Data</h3>
+            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
               You input customer information into our Service, including:
             </p>
-            <ul className="list-disc pl-6 space-y-1 text-gray-700">
+            <ul className="list-disc pl-6 space-y-1 text-gray-800 dark:text-gray-100">
               <li>Customer names and contact details</li>
               <li>Visit history and check-ins</li>
               <li>Reviews and ratings</li>
@@ -52,24 +52,24 @@ export default function PrivacyPolicyPage() {
               <li>SMS consent and opt-in/opt-out audit records</li>
             </ul>
 
-            <h3 className="text-xl font-semibold text-gray-800 mb-3 mt-4">2.3 AI Receptionist Data</h3>
-            <p className="text-gray-700 leading-relaxed">
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-3 mt-4">2.3 AI Receptionist Data</h3>
+            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
               If you enable the AI phone receptionist feature, we collect:
             </p>
-            <ul className="list-disc pl-6 space-y-1 text-gray-700">
+            <ul className="list-disc pl-6 space-y-1 text-gray-800 dark:text-gray-100">
               <li>Call transcripts and recordings processed by our AI infrastructure partners</li>
               <li>Caller phone numbers and call metadata (duration, time)</li>
               <li>Appointments booked via AI calls</li>
             </ul>
-            <p className="text-gray-700 leading-relaxed mt-2">
+            <p className="text-gray-800 dark:text-gray-100 leading-relaxed mt-2">
               AI-generated voice responses are produced by our voice technology partners. Calls are automated — callers will hear an AI voice, not a human. We disclose this to callers at the start of each call.
             </p>
 
-            <h3 className="text-xl font-semibold text-gray-800 mb-3 mt-4">2.4 Usage Information</h3>
-            <p className="text-gray-700 leading-relaxed">
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-3 mt-4">2.4 Usage Information</h3>
+            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
               We automatically collect certain information when you use our Service:
             </p>
-            <ul className="list-disc pl-6 space-y-1 text-gray-700">
+            <ul className="list-disc pl-6 space-y-1 text-gray-800 dark:text-gray-100">
               <li>Log data (IP address, browser type, pages visited)</li>
               <li>Device information</li>
               <li>Cookies and similar tracking technologies</li>
@@ -78,8 +78,8 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">3. How We Use Your Information</h2>
-            <div className="text-gray-700 leading-relaxed space-y-2">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">3. How We Use Your Information</h2>
+            <div className="text-gray-800 dark:text-gray-100 leading-relaxed space-y-2">
               <p>We use the information we collect to:</p>
               <ul className="list-disc pl-6 space-y-1">
                 <li>Provide, maintain, and improve our Service</li>
@@ -94,19 +94,19 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">4. Data Sharing and Disclosure</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">4. Data Sharing and Disclosure</h2>
             
-            <h3 className="text-xl font-semibold text-gray-800 mb-3 mt-4">4.1 We Do NOT Sell Your Data</h3>
-            <p className="text-gray-700 leading-relaxed">
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-3 mt-4">4.1 We Do NOT Sell Your Data</h3>
+            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
               We will never sell, rent, or trade your personal information or customer data to third parties for 
               marketing purposes.
             </p>
 
-            <h3 className="text-xl font-semibold text-gray-800 mb-3 mt-4">4.2 Service Providers</h3>
-            <p className="text-gray-700 leading-relaxed">
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-3 mt-4">4.2 Service Providers</h3>
+            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
               We may share your information with trusted third-party service providers:
             </p>
-            <ul className="list-disc pl-6 space-y-1 text-gray-700">
+            <ul className="list-disc pl-6 space-y-1 text-gray-800 dark:text-gray-100">
               <li><strong>Payment partner</strong> — Billing and subscription processing. Your payment details are handled by our payment processor and are not stored on our servers.</li>
               <li><strong>Messaging provider</strong> — SMS messaging for appointment confirmations, reminders, and notifications sent to your customers.</li>
               <li><strong>Email delivery provider</strong> — Transactional email delivery for booking confirmations and system notifications.</li>
@@ -115,21 +115,21 @@ export default function PrivacyPolicyPage() {
               <li><strong>Hosting and database providers</strong> — Application hosting and secure data storage infrastructure.</li>
               <li><strong>Location services provider</strong> — Address autocomplete for business profile setup.</li>
             </ul>
-            <p className="text-gray-700 leading-relaxed mt-2">
+            <p className="text-gray-800 dark:text-gray-100 leading-relaxed mt-2">
               These providers are contractually obligated to protect your data and use it only for the services
               they provide to us.
             </p>
 
-            <h3 className="text-xl font-semibold text-gray-800 mb-3 mt-4">4.3 Legal Requirements</h3>
-            <p className="text-gray-700 leading-relaxed">
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-3 mt-4">4.3 Legal Requirements</h3>
+            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
               We may disclose your information if required by law or in response to valid requests by public 
               authorities.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">5. Data Security</h2>
-            <div className="text-gray-700 leading-relaxed space-y-2">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">5. Data Security</h2>
+            <div className="text-gray-800 dark:text-gray-100 leading-relaxed space-y-2">
               <p>We implement industry-standard security measures to protect your data:</p>
               <ul className="list-disc pl-6 space-y-1">
                 <li>SSL/TLS encryption for data in transit</li>
@@ -146,8 +146,8 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">6. Data Retention</h2>
-            <p className="text-gray-700 leading-relaxed">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">6. Data Retention</h2>
+            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
               We retain your information for as long as your account is active or as needed to provide you services. 
               If you close your account, we will delete your data within 30 days, except where we are required to 
               retain it for legal or compliance purposes.
@@ -155,8 +155,8 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">7. Your Rights</h2>
-            <div className="text-gray-700 leading-relaxed space-y-2">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">7. Your Rights</h2>
+            <div className="text-gray-800 dark:text-gray-100 leading-relaxed space-y-2">
               <p>You have the right to:</p>
               <ul className="list-disc pl-6 space-y-1">
                 <li><strong>Access</strong> - Request a copy of your personal data</li>
@@ -176,8 +176,8 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">8. Cookies and Tracking</h2>
-            <p className="text-gray-700 leading-relaxed">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">8. Cookies and Tracking</h2>
+            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
               We use cookies and similar tracking technologies to track activity on our Service and hold certain 
               information. You can instruct your browser to refuse all cookies or to indicate when a cookie is 
               being sent. However, some parts of our Service may not function properly without cookies.
@@ -185,8 +185,8 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">9. Children's Privacy</h2>
-            <p className="text-gray-700 leading-relaxed">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">9. Children's Privacy</h2>
+            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
               Our Service is not intended for users under the age of 18. We do not knowingly collect personal 
               information from children. If you become aware that a child has provided us with personal data, 
               please contact us immediately.
@@ -194,8 +194,8 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">10. International Users</h2>
-            <p className="text-gray-700 leading-relaxed">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">10. International Users</h2>
+            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
               Your information may be transferred to and maintained on servers located outside of your state, 
               province, country, or other governmental jurisdiction where data protection laws may differ. By 
               using our Service, you consent to this transfer.
@@ -203,12 +203,12 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">11. GDPR Compliance</h2>
-            <p className="text-gray-700 leading-relaxed">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">11. GDPR Compliance</h2>
+            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
               If you are located in the European Economic Area (EEA), you have certain data protection rights 
               under GDPR. We process your data based on:
             </p>
-            <ul className="list-disc pl-6 space-y-1 text-gray-700 mt-2">
+            <ul className="list-disc pl-6 space-y-1 text-gray-800 dark:text-gray-100 mt-2">
               <li>Your consent</li>
               <li>Performance of our contract with you</li>
               <li>Compliance with legal obligations</li>
@@ -217,8 +217,8 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">12. CCPA Compliance</h2>
-            <p className="text-gray-700 leading-relaxed">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">12. CCPA Compliance</h2>
+            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
               If you are a California resident, you have specific rights under the California Consumer Privacy Act 
               (CCPA), including the right to know what personal information we collect and the right to request 
               deletion of your data.
@@ -226,8 +226,8 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">13. Changes to This Privacy Policy</h2>
-            <p className="text-gray-700 leading-relaxed">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">13. Changes to This Privacy Policy</h2>
+            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
               We may update our Privacy Policy from time to time. We will notify you of any changes by posting 
               the new Privacy Policy on this page and updating the "Last updated" date. We encourage you to 
               review this Privacy Policy periodically.
@@ -235,11 +235,11 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">14. Contact Us</h2>
-            <p className="text-gray-700 leading-relaxed">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">14. Contact Us</h2>
+            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
               If you have any questions about this Privacy Policy, please contact us:
             </p>
-            <div className="text-gray-700 leading-relaxed mt-2">
+            <div className="text-gray-800 dark:text-gray-100 leading-relaxed mt-2">
               <p>Email: <a href={`mailto:${APP_PRIVACY_EMAIL}`} className="text-primary hover:text-primary-700">{APP_PRIVACY_EMAIL}</a></p>
               <p>Support: <a href={`mailto:${APP_SUPPORT_EMAIL}`} className="text-primary hover:text-primary-700">{APP_SUPPORT_EMAIL}</a></p>
             </div>
@@ -247,8 +247,8 @@ export default function PrivacyPolicyPage() {
         </div>
 
         {/* Footer */}
-        <div className="mt-12 pt-6 border-t border-gray-200">
-          <div className="flex justify-between items-center">
+        <div className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <Link href="/terms" className="text-primary hover:text-primary-700 font-medium">
               Terms of Service →
             </Link>
@@ -261,3 +261,4 @@ export default function PrivacyPolicyPage() {
     </div>
   );
 }
+

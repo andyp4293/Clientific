@@ -10,7 +10,9 @@ describe('theme centralization', () => {
     expect(globals).toContain('--color-primary-600');
     expect(globals).toContain('--color-gray-900');
     expect(globals).toContain('--color-warning');
+    expect(globals).toContain('.text-gray-400');
     expect(globals).toContain('.dark .dark\\:text-gray-400');
+    expect(globals).toContain('.dark .dark\\:text-gray-600');
     expect(globals).toContain('.text-gray-600');
 
     expect(tailwind).toContain('const colorVar = (token: string) =>');

@@ -38,7 +38,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-gray-100 flex items-center justify-center p-4">
+    <div className="brand-shell min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-6 sm:mb-8">
@@ -46,20 +46,20 @@ export default function ForgotPasswordPage() {
             <div className="w-8 sm:w-10 h-8 sm:h-10 bg-primary rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xl sm:text-2xl">C</span>
             </div>
-            <span className="text-xl sm:text-2xl font-bold text-gray-900">{APP_NAME}</span>
+            <span className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-50">{APP_NAME}</span>
           </Link>
         </div>
 
         <div className="card p-6 sm:p-8">
           {submitted ? (
             <div className="text-center">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 dark:bg-green-900/30">
+                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h1 className="text-xl font-bold text-gray-900 mb-2">Check your email</h1>
-              <p className="text-gray-600 text-sm mb-6">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-2">Check your email</h1>
+              <p className="text-gray-700 dark:text-gray-100 text-sm mb-6">
                 If an account exists for <strong>{email}</strong>, we&apos;ve sent a password reset link. Check your inbox and spam folder.
               </p>
               <Link href="/login" className="text-primary hover:text-primary-700 text-sm font-medium">
@@ -68,13 +68,13 @@ export default function ForgotPasswordPage() {
             </div>
           ) : (
             <>
-              <h1 className="text-xl sm:text-2xl font-bold text-center mb-2">Forgot your password?</h1>
-              <p className="text-gray-600 text-sm text-center mb-6">
+              <h1 className="text-xl sm:text-2xl font-bold text-center text-gray-900 dark:text-gray-50 mb-2">Forgot your password?</h1>
+              <p className="text-gray-700 dark:text-gray-100 text-sm text-center mb-6">
                 Enter your email and we&apos;ll send you a reset link.
               </p>
 
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4 text-sm">
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4 text-sm dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
                   {error}
                 </div>
               )}
@@ -103,7 +103,7 @@ export default function ForgotPasswordPage() {
                 </button>
               </form>
 
-              <div className="mt-6 text-center text-sm text-gray-600">
+              <div className="mt-6 text-center text-sm text-gray-700 dark:text-gray-100">
                 <Link href="/login" className="text-primary hover:text-primary-700 font-medium">
                   Back to login
                 </Link>
