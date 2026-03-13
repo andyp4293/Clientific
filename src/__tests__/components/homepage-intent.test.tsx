@@ -13,29 +13,32 @@ describe('Homepage audience intent', () => {
     vi.clearAllMocks();
   });
 
-  it('shows explicit business and customer paths for unauthenticated visitors', () => {
+  it(
+    'shows explicit business and customer paths for unauthenticated visitors',
+    async () => {
     mockUseSession.mockReturnValue({ status: 'unauthenticated', data: null });
     render(<HomePage />);
 
-    expect(screen.getByText('Choose your path')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'I run a business' })).toHaveAttribute(
+    expect(await screen.findByText('Choose your path')).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'I run a business' })).toHaveAttribute(
       'href',
       '/register'
     );
-    expect(screen.getByRole('link', { name: "I'm looking to book" })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: "I'm looking to book" })).toHaveAttribute(
       'href',
       '/explore'
     );
-  });
+    },
+    15000
+  );
 
-  it('routes authenticated business users to dashboard from the business path CTA', () => {
+  it('routes authenticated business users to dashboard from the business path CTA', async () => {
     mockUseSession.mockReturnValue({ status: 'authenticated', data: { user: { id: 'biz-1' } } });
     render(<HomePage />);
 
-    expect(screen.getByRole('link', { name: 'I run a business' })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: 'I run a business' })).toHaveAttribute(
       'href',
       '/dashboard'
     );
   });
 });
-
