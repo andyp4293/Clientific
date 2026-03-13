@@ -24,6 +24,7 @@ const config: Config = {
           700: colorVar("--color-primary-700"),
           800: colorVar("--color-primary-800"),
           900: colorVar("--color-primary-900"),
+          950: colorVar("--color-primary-950"),
         },
         gray: {
           50: colorVar("--color-gray-50"),

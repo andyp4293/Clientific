@@ -8,6 +8,7 @@ describe('theme centralization', () => {
     const businessPage = readFileSync(new URL('../../app/business/[publicId]/page.tsx', import.meta.url), 'utf8');
 
     expect(globals).toContain('--color-primary-600');
+    expect(globals).toContain('--color-primary-950');
     expect(globals).toContain('--color-gray-900');
     expect(globals).toContain('--color-warning');
     expect(globals).toContain('.text-gray-400');
@@ -17,6 +18,7 @@ describe('theme centralization', () => {
 
     expect(tailwind).toContain('const colorVar = (token: string) =>');
     expect(tailwind).toContain('DEFAULT: colorVar("--color-primary-600")');
+    expect(tailwind).toContain('950: colorVar("--color-primary-950")');
     expect(tailwind).toContain('900: colorVar("--color-gray-900")');
     expect(tailwind).toContain('success: colorVar("--color-success")');
     expect(tailwind).not.toContain('DEFAULT: "#7B22D4"');
