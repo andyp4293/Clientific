@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import twilio from 'twilio';
 import { prisma } from '@/lib/prisma';
 import { handleSmsAiInbound } from '@/lib/sms-ai';
+import { sendSMS } from '@/lib/twilio';
 
 const STOP_KEYWORDS = new Set(['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT']);
 const START_KEYWORDS = new Set(['START', 'UNSTOP', 'YES']);
@@ -111,6 +112,7 @@ export async function POST(req: NextRequest) {
       'Clientific: Thanks for your message. Reply HELP for help, STOP to opt out.';
     let extraMetadata: Record<string, unknown> = {};
     let suppressKeywordReply = false;
+    let replyViaOutboundSms = false;
 
     if (STOP_KEYWORDS.has(keyword)) {
       eventType = 'STOP';
@@ -164,6 +166,7 @@ export async function POST(req: NextRequest) {
         eventType = aiResult.eventType;
         responseText = aiResult.text;
         extraMetadata = aiResult.metadata || {};
+        replyViaOutboundSms = true;
       } else {
         responseText =
           'Clientific: Booking by text is not enabled for this business yet. Reply HELP for help.';
@@ -213,6 +216,18 @@ export async function POST(req: NextRequest) {
     }
 
     if (suppressKeywordReply) return twimlEmpty();
+
+    if (replyViaOutboundSms && fromPhoneRaw) {
+      const sendResult = await sendSMS({
+        to: fromPhoneRaw,
+        message: responseText,
+        from: toPhoneRaw,
+      });
+      if (sendResult.success) {
+        return twimlEmpty();
+      }
+    }
+
     return twimlMessage(responseText);
   } catch (error: any) {
     console.error('POST /api/webhooks/twilio-sms error:', error);

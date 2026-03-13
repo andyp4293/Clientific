@@ -11,6 +11,10 @@ vi.mock('@/lib/sms-ai', () => ({
   handleSmsAiInbound: vi.fn(),
 }));
 
+vi.mock('@/lib/twilio', () => ({
+  sendSMS: vi.fn(),
+}));
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     customer: {
@@ -27,6 +31,7 @@ vi.mock('@/lib/prisma', () => ({
 import { prisma } from '@/lib/prisma';
 import twilio from 'twilio';
 import { handleSmsAiInbound } from '@/lib/sms-ai';
+import { sendSMS } from '@/lib/twilio';
 import { POST } from '@/app/api/webhooks/twilio-sms/route';
 
 function inboundReq(body: Record<string, string>, headers?: Record<string, string>) {
@@ -48,6 +53,7 @@ describe('POST /api/webhooks/twilio-sms', () => {
     vi.mocked(prisma.smsConsentEvent.createMany).mockResolvedValue({ count: 1 } as any);
     vi.mocked(prisma.smsConsentEvent.create).mockResolvedValue({ id: 'evt-1' } as any);
     vi.mocked(handleSmsAiInbound).mockResolvedValue(null);
+    vi.mocked(sendSMS).mockResolvedValue({ success: true, sid: 'SM_reply' } as any);
     vi.mocked((twilio as any).validateRequest).mockReturnValue(true);
     delete process.env.TWILIO_VALIDATE_WEBHOOK;
     delete process.env.TWILIO_KEYWORD_REPLY_MODE;
@@ -255,6 +261,11 @@ describe('POST /api/webhooks/twilio-sms', () => {
       toPhoneRaw: '+18557654989',
       messageBody: 'book haircut tomorrow at 3pm',
     });
+    expect(sendSMS).toHaveBeenCalledWith({
+      to: '+15551234567',
+      message: 'Please confirm: haircut tomorrow at 3 PM for Jordan. Reply YES to book.',
+      from: '+18557654989',
+    });
     expect(prisma.smsConsentEvent.createMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.arrayContaining([
@@ -266,7 +277,7 @@ describe('POST /api/webhooks/twilio-sms', () => {
       })
     );
     const text = await res.text();
-    expect(text).toContain('Reply YES to book');
+    expect(text).toContain('<Response></Response>');
   });
 
   it('rejects invalid Twilio signature when webhook validation is enabled', async () => {
