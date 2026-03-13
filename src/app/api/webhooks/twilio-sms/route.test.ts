@@ -46,6 +46,7 @@ function inboundReq(body: Record<string, string>, headers?: Record<string, strin
 describe('POST /api/webhooks/twilio-sms', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.TWILIO_PHONE_NUMBER = '+18557654989';
     vi.mocked(prisma.customer.findMany).mockResolvedValue([
       { id: 'cust-1', businessId: 'biz-1', phone: '+15551234567', smsOptedOut: false },
     ] as any);
@@ -120,6 +121,33 @@ describe('POST /api/webhooks/twilio-sms', () => {
     );
 
     expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).toContain('<Response></Response>');
+  });
+
+  it('uses the shared verified sender for AI replies when the inbound number is local', async () => {
+    vi.mocked(handleSmsAiInbound).mockResolvedValue({
+      handled: true,
+      text: 'Hi, this is Test Nail Salon. I can help with booking by text.',
+      eventType: 'AI_GREETING',
+      metadata: { flow: 'greeting' },
+    });
+
+    const res = await POST(
+      inboundReq({
+        From: '+15551234567',
+        To: '+19084184377',
+        Body: 'hi',
+        MessageSid: 'SM130B',
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(sendSMS).toHaveBeenCalledWith({
+      to: '+15551234567',
+      message: 'Hi, this is Test Nail Salon. I can help with booking by text.',
+      from: '+18557654989',
+    });
     const text = await res.text();
     expect(text).toContain('<Response></Response>');
   });

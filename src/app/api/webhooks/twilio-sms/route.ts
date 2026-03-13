@@ -51,6 +51,15 @@ function isLikelyTollFree(phone: string | null | undefined): boolean {
   return TOLL_FREE_AREA_CODES.has(areaCode);
 }
 
+function getPreferredAiReplySender(toPhoneRaw: string | null): string | null {
+  if (isLikelyTollFree(toPhoneRaw)) {
+    return toPhoneRaw;
+  }
+
+  const sharedSender = normalizePhone(process.env.TWILIO_PHONE_NUMBER || null);
+  return sharedSender || toPhoneRaw;
+}
+
 function shouldSuppressKeywordReply(keyword: string, toPhoneRaw: string | null): boolean {
   const mode = (process.env.TWILIO_KEYWORD_REPLY_MODE || 'custom').toLowerCase();
   if (keyword !== 'STOP' && keyword !== 'START') return false;
@@ -221,7 +230,7 @@ export async function POST(req: NextRequest) {
       const sendResult = await sendSMS({
         to: fromPhoneRaw,
         message: responseText,
-        from: toPhoneRaw,
+        from: getPreferredAiReplySender(toPhoneRaw),
       });
       if (sendResult.success) {
         return twimlEmpty();
