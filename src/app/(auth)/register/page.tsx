@@ -716,7 +716,7 @@ function RegisterForm() {
                 </div>
               )}
 
-              <div className="card bg-primary-50 p-6 text-left mb-8">
+              <div className="card bg-primary-50 dark:bg-primary/10 border-primary-200 dark:border-primary/20 p-6 text-left mb-8">
                 <h3 className="font-semibold mb-3">Activation checklist</h3>
                 <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
                   <li>1. Open the verification email.</li>
