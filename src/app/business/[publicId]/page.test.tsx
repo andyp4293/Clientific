@@ -11,4 +11,11 @@ describe('public business profile page source', () => {
     expect(source).not.toContain('Need Help?');
     expect(source.match(/Book Appointment/g)?.length ?? 0).toBe(1);
   });
+
+  it('does not render timezone details in the public contact card', () => {
+    const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+
+    expect(source).not.toContain('Globe2');
+    expect(source).not.toContain('{business.timezone}');
+  });
 });

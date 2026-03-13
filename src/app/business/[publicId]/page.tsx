@@ -7,7 +7,6 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Clock3,
   ExternalLink,
-  Globe2,
   Mail,
   MapPin,
   Phone,
@@ -361,11 +360,6 @@ export default function BusinessInfoPage() {
                   </a>
                 </div>
               )}
-
-              <div className="flex items-start gap-3">
-                <Globe2 className="w-4 h-4 mt-1 text-emerald-600 dark:text-emerald-400" />
-                <span className="text-sm text-slate-600 dark:text-slate-300">{business.timezone}</span>
-              </div>
             </div>
           </section>
 
