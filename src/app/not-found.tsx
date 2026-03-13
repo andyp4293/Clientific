@@ -3,7 +3,7 @@ import { APP_NAME } from '@/lib/brand';
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center px-4">
+    <div className="page-shell min-h-screen flex flex-col items-center justify-center px-4">
       <div className="text-center max-w-md">
         <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-6">
           <span className="text-white font-bold text-3xl">C</span>
@@ -26,3 +26,4 @@ export default function NotFound() {
     </div>
   );
 }
+

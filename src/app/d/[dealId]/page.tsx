@@ -81,7 +81,7 @@ export default function PublicDealClaimPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="page-shell min-h-screen">
         <PublicSiteHeader active="deal" />
         <div className="flex items-center justify-center px-4 py-20">
           <p className="text-sm text-gray-600 dark:text-gray-300">Loading deal...</p>
@@ -92,7 +92,7 @@ export default function PublicDealClaimPage() {
 
   if (isError || !data?.deal) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="page-shell min-h-screen">
         <PublicSiteHeader active="deal" />
         <div className="flex items-center justify-center px-4 py-20">
           <div className="max-w-md w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 text-center">
@@ -112,7 +112,7 @@ export default function PublicDealClaimPage() {
   const { deal } = data;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="page-shell min-h-screen">
       <PublicSiteHeader active="deal" />
       <div className="py-8 px-4">
         <div className="max-w-xl mx-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm p-6 space-y-6">
@@ -194,3 +194,4 @@ export default function PublicDealClaimPage() {
     </div>
   );
 }
+

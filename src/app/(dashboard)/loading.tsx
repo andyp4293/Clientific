@@ -1,6 +1,6 @@
 export default function DashboardLoading() {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 animate-pulse">
+    <div className="page-shell min-h-screen animate-pulse">
       {/* Top bar skeleton */}
       <div className="hidden lg:flex fixed top-0 left-0 right-0 h-16 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800" />
 
@@ -23,3 +23,4 @@ export default function DashboardLoading() {
     </div>
   );
 }
+

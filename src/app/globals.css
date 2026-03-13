@@ -39,17 +39,16 @@
 
   body {
     @apply text-gray-950 dark:text-gray-50;
-    background:
+    background-color: rgb(var(--color-gray-50));
+    background-image:
       radial-gradient(circle at top right, rgb(var(--color-primary-200) / 0.22), transparent 24%),
       radial-gradient(circle at top left, rgb(var(--color-gray-200) / 0.9), transparent 18%),
       linear-gradient(180deg, rgb(var(--color-gray-50)) 0%, rgb(var(--color-gray-100)) 100%);
   }
 
   .dark body {
-    background:
-      radial-gradient(circle at top right, rgb(var(--color-primary-500) / 0.18), transparent 26%),
-      radial-gradient(circle at top left, rgb(var(--color-primary-800) / 0.22), transparent 24%),
-      linear-gradient(180deg, rgb(var(--color-gray-950)) 0%, rgb(var(--color-gray-900)) 100%);
+    background-color: rgb(var(--color-gray-950));
+    background-image: none;
   }
 
   /* Override browser autofill grey background on light-mode inputs */
@@ -164,17 +163,24 @@
     background-color: rgb(var(--color-gray-900) / 0.84);
   }
 
+  .page-shell {
+    background-color: rgb(var(--color-gray-50));
+  }
+
+  .dark .page-shell {
+    background-color: rgb(var(--color-gray-950));
+  }
+
   .brand-shell {
-    background:
+    background-color: rgb(var(--color-gray-50));
+    background-image:
       radial-gradient(circle at top right, rgb(var(--color-primary-200) / 0.18), transparent 24%),
       linear-gradient(180deg, rgb(var(--color-gray-50)) 0%, rgb(var(--color-gray-100)) 100%);
   }
 
   .dark .brand-shell {
-    background:
-      radial-gradient(circle at top right, rgb(var(--color-primary-500) / 0.18), transparent 26%),
-      radial-gradient(circle at top left, rgb(var(--color-primary-800) / 0.22), transparent 24%),
-      linear-gradient(180deg, rgb(var(--color-gray-950)) 0%, rgb(var(--color-gray-900)) 100%);
+    background-color: rgb(var(--color-gray-950));
+    background-image: none;
   }
 
   .brand-hero {

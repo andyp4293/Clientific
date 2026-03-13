@@ -120,7 +120,7 @@ export default function ExplorePage() {
   );
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+    <div className="page-shell relative min-h-screen overflow-x-hidden text-gray-900 dark:text-gray-100">
       <div
         className="pointer-events-none absolute inset-0"
         style={{
@@ -300,3 +300,4 @@ export default function ExplorePage() {
     </div>
   );
 }
+

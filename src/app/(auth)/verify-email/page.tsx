@@ -111,7 +111,7 @@ function VerifyEmailContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-4">
+    <div className="page-shell min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Email Verification</h1>
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
@@ -184,3 +184,4 @@ export default function VerifyEmailPage() {
     </Suspense>
   );
 }
+

@@ -114,7 +114,7 @@ export default function AppointmentPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="page-shell min-h-screen flex items-center justify-center">
         <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
       </div>
     );
@@ -122,7 +122,7 @@ export default function AppointmentPage() {
 
   if (error || !data?.appointment) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+      <div className="page-shell min-h-screen flex items-center justify-center p-4">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Appointment not found</h1>
           <p className="text-gray-600 dark:text-gray-400">This link may be invalid or expired.</p>
@@ -176,7 +176,7 @@ export default function AppointmentPage() {
   const slots: string[] = slotsData?.slots ?? [];
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+    <div className="page-shell min-h-screen flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 text-center">
 
         {/* Success banner after reschedule */}
@@ -443,3 +443,4 @@ export default function AppointmentPage() {
     </div>
   );
 }
+

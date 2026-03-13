@@ -127,7 +127,7 @@ export default function BusinessInfoPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="page-shell min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
           <p className="mt-4 text-gray-600 dark:text-gray-400">Loading business profile...</p>
@@ -138,7 +138,7 @@ export default function BusinessInfoPage() {
 
   if (!business) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="page-shell min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Business Not Found</h1>
           <p className="text-gray-600 dark:text-gray-400">The business profile you requested is unavailable.</p>
@@ -170,7 +170,7 @@ export default function BusinessInfoPage() {
   ].filter((item) => item.href);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="page-shell min-h-screen">
       <div className="border-b border-gray-200 dark:border-gray-800 bg-gradient-to-br from-gray-900 via-gray-800 to-primary-900">
         <div className="max-w-6xl mx-auto px-4 py-10 sm:py-14">
           <div className="flex flex-col sm:flex-row sm:items-start gap-5">
@@ -429,4 +429,5 @@ function formatBusinessType(type: string): string {
     .replace(/\s+/g, ' ')
     .trim();
 }
+
 

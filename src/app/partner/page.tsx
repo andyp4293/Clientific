@@ -45,7 +45,7 @@ export default function PartnerPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="page-shell min-h-screen">
       <PublicSiteHeader active="partner" />
 
       <main className="max-w-2xl mx-auto px-4 py-12 md:py-20">
@@ -189,3 +189,4 @@ export default function PartnerPage() {
     </div>
   );
 }
+

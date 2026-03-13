@@ -109,7 +109,7 @@ export default function HomePage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
+    <div className="page-shell min-h-screen">
       <PublicSiteHeader
         active="home"
         showLogin={!isAuthenticated}
@@ -607,3 +607,4 @@ export default function HomePage() {
     </div>
   );
 }
+

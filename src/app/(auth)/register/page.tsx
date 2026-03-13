@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { signIn, useSession } from 'next-auth/react';
@@ -104,7 +104,7 @@ function RegisterForm() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="page-shell min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading...</p>
@@ -381,7 +381,7 @@ function RegisterForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 sm:py-12 px-4">
+    <div className="page-shell min-h-screen py-8 sm:py-12 px-4">
       <div className="w-full max-w-2xl mx-auto">
         <div className="text-center mb-6 sm:mb-8">
           <Link href="/" className="inline-flex items-center space-x-2">
@@ -787,3 +787,4 @@ export default function RegisterPage() {
     </Suspense>
   );
 }
+

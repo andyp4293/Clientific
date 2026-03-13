@@ -286,7 +286,7 @@ export default function PublicBookingPage() {
 
   if (isLoadingBusiness) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="page-shell min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           <p className="mt-4 text-gray-600 dark:text-gray-400">Loading booking page...</p>
@@ -297,7 +297,7 @@ export default function PublicBookingPage() {
 
   if (!business) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="page-shell min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Business Not Found</h1>
           <p className="text-gray-600 dark:text-gray-400">The booking page you&apos;re looking for doesn&apos;t exist.</p>
@@ -307,7 +307,7 @@ export default function PublicBookingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="page-shell min-h-screen">
       {/* Header */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
@@ -882,3 +882,4 @@ export default function PublicBookingPage() {
     </div>
   );
 }
+

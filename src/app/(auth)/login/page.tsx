@@ -36,7 +36,7 @@ function LoginForm() {
   // Show loading while checking auth status
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="page-shell min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading...</p>
@@ -146,7 +146,7 @@ function LoginForm() {
     void signIn('google', { callbackUrl: '/dashboard' });
   };
 
-  return (    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+  return (    <div className="page-shell min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-6 sm:mb-8">
@@ -269,3 +269,4 @@ export default function LoginPage() {
     </Suspense>
   );
 }
+
