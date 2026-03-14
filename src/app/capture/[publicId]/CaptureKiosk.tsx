@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { InStoreCaptureConfig } from '@/lib/in-store-capture';
 
 type CaptureKioskProps = {
@@ -10,6 +10,7 @@ type CaptureKioskProps = {
 
 type SuccessState = {
   submittedName: string;
+  submittedPhoneLast4: string;
   deal: {
     code: string;
     title: string;
@@ -26,11 +27,14 @@ const DEFAULT_FORM = {
   smsMarketingConsent: true,
 };
 
+const SUCCESS_RESET_SECONDS = 15;
+
 export default function CaptureKiosk({ config }: CaptureKioskProps) {
   const [form, setForm] = useState(DEFAULT_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<SuccessState | null>(null);
+  const [resetCountdown, setResetCountdown] = useState(SUCCESS_RESET_SECONDS);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   const hasSelectedDeal = Boolean(config.deal);
@@ -42,21 +46,41 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
 
   const consentLabel = useMemo(() => {
     if (config.deal) {
-      return `Yes, text me this offer and future promotions from ${config.business.name}.`;
+      return `Yes, text me this offer and future service promos from ${config.business.name}.`;
     }
-    return `Yes, text me future promotions and updates from ${config.business.name}.`;
+    return `Yes, text me future service promos and updates from ${config.business.name}.`;
   }, [config.business.name, config.deal]);
+
+  const progressPercent = `${(resetCountdown / SUCCESS_RESET_SECONDS) * 100}%`;
 
   useEffect(() => {
     nameInputRef.current?.focus();
   }, []);
 
-  function resetForNextCustomer() {
+  const resetForNextCustomer = useCallback(() => {
     setForm(DEFAULT_FORM);
     setSuccess(null);
     setError(null);
+    setResetCountdown(SUCCESS_RESET_SECONDS);
     window.setTimeout(() => nameInputRef.current?.focus(), 0);
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!success) return;
+
+    setResetCountdown(SUCCESS_RESET_SECONDS);
+    const interval = window.setInterval(() => {
+      setResetCountdown((current) => Math.max(current - 1, 0));
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [success]);
+
+  useEffect(() => {
+    if (success && resetCountdown === 0) {
+      resetForNextCustomer();
+    }
+  }, [resetCountdown, resetForNextCustomer, success]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -85,6 +109,7 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
 
       setSuccess({
         submittedName: form.name.trim(),
+        submittedPhoneLast4: form.phone.replace(/\D/g, '').slice(-4),
         deal: body.deal ?? null,
         dealIssue: body.dealIssue ?? null,
         confirmationSent: body.confirmationSent === true,
@@ -97,113 +122,37 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
   }
 
   return (
-    <div className="page-shell min-h-screen px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-      <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-6xl items-stretch">
-        <div className="grid flex-1 gap-6 lg:grid-cols-[1.15fr,0.85fr]">
-          <section className="brand-hero flex flex-col justify-between rounded-[2rem] p-7 text-white shadow-2xl shadow-primary-950/20 sm:p-10">
-            <div className="space-y-6">
-              <div className="flex items-center gap-4">
-                {config.business.logoUrl ? (
-                  <Image
-                    src={config.business.logoUrl}
-                    alt={`${config.business.name} logo`}
-                    width={88}
-                    height={88}
-                    className="h-20 w-20 rounded-3xl border border-white/15 object-cover sm:h-24 sm:w-24"
-                  />
-                ) : (
-                  <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-white/15 bg-white/10 text-3xl font-bold uppercase sm:h-24 sm:w-24">
-                    {config.business.name.charAt(0)}
-                  </div>
-                )}
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary-200">
-                    In-Store Signup
-                  </p>
-                  <h1 className="mt-2 text-3xl font-bold leading-tight sm:text-5xl">
-                    {hasSelectedDeal ? 'Claim today’s promo by text.' : 'Join the VIP text list.'}
-                  </h1>
-                </div>
-              </div>
-
-              <div className="max-w-2xl space-y-4">
-                <p className="text-lg text-white/92 sm:text-xl">
-                  {config.deal
-                    ? `${config.deal.discountLabel} on ${config.deal.serviceName ?? 'select services'} from ${config.business.name}. Enter your info and we’ll text your code right away.`
-                    : `Get first access to specials, slow-day promos, and business updates from ${config.business.name}.`}
-                </p>
-                {config.business.publicProfileHeadline && (
-                  <p className="text-sm text-white/70 sm:text-base">{config.business.publicProfileHeadline}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="grid gap-4 pt-8 sm:grid-cols-2">
-              <div className="rounded-3xl border border-white/10 bg-white/8 p-5 backdrop-blur-sm">
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary-200">Offer</p>
-                {config.deal ? (
-                  <>
-                    <p className="mt-3 text-2xl font-semibold">{config.deal.title}</p>
-                    {config.deal.description && (
-                      <p className="mt-2 text-sm text-white/75">{config.deal.description}</p>
-                    )}
-                    <p className="mt-4 text-sm text-white/70">
-                      Expires{' '}
-                      {new Date(config.deal.expiresAt).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="mt-3 text-2xl font-semibold">Text-only specials</p>
-                    <p className="mt-2 text-sm text-white/75">
-                      Promotions, restock alerts, and limited-time offers go here first.
-                    </p>
-                  </>
-                )}
-              </div>
-
-              <div className="rounded-3xl border border-white/10 bg-white/8 p-5 backdrop-blur-sm">
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary-200">What happens next</p>
-                <ol className="mt-3 space-y-3 text-sm text-white/85">
-                  <li>1. Enter your name and phone number.</li>
-                  <li>2. We text your confirmation immediately.</li>
-                  <li>3. Tap reset when you are ready for the next customer.</li>
-                </ol>
-              </div>
-            </div>
-          </section>
-
-          <section className="brand-panel flex min-h-[640px] flex-col justify-center rounded-[2rem] p-6 sm:p-8">
+    <div className="page-shell min-h-screen px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+      <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-6xl items-stretch sm:min-h-[calc(100vh-3rem)]">
+        <div className="grid flex-1 gap-5 lg:grid-cols-[1.05fr,0.95fr] lg:gap-6">
+          <section className="brand-panel order-1 flex min-h-0 flex-col justify-center rounded-[2rem] p-5 sm:p-8 lg:order-2 lg:min-h-[640px]">
             {success ? (
-              <div className="space-y-6 text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="space-y-6 text-center sm:space-y-7">
+                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/12 text-primary">
+                  <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
+
                 <div className="space-y-3">
-                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-primary">You’re in</p>
-                  <h2 className="text-3xl font-bold text-gray-950 dark:text-gray-50">
-                    Thanks, {success.submittedName.split(/\s+/)[0]}.
+                  <p className="text-sm font-semibold uppercase tracking-[0.28em] text-primary">You're all set</p>
+                  <h2 className="text-3xl font-bold text-gray-950 dark:text-gray-50 sm:text-4xl">
+                    You're all set, {success.submittedName.split(/\s+/)[0]}.
                   </h2>
-                  <p className="text-base text-gray-700 dark:text-gray-200">
+                  <p className="mx-auto max-w-xl text-base text-gray-700 dark:text-gray-200 sm:text-lg">
                     {success.deal
-                      ? `Your ${success.deal.title} code is ready.`
-                      : `You’re now on ${config.business.name}’s text list.`}
+                      ? `Your ${success.deal.title} code is ready. Keep it handy for checkout today.`
+                      : `You are now on ${config.business.name}'s VIP text list for service specials, openings, and updates.`}
                   </p>
                 </div>
 
                 {success.deal && (
-                  <div className="rounded-3xl border border-primary/20 bg-primary/8 p-5">
+                  <div className="rounded-3xl border border-primary/20 bg-primary/8 p-5 sm:p-6">
                     <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">Claim code</p>
-                    <p className="mt-3 font-mono text-4xl font-bold tracking-[0.25em] text-gray-950 dark:text-gray-50">
+                    <p className="mt-3 font-mono text-4xl font-bold tracking-[0.22em] text-gray-950 dark:text-gray-50 sm:text-5xl">
                       {success.deal.code}
                     </p>
-                    <p className="mt-3 text-sm text-gray-700 dark:text-gray-200">
+                    <p className="mt-3 text-sm text-gray-700 dark:text-gray-200 sm:text-base">
                       Show this code at checkout before{' '}
                       {new Date(success.deal.expiresAt).toLocaleDateString('en-US', {
                         month: 'short',
@@ -221,18 +170,31 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
                   </div>
                 )}
 
-                <div className="space-y-3">
-                  <p className="text-sm text-gray-700 dark:text-gray-200">
-                    {success.confirmationSent
-                      ? 'A confirmation text has been sent.'
-                      : 'You’re signed up. Ask the front desk if you do not receive a text shortly.'}
-                  </p>
+                <div className="space-y-4 rounded-3xl border border-primary/16 bg-primary/6 p-5 text-left sm:p-6">
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-gray-950 dark:text-gray-50">
+                      {success.confirmationSent && success.submittedPhoneLast4
+                        ? `We just sent a confirmation text to the mobile number ending in ${success.submittedPhoneLast4}.`
+                        : "You're signed up. If a text does not arrive shortly, the front desk can help."}
+                    </p>
+                    <p className="text-sm text-gray-700 dark:text-gray-200">
+                      This screen resets for the next guest in {resetCountdown} second{resetCountdown === 1 ? '' : 's'}.
+                    </p>
+                  </div>
+
+                  <div className="h-2 overflow-hidden rounded-full bg-gray-200/80 dark:bg-gray-800">
+                    <div
+                      className="h-full rounded-full bg-primary transition-[width] duration-700 ease-linear"
+                      style={{ width: progressPercent }}
+                    />
+                  </div>
+
                   <button
                     type="button"
                     onClick={resetForNextCustomer}
                     className="btn-secondary min-h-[56px] w-full text-base font-semibold"
                   >
-                    Reset for next customer
+                    Reset now
                   </button>
                 </div>
               </div>
@@ -242,13 +204,13 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
                   <p className="text-sm font-semibold uppercase tracking-[0.25em] text-primary">
                     {config.business.name}
                   </p>
-                  <h2 className="mt-2 text-3xl font-bold text-gray-950 dark:text-gray-50">
-                    {hasSelectedDeal ? 'Enter your info to get the code.' : 'Enter your info to join.'}
+                  <h2 className="mt-2 text-3xl font-bold text-gray-950 dark:text-gray-50 sm:text-4xl">
+                    {hasSelectedDeal ? "Enter your info to claim today's offer." : 'Enter your info to join.'}
                   </h2>
-                  <p className="mt-3 text-base text-gray-700 dark:text-gray-200">
+                  <p className="mt-3 max-w-xl text-base text-gray-700 dark:text-gray-200 sm:text-lg">
                     {hasSelectedDeal
-                      ? 'We’ll text your promo code immediately after you submit.'
-                      : 'We’ll keep this quick. Phone is required, email is optional.'}
+                      ? "We'll text your service offer code right after you submit."
+                      : "Quick signup. Mobile phone is required, email is optional."}
                   </p>
                 </div>
 
@@ -335,12 +297,84 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
                     {isSubmitting
                       ? 'Saving...'
                       : hasSelectedDeal
-                        ? 'Join & Claim Offer'
-                        : 'Join & Text Me'}
+                        ? 'Claim offer by text'
+                        : 'Join by text'}
                   </button>
                 </form>
               </div>
             )}
+          </section>
+
+          <section className="brand-hero order-2 flex flex-col justify-between rounded-[2rem] p-5 text-white shadow-2xl shadow-primary-950/20 sm:p-8 lg:order-1 lg:p-10">
+            <div className="space-y-6">
+              <div className="flex items-center gap-4">
+                {config.business.logoUrl ? (
+                  <Image
+                    src={config.business.logoUrl}
+                    alt={`${config.business.name} logo`}
+                    width={88}
+                    height={88}
+                    className="h-20 w-20 rounded-3xl border border-white/15 object-cover sm:h-24 sm:w-24"
+                  />
+                ) : (
+                  <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-white/15 bg-white/10 text-3xl font-bold uppercase sm:h-24 sm:w-24">
+                    {config.business.name.charAt(0)}
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary-200">
+                    In-Store Signup
+                  </p>
+                  <h1 className="mt-2 text-3xl font-bold leading-tight sm:text-5xl">
+                    {hasSelectedDeal ? "Claim today's service offer." : 'Join the VIP text list.'}
+                  </h1>
+                </div>
+              </div>
+
+              <div className="max-w-2xl space-y-4">
+                <p className="text-lg text-white/92 sm:text-xl">
+                  {config.deal
+                    ? `${config.deal.discountLabel} on ${config.deal.serviceName ?? 'featured services'} from ${config.business.name}. Enter your info and we'll text your code right away.`
+                    : `Get first access to specials, last-minute openings, seasonal promos, and client updates from ${config.business.name}.`}
+                </p>
+                {config.business.publicProfileHeadline && (
+                  <p className="text-sm text-white/70 sm:text-base">{config.business.publicProfileHeadline}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-8">
+              <div className="max-w-xl rounded-3xl border border-white/10 bg-white/8 p-5 backdrop-blur-sm sm:p-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary-200">
+                  {hasSelectedDeal ? "Today's offer" : 'Why clients join'}
+                </p>
+                {config.deal ? (
+                  <>
+                    <p className="mt-3 text-2xl font-semibold">{config.deal.title}</p>
+                    <p className="mt-2 text-sm text-white/80">
+                      {config.deal.description || 'Claim this service special now and stay on the VIP text list for future offers.'}
+                    </p>
+                    <p className="mt-4 text-sm text-white/70">
+                      Expires{' '}
+                      {new Date(config.deal.expiresAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-3 text-2xl font-semibold">Service-first updates</p>
+                    <ul className="mt-4 space-y-2 text-sm text-white/80">
+                      <li>Early access to member-only specials and seasonal offers</li>
+                      <li>Alerts for last-minute openings and slow-day promos</li>
+                      <li>Occasional updates from the team, sent by text</li>
+                    </ul>
+                  </>
+                )}
+              </div>
+            </div>
           </section>
         </div>
       </div>

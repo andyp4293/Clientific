@@ -40,7 +40,6 @@ describe('CaptureKiosk', () => {
           expiresAt: '2026-03-20T00:00:00.000Z',
         },
         dealIssue: null,
-        bookingUrl: 'https://clientific.app/book/test-salon',
         confirmationSent: true,
       }),
     } as never);
@@ -51,12 +50,12 @@ describe('CaptureKiosk', () => {
     vi.restoreAllMocks();
   });
 
-  it('holds on the success state until staff manually resets for the next customer', async () => {
+  it('supports immediate reset and auto-resets the success screen after 15 seconds', async () => {
     render(<CaptureKiosk config={baseConfig} />);
 
     fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'Jane Doe' } });
     fireEvent.change(screen.getByLabelText(/mobile phone/i), { target: { value: '5551234567' } });
-    fireEvent.submit(screen.getByRole('button', { name: /join & claim offer/i }).closest('form')!);
+    fireEvent.submit(screen.getByRole('button', { name: /claim offer by text/i }).closest('form')!);
 
     await act(async () => {
       await Promise.resolve();
@@ -70,20 +69,40 @@ describe('CaptureKiosk', () => {
       })
     );
 
-    expect(screen.getByText(/your spring special code is ready/i)).toBeInTheDocument();
+    expect(screen.getByText(/you're all set, jane\./i)).toBeInTheDocument();
     expect(screen.getByText('ABCD1234')).toBeInTheDocument();
-    expect(screen.queryByText(/booking link:/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/resets for the next guest in 15 seconds/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /reset now/i })).toBeInTheDocument();
 
     await act(async () => {
-      vi.advanceTimersByTime(30000);
+      vi.advanceTimersByTime(14000);
       await Promise.resolve();
     });
 
-    expect(screen.getByText(/your spring special code is ready/i)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /reset for next customer/i }));
+    expect(screen.getByText(/you're all set, jane\./i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /reset now/i }));
 
-    expect(screen.getByText(/enter your info to get the code/i)).toBeInTheDocument();
+    expect(screen.getByText(/enter your info to claim today's offer\./i)).toBeInTheDocument();
     expect(screen.getByLabelText(/full name/i)).toHaveValue('');
     expect(screen.getByLabelText(/mobile phone/i)).toHaveValue('');
+
+    fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'Jane Doe' } });
+    fireEvent.change(screen.getByLabelText(/mobile phone/i), { target: { value: '5551234567' } });
+    fireEvent.submit(screen.getByRole('button', { name: /claim offer by text/i }).closest('form')!);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText(/you're all set, jane\./i)).toBeInTheDocument();
+
+    await act(async () => {
+      vi.advanceTimersByTime(15000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText(/enter your info to claim today's offer\./i)).toBeInTheDocument();
   }, 10000);
 });

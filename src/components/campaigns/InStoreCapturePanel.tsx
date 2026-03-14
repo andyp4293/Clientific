@@ -79,7 +79,7 @@ export default function InStoreCapturePanel({
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">In-Store Capture</h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Launch a full-screen device signup page for walk-in promotions and SMS list growth.
+            Launch a full-screen device signup page for walk-in service promos and SMS list growth.
           </p>
         </div>
       </div>
@@ -157,9 +157,9 @@ export default function InStoreCapturePanel({
               Front-desk setup
             </p>
             <ol className="mt-3 space-y-2 text-sm text-gray-700 dark:text-gray-200">
-              <li>1. Open this link on the device and add it to the Home Screen.</li>
-              <li>2. Turn on Guided Access so customers stay on the capture page.</li>
-              <li>3. Leave the page open and tap reset when you are ready for the next customer.</li>
+              <li>1. Open this link on the device and add it to the Home Screen or app launcher.</li>
+              <li>2. Turn on Guided Access or your device's kiosk mode so customers stay on the capture page.</li>
+              <li>3. After each signup, the success screen resets after 15 seconds, or you can reset it immediately.</li>
             </ol>
           </div>
         </div>

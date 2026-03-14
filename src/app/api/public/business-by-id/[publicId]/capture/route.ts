@@ -200,7 +200,7 @@ export async function POST(
           dealIssue,
           emailProvided: Boolean(emailRaw),
           reOptIn: existingCustomer?.smsOptedOut === true,
-          channel: 'ipad_capture',
+          channel: 'device_capture',
         },
       },
     });

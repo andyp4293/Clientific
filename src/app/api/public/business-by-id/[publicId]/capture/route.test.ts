@@ -199,6 +199,7 @@ describe('Public in-store capture route', () => {
             dealId: 'deal-1',
             dealClaimed: true,
             reOptIn: false,
+            channel: 'device_capture',
           }),
         }),
       })
@@ -261,6 +262,7 @@ describe('Public in-store capture route', () => {
             reOptIn: true,
             dealClaimed: false,
             dealIssue: 'Deal is not currently active',
+            channel: 'device_capture',
           }),
         }),
       })
