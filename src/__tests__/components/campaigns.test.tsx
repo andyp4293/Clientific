@@ -154,10 +154,10 @@ describe('DealsPage (Campaigns)', () => {
     mockQueries([makeDeal({ id: 'deal-1', title: 'Spring Special' })]);
     render(<DealsPage />);
 
-    const linkInput = screen.getByLabelText(/ipad link/i) as HTMLInputElement;
+    const linkInput = screen.getByLabelText(/device link/i) as HTMLInputElement;
     expect(linkInput.value).toBe('http://localhost:3000/capture/pub_123');
 
-    fireEvent.change(screen.getByLabelText(/promo shown on ipad/i), {
+    fireEvent.change(screen.getByLabelText(/promo shown on device/i), {
       target: { value: 'deal-1' },
     });
 

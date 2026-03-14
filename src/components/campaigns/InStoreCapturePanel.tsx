@@ -79,7 +79,7 @@ export default function InStoreCapturePanel({
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">In-Store Capture</h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Launch a full-screen iPad signup page for walk-in promotions and SMS list growth.
+            Launch a full-screen device signup page for walk-in promotions and SMS list growth.
           </p>
         </div>
       </div>
@@ -91,7 +91,7 @@ export default function InStoreCapturePanel({
               htmlFor="in-store-capture-deal"
               className="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2"
             >
-              Promo shown on iPad
+              Promo shown on device
             </label>
             <select
               id="in-store-capture-deal"
@@ -110,7 +110,7 @@ export default function InStoreCapturePanel({
             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
               {activeDeals.length > 0
                 ? 'Only currently active deals appear here. The selected deal is baked into the kiosk URL.'
-                : 'No active deals right now. The iPad can still collect general SMS opt-ins.'}
+                : 'No active deals right now. The device can still collect general SMS opt-ins.'}
             </p>
           </div>
 
@@ -119,7 +119,7 @@ export default function InStoreCapturePanel({
               htmlFor="in-store-capture-link"
               className="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2"
             >
-              iPad link
+              Device link
             </label>
             <div className="flex flex-col gap-2 sm:flex-row">
               <input
@@ -157,7 +157,7 @@ export default function InStoreCapturePanel({
               Front-desk setup
             </p>
             <ol className="mt-3 space-y-2 text-sm text-gray-700 dark:text-gray-200">
-              <li>1. Open this link on the iPad and add it to the Home Screen.</li>
+              <li>1. Open this link on the device and add it to the Home Screen.</li>
               <li>2. Turn on Guided Access so customers stay on the capture page.</li>
               <li>3. Leave the page open; it resets automatically after every signup.</li>
             </ol>
