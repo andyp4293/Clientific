@@ -132,15 +132,54 @@ export async function POST(
             }),
           });
 
-          return { success: smsResult.success, skipped: false };
+          return {
+            success: smsResult.success,
+            skipped: false,
+            customerId: customer.id,
+            customerName: customer.name,
+            customerPhone: customer.phone,
+            code: claim.code,
+            errorMessage: smsResult.success ? null : smsResult.error ?? 'Failed to send SMS',
+          };
         } catch (error) {
           if (error instanceof DealClaimError && error.status < 500) {
-            return { success: false, skipped: true };
+            return {
+              success: false,
+              skipped: true,
+              customerId: customer.id,
+              customerName: customer.name,
+              customerPhone: customer.phone,
+              code: null,
+              errorMessage: error.message,
+            };
           }
           throw error;
         }
       })
     );
+
+    const notificationSendLogs = results
+      .filter((result) => !result.skipped && result.code)
+      .map((result) => ({
+        businessId,
+        dealId: deal.id,
+        customerId: result.customerId,
+        customerName: result.customerName,
+        customerPhone: result.customerPhone,
+        code: result.code as string,
+        status: result.success ? 'sent' : 'failed',
+        errorMessage: result.errorMessage,
+      }));
+
+    if (notificationSendLogs.length > 0) {
+      try {
+        await prisma.dealNotificationSend.createMany({
+          data: notificationSendLogs,
+        });
+      } catch (logError) {
+        console.error('POST /api/deals/[id]/notify log error:', logError);
+      }
+    }
 
     const sent = results.filter((r) => r.success).length;
     const skipped = results.filter((r) => r.skipped).length;

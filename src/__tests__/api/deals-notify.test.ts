@@ -7,6 +7,9 @@ vi.mock('@/lib/prisma', () => ({
       findUnique: vi.fn(),
       updateMany: vi.fn(),
     },
+    dealNotificationSend: {
+      createMany: vi.fn(),
+    },
     customer: {
       findMany: vi.fn(),
     },
@@ -92,6 +95,7 @@ describe('POST /api/deals/[id]/notify', () => {
     vi.mocked(getServerSession).mockResolvedValue(SESSION as any);
     vi.mocked(prisma.deal.findUnique).mockResolvedValue(DEAL as any);
     vi.mocked(prisma.deal.updateMany).mockResolvedValue({ count: 1 } as any);
+    vi.mocked(prisma.dealNotificationSend.createMany).mockResolvedValue({ count: 0 } as any);
     vi.mocked(prisma.customer.findMany).mockResolvedValue([]);
     vi.mocked(claimDealForCustomer).mockResolvedValue({
       code: 'ABCD1234',
@@ -205,6 +209,26 @@ describe('POST /api/deals/[id]/notify', () => {
 
     expect(body.sent).toBe(1);
     expect(body.skipped).toBe(0);
+    expect(prisma.dealNotificationSend.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            customerId: 'cust-1',
+            customerPhone: '5551111111',
+            code: 'ABCD1234',
+            status: 'sent',
+            errorMessage: null,
+          }),
+          expect.objectContaining({
+            customerId: 'cust-2',
+            customerPhone: '5552222222',
+            code: 'ABCD1234',
+            status: 'failed',
+            errorMessage: 'carrier reject',
+          }),
+        ]),
+      })
+    );
   });
 
   it('returns sent 0 when no eligible customers exist', async () => {

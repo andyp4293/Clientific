@@ -26,6 +26,19 @@ export async function GET() {
       include: {
         service: { select: { name: true } },
         redemptions: { orderBy: { createdAt: 'desc' } },
+        notificationSends: {
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            createdAt: true,
+            customerId: true,
+            customerName: true,
+            customerPhone: true,
+            code: true,
+            status: true,
+            errorMessage: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });

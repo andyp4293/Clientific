@@ -9,90 +9,91 @@ datasource db {
 }
 
 model Business {
-  id                     String         @id @default(cuid())
-  createdAt              DateTime       @default(now())
-  updatedAt              DateTime       @updatedAt
-  email                  String         @unique
-  emailVerifiedAt        DateTime?
-  emailVerificationTokenHash String?
+  id                           String                 @id @default(cuid())
+  createdAt                    DateTime               @default(now())
+  updatedAt                    DateTime               @updatedAt
+  email                        String                 @unique
+  emailVerifiedAt              DateTime?
+  emailVerificationTokenHash   String?
   emailVerificationTokenExpiry DateTime?
-  verificationSentAt     DateTime?
-  passwordHash           String
-  name                   String
-  slug                   String         @unique
-  publicId               String?        @unique
-  businessType           String
-  phone                  String
-  businessEmail          String?
-  street                 String?
-  city                   String?
-  state                  String?
-  zipCode                String?
-  country                String?
-  timezone               String         @default("America/New_York")
-  logoUrl                String?
-  publicProfileHeadline  String?
-  publicProfileAbout     String?
-  publicProfileShowPhone Boolean        @default(true)
-  publicProfileShowEmail Boolean        @default(true)
-  publicProfileShowAddress Boolean      @default(true)
-  publicProfileShowHours Boolean        @default(true)
-  publicProfileShowServices Boolean     @default(true)
-  publicProfileShowTeam  Boolean        @default(false)
-  publicProfileShowSocialLinks Boolean  @default(true)
-  googleReviewUrl        String?
-  facebookPageUrl        String?
-  yelpUrl                String?
-  instagramUrl           String?
-  subscriptionPlan       String         @default("trial")
-  subscriptionStatus     String         @default("trialing")
-  trialEndsAt            DateTime?
-  stripeCustomerId       String?        @unique
-  stripeSubscriptionId   String?        @unique
-  stripePriceId          String?
-  stripeCurrentPeriodEnd DateTime?
-  resetToken             String?
-  resetTokenExpiry       DateTime?
-  enableOnlineBooking    Boolean        @default(true)
-  enableBirthdayCampaign Boolean        @default(true)
-  aiReceptionistEnabled  Boolean        @default(false)
-  aiReceptionistPhone    String?
-  aiReceptionistGreeting String?
-  aiReceptionistFaq      Json?
-  smsAiEnabled           Boolean        @default(false)
-  smsAiPhoneNumber       String?
-  smsAiGreeting          String?
-  vapiPhoneNumberId      String?
-  vapiPhoneNumber        String?
-  pointsPerDollar        Float          @default(1.0)
-  pointsPerVisit         Int            @default(10)
-  referralBonusPoints    Int            @default(50)
-  notifyNewBookingEmail  Boolean        @default(true)
-  referralCode           String?        @unique
-  referredById           String?
-  referralCredits        Float          @default(0)
-  affiliateCodeUsed      String?
-  referredBy             Business?      @relation("BizReferrals", fields: [referredById], references: [id], onDelete: SetNull)
-  referrals              Business[]     @relation("BizReferrals")
-  referralsMade          Referral[]     @relation("ReferrerOf")
-  referralReceived       Referral?      @relation("RefereeOf")
-  affiliateSignup        AffiliateSignup?
-  appointments           Appointment[]
-  businessHours          BusinessHours?
-  campaigns              Campaign[]
-  checkIns               CheckIn[]
-  customers              Customer[]
-  deals                  Deal[]
-  invoices               Invoice[]
-  notifications          Notification[]
-  payments               Payment[]
-  rewards                Reward[]
-  serviceGroups          ServiceGroup[]
-  services               Service[]
-  smsLogs                SmsLog[]       @relation("SmsLogs")
-  smsAiSessions          SmsAiSession[] @relation("BusinessSmsAiSessions")
-  smsConsentEvents       SmsConsentEvent[] @relation("BusinessSmsConsentEvents")
-  staff                  Staff[]
+  verificationSentAt           DateTime?
+  passwordHash                 String
+  name                         String
+  slug                         String                 @unique
+  publicId                     String?                @unique
+  businessType                 String
+  phone                        String
+  businessEmail                String?
+  street                       String?
+  city                         String?
+  state                        String?
+  zipCode                      String?
+  country                      String?
+  timezone                     String                 @default("America/New_York")
+  logoUrl                      String?
+  publicProfileHeadline        String?
+  publicProfileAbout           String?
+  publicProfileShowPhone       Boolean                @default(true)
+  publicProfileShowEmail       Boolean                @default(true)
+  publicProfileShowAddress     Boolean                @default(true)
+  publicProfileShowHours       Boolean                @default(true)
+  publicProfileShowServices    Boolean                @default(true)
+  publicProfileShowTeam        Boolean                @default(false)
+  publicProfileShowSocialLinks Boolean                @default(true)
+  googleReviewUrl              String?
+  facebookPageUrl              String?
+  yelpUrl                      String?
+  instagramUrl                 String?
+  subscriptionPlan             String                 @default("trial")
+  subscriptionStatus           String                 @default("trialing")
+  trialEndsAt                  DateTime?
+  stripeCustomerId             String?                @unique
+  stripeSubscriptionId         String?                @unique
+  stripePriceId                String?
+  stripeCurrentPeriodEnd       DateTime?
+  resetToken                   String?
+  resetTokenExpiry             DateTime?
+  enableOnlineBooking          Boolean                @default(true)
+  enableBirthdayCampaign       Boolean                @default(true)
+  aiReceptionistEnabled        Boolean                @default(false)
+  aiReceptionistPhone          String?
+  aiReceptionistGreeting       String?
+  aiReceptionistFaq            Json?
+  smsAiEnabled                 Boolean                @default(false)
+  smsAiPhoneNumber             String?
+  smsAiGreeting                String?
+  vapiPhoneNumberId            String?
+  vapiPhoneNumber              String?
+  pointsPerDollar              Float                  @default(1.0)
+  pointsPerVisit               Int                    @default(10)
+  referralBonusPoints          Int                    @default(50)
+  notifyNewBookingEmail        Boolean                @default(true)
+  referralCode                 String?                @unique
+  referredById                 String?
+  referralCredits              Float                  @default(0)
+  affiliateCodeUsed            String?
+  referredBy                   Business?              @relation("BizReferrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals                    Business[]             @relation("BizReferrals")
+  referralsMade                Referral[]             @relation("ReferrerOf")
+  referralReceived             Referral?              @relation("RefereeOf")
+  affiliateSignup              AffiliateSignup?
+  appointments                 Appointment[]
+  businessHours                BusinessHours?
+  campaigns                    Campaign[]
+  checkIns                     CheckIn[]
+  customers                    Customer[]
+  deals                        Deal[]
+  dealNotificationSends        DealNotificationSend[]
+  invoices                     Invoice[]
+  notifications                Notification[]
+  payments                     Payment[]
+  rewards                      Reward[]
+  serviceGroups                ServiceGroup[]
+  services                     Service[]
+  smsLogs                      SmsLog[]               @relation("SmsLogs")
+  smsAiSessions                SmsAiSession[]         @relation("BusinessSmsAiSessions")
+  smsConsentEvents             SmsConsentEvent[]      @relation("BusinessSmsConsentEvents")
+  staff                        Staff[]
 }
 
 model BusinessHours {
@@ -105,33 +106,34 @@ model BusinessHours {
 }
 
 model Customer {
-  id                 String              @id @default(cuid())
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  businessId         String
-  name               String
-  phone              String?
-  email              String?
-  birthday           DateTime?
-  segment            String              @default("NEW")
-  totalSpent         Float               @default(0)
-  lastVisit          DateTime?
-  points             Int                 @default(0)
-  optedInMarketing   Boolean             @default(true)
-  optedOutAt         DateTime?
-  notes              String?
-  smsConsent         Boolean             @default(false)
-  smsMarketingConsent Boolean            @default(false)
+  id                    String                 @id @default(cuid())
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  businessId            String
+  name                  String
+  phone                 String?
+  email                 String?
+  birthday              DateTime?
+  segment               String                 @default("NEW")
+  totalSpent            Float                  @default(0)
+  lastVisit             DateTime?
+  points                Int                    @default(0)
+  optedInMarketing      Boolean                @default(true)
+  optedOutAt            DateTime?
+  notes                 String?
+  smsConsent            Boolean                @default(false)
+  smsMarketingConsent   Boolean                @default(false)
   smsMarketingConsentAt DateTime?
-  smsOptedOut        Boolean             @default(false)
-  smsOptedOutAt      DateTime?
-  appointments       Appointment[]
-  checkIns           CheckIn[]
-  dealRedemptions    DealRedemption[]
-  business           Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  pointsTransactions PointsTransaction[]
-  redemptions        Redemption[]
-  smsConsentEvents   SmsConsentEvent[]   @relation("CustomerSmsConsentEvents")
+  smsOptedOut           Boolean                @default(false)
+  smsOptedOutAt         DateTime?
+  appointments          Appointment[]
+  checkIns              CheckIn[]
+  dealRedemptions       DealRedemption[]
+  dealNotificationSends DealNotificationSend[]
+  business              Business               @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  pointsTransactions    PointsTransaction[]
+  redemptions           Redemption[]
+  smsConsentEvents      SmsConsentEvent[]      @relation("CustomerSmsConsentEvents")
 
   @@index([businessId, segment])
   @@index([businessId, lastVisit])
@@ -345,13 +347,13 @@ model SmsConsentEvent {
 }
 
 model SmsAiSession {
-  id               String   @id @default(cuid())
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id               String    @id @default(cuid())
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
   businessId       String
   phone            String
-  state            String   @default("idle")
-  turns            Int      @default(0)
+  state            String    @default("idle")
+  turns            Int       @default(0)
   serviceId        String?
   staffId          String?
   requestedDate    String?
@@ -363,7 +365,7 @@ model SmsAiSession {
   lastInboundText  String?
   lastOutboundText String?
   lastIntent       String?
-  business         Business @relation("BusinessSmsAiSessions", fields: [businessId], references: [id], onDelete: Cascade)
+  business         Business  @relation("BusinessSmsAiSessions", fields: [businessId], references: [id], onDelete: Cascade)
 
   @@unique([businessId, phone])
   @@index([businessId, updatedAt])
@@ -422,40 +424,61 @@ model Invoice {
 }
 
 model Deal {
-  id              String           @id @default(cuid())
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  businessId      String
-  title           String
-  description     String?
-  discountType    String           // "percent_off" | "amount_off" | "free_service"
-  discountValue   Float            @default(0)
-  serviceId       String?
-  startsAt        DateTime
-  expiresAt       DateTime
-  maxRedemptions  Int?
-  redemptionCount Int              @default(0)
-  active              Boolean          @default(true)
-  platformFeePercent  Float            @default(15)
-  notifiedAt          DateTime?
-  business        Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  service         Service?         @relation(fields: [serviceId], references: [id])
-  redemptions     DealRedemption[]
+  id                 String                 @id @default(cuid())
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  businessId         String
+  title              String
+  description        String?
+  discountType       String // "percent_off" | "amount_off" | "free_service"
+  discountValue      Float                  @default(0)
+  serviceId          String?
+  startsAt           DateTime
+  expiresAt          DateTime
+  maxRedemptions     Int?
+  redemptionCount    Int                    @default(0)
+  active             Boolean                @default(true)
+  platformFeePercent Float                  @default(15)
+  notifiedAt         DateTime?
+  business           Business               @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  service            Service?               @relation(fields: [serviceId], references: [id])
+  redemptions        DealRedemption[]
+  notificationSends  DealNotificationSend[]
 
   @@index([businessId, active])
 }
 
+model DealNotificationSend {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+  businessId    String
+  dealId        String
+  customerId    String?
+  customerName  String?
+  customerPhone String
+  code          String
+  status        String    @default("sent")
+  errorMessage  String?
+  business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  deal          Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  customer      Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, createdAt])
+  @@index([dealId, createdAt])
+  @@index([customerId, createdAt])
+}
+
 model DealRedemption {
-  id         String    @id @default(cuid())
-  createdAt  DateTime  @default(now())
-  dealId     String
-  customerId String?
-  code       String    @unique
+  id                String    @id @default(cuid())
+  createdAt         DateTime  @default(now())
+  dealId            String
+  customerId        String?
+  code              String    @unique
   usedAt            DateTime?
   transactionAmount Float?
   platformFee       Float?
-  deal       Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  customer   Customer? @relation(fields: [customerId], references: [id])
+  deal              Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  customer          Customer? @relation(fields: [customerId], references: [id])
 
   @@index([dealId, createdAt])
 }
@@ -486,15 +509,15 @@ model Affiliate {
 }
 
 model AffiliateSignup {
-  id          String     @id @default(cuid())
-  createdAt   DateTime   @default(now())
+  id          String    @id @default(cuid())
+  createdAt   DateTime  @default(now())
   affiliateId String
-  businessId  String     @unique
-  status      String     @default("pending")
-  earnAmount  Float      @default(15.00)
+  businessId  String    @unique
+  status      String    @default("pending")
+  earnAmount  Float     @default(15.00)
   earnedAt    DateTime?
-  affiliate   Affiliate  @relation(fields: [affiliateId], references: [id])
-  business    Business   @relation(fields: [businessId], references: [id])
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id])
+  business    Business  @relation(fields: [businessId], references: [id])
 
   @@index([affiliateId])
 }

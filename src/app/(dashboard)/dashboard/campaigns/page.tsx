@@ -26,6 +26,16 @@ interface Deal {
   revenueTracked: number;
   platformFeesOwed: number;
   redemptions: { id: string; code: string; createdAt: string; usedAt: string | null; transactionAmount: number | null; platformFee: number | null }[];
+  notificationSends: {
+    id: string;
+    createdAt: string;
+    customerId: string | null;
+    customerName: string | null;
+    customerPhone: string;
+    code: string;
+    status: string;
+    errorMessage: string | null;
+  }[];
 }
 
 function discountLabel(deal: Deal) {
@@ -40,6 +50,27 @@ function fmtDate(iso: string) {
 
 function fmtDateShort(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function fmtDateTime(iso: string) {
+  return new Date(iso).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function fmtPhone(phone: string) {
+  const cleaned = phone.replace(/\D/g, '');
+  if (cleaned.length === 11 && cleaned.startsWith('1')) {
+    return `(${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
+  }
+  if (cleaned.length === 10) {
+    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+  }
+  return phone;
 }
 
 function toDateInputValue(date: Date) {
@@ -94,7 +125,11 @@ export default function DealsPage() {
     },
   });
 
-  const deals: Deal[] = dealsData?.deals || [];
+  const deals: Deal[] = (dealsData?.deals ?? []).map((deal: any) => ({
+    ...deal,
+    redemptions: deal.redemptions ?? [],
+    notificationSends: deal.notificationSends ?? [],
+  }));
   const services: { id: string; name: string }[] = servicesData?.services || [];
   const business: { name: string; publicId: string } | null = businessData?.business
     ? {
@@ -408,7 +443,7 @@ export default function DealsPage() {
                       onClick={() => setExpandedDeal(isExpanded ? null : deal.id)}
                       className="text-xs text-primary hover:text-primary/80 font-semibold transition-colors"
                     >
-                      {isExpanded ? 'Hide codes' : `View codes (${deal.redemptions.length})`}
+                      {isExpanded ? 'Hide activity' : 'View activity'}
                     </button>
 
                     {deal.active && (
@@ -461,28 +496,95 @@ export default function DealsPage() {
                 {/* Expanded codes */}
                 {isExpanded && (
                   <div className="border-t border-gray-100 dark:border-gray-700 px-4 md:px-5 py-4">
-                    {deal.redemptions.length === 0 ? (
-                      <p className="text-xs text-gray-400 dark:text-gray-500">No codes claimed yet.</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {/* Header */}
-                        <div className="grid grid-cols-3 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider pb-1">
-                          <span>Code</span>
-                          <span>Claimed</span>
-                          <span>Status</span>
+                    <div className="grid gap-5 xl:grid-cols-2">
+                      <section className="space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                            Personalized Codes
+                          </h3>
+                          <span className="text-xs text-gray-400 dark:text-gray-500">
+                            {deal.redemptions.length}
+                          </span>
                         </div>
-                        {deal.redemptions.map(r => (
-                          <div key={r.id} className="grid grid-cols-3 text-xs py-1.5 border-t border-gray-100 dark:border-gray-700/50">
-                            <span className="font-mono font-bold text-gray-900 dark:text-gray-100 tracking-widest">{r.code}</span>
-                            <span className="text-gray-500 dark:text-gray-400">{fmtDateShort(r.createdAt)}</span>
-                            <span>{r.usedAt
-                              ? <span className="text-green-600 dark:text-green-400 font-semibold">Used</span>
-                              : <span className="text-gray-400">Pending</span>}
-                            </span>
+
+                        {deal.redemptions.length === 0 ? (
+                          <p className="text-xs text-gray-400 dark:text-gray-500">No codes claimed yet.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-3 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider pb-1">
+                              <span>Code</span>
+                              <span>Claimed</span>
+                              <span>Status</span>
+                            </div>
+                            {deal.redemptions.map(r => (
+                              <div key={r.id} className="grid grid-cols-3 text-xs py-1.5 border-t border-gray-100 dark:border-gray-700/50">
+                                <span className="font-mono font-bold text-gray-900 dark:text-gray-100 tracking-widest">{r.code}</span>
+                                <span className="text-gray-500 dark:text-gray-400">{fmtDateShort(r.createdAt)}</span>
+                                <span>{r.usedAt
+                                  ? <span className="text-green-600 dark:text-green-400 font-semibold">Used</span>
+                                  : <span className="text-gray-400">Pending</span>}
+                                </span>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    )}
+                        )}
+                      </section>
+
+                      <section className="space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                            Sent Recipients
+                          </h3>
+                          <span className="text-xs text-gray-400 dark:text-gray-500">
+                            {deal.notificationSends.length}
+                          </span>
+                        </div>
+
+                        {deal.notificationSends.length === 0 ? (
+                          <p className="text-xs text-gray-400 dark:text-gray-500">No deal texts sent yet.</p>
+                        ) : (
+                          <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+                            {deal.notificationSends.map((send) => (
+                              <div
+                                key={send.id}
+                                className="rounded-2xl border border-gray-100 bg-gray-50/80 p-3 text-sm dark:border-gray-700 dark:bg-gray-800/70"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="font-semibold text-gray-900 dark:text-gray-100">
+                                      {send.customerName?.trim() || 'Unnamed customer'}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                      {fmtPhone(send.customerPhone)}
+                                    </p>
+                                  </div>
+                                  <span
+                                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${
+                                      send.status === 'sent'
+                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                                    }`}
+                                  >
+                                    {send.status}
+                                  </span>
+                                </div>
+
+                                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                                  <span className="font-mono font-bold tracking-[0.2em] text-gray-900 dark:text-gray-100">
+                                    {send.code}
+                                  </span>
+                                  <span>{fmtDateTime(send.createdAt)}</span>
+                                </div>
+
+                                {send.errorMessage && send.status !== 'sent' && (
+                                  <p className="mt-2 text-xs text-red-600 dark:text-red-300">{send.errorMessage}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </section>
+                    </div>
                   </div>
                 )}
               </div>

@@ -55,6 +55,7 @@ function makeDeal(overrides: Record<string, unknown> = {}) {
     revenueTracked: 0,
     platformFeesOwed: 0,
     redemptions: [],
+    notificationSends: [],
     ...overrides,
   };
 }
@@ -186,5 +187,33 @@ describe('DealsPage (Campaigns)', () => {
     expect(screen.getByRole('button', { name: /sending/i })).toBeDisabled();
     expect(screen.queryAllByRole('button', { name: /sending/i })).toHaveLength(1);
     expect(notifyButtonsAfterConfirm.find((button) => button.textContent?.trim() === 'Text My Customers')).toBeDisabled();
+  });
+
+  it('shows sent recipients inside the expanded activity view', () => {
+    mockQueries([
+      makeDeal({
+        notificationSends: [
+          {
+            id: 'send-1',
+            createdAt: '2026-03-14T18:15:00.000Z',
+            customerId: 'cust-1',
+            customerName: 'Jane Doe',
+            customerPhone: '+15551111111',
+            code: 'JANE1234',
+            status: 'sent',
+            errorMessage: null,
+          },
+        ],
+      }),
+    ]);
+
+    render(<DealsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /view activity/i }));
+
+    expect(screen.getByText(/sent recipients/i)).toBeInTheDocument();
+    expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+    expect(screen.getByText('(555) 111-1111')).toBeInTheDocument();
+    expect(screen.getByText('JANE1234')).toBeInTheDocument();
   });
 });
