@@ -71,7 +71,8 @@ describe('CaptureKiosk', () => {
     expect(screen.queryByRole('link', { name: /back to dashboard/i })).not.toBeInTheDocument();
     expect(screen.getByText('Clientific')).toBeInTheDocument();
     expect(screen.getByText('Test Salon')).toBeInTheDocument();
-    expect(screen.getByText("What you'll be joining")).toBeInTheDocument();
+    expect(screen.getByText(/join test salon's clientific text list/i)).toBeInTheDocument();
+    expect(screen.queryByText("What you'll be joining")).not.toBeInTheDocument();
   });
 
   it('shows a dashboard back link only for the owning business session', () => {
