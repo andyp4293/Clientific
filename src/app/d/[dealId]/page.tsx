@@ -35,6 +35,7 @@ function discountLabel(type: string, value: number): string {
 export default function PublicDealClaimPage() {
   const params = useParams();
   const dealId = params.dealId as string;
+  const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [claimCode, setClaimCode] = useState<string | null>(null);
   const [claimConfirmationSent, setClaimConfirmationSent] = useState(false);
@@ -54,6 +55,7 @@ export default function PublicDealClaimPage() {
     enabled: !!dealId,
   });
 
+  const nameReady = customerName.trim().length > 0;
   const phoneReady = useMemo(() => customerPhone.replace(/\D/g, '').length >= 10, [customerPhone]);
 
   const claimDeal = async () => {
@@ -66,7 +68,7 @@ export default function PublicDealClaimPage() {
       const res = await fetch(`/api/public/deals/${dealId}/claim`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerPhone }),
+        body: JSON.stringify({ customerName, customerPhone }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -131,7 +133,7 @@ export default function PublicDealClaimPage() {
               <p className="mt-3 text-sm text-gray-700 dark:text-gray-300">{deal.description}</p>
             )}
             <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-              {deal.service?.name ?? 'Any service'} • Expires{' '}
+              {deal.service?.name ?? 'Any service'} - Expires{' '}
               {new Date(deal.expiresAt).toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',
@@ -153,23 +155,45 @@ export default function PublicDealClaimPage() {
           </div>
 
           <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Mobile Phone (required to claim)
-            </label>
-            <input
-              type="tel"
-              value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
-              placeholder="(555) 123-4567"
-              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            />
+            <div>
+              <label
+                htmlFor="deal-claim-name"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Your Name
+              </label>
+              <input
+                id="deal-claim-name"
+                type="text"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Jane Doe"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="deal-claim-phone"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Mobile Phone
+              </label>
+              <input
+                id="deal-claim-phone"
+                type="tel"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="(555) 123-4567"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              />
+            </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              By claiming, you consent to receive deal redemption details by text. Reply STOP to opt out, HELP for help.
+              By claiming, you consent to receive your redemption code by text. Reply STOP to opt out, HELP for help.
             </p>
             <button
               type="button"
               onClick={claimDeal}
-              disabled={!phoneReady || isClaiming}
+              disabled={!nameReady || !phoneReady || isClaiming}
               className="w-full py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isClaiming ? 'Claiming...' : 'Claim Deal Code'}
@@ -202,4 +226,3 @@ export default function PublicDealClaimPage() {
     </div>
   );
 }
-

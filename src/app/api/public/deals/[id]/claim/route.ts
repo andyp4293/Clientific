@@ -11,13 +11,18 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await req.json().catch(() => ({}));
+    const customerName = typeof body.customerName === 'string' ? body.customerName.trim() : '';
     const customerPhoneRaw = typeof body.customerPhone === 'string' ? body.customerPhone.trim() : '';
 
-    if (!customerPhoneRaw) {
-      return NextResponse.json({ error: 'customerPhone is required' }, { status: 400 });
+    if (!customerName || !customerPhoneRaw) {
+      return NextResponse.json(
+        { error: 'customerName and customerPhone are required' },
+        { status: 400 }
+      );
     }
     const claim = await claimDealForCustomer({
       dealId: id,
+      customerName,
       customerPhone: customerPhoneRaw,
     });
 
@@ -44,6 +49,7 @@ export async function POST(
         businessName: business?.name ?? 'Clientific',
         dealTitle: claim.deal.title,
         dealCode: claim.code,
+        customerName,
         bookingUrl,
       }),
     });

@@ -70,13 +70,6 @@ interface ReviewRequestDetails {
   yelpUrl?: string | null;
 }
 
-interface DealNotificationDetails {
-  businessName: string;
-  dealTitle: string;
-  dealUrl: string;
-  customerName?: string | null;
-}
-
 interface DealClaimCodeDetails {
   businessName: string;
   dealTitle: string;
@@ -364,13 +357,6 @@ export async function sendAppointmentRescheduled(
 export function formatReviewRequestSMS(details: ReviewRequestDetails): string {
   const link = details.googleReviewUrl || details.yelpUrl || '';
   const message = `${details.businessName}: Hi ${details.customerName}, thank you for your visit! We'd love your feedback. ${link}`;
-  return appendSmsComplianceFooter(message);
-}
-
-export function formatDealNotificationSMS(details: DealNotificationDetails): string {
-  const firstName = details.customerName?.trim().split(/\s+/).filter(Boolean)[0] ?? null;
-  const greeting = firstName ? `Hi ${firstName},` : 'Hi there,';
-  const message = `${greeting} ${details.businessName} has a special offer for you: ${details.dealTitle}. Book your appointment here: ${details.dealUrl}`;
   return appendSmsComplianceFooter(message);
 }
 

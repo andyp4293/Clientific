@@ -25,6 +25,7 @@ vi.mock('@/lib/prisma', () => ({
     notification: { create: vi.fn() },
     affiliate: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
     },
     affiliateSignup: {
@@ -91,6 +92,7 @@ const VALID_REGISTER_BODY = {
   email: 'new@salon.com',
   password: 'SecurePass1!',
   businessName: 'New Salon',
+  businessType: 'Salon',
   phone: '5551234567',
 };
 
@@ -171,7 +173,7 @@ describe('POST /api/auth/register — affiliate code handling', () => {
 
   it('valid affiliate code: sets affiliateCodeUsed, creates AffiliateSignup, 44-day trial', async () => {
     const affiliate = { id: 'aff-1', code: 'AFFCODE1', active: true };
-    vi.mocked(prisma.affiliate.findUnique).mockResolvedValue(affiliate as any);
+    vi.mocked(prisma.affiliate.findFirst).mockResolvedValue(affiliate as any);
 
     const res = await registerPOST(req('POST', { ...VALID_REGISTER_BODY, affiliateCode: 'AFFCODE1' }));
     expect(res.status).toBe(200);
@@ -191,7 +193,7 @@ describe('POST /api/auth/register — affiliate code handling', () => {
   });
 
   it('invalid affiliate code: succeeds normally with 14-day trial', async () => {
-    vi.mocked(prisma.affiliate.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.affiliate.findFirst).mockResolvedValue(null);
 
     const res = await registerPOST(req('POST', { ...VALID_REGISTER_BODY, affiliateCode: 'BADCODE' }));
     expect(res.status).toBe(200);
@@ -210,7 +212,7 @@ describe('POST /api/auth/register — affiliate code handling', () => {
       if (where.referralCode === 'REFCODE1') return Promise.resolve(referrer as any);
       return Promise.resolve(null);
     }) as any);
-    vi.mocked(prisma.affiliate.findUnique).mockResolvedValue({ id: 'aff-1', code: 'AFFCODE1' } as any);
+    vi.mocked(prisma.affiliate.findFirst).mockResolvedValue({ id: 'aff-1', code: 'AFFCODE1' } as any);
 
     const res = await registerPOST(req('POST', {
       ...VALID_REGISTER_BODY,

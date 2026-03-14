@@ -6,7 +6,7 @@ vi.mock('@/lib/prisma', () => ({
     business: { findUnique: vi.fn() },
     deal: { findUnique: vi.fn(), update: vi.fn() },
     dealRedemption: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn() },
-    customer: { findFirst: vi.fn() },
+    customer: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
     $transaction: vi.fn(),
   },
 }));
@@ -26,6 +26,8 @@ const mockDealFindUnique = prisma.deal.findUnique as ReturnType<typeof vi.fn>;
 const mockRedemptionFindUnique = prisma.dealRedemption.findUnique as ReturnType<typeof vi.fn>;
 const mockRedemptionFindFirst = prisma.dealRedemption.findFirst as ReturnType<typeof vi.fn>;
 const mockCustomerFindFirst = prisma.customer.findFirst as ReturnType<typeof vi.fn>;
+const mockCustomerCreate = prisma.customer.create as ReturnType<typeof vi.fn>;
+const mockCustomerUpdate = prisma.customer.update as ReturnType<typeof vi.fn>;
 const mockTransaction = prisma.$transaction as ReturnType<typeof vi.fn>;
 const mockSendSMS = sendSMS as ReturnType<typeof vi.fn>;
 const mockFormatDealClaimCodeSMS = formatDealClaimCodeSMS as ReturnType<typeof vi.fn>;
@@ -36,13 +38,19 @@ const activeDeal = {
   businessId: 'biz-1',
   title: 'Spring Special',
   active: true,
-  startsAt: new Date(now.getTime() - 86400000), // yesterday
-  expiresAt: new Date(now.getTime() + 86400000 * 7), // 7 days from now
+  startsAt: new Date(now.getTime() - 86400000),
+  expiresAt: new Date(now.getTime() + 86400000 * 7),
   maxRedemptions: null,
   redemptionCount: 0,
 };
 
-function makeRequest(dealId: string, body: Record<string, unknown> = { customerPhone: '5551234567' }) {
+function makeRequest(
+  dealId: string,
+  body: Record<string, unknown> = {
+    customerName: 'Jane Doe',
+    customerPhone: '5551234567',
+  }
+) {
   return new NextRequest(`http://localhost/api/public/deals/${dealId}/claim`, {
     method: 'POST',
     body: JSON.stringify(body),
@@ -56,8 +64,8 @@ function makeParams(id: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockRedemptionFindUnique.mockResolvedValue(null); // no code collision
-  mockRedemptionFindFirst.mockResolvedValue(null); // no previous claim
+  mockRedemptionFindUnique.mockResolvedValue(null);
+  mockRedemptionFindFirst.mockResolvedValue(null);
   mockBusinessFindUnique.mockResolvedValue({
     name: 'Test Salon',
     slug: 'test-salon',
@@ -69,11 +77,11 @@ beforeEach(() => {
 });
 
 describe('POST /api/public/deals/[id]/claim', () => {
-  it('returns 400 when customerPhone is missing', async () => {
-    const res = await POST(makeRequest('deal-1', {}), makeParams('deal-1'));
+  it('returns 400 when customer name or phone is missing', async () => {
+    const res = await POST(makeRequest('deal-1', { customerPhone: '5551234567' }), makeParams('deal-1'));
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toContain('customerPhone is required');
+    expect(body.error).toContain('customerName and customerPhone are required');
   });
 
   it('returns 404 when deal does not exist', async () => {
@@ -91,7 +99,7 @@ describe('POST /api/public/deals/[id]/claim', () => {
   it('returns 400 when deal has not started yet', async () => {
     mockDealFindUnique.mockResolvedValue({
       ...activeDeal,
-      startsAt: new Date(now.getTime() + 86400000), // tomorrow
+      startsAt: new Date(now.getTime() + 86400000),
     });
     const res = await POST(makeRequest('deal-1'), makeParams('deal-1'));
     expect(res.status).toBe(400);
@@ -102,7 +110,7 @@ describe('POST /api/public/deals/[id]/claim', () => {
   it('returns 400 when deal has expired', async () => {
     mockDealFindUnique.mockResolvedValue({
       ...activeDeal,
-      expiresAt: new Date(now.getTime() - 1000), // expired 1 second ago
+      expiresAt: new Date(now.getTime() - 1000),
     });
     const res = await POST(makeRequest('deal-1'), makeParams('deal-1'));
     expect(res.status).toBe(400);
@@ -110,34 +118,52 @@ describe('POST /api/public/deals/[id]/claim', () => {
     expect(body.error).toContain('not currently active');
   });
 
-  it('returns 400 when max redemptions reached', async () => {
+  it('returns 400 when max redemptions reached for a new claimant', async () => {
     mockDealFindUnique.mockResolvedValue({
       ...activeDeal,
       maxRedemptions: 10,
       redemptionCount: 10,
     });
+    mockCustomerFindFirst.mockResolvedValue(null);
+
     const res = await POST(makeRequest('deal-1'), makeParams('deal-1'));
+
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toContain('maximum redemptions');
   });
 
-  it('creates redemption code for active deal', async () => {
+  it('creates a customer and redemption code for an active public claim', async () => {
     mockDealFindUnique.mockResolvedValue(activeDeal);
     mockCustomerFindFirst.mockResolvedValue(null);
-    const fakeRedemption = { code: 'ABCD1234', dealId: 'deal-1', customerId: null };
+    mockCustomerCreate.mockResolvedValue({ id: 'cust-1' });
+    const fakeRedemption = { code: 'ABCD1234', dealId: 'deal-1', customerId: 'cust-1' };
     mockTransaction.mockResolvedValue([fakeRedemption, { id: 'deal-1' }]);
+
     const res = await POST(makeRequest('deal-1'), makeParams('deal-1'));
+
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.code).toBe('ABCD1234');
     expect(body.expiresAt).toBeDefined();
     expect(body.confirmationSent).toBe(true);
+    expect(mockCustomerCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          businessId: 'biz-1',
+          name: 'Jane Doe',
+          phone: '+15551234567',
+          smsConsent: true,
+          smsMarketingConsent: false,
+        }),
+      })
+    );
     expect(mockFormatDealClaimCodeSMS).toHaveBeenCalledWith(
       expect.objectContaining({
         businessName: 'Test Salon',
         dealTitle: 'Spring Special',
         dealCode: 'ABCD1234',
+        customerName: 'Jane Doe',
         bookingUrl: expect.stringMatching(/\/book\/test-salon$/),
       })
     );
@@ -150,32 +176,35 @@ describe('POST /api/public/deals/[id]/claim', () => {
     );
   });
 
-  it('links customer when customerPhone matches', async () => {
+  it('updates the matched customer name before issuing a code', async () => {
     mockDealFindUnique.mockResolvedValue(activeDeal);
-    mockCustomerFindFirst.mockResolvedValue({ id: 'cust-1' });
+    mockCustomerFindFirst.mockResolvedValue({ id: 'cust-1', name: 'Old Name' });
+    mockCustomerUpdate.mockResolvedValue({ id: 'cust-1', name: 'Jane Doe' });
     const fakeRedemption = { code: 'WXYZ5678', dealId: 'deal-1', customerId: 'cust-1' };
     mockTransaction.mockResolvedValue([fakeRedemption, { id: 'deal-1' }]);
-    const res = await POST(makeRequest('deal-1', { customerPhone: '5551234567' }), makeParams('deal-1'));
+
+    const res = await POST(makeRequest('deal-1'), makeParams('deal-1'));
+
     expect(res.status).toBe(200);
-    // Verify customer lookup was called with the phone
-    expect(mockCustomerFindFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          OR: expect.arrayContaining([
-            { phone: '+15551234567' },
-            { phone: '5551234567' },
-          ]),
-        }),
-      })
-    );
+    expect(mockCustomerUpdate).toHaveBeenCalledWith({
+      where: { id: 'cust-1' },
+      data: {
+        name: 'Jane Doe',
+        smsConsent: true,
+      },
+    });
   });
 
-  it('reuses an existing code when the same customer already claimed the deal', async () => {
-    mockDealFindUnique.mockResolvedValue(activeDeal);
-    mockCustomerFindFirst.mockResolvedValue({ id: 'cust-1' });
+  it('reuses an existing code for the same customer even after the cap is reached', async () => {
+    mockDealFindUnique.mockResolvedValue({
+      ...activeDeal,
+      maxRedemptions: 10,
+      redemptionCount: 10,
+    });
+    mockCustomerFindFirst.mockResolvedValue({ id: 'cust-1', name: 'Jane Doe' });
     mockRedemptionFindFirst.mockResolvedValue({ code: 'EXIST123' });
 
-    const res = await POST(makeRequest('deal-1', { customerPhone: '5551234567' }), makeParams('deal-1'));
+    const res = await POST(makeRequest('deal-1'), makeParams('deal-1'));
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -183,21 +212,10 @@ describe('POST /api/public/deals/[id]/claim', () => {
     expect(mockTransaction).not.toHaveBeenCalled();
   });
 
-  it('allows claiming under max redemptions limit', async () => {
-    mockDealFindUnique.mockResolvedValue({
-      ...activeDeal,
-      maxRedemptions: 10,
-      redemptionCount: 5, // still has room
-    });
-    const fakeRedemption = { code: 'TEST1234', dealId: 'deal-1', customerId: null };
-    mockTransaction.mockResolvedValue([fakeRedemption, { id: 'deal-1' }]);
-    const res = await POST(makeRequest('deal-1'), makeParams('deal-1'));
-    expect(res.status).toBe(200);
-  });
-
   it('still returns the code when sms delivery fails', async () => {
     mockDealFindUnique.mockResolvedValue(activeDeal);
-    const fakeRedemption = { code: 'ABCD1234', dealId: 'deal-1', customerId: null };
+    mockCustomerFindFirst.mockResolvedValue({ id: 'cust-1', name: 'Jane Doe' });
+    const fakeRedemption = { code: 'ABCD1234', dealId: 'deal-1', customerId: 'cust-1' };
     mockTransaction.mockResolvedValue([fakeRedemption, { id: 'deal-1' }]);
     mockSendSMS.mockResolvedValue({ success: false, error: 'carrier reject' });
 

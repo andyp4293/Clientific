@@ -8,6 +8,7 @@ type ClaimDealOptions = {
   businessId?: string;
   customerId?: string | null;
   customerPhone?: string | null;
+  customerName?: string | null;
 };
 
 type ClaimableDeal = {
@@ -57,10 +58,21 @@ async function generateUniqueDealCode(): Promise<string> {
   throw new DealClaimError('Failed to generate a unique deal code', 500);
 }
 
-async function resolveCustomerId(
+type ResolvedCustomer = {
+  id: string;
+  name: string;
+};
+
+function normalizeCustomerPhone(customerPhone: string | null | undefined): string | null {
+  const rawPhone = customerPhone?.trim();
+  if (!rawPhone) return null;
+  return formatPhoneNumber(rawPhone);
+}
+
+async function findExistingCustomer(
   businessId: string,
   customerPhone: string | null | undefined
-): Promise<string | null> {
+): Promise<ResolvedCustomer | null> {
   const rawPhone = customerPhone?.trim();
   if (!rawPhone) return null;
 
@@ -70,10 +82,48 @@ async function resolveCustomerId(
       businessId,
       OR: [{ phone: normalizedPhone }, { phone: rawPhone }],
     },
+    select: { id: true, name: true },
+  });
+
+  return customer ?? null;
+}
+
+async function updateCustomerNameIfNeeded(
+  customerId: string,
+  existingName: string,
+  customerName: string | null | undefined
+): Promise<void> {
+  const trimmedName = customerName?.trim();
+  if (!trimmedName || trimmedName === existingName) {
+    return;
+  }
+
+  await prisma.customer.update({
+    where: { id: customerId },
+    data: {
+      name: trimmedName,
+      smsConsent: true,
+    },
+  });
+}
+
+async function createCustomerForDealClaim(
+  businessId: string,
+  customerPhone: string,
+  customerName: string
+): Promise<string> {
+  const customer = await prisma.customer.create({
+    data: {
+      businessId,
+      name: customerName,
+      phone: customerPhone,
+      smsConsent: true,
+      smsMarketingConsent: false,
+    },
     select: { id: true },
   });
 
-  return customer?.id ?? null;
+  return customer.id;
 }
 
 export async function claimDealForCustomer({
@@ -81,6 +131,7 @@ export async function claimDealForCustomer({
   businessId,
   customerId,
   customerPhone,
+  customerName,
 }: ClaimDealOptions): Promise<ClaimedDealResult> {
   const deal = await prisma.deal.findUnique({
     where: { id: dealId },
@@ -105,12 +156,16 @@ export async function claimDealForCustomer({
     throw new DealClaimError('Deal is not currently active', 400);
   }
 
-  if (deal.maxRedemptions !== null && deal.redemptionCount >= deal.maxRedemptions) {
-    throw new DealClaimError('Deal has reached maximum redemptions', 400);
-  }
+  const normalizedCustomerPhone = normalizeCustomerPhone(customerPhone);
+  let resolvedCustomerId = customerId ?? null;
 
-  const resolvedCustomerId =
-    customerId ?? (await resolveCustomerId(deal.businessId, customerPhone));
+  if (!resolvedCustomerId && normalizedCustomerPhone) {
+    const existingCustomer = await findExistingCustomer(deal.businessId, customerPhone);
+    if (existingCustomer) {
+      resolvedCustomerId = existingCustomer.id;
+      await updateCustomerNameIfNeeded(existingCustomer.id, existingCustomer.name, customerName);
+    }
+  }
 
   if (resolvedCustomerId) {
     const existingRedemption = await prisma.dealRedemption.findFirst({
@@ -129,6 +184,21 @@ export async function claimDealForCustomer({
         deal,
         expiresAt: deal.expiresAt,
       };
+    }
+  }
+
+  if (deal.maxRedemptions !== null && deal.redemptionCount >= deal.maxRedemptions) {
+    throw new DealClaimError('Deal has reached maximum redemptions', 400);
+  }
+
+  if (!resolvedCustomerId && normalizedCustomerPhone) {
+    const trimmedCustomerName = customerName?.trim();
+    if (trimmedCustomerName) {
+      resolvedCustomerId = await createCustomerForDealClaim(
+        deal.businessId,
+        normalizedCustomerPhone,
+        trimmedCustomerName
+      );
     }
   }
 

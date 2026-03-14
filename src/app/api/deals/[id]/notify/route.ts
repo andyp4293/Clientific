@@ -3,10 +3,11 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
-import { sendSMS, formatPhoneNumber, formatDealNotificationSMS } from '@/lib/twilio';
+import { sendSMS, formatPhoneNumber, formatDealClaimCodeSMS } from '@/lib/twilio';
 import { APP_URL } from '@/lib/brand';
 import { getSessionBusinessId } from '@/lib/session-business';
 import { DEAL_NOTIFY_COOLDOWN_DAYS, getDealNotifyCooldownRemainingMs } from '@/lib/deal-notify';
+import { claimDealForCustomer, DealClaimError } from '@/lib/deal-claims';
 
 function normalizeNotifiedAt(value: Date | string | null | undefined) {
   if (!value) return null;
@@ -31,7 +32,16 @@ export async function POST(
 
     const deal = await prisma.deal.findUnique({
       where: { id },
-      include: { business: { select: { name: true, slug: true } } },
+      include: {
+        business: {
+          select: {
+            name: true,
+            slug: true,
+            enableOnlineBooking: true,
+            vapiPhoneNumber: true,
+          },
+        },
+      },
     });
 
     if (!deal) {
@@ -64,7 +74,7 @@ export async function POST(
         smsOptedOut: false,
         phone: { not: null },
       },
-      select: { phone: true, name: true },
+      select: { id: true, phone: true, name: true },
     });
 
     const reservedNotifiedAt = normalizeNotifiedAt(deal.notifiedAt);
@@ -84,33 +94,58 @@ export async function POST(
     }
 
     const seenPhones = new Set<string>();
-    const uniqueRecipients = customers.reduce<Array<{ phone: string; name: string | null }>>((acc, customer) => {
+    const uniqueRecipients = customers.reduce<Array<{ id: string; phone: string; name: string | null }>>((acc, customer) => {
       const phone = formatPhoneNumber(customer.phone!);
       if (seenPhones.has(phone)) {
         return acc;
       }
       seenPhones.add(phone);
-      acc.push({ phone, name: customer.name ?? null });
+      acc.push({ id: customer.id, phone, name: customer.name ?? null });
       return acc;
     }, []);
 
+    const bookingUrl =
+      deal.business.enableOnlineBooking && deal.business.slug
+        ? `${APP_URL}/book/${deal.business.slug}`
+        : null;
+
     const results = await Promise.all(
-      uniqueRecipients.map((customer) =>
-        sendSMS({
-          to: customer.phone,
-          message: formatDealNotificationSMS({
-            businessName: deal.business.name,
-            dealTitle: deal.title,
-            dealUrl: `${APP_URL}/d/${deal.id}`,
+      uniqueRecipients.map(async (customer) => {
+        try {
+          const claim = await claimDealForCustomer({
+            dealId: deal.id,
+            businessId,
+            customerId: customer.id,
+            customerPhone: customer.phone,
             customerName: customer.name,
-          }),
-        })
-      )
+          });
+
+          const smsResult = await sendSMS({
+            to: customer.phone,
+            from: deal.business.vapiPhoneNumber ?? null,
+            message: formatDealClaimCodeSMS({
+              businessName: deal.business.name,
+              dealTitle: deal.title,
+              dealCode: claim.code,
+              customerName: customer.name,
+              bookingUrl,
+            }),
+          });
+
+          return { success: smsResult.success, skipped: false };
+        } catch (error) {
+          if (error instanceof DealClaimError && error.status < 500) {
+            return { success: false, skipped: true };
+          }
+          throw error;
+        }
+      })
     );
 
     const sent = results.filter((r) => r.success).length;
+    const skipped = results.filter((r) => r.skipped).length;
 
-    return NextResponse.json({ sent, dealId: deal.id });
+    return NextResponse.json({ sent, skipped, dealId: deal.id });
   } catch (error: any) {
     console.error('POST /api/deals/[id]/notify error:', error?.message ?? error);
     return NextResponse.json(

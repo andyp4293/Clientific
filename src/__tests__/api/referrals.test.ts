@@ -26,7 +26,7 @@ vi.mock('@/lib/prisma', () => ({
     payment: { upsert: vi.fn() },
     invoice: { upsert: vi.fn() },
     notification: { create: vi.fn() },
-    affiliate: { findUnique: vi.fn() },
+    affiliate: { findFirst: vi.fn() },
     affiliateSignup: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn(), update: vi.fn() },
     $transaction: vi.fn(async (ops: unknown[]) => {
       for (const op of ops) await op;
@@ -86,6 +86,7 @@ const VALID_REGISTER_BODY = {
   email: 'new@salon.com',
   password: 'SecurePass1!',
   businessName: 'New Salon',
+  businessType: 'Salon',
   phone: '5551234567',
 };
 

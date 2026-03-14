@@ -157,14 +157,20 @@ export default function DealsPage() {
     mutationFn: async (dealId: string) => {
       const res = await fetch(`/api/deals/${dealId}/notify`, { method: 'POST' });
       if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Failed'); }
-      return res.json() as Promise<{ sent: number }>;
+      return res.json() as Promise<{ sent: number; skipped?: number }>;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['deals'] });
-      if (data.sent === 0) {
+      if (data.sent === 0 && (data.skipped ?? 0) > 0) {
+        toast.success('No texts sent because this deal has no remaining personalized codes.');
+      } else if (data.sent === 0) {
         toast.success('No customers have opted in to receive texts yet');
+      } else if ((data.skipped ?? 0) > 0) {
+        toast.success(
+          `Sent ${data.sent} personalized code${data.sent !== 1 ? 's' : ''}. Skipped ${data.skipped} recipient${data.skipped !== 1 ? 's' : ''}.`
+        );
       } else {
-        toast.success(`Text sent to ${data.sent} customer${data.sent !== 1 ? 's' : ''}!`);
+        toast.success(`Sent ${data.sent} personalized code${data.sent !== 1 ? 's' : ''}!`);
       }
     },
     onError: (e: any) => toast.error(e.message || 'Failed to send texts'),
@@ -408,7 +414,7 @@ export default function DealsPage() {
                     {deal.active && (
                       confirmingNotify === deal.id && !notifyOnCooldown ? (
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs text-gray-600 dark:text-gray-400">Send a text message to your opted-in customers?</span>
+                          <span className="text-xs text-gray-600 dark:text-gray-400">Send each opted-in customer a personalized redemption code by text?</span>
                           <button
                             onClick={() => {
                               if (sendingNotifyId !== null) return;

@@ -105,6 +105,7 @@ export default async function DashboardPage({
 
   const checkoutSuccess = params.checkout === 'success';
   const stats = await getCachedDashboardStats(business.id, business.timezone);
+  const needsOnboarding = !business.phone || !business.street || !business.city || !business.state || !business.zipCode;
 
   // Calculate trial days remaining
   const trialDaysRemaining = business.trialEndsAt
@@ -135,6 +136,28 @@ export default async function DashboardPage({
       )}
 
       {/* Subscription status banners — hidden when active or just subscribed */}
+      {needsOnboarding && (
+        <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 flex items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">Finish your business setup</p>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                Add your phone and business location so your profile, booking flow, and local campaigns are fully configured.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/dashboard/onboarding"
+            className="shrink-0 text-sm font-medium px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          >
+            Finish setup
+          </Link>
+        </div>
+      )}
+
       {!checkoutSuccess && business.subscriptionStatus !== 'active' && (
         <>
           {/* Trial banner */}

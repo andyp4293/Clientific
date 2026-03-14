@@ -4,11 +4,9 @@ import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import AddressAutocomplete, { type AddressComponents } from '@/components/ui/AddressAutocomplete';
 import { APP_NAME } from '@/lib/brand';
-import { timezoneFromCoordinates } from '@/lib/timezone';
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3;
 
 interface FormData {
   email: string;
@@ -17,18 +15,18 @@ interface FormData {
   acceptTerms: boolean;
   businessName: string;
   businessType: string;
-  phone: string;
-  businessEmail: string;
-  street: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  country: string;
   timezone: string;
   plan: string;
   referralCode: string;
   affiliateCode: string;
 }
+
+const PLAN_LABELS: Record<string, string> = {
+  starter: 'Starter',
+  pro: 'Pro',
+  premium: 'Premium',
+  trial: 'Trial',
+};
 
 function RegisterForm() {
   const router = useRouter();
@@ -39,8 +37,8 @@ function RegisterForm() {
   const defaultEmail = searchParams.get('email') || '';
   const refCode = searchParams.get('ref') || '';
   const affCode = searchParams.get('aff') || '';
+  const oauthProvider = searchParams.get('oauth');
   const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === 'true';
-  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -51,10 +49,7 @@ function RegisterForm() {
   const [verificationCode, setVerificationCode] = useState('');
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
-  const [selectedCoordinates, setSelectedCoordinates] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
+  const [authenticatedRedirect, setAuthenticatedRedirect] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<FormData>({
     email: defaultEmail,
@@ -63,13 +58,6 @@ function RegisterForm() {
     acceptTerms: false,
     businessName: '',
     businessType: 'Salon',
-    phone: '',
-    businessEmail: '',
-    street: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    country: 'United States',
     timezone: '',
     plan: defaultPlan,
     referralCode: refCode,
@@ -78,9 +66,9 @@ function RegisterForm() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      router.push('/dashboard');
+      router.push(authenticatedRedirect || '/dashboard');
     }
-  }, [status, router]);
+  }, [status, router, authenticatedRedirect]);
 
   useEffect(() => {
     const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -129,48 +117,10 @@ function RegisterForm() {
     'Other',
   ];
 
+  const selectedPlanLabel = PLAN_LABELS[formData.plan.toLowerCase()] || 'Pro';
+
   const updateFormData = (updates: Partial<FormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
-  };
-
-  const resolveSubmittedTimezone = async (): Promise<string | null> => {
-    if (selectedCoordinates) {
-      return timezoneFromCoordinates(selectedCoordinates.latitude, selectedCoordinates.longitude);
-    }
-
-    if (!mapboxToken) return null;
-
-    const query = [
-      formData.street,
-      formData.city,
-      formData.state,
-      formData.zipCode,
-      formData.country,
-    ]
-      .map((part) => part.trim())
-      .filter(Boolean)
-      .join(', ');
-
-    if (!query) return null;
-
-    try {
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-          query
-        )}.json?access_token=${mapboxToken}&limit=1&country=us,ca`
-      );
-      if (!response.ok) return null;
-
-      const data = (await response.json()) as {
-        features?: Array<{ center?: [number, number] }>;
-      };
-      const center = data.features?.[0]?.center;
-      if (!Array.isArray(center) || center.length < 2) return null;
-
-      return timezoneFromCoordinates(center[1], center[0]);
-    } catch {
-      return null;
-    }
   };
 
   const validateStep = (step: Step): boolean => {
@@ -205,12 +155,8 @@ function RegisterForm() {
     }
 
     if (step === 2) {
-      if (!formData.businessName) {
+      if (!formData.businessName.trim()) {
         setError('Business name is required');
-        return false;
-      }
-      if (!formData.phone) {
-        setError('Phone number is required');
         return false;
       }
       return true;
@@ -249,7 +195,7 @@ function RegisterForm() {
       return 'An account with this email already exists. Please log in instead.';
     }
     if (rawError.includes('required') || rawError.includes('Missing')) {
-      return 'Please fill in all required fields.';
+      return 'Please fill in all required information.';
     }
     return 'Unable to create account. Please check your information and try again.';
   };
@@ -260,14 +206,13 @@ function RegisterForm() {
     setNotice('');
 
     try {
-      const payload = { ...formData };
-      const locationTimezone = await resolveSubmittedTimezone();
-      if (locationTimezone) {
-        payload.timezone = locationTimezone;
-      }
-      if (!payload.timezone) {
-        payload.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
-      }
+      const payload = {
+        ...formData,
+        timezone:
+          formData.timezone ||
+          Intl.DateTimeFormat().resolvedOptions().timeZone ||
+          'America/New_York',
+      };
 
       const response = await fetch('/api/auth/register', {
         method: 'POST',
@@ -280,7 +225,7 @@ function RegisterForm() {
         throw new Error(getFriendlyRegistrationError(data.error || 'Registration failed'));
       }
 
-      setCurrentStep(4);
+      setCurrentStep(3);
       setEmailVerified(false);
       setVerificationCode('');
       if (!data.verificationEmailSent) {
@@ -315,6 +260,26 @@ function RegisterForm() {
     }
   };
 
+  const signInAfterVerification = async () => {
+    const onboardingPath = '/dashboard/onboarding';
+    setAuthenticatedRedirect(onboardingPath);
+
+    const result = await signIn('credentials', {
+      email: formData.email.trim().toLowerCase(),
+      password: formData.password,
+      redirect: false,
+    });
+
+    if (result?.error) {
+      setAuthenticatedRedirect(null);
+      setNotice('Email verified successfully. Please log in to continue onboarding.');
+      return;
+    }
+
+    router.push(onboardingPath);
+    router.refresh();
+  };
+
   const verifyEmailCode = async () => {
     const cleanedCode = verificationCode.replace(/\D/g, '');
     if (cleanedCode.length !== 6) {
@@ -339,7 +304,8 @@ function RegisterForm() {
         throw new Error(body.error || 'Unable to verify email');
       }
       setEmailVerified(true);
-      setNotice('Email verified successfully. You can now log in.');
+      setNotice('Email verified. Redirecting you to onboarding...');
+      await signInAfterVerification();
     } catch (err: any) {
       setError(err.message || 'Unable to verify email');
     } finally {
@@ -362,12 +328,12 @@ function RegisterForm() {
       }
     }
 
-    if (currentStep === 3) {
+    if (currentStep === 2) {
       void handleSubmit();
       return;
     }
 
-    setCurrentStep((prev) => (prev === 4 ? 4 : ((prev + 1) as Step)));
+    setCurrentStep((prev) => (prev === 3 ? 3 : ((prev + 1) as Step)));
   };
 
   const prevStep = () => {
@@ -388,9 +354,13 @@ function RegisterForm() {
             <div className="w-8 sm:w-10 h-8 sm:h-10 bg-primary rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xl sm:text-2xl">C</span>
             </div>
-            <span className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">{APP_NAME}</span>
+            <span className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {APP_NAME}
+            </span>
           </Link>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2">Start your 14-day free trial</p>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2">
+            Create your account, verify your email, and finish setup inside the app.
+          </p>
         </div>
 
         <div className="mb-6 sm:mb-8">
@@ -398,8 +368,7 @@ function RegisterForm() {
             {[
               { num: 1, label: 'Account' },
               { num: 2, label: 'Business' },
-              { num: 3, label: 'Details' },
-              { num: 4, label: 'Verify' },
+              { num: 3, label: 'Verify' },
             ].map((item, idx) => (
               <React.Fragment key={item.num}>
                 {idx > 0 && (
@@ -442,7 +411,15 @@ function RegisterForm() {
 
           {currentStep === 1 && (
             <div className="space-y-3 sm:space-y-4">
-              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-900 dark:text-gray-100">Create Your Account</h2>
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-900 dark:text-gray-100">
+                Create Your Account
+              </h2>
+
+              {oauthProvider === 'google' && (
+                <div className="rounded-lg border border-primary/20 bg-primary-50 px-4 py-3 text-sm text-primary-900 dark:border-primary/30 dark:bg-primary/10 dark:text-primary-100">
+                  Google sign-up sent you here to finish creating your business account. Add a password so you can sign in directly if needed.
+                </div>
+              )}
 
               {googleEnabled && (
                 <button type="button" onClick={handleGoogleSignUp} className="btn-outline w-full">
@@ -451,7 +428,9 @@ function RegisterForm() {
               )}
 
               <div>
-                <label htmlFor="email" className="label">Email Address *</label>
+                <label htmlFor="email" className="label">
+                  Email Address *
+                </label>
                 <input
                   id="email"
                   type="email"
@@ -464,7 +443,9 @@ function RegisterForm() {
               </div>
 
               <div>
-                <label htmlFor="password" className="label">Password *</label>
+                <label htmlFor="password" className="label">
+                  Password *
+                </label>
                 <input
                   id="password"
                   type="password"
@@ -477,13 +458,25 @@ function RegisterForm() {
                 />
                 {(passwordFocused || formData.password.length > 0) && (
                   <div className="mt-3 space-y-2 text-sm">
-                    <div className={`flex items-center ${passwordChecks.minLength ? 'text-success' : 'text-gray-500'}`}>
+                    <div
+                      className={`flex items-center ${
+                        passwordChecks.minLength ? 'text-success' : 'text-gray-500'
+                      }`}
+                    >
                       <span>At least 8 characters</span>
                     </div>
-                    <div className={`flex items-center ${passwordChecks.hasNumber ? 'text-success' : 'text-gray-500'}`}>
+                    <div
+                      className={`flex items-center ${
+                        passwordChecks.hasNumber ? 'text-success' : 'text-gray-500'
+                      }`}
+                    >
                       <span>Contains a number</span>
                     </div>
-                    <div className={`flex items-center ${passwordChecks.hasSpecialChar ? 'text-success' : 'text-gray-500'}`}>
+                    <div
+                      className={`flex items-center ${
+                        passwordChecks.hasSpecialChar ? 'text-success' : 'text-gray-500'
+                      }`}
+                    >
                       <span>Contains a special character (!@#$%^&*)</span>
                     </div>
                   </div>
@@ -491,7 +484,9 @@ function RegisterForm() {
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="label">Confirm Password *</label>
+                <label htmlFor="confirmPassword" className="label">
+                  Confirm Password *
+                </label>
                 <input
                   id="confirmPassword"
                   type="password"
@@ -513,20 +508,37 @@ function RegisterForm() {
                 />
                 <label htmlFor="acceptTerms" className="text-sm text-gray-600 dark:text-gray-400">
                   I accept the{' '}
-                  <Link href="/terms" target="_blank" className="text-primary hover:underline">Terms of Service</Link>{' '}
+                  <Link href="/terms" target="_blank" className="text-primary hover:underline">
+                    Terms of Service
+                  </Link>{' '}
                   and{' '}
-                  <Link href="/privacy" target="_blank" className="text-primary hover:underline">Privacy Policy</Link>
+                  <Link href="/privacy" target="_blank" className="text-primary hover:underline">
+                    Privacy Policy
+                  </Link>
                 </label>
               </div>
             </div>
           )}
 
           {currentStep === 2 && (
-            <div className="space-y-3 sm:space-y-4">
-              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-900 dark:text-gray-100">Tell Us About Your Business</h2>
+            <div className="space-y-4">
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-900 dark:text-gray-100">
+                Tell Us About Your Business
+              </h2>
+
+              <div className="rounded-2xl border border-primary/20 bg-primary-50 px-4 py-4 dark:border-primary/30 dark:bg-primary/10">
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary-700 dark:text-primary-200">
+                  Free trial
+                </p>
+                <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                  You&apos;re starting on the {selectedPlanLabel} trial. We&apos;ll collect your phone, address, and other setup details right after verification.
+                </p>
+              </div>
 
               <div>
-                <label htmlFor="businessName" className="label">Business Name *</label>
+                <label htmlFor="businessName" className="label">
+                  Business Name *
+                </label>
                 <input
                   id="businessName"
                   type="text"
@@ -539,7 +551,9 @@ function RegisterForm() {
               </div>
 
               <div>
-                <label htmlFor="businessType" className="label">Business Type *</label>
+                <label htmlFor="businessType" className="label">
+                  Business Type *
+                </label>
                 <select
                   id="businessType"
                   value={formData.businessType}
@@ -548,134 +562,16 @@ function RegisterForm() {
                   required
                 >
                   {businessTypes.map((type) => (
-                    <option key={type} value={type}>{type}</option>
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
                   ))}
                 </select>
-              </div>
-
-              <div>
-                <label htmlFor="phone" className="label">Business Phone *</label>
-                <input
-                  id="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => updateFormData({ phone: e.target.value })}
-                  className="input"
-                  placeholder="(555) 123-4567"
-                  required
-                />
-              </div>
-
-              <div>
-                <label htmlFor="businessEmail" className="label">Business Email (optional)</label>
-                <input
-                  id="businessEmail"
-                  type="email"
-                  value={formData.businessEmail}
-                  onChange={(e) => updateFormData({ businessEmail: e.target.value })}
-                  className="input"
-                  placeholder="Leave blank to use account email"
-                />
               </div>
             </div>
           )}
 
           {currentStep === 3 && (
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">Business Location</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                This information will be shown to customers booking appointments.
-              </p>
-
-              <div>
-                <label htmlFor="street" className="label">Street Address</label>
-                <AddressAutocomplete
-                  defaultValue={formData.street}
-                  placeholder="Start typing your business address..."
-                  className="input"
-                  onAddressSelect={(address: AddressComponents) => {
-                    const latitude =
-                      typeof address.latitude === 'number' ? address.latitude : null;
-                    const longitude =
-                      typeof address.longitude === 'number' ? address.longitude : null;
-                    const locationTimezone =
-                      latitude !== null && longitude !== null
-                        ? timezoneFromCoordinates(latitude, longitude)
-                        : null;
-
-                    updateFormData({
-                      street: address.street,
-                      city: address.city,
-                      state: address.state,
-                      zipCode: address.zipCode,
-                      country: address.country || 'United States',
-                      ...(locationTimezone ? { timezone: locationTimezone } : {}),
-                    });
-                    setSelectedCoordinates(
-                      latitude !== null && longitude !== null
-                        ? {
-                            latitude,
-                            longitude,
-                          }
-                        : null
-                    );
-                  }}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="city" className="label">City</label>
-                  <input
-                    id="city"
-                    type="text"
-                    value={formData.city}
-                    onChange={(e) => updateFormData({ city: e.target.value })}
-                    className="input"
-                    placeholder="San Francisco"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="state" className="label">State/Province</label>
-                  <input
-                    id="state"
-                    type="text"
-                    value={formData.state}
-                    onChange={(e) => updateFormData({ state: e.target.value })}
-                    className="input"
-                    placeholder="CA"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="zipCode" className="label">ZIP/Postal Code</label>
-                  <input
-                    id="zipCode"
-                    type="text"
-                    value={formData.zipCode}
-                    onChange={(e) => updateFormData({ zipCode: e.target.value })}
-                    className="input"
-                    placeholder="94102"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="country" className="label">Country</label>
-                  <input
-                    id="country"
-                    type="text"
-                    value={formData.country}
-                    onChange={(e) => updateFormData({ country: e.target.value })}
-                    className="input"
-                  />
-                </div>
-              </div>
-
-            </div>
-          )}
-
-          {currentStep === 4 && (
             <div className="text-center py-8">
               <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-6">
                 <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -688,9 +584,13 @@ function RegisterForm() {
               </h2>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
                 {emailVerified ? (
-                  <>Your account is now verified for <strong>{formData.email}</strong>.</>
+                  <>
+                    Your account is verified for <strong>{formData.email}</strong>.
+                  </>
                 ) : (
-                  <>We sent a 6-digit verification code to <strong>{formData.email}</strong>.</>
+                  <>
+                    We sent a 6-digit verification code to <strong>{formData.email}</strong>.
+                  </>
                 )}
               </p>
 
@@ -717,11 +617,11 @@ function RegisterForm() {
               )}
 
               <div className="card bg-primary-50 dark:bg-primary/10 border-primary-200 dark:border-primary/20 p-6 text-left mb-8">
-                <h3 className="font-semibold mb-3">Activation checklist</h3>
+                <h3 className="font-semibold mb-3">What happens next</h3>
                 <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                  <li>1. Open the verification email.</li>
-                  <li>2. Enter the 6-digit verification code above.</li>
-                  <li>3. Continue to login and access your dashboard.</li>
+                  <li>1. Enter the verification code from your inbox.</li>
+                  <li>2. We&apos;ll sign you in automatically.</li>
+                  <li>3. Finish your phone and location setup inside the dashboard.</li>
                 </ul>
               </div>
 
@@ -747,13 +647,13 @@ function RegisterForm() {
                   </button>
                 )}
                 <Link href="/login" className="btn-primary px-8 py-3 text-center">
-                  {emailVerified ? 'Continue to Login' : 'Go to Login'}
+                  {emailVerified ? 'Log In Manually' : 'Go to Login'}
                 </Link>
               </div>
             </div>
           )}
 
-          {currentStep < 4 && (
+          {currentStep < 3 && (
             <div className="flex justify-between mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
               {currentStep > 1 ? (
                 <button onClick={prevStep} className="btn-secondary" disabled={isLoading}>
@@ -763,7 +663,11 @@ function RegisterForm() {
                 <div />
               )}
               <button onClick={nextStep} className="btn-primary" disabled={isLoading}>
-                {isLoading && currentStep === 3 ? 'Creating account...' : 'Next'}
+                {isLoading && currentStep === 2
+                  ? 'Creating account...'
+                  : currentStep === 2
+                    ? 'Create account'
+                    : 'Next'}
               </button>
             </div>
           )}
@@ -787,4 +691,3 @@ export default function RegisterPage() {
     </Suspense>
   );
 }
-

@@ -7,7 +7,6 @@ import {
   formatAppointmentReminderSMS,
   formatAppointmentRescheduledSMS,
   formatDealClaimCodeSMS,
-  formatDealNotificationSMS,
   formatKioskDealClaimSMS,
   formatKioskSignupConfirmationSMS,
   formatReviewRequestSMS,
@@ -102,35 +101,6 @@ describe('twilio sms formatting', () => {
       businessName: 'Test Salon',
       googleReviewUrl: 'https://example.com/review',
     });
-    expect(message).toContain(FOOTER);
-  });
-
-  it('formats deal notification with polished copy and url', () => {
-    const message = formatDealNotificationSMS({
-      businessName: 'Test Salon',
-      dealTitle: '20% Off Gel Manicure',
-      dealUrl: 'https://clientific.app/d/deal-1',
-      customerName: 'Jane Doe',
-    });
-
-    expect(message).toContain('Hi Jane,');
-    expect(message).toContain('Test Salon has a special offer for you:');
-    expect(message).toContain('20% Off Gel Manicure');
-    expect(message).toContain('Book your appointment here:');
-    expect(message).toContain('https://clientific.app/d/deal-1');
-    expect(message).not.toContain('--');
-    expect(message).toContain(FOOTER);
-  });
-
-  it('falls back to a generic greeting when customer name is missing', () => {
-    const message = formatDealNotificationSMS({
-      businessName: 'Test Salon',
-      dealTitle: 'Free Add-On',
-      dealUrl: 'https://clientific.app/d/deal-2',
-    });
-
-    expect(message).toContain('Hi there,');
-    expect(message).toContain('Free Add-On');
     expect(message).toContain(FOOTER);
   });
 

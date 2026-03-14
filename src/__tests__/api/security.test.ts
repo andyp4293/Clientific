@@ -214,7 +214,7 @@ describe('POST /api/auth/register — input validation', () => {
 
   it('returns 400 for password shorter than 8 characters', async () => {
     const res = await registerPOST(req('POST', {
-      email: 'a@a.com', password: 'short', businessName: 'Test Biz', phone: '5555555555',
+      email: 'a@a.com', password: 'short', businessName: 'Test Biz', businessType: 'Salon', phone: '5555555555',
     }));
     expect(res.status).toBe(400);
     const body = await res.json();
@@ -226,6 +226,7 @@ describe('POST /api/auth/register — input validation', () => {
       email: 'a@a.com',
       password: 'a'.repeat(129),
       businessName: 'Test Biz',
+      businessType: 'Salon',
       phone: '5555555555',
     }));
     expect(res.status).toBe(400);
@@ -238,6 +239,7 @@ describe('POST /api/auth/register — input validation', () => {
       email: 'a@a.com',
       password: 'validpassword1',
       businessName: 'B'.repeat(101),
+      businessType: 'Salon',
       phone: '5555555555',
     }));
     expect(res.status).toBe(400);
@@ -256,6 +258,7 @@ describe('POST /api/auth/register — input validation', () => {
       email: 'new@test.com',
       password: 'ValidPass123!',
       businessName: 'Test Salon',
+      businessType: 'Salon',
       phone: '5551234567',
     }));
     expect(res.status).toBe(200);

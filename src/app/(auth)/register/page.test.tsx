@@ -5,6 +5,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import RegisterPage from './page';
 
 const mockPush = vi.fn();
+const mockRefresh = vi.fn();
 const mockSignIn = vi.fn();
 const mockUseSession = vi.fn();
 
@@ -16,65 +17,80 @@ vi.mock('next-auth/react', () => ({
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
+    refresh: mockRefresh,
   }),
   useSearchParams: () => ({
     get: () => null,
   }),
 }));
 
-describe('Register page location step', () => {
+describe('RegisterPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseSession.mockReturnValue({ status: 'unauthenticated', data: null });
     mockSignIn.mockResolvedValue(undefined);
 
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ available: true }),
-    } as Response);
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ available: true }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ verificationEmailSent: true }),
+      } as Response);
   });
 
-  it(
-    'does not render a visible timezone field in Business Location step',
-    async () => {
-      render(<RegisterPage />);
+  it('uses a minimal business step and moves the rest of setup into onboarding', async () => {
+    render(<RegisterPage />);
 
-      fireEvent.change(screen.getByLabelText(/email address/i), {
-        target: { value: 'owner@example.com' },
-      });
-      fireEvent.change(screen.getByLabelText(/^password \*/i), {
-        target: { value: 'Password123!' },
-      });
-      fireEvent.change(screen.getByLabelText(/confirm password/i), {
-        target: { value: 'Password123!' },
-      });
-      fireEvent.click(screen.getByRole('checkbox'));
-      fireEvent.click(screen.getByRole('button', { name: /^next$/i }));
+    fireEvent.change(screen.getByLabelText(/email address/i), {
+      target: { value: 'owner@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/^password \*/i), {
+      target: { value: 'Password123!' },
+    });
+    fireEvent.change(screen.getByLabelText(/confirm password/i), {
+      target: { value: 'Password123!' },
+    });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: /^next$/i }));
 
-      await screen.findByRole('heading', { name: /tell us about your business/i });
+    await screen.findByRole('heading', { name: /tell us about your business/i });
 
-      fireEvent.change(screen.getByLabelText(/business name/i), {
-        target: { value: 'Test Salon' },
-      });
-      fireEvent.change(screen.getByLabelText(/business phone/i), {
-        target: { value: '(555) 123-4567' },
-      });
-      fireEvent.click(screen.getByRole('button', { name: /^next$/i }));
+    expect(screen.getByLabelText(/business name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/business type/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/business phone/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/street address/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /business location/i })).not.toBeInTheDocument();
 
-      await screen.findByRole('heading', { name: /business location/i });
+    fireEvent.change(screen.getByLabelText(/business name/i), {
+      target: { value: 'Test Salon' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
 
-      expect(screen.queryByLabelText(/timezone/i)).not.toBeInTheDocument();
-      expect(screen.queryByText(/using your browser timezone/i)).not.toBeInTheDocument();
+    await screen.findByRole('heading', { name: /check your email/i });
+    expect(screen.getByText(/finish your phone and location setup inside the dashboard/i)).toBeInTheDocument();
 
-      await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledWith(
-          '/api/auth/check-email',
-          expect.objectContaining({
-            method: 'POST',
-          })
-        );
-      });
-    },
-    15000
-  );
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    const registerCall = vi.mocked(global.fetch).mock.calls[1];
+    expect(registerCall?.[0]).toBe('/api/auth/register');
+
+    const payload = JSON.parse((registerCall?.[1] as RequestInit).body as string);
+    expect(payload).toMatchObject({
+      email: 'owner@example.com',
+      businessName: 'Test Salon',
+      businessType: 'Salon',
+    });
+    expect(payload).not.toHaveProperty('phone');
+    expect(payload).not.toHaveProperty('street');
+    expect(payload).not.toHaveProperty('city');
+    expect(payload).not.toHaveProperty('state');
+    expect(payload).not.toHaveProperty('zipCode');
+    expect(payload).not.toHaveProperty('country');
+  });
 });
