@@ -71,7 +71,7 @@ describe('RegisterPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /create account/i }));
 
     await screen.findByRole('heading', { name: /check your email/i });
-    expect(screen.getByText(/finish your phone and location setup inside the dashboard/i)).toBeInTheDocument();
+    expect(screen.getByText(/finish your phone and location setup before the dashboard unlocks/i)).toBeInTheDocument();
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledTimes(2);

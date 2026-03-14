@@ -4,7 +4,8 @@ import { headers } from 'next/headers';
 import { APP_NAME } from '@/lib/brand';
 import Link from 'next/link';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { hasActiveSubscription } from '@/lib/subscription';
+import { prisma } from '@/lib/prisma';
+import { isBusinessOnboardingComplete } from '@/lib/onboarding';
 import { DashboardNav } from '@/components/layout/DashboardNav';
 import { DashboardHeader } from '@/components/layout/DashboardHeader';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
@@ -23,20 +24,62 @@ export default async function DashboardLayout({
     redirect('/signout');
   }
 
-  // Subscription gate — exempt the subscribe page itself to avoid redirect loops
   const headersList = await headers();
   const pathname = headersList.get('x-pathname') ?? '';
+  const isOnboardingPage = pathname === '/dashboard/onboarding';
   const isSubscribePage = pathname === '/dashboard/subscribe';
+  const businessId = session.user.businessId ?? session.user.id;
 
-  if (!isSubscribePage && session.user.businessId) {
-    const active = await hasActiveSubscription(session.user.businessId);
-    if (!active) {
-      redirect('/dashboard/subscribe');
+  if (!businessId) {
+    redirect('/signout');
+  }
+
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: {
+      phone: true,
+      street: true,
+      city: true,
+      state: true,
+      zipCode: true,
+      country: true,
+      subscriptionStatus: true,
+      trialEndsAt: true,
+    },
+  });
+
+  if (!business) {
+    redirect('/signout');
+  }
+
+  const trialIsActive =
+    business.subscriptionStatus === 'trialing' &&
+    business.trialEndsAt !== null &&
+    new Date() < new Date(business.trialEndsAt);
+  const hasActiveSubscription = business.subscriptionStatus === 'active' || trialIsActive;
+  const onboardingComplete = isBusinessOnboardingComplete(business);
+
+  if (!isSubscribePage && !hasActiveSubscription) {
+    redirect('/dashboard/subscribe');
+  }
+
+  if (hasActiveSubscription) {
+    if (!onboardingComplete && !isOnboardingPage) {
+      redirect('/dashboard/onboarding');
+    }
+
+    if (onboardingComplete && isOnboardingPage) {
+      redirect('/dashboard');
     }
   }
 
-  // Locked layout for subscribe page — no nav, no sidebar, just logo + sign out
-  if (isSubscribePage) {
+  // Locked layout for onboarding and subscribe - no nav, no sidebar, just logo + sign out.
+  if (isSubscribePage || isOnboardingPage) {
+    const title = isOnboardingPage ? 'Finish setup' : 'Complete subscription';
+    const subtitle = isOnboardingPage
+      ? 'Add your business phone and location before the dashboard unlocks.'
+      : 'Choose a plan to continue using Clientific.';
+
     return (
       <div className="min-h-screen brand-shell">
         <header className="fixed top-0 left-0 right-0 h-14 z-50 brand-panel border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6">
@@ -53,8 +96,16 @@ export default async function DashboardLayout({
             Sign out
           </Link>
         </header>
-        <main className="pt-14">
-          {children}
+        <main className="pt-20 px-4 pb-8">
+          <div className="mx-auto max-w-4xl">
+            <div className="mb-6 text-center">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                {title}
+              </p>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{subtitle}</p>
+            </div>
+            {children}
+          </div>
         </main>
         <Toaster richColors position="top-right" />
       </div>
@@ -63,12 +114,10 @@ export default async function DashboardLayout({
 
   return (
     <div className="dashboard-shell lg:min-h-screen brand-shell">
-      {/* Mobile Header */}
       <div className="lg:hidden shrink-0">
         <DashboardHeader />
       </div>
 
-      {/* Desktop Top Bar */}
       <div className="hidden lg:flex fixed top-0 left-0 right-0 h-16 z-50 brand-panel border-b border-gray-200 dark:border-gray-800 items-center justify-between px-6">
         <Link href="/dashboard" className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
@@ -79,12 +128,10 @@ export default async function DashboardLayout({
         <NotificationBell />
       </div>
 
-      {/* Desktop Sidebar */}
       <div className="hidden lg:fixed lg:top-16 lg:bottom-0 lg:left-0 lg:flex lg:w-64 lg:flex-col">
         <DashboardNav />
       </div>
 
-      {/* Main Content */}
       <div className="dashboard-scroll lg:pl-64 lg:pt-16">
         <SubscriptionBanner />
         <main className="py-6 px-4 sm:px-6 lg:px-8 lg:pb-6">
@@ -92,7 +139,6 @@ export default async function DashboardLayout({
         </main>
       </div>
 
-      {/* Mobile Bottom Nav */}
       <div
         className="dashboard-nav-bar lg:hidden fixed bottom-0 left-0 right-0 brand-panel border-t border-gray-200 dark:border-gray-800 z-50"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 2px)' }}

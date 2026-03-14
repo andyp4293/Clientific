@@ -18,6 +18,11 @@ type OnboardingFormData = {
   timezone: string;
 };
 
+type Coordinates = {
+  latitude: number;
+  longitude: number;
+};
+
 const EMPTY_FORM: OnboardingFormData = {
   name: '',
   businessType: '',
@@ -31,9 +36,30 @@ const EMPTY_FORM: OnboardingFormData = {
   timezone: '',
 };
 
+const ADDRESS_FIELDS: Array<keyof OnboardingFormData> = [
+  'street',
+  'city',
+  'state',
+  'zipCode',
+  'country',
+];
+
+function hasCoordinates(value: Coordinates | null): value is Coordinates {
+  return Boolean(
+    value &&
+      Number.isFinite(value.latitude) &&
+      Number.isFinite(value.longitude)
+  );
+}
+
 export default function DashboardOnboardingPage() {
   const router = useRouter();
+  const browserTimezone = useMemo(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York',
+    []
+  );
   const [formData, setFormData] = useState<OnboardingFormData>(EMPTY_FORM);
+  const [selectedCoordinates, setSelectedCoordinates] = useState<Coordinates | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -52,7 +78,6 @@ export default function DashboardOnboardingPage() {
         }
 
         const business = body.business;
-        const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
         setFormData({
           name: business.name ?? '',
@@ -64,7 +89,7 @@ export default function DashboardOnboardingPage() {
           state: business.state ?? '',
           zipCode: business.zipCode ?? '',
           country: business.country ?? 'United States',
-          timezone: business.timezone || browserTimezone || 'America/New_York',
+          timezone: business.timezone || browserTimezone,
         });
       } catch (fetchError: any) {
         setError(fetchError?.message || 'Failed to load business details');
@@ -74,9 +99,12 @@ export default function DashboardOnboardingPage() {
     };
 
     void loadBusiness();
-  }, []);
+  }, [browserTimezone]);
 
-  const phoneReady = useMemo(() => formData.phone.replace(/\D/g, '').length >= 10, [formData.phone]);
+  const phoneReady = useMemo(
+    () => formData.phone.replace(/\D/g, '').length >= 10,
+    [formData.phone]
+  );
   const addressReady = Boolean(
     formData.street.trim() &&
       formData.city.trim() &&
@@ -87,6 +115,10 @@ export default function DashboardOnboardingPage() {
 
   const updateField = (field: keyof OnboardingFormData, value: string) => {
     setFormData((current) => ({ ...current, [field]: value }));
+
+    if (ADDRESS_FIELDS.includes(field)) {
+      setSelectedCoordinates(null);
+    }
   };
 
   const handleAddressSelect = (address: AddressComponents) => {
@@ -95,6 +127,12 @@ export default function DashboardOnboardingPage() {
         ? timezoneFromCoordinates(address.latitude, address.longitude)
         : null;
 
+    setSelectedCoordinates(
+      typeof address.latitude === 'number' && typeof address.longitude === 'number'
+        ? { latitude: address.latitude, longitude: address.longitude }
+        : null
+    );
+
     setFormData((current) => ({
       ...current,
       street: address.street,
@@ -102,8 +140,53 @@ export default function DashboardOnboardingPage() {
       state: address.state,
       zipCode: address.zipCode,
       country: address.country || current.country || 'United States',
-      timezone: timezone || current.timezone,
+      timezone: timezone || current.timezone || browserTimezone,
     }));
+  };
+
+  const resolveTimezoneForAddress = async (): Promise<string> => {
+    if (hasCoordinates(selectedCoordinates)) {
+      return (
+        timezoneFromCoordinates(selectedCoordinates.latitude, selectedCoordinates.longitude) ||
+        formData.timezone ||
+        browserTimezone
+      );
+    }
+
+    const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+    const addressQuery = [
+      formData.street.trim(),
+      formData.city.trim(),
+      formData.state.trim(),
+      formData.zipCode.trim(),
+      formData.country.trim(),
+    ]
+      .filter(Boolean)
+      .join(', ');
+
+    if (mapboxToken && addressQuery) {
+      try {
+        const response = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addressQuery)}.json?access_token=${mapboxToken}&types=address&limit=1&country=us,ca`
+        );
+        const payload = await response.json().catch(() => ({}));
+        const center = Array.isArray(payload?.features?.[0]?.center)
+          ? payload.features[0].center
+          : null;
+
+        if (Array.isArray(center) && center.length === 2) {
+          const [longitude, latitude] = center;
+          const timezone = timezoneFromCoordinates(latitude, longitude);
+          if (timezone) {
+            return timezone;
+          }
+        }
+      } catch {
+        // Fall through to the existing stored/browser timezone.
+      }
+    }
+
+    return formData.timezone || browserTimezone;
   };
 
   const completeOnboarding = async () => {
@@ -121,6 +204,8 @@ export default function DashboardOnboardingPage() {
     setError('');
 
     try {
+      const timezone = await resolveTimezoneForAddress();
+
       const res = await fetch('/api/business', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -132,7 +217,7 @@ export default function DashboardOnboardingPage() {
           state: formData.state.trim(),
           zipCode: formData.zipCode.trim(),
           country: formData.country.trim() || 'United States',
-          timezone: formData.timezone.trim() || 'America/New_York',
+          timezone,
         }),
       });
 
@@ -164,9 +249,11 @@ export default function DashboardOnboardingPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Finish Your Setup</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          Finish Your Business Setup
+        </h1>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Your account is live. Add your business phone and location so your public profile, booking flow, and local campaigns are ready.
+          Add your business phone and location to unlock your dashboard, public profile, and local booking flow.
         </p>
       </div>
 
@@ -176,6 +263,10 @@ export default function DashboardOnboardingPage() {
             {error}
           </div>
         )}
+
+        <div className="rounded-xl border border-primary/20 bg-primary-50 px-4 py-4 text-sm text-gray-700 dark:border-primary/20 dark:bg-primary/10 dark:text-gray-300">
+          We will save your local scheduling timezone automatically from the address you confirm here.
+        </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -318,22 +409,6 @@ export default function DashboardOnboardingPage() {
           </div>
         </div>
 
-        <div>
-          <label htmlFor="onboarding-timezone" className="label">
-            Timezone
-          </label>
-          <input
-            id="onboarding-timezone"
-            type="text"
-            value={formData.timezone}
-            onChange={(e) => updateField('timezone', e.target.value)}
-            className="input"
-          />
-          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            We use this for appointments, reminders, and deal windows. It is prefilled from your browser or address when possible.
-          </p>
-        </div>
-
         <div className="rounded-xl border border-primary/20 bg-primary-50 px-4 py-4 text-sm text-gray-700 dark:border-primary/20 dark:bg-primary/10 dark:text-gray-300">
           You can change any of this later in Dashboard Settings.
         </div>
@@ -345,7 +420,7 @@ export default function DashboardOnboardingPage() {
             disabled={isSaving}
             className="btn-primary"
           >
-            {isSaving ? 'Saving...' : 'Finish setup'}
+            {isSaving ? 'Saving...' : 'Unlock dashboard'}
           </button>
         </div>
       </div>

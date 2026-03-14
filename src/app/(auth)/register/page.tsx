@@ -621,7 +621,7 @@ function RegisterForm() {
                 <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
                   <li>1. Enter the verification code from your inbox.</li>
                   <li>2. We&apos;ll sign you in automatically.</li>
-                  <li>3. Finish your phone and location setup inside the dashboard.</li>
+                  <li>3. Finish your phone and location setup before the dashboard unlocks.</li>
                 </ul>
               </div>
 
