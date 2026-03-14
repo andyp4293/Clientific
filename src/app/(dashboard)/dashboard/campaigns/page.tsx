@@ -73,6 +73,7 @@ export default function DealsPage() {
   const [expandedDeal, setExpandedDeal] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [confirmingNotify, setConfirmingNotify] = useState<string | null>(null);
+  const [sendingNotifyId, setSendingNotifyId] = useState<string | null>(null);
 
   const { data: dealsData, isLoading } = useQuery({
     queryKey: ['deals'],
@@ -167,6 +168,7 @@ export default function DealsPage() {
       }
     },
     onError: (e: any) => toast.error(e.message || 'Failed to send texts'),
+    onSettled: () => setSendingNotifyId(null),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -330,6 +332,8 @@ export default function DealsPage() {
             const cooldownDaysRemaining = notifyOnCooldown
               ? Math.ceil(cooldownRemainingMs / (24 * 60 * 60 * 1000))
               : 0;
+            const isSendingThisDeal = sendingNotifyId === deal.id;
+            const notifyButtonsDisabled = sendingNotifyId !== null || notifyOnCooldown;
 
             return (
               <div key={deal.id} className="card overflow-hidden">
@@ -406,14 +410,21 @@ export default function DealsPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs text-gray-600 dark:text-gray-400">Send a text message to your opted-in customers?</span>
                           <button
-                            onClick={() => { notifyMutation.mutate(deal.id); setConfirmingNotify(null); }}
-                            className="text-xs font-semibold text-white bg-primary px-2.5 py-1 rounded-lg hover:bg-primary/90 transition-colors"
+                            onClick={() => {
+                              if (sendingNotifyId !== null) return;
+                              setSendingNotifyId(deal.id);
+                              setConfirmingNotify(null);
+                              notifyMutation.mutate(deal.id);
+                            }}
+                            disabled={sendingNotifyId !== null}
+                            className="text-xs font-semibold text-white bg-primary px-2.5 py-1 rounded-lg hover:bg-primary/90 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             Yes, send
                           </button>
                           <button
                             onClick={() => setConfirmingNotify(null)}
-                            className="text-xs font-semibold text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                            disabled={sendingNotifyId !== null}
+                            className="text-xs font-semibold text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             Cancel
                           </button>
@@ -422,13 +433,13 @@ export default function DealsPage() {
                         <div className="flex flex-col items-end gap-1">
                           <button
                             onClick={() => setConfirmingNotify(deal.id)}
-                            disabled={notifyMutation.isPending || notifyOnCooldown}
+                            disabled={notifyButtonsDisabled}
                             className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                             </svg>
-                            {notifyMutation.isPending ? 'Sending...' : 'Text My Customers'}
+                            {isSendingThisDeal ? 'Sending...' : 'Text My Customers'}
                           </button>
                           {notifyOnCooldown && (
                             <p className="text-[11px] font-medium text-amber-600 dark:text-amber-400">

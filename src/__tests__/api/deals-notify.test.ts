@@ -8,7 +8,7 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     deal: {
       findUnique: vi.fn(),
-      update: vi.fn(),
+      updateMany: vi.fn(),
     },
     customer: {
       findMany: vi.fn(),
@@ -68,7 +68,7 @@ describe('POST /api/deals/[id]/notify', () => {
     vi.clearAllMocks();
     vi.mocked(getServerSession).mockResolvedValue(SESSION as any);
     vi.mocked(prisma.deal.findUnique).mockResolvedValue(DEAL as any);
-    vi.mocked(prisma.deal.update).mockResolvedValue({} as any);
+    vi.mocked(prisma.deal.updateMany).mockResolvedValue({ count: 1 } as any);
     vi.mocked(prisma.customer.findMany).mockResolvedValue([]);
   });
 
@@ -146,12 +146,38 @@ describe('POST /api/deals/[id]/notify', () => {
   it('updates notifiedAt on the deal', async () => {
     vi.mocked(prisma.customer.findMany).mockResolvedValue([]);
     await POST(notifyReq(), ctx('deal-1'));
-    expect(prisma.deal.update).toHaveBeenCalledWith(
+    expect(prisma.deal.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'deal-1' },
+        where: expect.objectContaining({ id: 'deal-1' }),
         data: expect.objectContaining({ notifiedAt: expect.any(Date) }),
       })
     );
+  });
+
+  it('deduplicates customers with the same phone number so only one text is sent', async () => {
+    vi.mocked(prisma.customer.findMany).mockResolvedValue([
+      { phone: '5551111111', name: 'Jane Doe' },
+      { phone: '5551111111', name: 'Jane Duplicate' },
+    ] as any);
+
+    const res = await POST(notifyReq(), ctx('deal-1'));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.sent).toBe(1);
+    expect(sendSMS).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not send texts if another request already reserved the notify send', async () => {
+    vi.mocked(prisma.customer.findMany).mockResolvedValue([{ phone: '5551111111', name: 'Jane Doe' }] as any);
+    vi.mocked(prisma.deal.updateMany).mockResolvedValue({ count: 0 } as any);
+
+    const res = await POST(notifyReq(), ctx('deal-1'));
+    const body = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(body.error).toMatch(/already being sent/i);
+    expect(sendSMS).not.toHaveBeenCalled();
   });
 
   it('queries only smsMarketingConsent=true, smsOptedOut=false customers with a phone', async () => {

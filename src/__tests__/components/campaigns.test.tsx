@@ -12,10 +12,11 @@ vi.mock('next-auth/react', () => ({
 }));
 
 const mockInvalidateQueries = vi.fn();
+const mockMutationMutate = vi.fn();
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(),
-  useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useMutation: vi.fn(() => ({ mutate: mockMutationMutate, isPending: false })),
   useQueryClient: vi.fn(() => ({ invalidateQueries: mockInvalidateQueries })),
 }));
 
@@ -64,12 +65,12 @@ function mockQueries(
   services: unknown[] = [],
   business: unknown = { name: 'Test Salon', publicId: 'pub_123' }
 ) {
-  let callCount = 0;
-  mockUseQuery.mockImplementation(() => {
-    callCount++;
-    if (callCount === 1) return { data: { deals }, isLoading: false } as any;
-    if (callCount === 2) return { data: { services }, isLoading: false } as any;
-    return { data: { business }, isLoading: false } as any;
+  mockUseQuery.mockImplementation((config: any) => {
+    const queryKey = config?.queryKey?.[0];
+    if (queryKey === 'deals') return { data: { deals }, isLoading: false } as any;
+    if (queryKey === 'services') return { data: { services }, isLoading: false } as any;
+    if (queryKey === 'business') return { data: { business }, isLoading: false } as any;
+    return { data: undefined, isLoading: false } as any;
   });
 }
 
@@ -78,6 +79,7 @@ function mockQueries(
 describe('DealsPage (Campaigns)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockMutationMutate.mockReset();
     Object.assign(navigator, {
       clipboard: {
         writeText: vi.fn(),
@@ -163,5 +165,26 @@ describe('DealsPage (Campaigns)', () => {
     });
 
     expect(linkInput.value).toBe('http://localhost:3000/capture/pub_123?deal=deal-1');
+  });
+
+  it('shows Sending only on the clicked deal while disabling the other deal send buttons', () => {
+    mockQueries([
+      makeDeal({ id: 'deal-1', title: 'Spring Special' }),
+      makeDeal({ id: 'deal-2', title: 'Happy Hour Deal' }),
+    ]);
+
+    render(<DealsPage />);
+
+    const sendButtons = screen.getAllByRole('button', { name: /text my customers/i });
+    expect(sendButtons).toHaveLength(2);
+
+    fireEvent.click(sendButtons[0]);
+    fireEvent.click(screen.getByRole('button', { name: /yes, send/i }));
+
+    const notifyButtonsAfterConfirm = screen.getAllByRole('button', { name: /text my customers|sending/i });
+    expect(mockMutationMutate).toHaveBeenCalledWith('deal-1');
+    expect(screen.getByRole('button', { name: /sending/i })).toBeDisabled();
+    expect(screen.queryAllByRole('button', { name: /sending/i })).toHaveLength(1);
+    expect(notifyButtonsAfterConfirm.find((button) => button.textContent?.trim() === 'Text My Customers')).toBeDisabled();
   });
 });

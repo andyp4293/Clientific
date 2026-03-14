@@ -8,6 +8,12 @@ import { APP_URL } from '@/lib/brand';
 import { getSessionBusinessId } from '@/lib/session-business';
 import { DEAL_NOTIFY_COOLDOWN_DAYS, getDealNotifyCooldownRemainingMs } from '@/lib/deal-notify';
 
+function normalizeNotifiedAt(value: Date | string | null | undefined) {
+  if (!value) return null;
+  const parsed = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -61,26 +67,48 @@ export async function POST(
       select: { phone: true, name: true },
     });
 
+    const reservedNotifiedAt = normalizeNotifiedAt(deal.notifiedAt);
+    const reservation = await prisma.deal.updateMany({
+      where: {
+        id: deal.id,
+        notifiedAt: reservedNotifiedAt,
+      },
+      data: { notifiedAt: new Date() },
+    });
+
+    if (reservation.count === 0) {
+      return NextResponse.json(
+        { error: 'Deal notifications are already being sent. Refresh and try again in a moment.' },
+        { status: 409 }
+      );
+    }
+
+    const seenPhones = new Set<string>();
+    const uniqueRecipients = customers.reduce<Array<{ phone: string; name: string | null }>>((acc, customer) => {
+      const phone = formatPhoneNumber(customer.phone!);
+      if (seenPhones.has(phone)) {
+        return acc;
+      }
+      seenPhones.add(phone);
+      acc.push({ phone, name: customer.name ?? null });
+      return acc;
+    }, []);
+
     const results = await Promise.all(
-      customers.map((c) =>
+      uniqueRecipients.map((customer) =>
         sendSMS({
-          to: formatPhoneNumber(c.phone!),
+          to: customer.phone,
           message: formatDealNotificationSMS({
             businessName: deal.business.name,
             dealTitle: deal.title,
             dealUrl: `${APP_URL}/d/${deal.id}`,
-            customerName: c.name ?? null,
+            customerName: customer.name,
           }),
         })
       )
     );
 
     const sent = results.filter((r) => r.success).length;
-
-    await prisma.deal.update({
-      where: { id: deal.id },
-      data: { notifiedAt: new Date() },
-    });
 
     return NextResponse.json({ sent, dealId: deal.id });
   } catch (error: any) {
