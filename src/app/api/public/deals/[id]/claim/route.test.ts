@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
+    business: { findUnique: vi.fn() },
     deal: { findUnique: vi.fn(), update: vi.fn() },
     dealRedemption: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn() },
     customer: { findFirst: vi.fn() },
@@ -10,14 +11,24 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
+vi.mock('@/lib/twilio', () => ({
+  sendSMS: vi.fn().mockResolvedValue({ success: true }),
+  formatPhoneNumber: vi.fn((phone: string) => `+1${phone.replace(/\D/g, '')}`),
+  formatDealClaimCodeSMS: vi.fn(() => 'deal claim sms'),
+}));
+
 import { prisma } from '@/lib/prisma';
+import { formatDealClaimCodeSMS, sendSMS } from '@/lib/twilio';
 import { POST } from './route';
 
+const mockBusinessFindUnique = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockDealFindUnique = prisma.deal.findUnique as ReturnType<typeof vi.fn>;
 const mockRedemptionFindUnique = prisma.dealRedemption.findUnique as ReturnType<typeof vi.fn>;
 const mockRedemptionFindFirst = prisma.dealRedemption.findFirst as ReturnType<typeof vi.fn>;
 const mockCustomerFindFirst = prisma.customer.findFirst as ReturnType<typeof vi.fn>;
 const mockTransaction = prisma.$transaction as ReturnType<typeof vi.fn>;
+const mockSendSMS = sendSMS as ReturnType<typeof vi.fn>;
+const mockFormatDealClaimCodeSMS = formatDealClaimCodeSMS as ReturnType<typeof vi.fn>;
 
 const now = new Date();
 const activeDeal = {
@@ -47,6 +58,14 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockRedemptionFindUnique.mockResolvedValue(null); // no code collision
   mockRedemptionFindFirst.mockResolvedValue(null); // no previous claim
+  mockBusinessFindUnique.mockResolvedValue({
+    name: 'Test Salon',
+    slug: 'test-salon',
+    enableOnlineBooking: true,
+    vapiPhoneNumber: '+15557654989',
+  });
+  mockSendSMS.mockResolvedValue({ success: true });
+  mockFormatDealClaimCodeSMS.mockReturnValue('deal claim sms');
 });
 
 describe('POST /api/public/deals/[id]/claim', () => {
@@ -113,6 +132,22 @@ describe('POST /api/public/deals/[id]/claim', () => {
     const body = await res.json();
     expect(body.code).toBe('ABCD1234');
     expect(body.expiresAt).toBeDefined();
+    expect(body.confirmationSent).toBe(true);
+    expect(mockFormatDealClaimCodeSMS).toHaveBeenCalledWith(
+      expect.objectContaining({
+        businessName: 'Test Salon',
+        dealTitle: 'Spring Special',
+        dealCode: 'ABCD1234',
+        bookingUrl: expect.stringMatching(/\/book\/test-salon$/),
+      })
+    );
+    expect(mockSendSMS).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: '+15551234567',
+        from: '+15557654989',
+        message: 'deal claim sms',
+      })
+    );
   });
 
   it('links customer when customerPhone matches', async () => {
@@ -158,5 +193,19 @@ describe('POST /api/public/deals/[id]/claim', () => {
     mockTransaction.mockResolvedValue([fakeRedemption, { id: 'deal-1' }]);
     const res = await POST(makeRequest('deal-1'), makeParams('deal-1'));
     expect(res.status).toBe(200);
+  });
+
+  it('still returns the code when sms delivery fails', async () => {
+    mockDealFindUnique.mockResolvedValue(activeDeal);
+    const fakeRedemption = { code: 'ABCD1234', dealId: 'deal-1', customerId: null };
+    mockTransaction.mockResolvedValue([fakeRedemption, { id: 'deal-1' }]);
+    mockSendSMS.mockResolvedValue({ success: false, error: 'carrier reject' });
+
+    const res = await POST(makeRequest('deal-1'), makeParams('deal-1'));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.code).toBe('ABCD1234');
+    expect(body.confirmationSent).toBe(false);
   });
 });

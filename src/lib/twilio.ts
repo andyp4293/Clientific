@@ -77,6 +77,14 @@ interface DealNotificationDetails {
   customerName?: string | null;
 }
 
+interface DealClaimCodeDetails {
+  businessName: string;
+  dealTitle: string;
+  dealCode: string;
+  customerName?: string | null;
+  bookingUrl?: string | null;
+}
+
 interface KioskSignupDetails {
   businessName: string;
   customerName?: string | null;
@@ -364,6 +372,14 @@ export function formatDealNotificationSMS(details: DealNotificationDetails): str
   const greeting = firstName ? `Hi ${firstName},` : 'Hi there,';
   const message = `${greeting} ${details.businessName} has a special offer for you: ${details.dealTitle}. Book your appointment here: ${details.dealUrl}`;
   return appendSmsComplianceFooter(message);
+}
+
+export function formatDealClaimCodeSMS(details: DealClaimCodeDetails): string {
+  const firstName = details.customerName?.trim().split(/\s+/).filter(Boolean)[0] ?? null;
+  const greeting = firstName ? `Hi ${firstName},` : 'Hi there,';
+  const base = `${greeting} your ${details.businessName} ${details.dealTitle} code is ${details.dealCode}. Show it at checkout.`;
+  const withBooking = details.bookingUrl ? `${base} Book here: ${details.bookingUrl}` : base;
+  return appendSmsComplianceFooter(withBooking);
 }
 
 export function formatKioskSignupConfirmationSMS(details: KioskSignupDetails): string {

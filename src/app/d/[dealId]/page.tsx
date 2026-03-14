@@ -37,6 +37,7 @@ export default function PublicDealClaimPage() {
   const dealId = params.dealId as string;
   const [customerPhone, setCustomerPhone] = useState('');
   const [claimCode, setClaimCode] = useState<string | null>(null);
+  const [claimConfirmationSent, setClaimConfirmationSent] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
 
@@ -59,6 +60,7 @@ export default function PublicDealClaimPage() {
     setIsClaiming(true);
     setClaimError(null);
     setClaimCode(null);
+    setClaimConfirmationSent(false);
 
     try {
       const res = await fetch(`/api/public/deals/${dealId}/claim`, {
@@ -72,6 +74,7 @@ export default function PublicDealClaimPage() {
       }
       const body = await res.json();
       setClaimCode(body.code);
+      setClaimConfirmationSent(body.confirmationSent === true);
     } catch (error: any) {
       setClaimError(error?.message || 'Could not claim this deal');
     } finally {
@@ -181,6 +184,11 @@ export default function PublicDealClaimPage() {
               <p className="text-xs text-green-800 dark:text-green-300 mt-2">
                 Show this code at checkout for redemption.
               </p>
+              {claimConfirmationSent && (
+                <p className="text-xs text-green-800 dark:text-green-300 mt-2">
+                  We also texted this code to your phone.
+                </p>
+              )}
               <Link
                 href={`/book/${deal.business.publicId}`}
                 className="inline-block mt-4 text-sm font-medium text-primary hover:underline"
