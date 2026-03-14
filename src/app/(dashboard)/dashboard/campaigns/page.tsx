@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/DatePicker';
 import InStoreCapturePanel from '@/components/campaigns/InStoreCapturePanel';
+import { getDealNotifyCooldownRemainingMs } from '@/lib/deal-notify';
 
 interface Deal {
   id: string;
@@ -175,7 +176,6 @@ export default function DealsPage() {
   };
 
   const labelClass = 'block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1';
-  const notifyCooldownMs = 7 * 24 * 60 * 60 * 1000;
   const nowMs = Date.now();
 
   return (
@@ -325,11 +325,10 @@ export default function DealsPage() {
             const isExpired = new Date(deal.expiresAt) <= new Date();
             const isFull = deal.maxRedemptions !== null && deal.redemptionCount >= deal.maxRedemptions;
             const isExpanded = expandedDeal === deal.id;
-            const notifiedAtMs = deal.notifiedAt ? new Date(deal.notifiedAt).getTime() : null;
-            const notifyAvailableAtMs = notifiedAtMs ? notifiedAtMs + notifyCooldownMs : null;
-            const notifyOnCooldown = notifyAvailableAtMs !== null && notifyAvailableAtMs > nowMs;
+            const cooldownRemainingMs = getDealNotifyCooldownRemainingMs(deal.notifiedAt, nowMs);
+            const notifyOnCooldown = cooldownRemainingMs > 0;
             const cooldownDaysRemaining = notifyOnCooldown
-              ? Math.ceil((notifyAvailableAtMs - nowMs) / (24 * 60 * 60 * 1000))
+              ? Math.ceil(cooldownRemainingMs / (24 * 60 * 60 * 1000))
               : 0;
 
             return (

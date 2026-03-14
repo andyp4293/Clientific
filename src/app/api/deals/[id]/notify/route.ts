@@ -6,6 +6,7 @@ import { requireActiveSubscription } from '@/lib/subscription';
 import { sendSMS, formatPhoneNumber, formatDealNotificationSMS } from '@/lib/twilio';
 import { APP_URL } from '@/lib/brand';
 import { getSessionBusinessId } from '@/lib/session-business';
+import { DEAL_NOTIFY_COOLDOWN_DAYS, getDealNotifyCooldownRemainingMs } from '@/lib/deal-notify';
 
 export async function POST(
   _req: NextRequest,
@@ -37,6 +38,17 @@ export async function POST(
 
     if (!deal.active) {
       return NextResponse.json({ error: 'Deal is not active' }, { status: 400 });
+    }
+
+    const cooldownRemainingMs = getDealNotifyCooldownRemainingMs(deal.notifiedAt);
+    if (cooldownRemainingMs > 0) {
+      const cooldownDaysRemaining = Math.ceil(cooldownRemainingMs / (24 * 60 * 60 * 1000));
+      return NextResponse.json(
+        {
+          error: `Deal notifications are on cooldown for ${cooldownDaysRemaining} more day${cooldownDaysRemaining !== 1 ? 's' : ''}. You can send again every ${DEAL_NOTIFY_COOLDOWN_DAYS} days.`,
+        },
+        { status: 429 }
+      );
     }
 
     const customers = await prisma.customer.findMany({

@@ -51,6 +51,7 @@ const DEAL = {
   businessId: 'biz-1',
   title: 'Test Deal',
   active: true,
+  notifiedAt: null,
   business: { name: 'Test Salon', slug: 'test-salon' },
 };
 
@@ -93,6 +94,17 @@ describe('POST /api/deals/[id]/notify', () => {
     vi.mocked(prisma.deal.findUnique).mockResolvedValue({ ...DEAL, active: false } as any);
     const res = await POST(notifyReq(), ctx('deal-1'));
     expect(res.status).toBe(400);
+  });
+
+  it('returns 429 when the deal was notified within the last 3 days', async () => {
+    const recentlyNotified = new Date(Date.now() - 1 * 86400000).toISOString();
+    vi.mocked(prisma.deal.findUnique).mockResolvedValue({ ...DEAL, notifiedAt: recentlyNotified } as any);
+
+    const res = await POST(notifyReq(), ctx('deal-1'));
+
+    expect(res.status).toBe(429);
+    expect(prisma.customer.findMany).not.toHaveBeenCalled();
+    expect(sendSMS).not.toHaveBeenCalled();
   });
 
   it('sends SMS to eligible customers and returns count', async () => {

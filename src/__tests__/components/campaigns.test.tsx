@@ -118,11 +118,12 @@ describe('DealsPage (Campaigns)', () => {
     expect(screen.getByText(/cooldown: available in/i)).toBeInTheDocument();
   });
 
-  it('shows "Text My Customers" button when notifiedAt is older than 7 days', () => {
-    const oldNotified = new Date(Date.now() - 8 * 86400000).toISOString(); // 8 days ago
+  it('shows "Text My Customers" button when notifiedAt is older than 3 days', () => {
+    const oldNotified = new Date(Date.now() - 4 * 86400000).toISOString(); // 4 days ago
     mockQueries([makeDeal({ active: true, notifiedAt: oldNotified })]);
     render(<DealsPage />);
     expect(screen.getByRole('button', { name: /text my customers/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /text my customers/i })).not.toBeDisabled();
   });
 
   it('hides "Text My Customers" button for inactive deal', () => {
