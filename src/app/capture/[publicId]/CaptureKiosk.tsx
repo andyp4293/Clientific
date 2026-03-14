@@ -124,258 +124,272 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
   return (
     <div className="page-shell min-h-screen px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
       <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-6xl items-stretch sm:min-h-[calc(100vh-3rem)]">
-        <div className="grid flex-1 gap-5 lg:grid-cols-[1.05fr,0.95fr] lg:gap-6">
-          <section className="brand-panel order-1 flex min-h-0 flex-col justify-center rounded-[2rem] p-5 sm:p-8 lg:order-2 lg:min-h-[640px]">
-            {success ? (
-              <div className="space-y-6 text-center sm:space-y-7">
-                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/12 text-primary">
-                  <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-
-                <div className="space-y-3">
-                  <p className="text-sm font-semibold uppercase tracking-[0.28em] text-primary">You're all set</p>
-                  <h2 className="text-3xl font-bold text-gray-950 dark:text-gray-50 sm:text-4xl">
-                    You're all set, {success.submittedName.split(/\s+/)[0]}.
-                  </h2>
-                  <p className="mx-auto max-w-xl text-base text-gray-700 dark:text-gray-200 sm:text-lg">
-                    {success.deal
-                      ? `Your ${success.deal.title} code is ready. Keep it handy for checkout today.`
-                      : `You are now on ${config.business.name}'s VIP text list for service specials, openings, and updates.`}
-                  </p>
-                </div>
-
-                {success.deal && (
-                  <div className="rounded-3xl border border-primary/20 bg-primary/8 p-5 sm:p-6">
-                    <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">Claim code</p>
-                    <p className="mt-3 font-mono text-4xl font-bold tracking-[0.22em] text-gray-950 dark:text-gray-50 sm:text-5xl">
-                      {success.deal.code}
-                    </p>
-                    <p className="mt-3 text-sm text-gray-700 dark:text-gray-200 sm:text-base">
-                      Show this code at checkout before{' '}
-                      {new Date(success.deal.expiresAt).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                      .
-                    </p>
-                  </div>
-                )}
-
-                {success.dealIssue && (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100">
-                    This signup was saved, but the selected promo is no longer available.
-                  </div>
-                )}
-
-                <div className="space-y-4 rounded-3xl border border-primary/16 bg-primary/6 p-5 text-left sm:p-6">
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-gray-950 dark:text-gray-50">
-                      {success.confirmationSent && success.submittedPhoneLast4
-                        ? `We just sent a confirmation text to the mobile number ending in ${success.submittedPhoneLast4}.`
-                        : "You're signed up. If a text does not arrive shortly, the front desk can help."}
-                    </p>
-                    <p className="text-sm text-gray-700 dark:text-gray-200">
-                      This screen resets for the next guest in {resetCountdown} second{resetCountdown === 1 ? '' : 's'}.
-                    </p>
-                  </div>
-
-                  <div className="h-2 overflow-hidden rounded-full bg-gray-200/80 dark:bg-gray-800">
-                    <div
-                      className="h-full rounded-full bg-primary transition-[width] duration-700 ease-linear"
-                      style={{ width: progressPercent }}
+        <div
+          data-testid="capture-kiosk-layout"
+          className="grid flex-1 gap-5 md:grid-cols-[1.05fr,0.95fr] md:gap-6"
+        >
+          <div
+            data-testid="capture-kiosk-shell"
+            className="brand-hero overflow-hidden rounded-[2rem] p-5 text-white shadow-2xl shadow-primary-950/20 sm:p-6 md:contents"
+          >
+            <section
+              data-testid="capture-kiosk-hero"
+              className="space-y-6 md:order-1 md:flex md:min-h-[640px] md:flex-col md:justify-between md:rounded-[2rem] md:bg-[linear-gradient(135deg,rgb(var(--color-gray-900))_0%,rgb(var(--color-gray-800))_55%,rgb(var(--color-primary-800))_100%)] md:p-8 md:text-white md:shadow-2xl md:shadow-primary-950/20 lg:p-10"
+            >
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  {config.business.logoUrl ? (
+                    <Image
+                      src={config.business.logoUrl}
+                      alt={`${config.business.name} logo`}
+                      width={88}
+                      height={88}
+                      className="h-20 w-20 rounded-3xl border border-white/15 object-cover sm:h-24 sm:w-24"
                     />
+                  ) : (
+                    <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-white/15 bg-white/10 text-3xl font-bold uppercase sm:h-24 sm:w-24">
+                      {config.business.name.charAt(0)}
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary-200">
+                      In-Store Signup
+                    </p>
+                    <h1 className="mt-2 text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
+                      {hasSelectedDeal ? "Claim today's service offer." : 'Join the VIP text list.'}
+                    </h1>
                   </div>
+                </div>
 
-                  <button
-                    type="button"
-                    onClick={resetForNextCustomer}
-                    className="btn-secondary min-h-[56px] w-full text-base font-semibold"
-                  >
-                    Reset now
-                  </button>
+                <div className="max-w-2xl space-y-4">
+                  <p className="text-lg text-white/92 sm:text-xl">
+                    {config.deal
+                      ? `${config.deal.discountLabel} on ${config.deal.serviceName ?? 'featured services'} from ${config.business.name}. Enter your info and we'll text your code right away.`
+                      : `Get first access to specials, last-minute openings, seasonal promos, and client updates from ${config.business.name}.`}
+                  </p>
+                  {config.business.publicProfileHeadline && (
+                    <p className="text-sm text-white/70 sm:text-base">{config.business.publicProfileHeadline}</p>
+                  )}
                 </div>
               </div>
-            ) : (
-              <div className="space-y-6">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-primary">
-                    {config.business.name}
+
+              <div className="pt-2 md:pt-8">
+                <div className="max-w-xl rounded-3xl border border-white/10 bg-white/8 p-5 backdrop-blur-sm sm:p-6">
+                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary-200">
+                    {hasSelectedDeal ? "Today's offer" : 'Why clients join'}
                   </p>
-                  <h2 className="mt-2 text-3xl font-bold text-gray-950 dark:text-gray-50 sm:text-4xl">
-                    {hasSelectedDeal ? "Enter your info to claim today's offer." : 'Enter your info to join.'}
-                  </h2>
-                  <p className="mt-3 max-w-xl text-base text-gray-700 dark:text-gray-200 sm:text-lg">
-                    {hasSelectedDeal
-                      ? "We'll text your service offer code right after you submit."
-                      : "Quick signup. Mobile phone is required, email is optional."}
-                  </p>
+                  {config.deal ? (
+                    <>
+                      <p className="mt-3 text-2xl font-semibold">{config.deal.title}</p>
+                      <p className="mt-2 text-sm text-white/80">
+                        {config.deal.description || 'Claim this service special now and stay on the VIP text list for future offers.'}
+                      </p>
+                      <p className="mt-4 text-sm text-white/70">
+                        Expires{' '}
+                        {new Date(config.deal.expiresAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="mt-3 text-2xl font-semibold">Service-first updates</p>
+                      <ul className="mt-4 space-y-2 text-sm text-white/80">
+                        <li>Early access to member-only specials and seasonal offers</li>
+                        <li>Alerts for last-minute openings and slow-day promos</li>
+                        <li>Occasional updates from the team, sent by text</li>
+                      </ul>
+                    </>
+                  )}
                 </div>
+              </div>
+            </section>
 
-                <form className="space-y-5" onSubmit={handleSubmit}>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="label text-base" htmlFor="capture-name">Full name</label>
-                      <input
-                        ref={nameInputRef}
-                        id="capture-name"
-                        type="text"
-                        autoComplete="name"
-                        inputMode="text"
-                        className="input min-h-[60px] text-xl"
-                        placeholder="Jane Smith"
-                        value={form.name}
-                        onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                        maxLength={100}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="label text-base" htmlFor="capture-phone">Mobile phone</label>
-                      <input
-                        id="capture-phone"
-                        type="tel"
-                        autoComplete="tel"
-                        inputMode="tel"
-                        className="input min-h-[60px] text-xl"
-                        placeholder="(555) 123-4567"
-                        value={form.phone}
-                        onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
-                        maxLength={30}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="label text-base" htmlFor="capture-email">Email (optional)</label>
-                      <input
-                        id="capture-email"
-                        type="email"
-                        autoComplete="email"
-                        inputMode="email"
-                        className="input min-h-[60px] text-xl"
-                        placeholder="jane@example.com"
-                        value={form.email}
-                        onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-                        maxLength={254}
-                      />
-                    </div>
+            <section
+              data-testid="capture-kiosk-form"
+              className="mt-6 rounded-[1.75rem] border border-white/12 bg-white/95 p-5 text-gray-950 shadow-xl shadow-primary-950/10 backdrop-blur sm:p-6 dark:border-gray-800 dark:bg-gray-900/90 dark:text-gray-50 md:order-2 md:mt-0 md:flex md:min-h-[640px] md:flex-col md:justify-center md:rounded-[2rem] md:border-gray-200 md:bg-[rgb(var(--color-gray-50)/0.86)] md:p-8 md:shadow-[0_24px_60px_-36px_rgb(var(--color-primary-800)/0.42)] md:backdrop-blur-xl lg:p-10"
+            >
+              {success ? (
+                <div className="space-y-6 text-center sm:space-y-7">
+                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/12 text-primary">
+                    <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M5 13l4 4L19 7" />
+                    </svg>
                   </div>
 
-                  <label className="flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/8 p-4 text-sm text-gray-800 dark:text-gray-100">
-                    <input
-                      type="checkbox"
-                      className="mt-1 h-5 w-5 rounded border-primary/40 text-primary focus:ring-primary/30"
-                      checked={form.smsMarketingConsent}
-                      onChange={(event) =>
-                        setForm((current) => ({
-                          ...current,
-                          smsMarketingConsent: event.target.checked,
-                        }))
-                      }
-                    />
-                    <span>
-                      <span className="block font-semibold">{consentLabel}</span>
-                      <span className="mt-1 block text-xs text-gray-700 dark:text-gray-200">
-                        Consent is not a condition of purchase. Message frequency varies. Message and data rates may apply. Reply STOP to opt out, HELP for help.
-                      </span>
-                    </span>
-                  </label>
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold uppercase tracking-[0.28em] text-primary">You're all set</p>
+                    <h2 className="text-3xl font-bold text-gray-950 dark:text-gray-50 sm:text-4xl">
+                      You're all set, {success.submittedName.split(/\s+/)[0]}.
+                    </h2>
+                    <p className="mx-auto max-w-xl text-base text-gray-700 dark:text-gray-200 sm:text-lg">
+                      {success.deal
+                        ? `Your ${success.deal.title} code is ready. Keep it handy for checkout today.`
+                        : `You are now on ${config.business.name}'s VIP text list for service specials, openings, and updates.`}
+                    </p>
+                  </div>
 
-                  {error && (
-                    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">
-                      {error}
+                  {success.deal && (
+                    <div className="rounded-3xl border border-primary/20 bg-primary/8 p-5 sm:p-6">
+                      <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">Claim code</p>
+                      <p className="mt-3 font-mono text-4xl font-bold tracking-[0.22em] text-gray-950 dark:text-gray-50 sm:text-5xl">
+                        {success.deal.code}
+                      </p>
+                      <p className="mt-3 text-sm text-gray-700 dark:text-gray-200 sm:text-base">
+                        Show this code at checkout before{' '}
+                        {new Date(success.deal.expiresAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                        .
+                      </p>
                     </div>
                   )}
 
-                  <button
-                    type="submit"
-                    disabled={!canSubmit}
-                    className="btn-primary min-h-[64px] w-full text-lg font-semibold disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isSubmitting
-                      ? 'Saving...'
-                      : hasSelectedDeal
-                        ? 'Claim offer by text'
-                        : 'Join by text'}
-                  </button>
-                </form>
-              </div>
-            )}
-          </section>
+                  {success.dealIssue && (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100">
+                      This signup was saved, but the selected promo is no longer available.
+                    </div>
+                  )}
 
-          <section className="brand-hero order-2 flex flex-col justify-between rounded-[2rem] p-5 text-white shadow-2xl shadow-primary-950/20 sm:p-8 lg:order-1 lg:p-10">
-            <div className="space-y-6">
-              <div className="flex items-center gap-4">
-                {config.business.logoUrl ? (
-                  <Image
-                    src={config.business.logoUrl}
-                    alt={`${config.business.name} logo`}
-                    width={88}
-                    height={88}
-                    className="h-20 w-20 rounded-3xl border border-white/15 object-cover sm:h-24 sm:w-24"
-                  />
-                ) : (
-                  <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-white/15 bg-white/10 text-3xl font-bold uppercase sm:h-24 sm:w-24">
-                    {config.business.name.charAt(0)}
+                  <div className="space-y-4 rounded-3xl border border-primary/16 bg-primary/6 p-5 text-left sm:p-6">
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold text-gray-950 dark:text-gray-50">
+                        {success.confirmationSent && success.submittedPhoneLast4
+                          ? `We just sent a confirmation text to the mobile number ending in ${success.submittedPhoneLast4}.`
+                          : "You're signed up. If a text does not arrive shortly, the front desk can help."}
+                      </p>
+                      <p className="text-sm text-gray-700 dark:text-gray-200">
+                        This screen resets for the next guest in {resetCountdown} second{resetCountdown === 1 ? '' : 's'}.
+                      </p>
+                    </div>
+
+                    <div className="h-2 overflow-hidden rounded-full bg-gray-200/80 dark:bg-gray-800">
+                      <div
+                        className="h-full rounded-full bg-primary transition-[width] duration-700 ease-linear"
+                        style={{ width: progressPercent }}
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={resetForNextCustomer}
+                      className="btn-secondary min-h-[56px] w-full text-base font-semibold"
+                    >
+                      Reset now
+                    </button>
                   </div>
-                )}
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary-200">
-                    In-Store Signup
-                  </p>
-                  <h1 className="mt-2 text-3xl font-bold leading-tight sm:text-5xl">
-                    {hasSelectedDeal ? "Claim today's service offer." : 'Join the VIP text list.'}
-                  </h1>
                 </div>
-              </div>
-
-              <div className="max-w-2xl space-y-4">
-                <p className="text-lg text-white/92 sm:text-xl">
-                  {config.deal
-                    ? `${config.deal.discountLabel} on ${config.deal.serviceName ?? 'featured services'} from ${config.business.name}. Enter your info and we'll text your code right away.`
-                    : `Get first access to specials, last-minute openings, seasonal promos, and client updates from ${config.business.name}.`}
-                </p>
-                {config.business.publicProfileHeadline && (
-                  <p className="text-sm text-white/70 sm:text-base">{config.business.publicProfileHeadline}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="pt-8">
-              <div className="max-w-xl rounded-3xl border border-white/10 bg-white/8 p-5 backdrop-blur-sm sm:p-6">
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary-200">
-                  {hasSelectedDeal ? "Today's offer" : 'Why clients join'}
-                </p>
-                {config.deal ? (
-                  <>
-                    <p className="mt-3 text-2xl font-semibold">{config.deal.title}</p>
-                    <p className="mt-2 text-sm text-white/80">
-                      {config.deal.description || 'Claim this service special now and stay on the VIP text list for future offers.'}
+              ) : (
+                <div className="space-y-6">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.25em] text-primary">
+                      {config.business.name}
                     </p>
-                    <p className="mt-4 text-sm text-white/70">
-                      Expires{' '}
-                      {new Date(config.deal.expiresAt).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
+                    <h2 className="mt-2 text-3xl font-bold text-gray-950 dark:text-gray-50 sm:text-4xl">
+                      {hasSelectedDeal ? "Enter your info to claim today's offer." : 'Enter your info to join.'}
+                    </h2>
+                    <p className="mt-3 max-w-xl text-base text-gray-700 dark:text-gray-200 sm:text-lg">
+                      {hasSelectedDeal
+                        ? "We'll text your service offer code right after you submit."
+                        : "Quick signup. Mobile phone is required, email is optional."}
                     </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="mt-3 text-2xl font-semibold">Service-first updates</p>
-                    <ul className="mt-4 space-y-2 text-sm text-white/80">
-                      <li>Early access to member-only specials and seasonal offers</li>
-                      <li>Alerts for last-minute openings and slow-day promos</li>
-                      <li>Occasional updates from the team, sent by text</li>
-                    </ul>
-                  </>
-                )}
-              </div>
-            </div>
-          </section>
+                  </div>
+
+                  <form className="space-y-5" onSubmit={handleSubmit}>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="label text-base" htmlFor="capture-name">Full name</label>
+                        <input
+                          ref={nameInputRef}
+                          id="capture-name"
+                          type="text"
+                          autoComplete="name"
+                          inputMode="text"
+                          className="input min-h-[60px] text-xl"
+                          placeholder="Jane Smith"
+                          value={form.name}
+                          onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                          maxLength={100}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="label text-base" htmlFor="capture-phone">Mobile phone</label>
+                        <input
+                          id="capture-phone"
+                          type="tel"
+                          autoComplete="tel"
+                          inputMode="tel"
+                          className="input min-h-[60px] text-xl"
+                          placeholder="(555) 123-4567"
+                          value={form.phone}
+                          onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                          maxLength={30}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="label text-base" htmlFor="capture-email">Email (optional)</label>
+                        <input
+                          id="capture-email"
+                          type="email"
+                          autoComplete="email"
+                          inputMode="email"
+                          className="input min-h-[60px] text-xl"
+                          placeholder="jane@example.com"
+                          value={form.email}
+                          onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                          maxLength={254}
+                        />
+                      </div>
+                    </div>
+
+                    <label className="flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/8 p-4 text-sm text-gray-800 dark:text-gray-100">
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-5 w-5 rounded border-primary/40 text-primary focus:ring-primary/30"
+                        checked={form.smsMarketingConsent}
+                        onChange={(event) =>
+                          setForm((current) => ({
+                            ...current,
+                            smsMarketingConsent: event.target.checked,
+                          }))
+                        }
+                      />
+                      <span>
+                        <span className="block font-semibold">{consentLabel}</span>
+                        <span className="mt-1 block text-xs text-gray-700 dark:text-gray-200">
+                          Consent is not a condition of purchase. Message frequency varies. Message and data rates may apply. Reply STOP to opt out, HELP for help.
+                        </span>
+                      </span>
+                    </label>
+
+                    {error && (
+                      <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">
+                        {error}
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={!canSubmit}
+                      className="btn-primary min-h-[64px] w-full text-lg font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isSubmitting
+                        ? 'Saving...'
+                        : hasSelectedDeal
+                          ? 'Claim offer by text'
+                          : 'Join by text'}
+                    </button>
+                  </form>
+                </div>
+              )}
+            </section>
+          </div>
         </div>
       </div>
     </div>

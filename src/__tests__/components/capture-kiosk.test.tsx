@@ -50,6 +50,24 @@ describe('CaptureKiosk', () => {
     vi.restoreAllMocks();
   });
 
+  it('uses a single mobile shell and switches to the split layout from md upward', () => {
+    render(<CaptureKiosk config={baseConfig} />);
+
+    const layout = screen.getByTestId('capture-kiosk-layout');
+    const shell = screen.getByTestId('capture-kiosk-shell');
+    const hero = screen.getByTestId('capture-kiosk-hero');
+    const form = screen.getByTestId('capture-kiosk-form');
+
+    expect(layout.className).toContain('md:grid-cols-[1.05fr,0.95fr]');
+    expect(shell.className).toContain('md:contents');
+    expect(shell).toContainElement(hero);
+    expect(shell).toContainElement(form);
+    expect(form.className).toContain('mt-6');
+    expect(form.className).toContain('md:mt-0');
+    expect(hero.className).toContain('md:order-1');
+    expect(form.className).toContain('md:order-2');
+  });
+
   it('supports immediate reset and auto-resets the success screen after 15 seconds', async () => {
     render(<CaptureKiosk config={baseConfig} />);
 
