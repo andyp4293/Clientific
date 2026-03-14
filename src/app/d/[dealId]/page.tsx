@@ -23,6 +23,7 @@ interface DealResponse {
       city: string | null;
       state: string | null;
     };
+    viewerCanManage: boolean;
   };
 }
 
@@ -120,107 +121,119 @@ export default function PublicDealClaimPage() {
     <div className="page-shell min-h-screen">
       <PublicSiteHeader active="deal" />
       <div className="py-8 px-4">
-        <div className="max-w-xl mx-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm p-6 space-y-6">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
-              {deal.business.name}
-            </p>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">{deal.title}</h1>
-            <p className="inline-block bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-sm font-semibold px-2.5 py-1 rounded">
-              {discountLabel(deal.discountType, deal.discountValue)}
-            </p>
-            {deal.description && (
-              <p className="mt-3 text-sm text-gray-700 dark:text-gray-300">{deal.description}</p>
-            )}
-            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-              {deal.service?.name ?? 'Any service'} - Expires{' '}
-              {new Date(deal.expiresAt).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-medium">
-            <Link href={`/business/${deal.business.publicId}`} className="text-primary hover:underline">
-              View business profile
-            </Link>
+        <div className="max-w-xl mx-auto space-y-4">
+          {deal.viewerCanManage && (
             <Link
-              href={deal.business.city ? `/explore?location=${encodeURIComponent(deal.business.city)}` : '/explore'}
-              className="text-primary hover:underline"
+              href="/dashboard/campaigns"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
             >
-              Find more deals nearby
+              <span aria-hidden="true">&larr;</span>
+              Back to deals
             </Link>
-          </div>
+          )}
 
-          <div className="space-y-3">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm p-6 space-y-6">
             <div>
-              <label
-                htmlFor="deal-claim-name"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                Your Name
-              </label>
-              <input
-                id="deal-claim-name"
-                type="text"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Jane Doe"
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="deal-claim-phone"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                Mobile Phone
-              </label>
-              <input
-                id="deal-claim-phone"
-                type="tel"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                placeholder="(555) 123-4567"
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-              />
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              By claiming, you consent to receive your redemption code by text. Reply STOP to opt out, HELP for help.
-            </p>
-            <button
-              type="button"
-              onClick={claimDeal}
-              disabled={!nameReady || !phoneReady || isClaiming}
-              className="w-full py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isClaiming ? 'Claiming...' : 'Claim Deal Code'}
-            </button>
-            {claimError && <p className="text-sm text-red-600 dark:text-red-400">{claimError}</p>}
-          </div>
-
-          {claimCode && (
-            <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-4">
-              <p className="text-sm text-green-800 dark:text-green-300 mb-1">Your code is ready:</p>
-              <p className="font-mono text-lg font-bold text-green-900 dark:text-green-200">{claimCode}</p>
-              <p className="text-xs text-green-800 dark:text-green-300 mt-2">
-                Show this code at checkout for redemption.
+              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
+                {deal.business.name}
               </p>
-              {claimConfirmationSent && (
-                <p className="text-xs text-green-800 dark:text-green-300 mt-2">
-                  We also texted this code to your phone.
-                </p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">{deal.title}</h1>
+              <p className="inline-block bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-sm font-semibold px-2.5 py-1 rounded">
+                {discountLabel(deal.discountType, deal.discountValue)}
+              </p>
+              {deal.description && (
+                <p className="mt-3 text-sm text-gray-700 dark:text-gray-300">{deal.description}</p>
               )}
+              <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                {deal.service?.name ?? 'Any service'} - Expires{' '}
+                {new Date(deal.expiresAt).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-medium">
+              <Link href={`/business/${deal.business.publicId}`} className="text-primary hover:underline">
+                View business profile
+              </Link>
               <Link
-                href={`/book/${deal.business.publicId}`}
-                className="inline-block mt-4 text-sm font-medium text-primary hover:underline"
+                href={deal.business.city ? `/explore?location=${encodeURIComponent(deal.business.city)}` : '/explore'}
+                className="text-primary hover:underline"
               >
-                Optional: Book now
+                Find more deals nearby
               </Link>
             </div>
-          )}
+
+            <div className="space-y-3">
+              <div>
+                <label
+                  htmlFor="deal-claim-name"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                >
+                  Your Name
+                </label>
+                <input
+                  id="deal-claim-name"
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Jane Doe"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="deal-claim-phone"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                >
+                  Mobile Phone
+                </label>
+                <input
+                  id="deal-claim-phone"
+                  type="tel"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  placeholder="(555) 123-4567"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                />
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                By claiming, you consent to receive your redemption code by text. Reply STOP to opt out, HELP for help.
+              </p>
+              <button
+                type="button"
+                onClick={claimDeal}
+                disabled={!nameReady || !phoneReady || isClaiming}
+                className="w-full py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isClaiming ? 'Claiming...' : 'Claim Deal Code'}
+              </button>
+              {claimError && <p className="text-sm text-red-600 dark:text-red-400">{claimError}</p>}
+            </div>
+
+            {claimCode && (
+              <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-4">
+                <p className="text-sm text-green-800 dark:text-green-300 mb-1">Your code is ready:</p>
+                <p className="font-mono text-lg font-bold text-green-900 dark:text-green-200">{claimCode}</p>
+                <p className="text-xs text-green-800 dark:text-green-300 mt-2">
+                  Show this code at checkout for redemption.
+                </p>
+                {claimConfirmationSent && (
+                  <p className="text-xs text-green-800 dark:text-green-300 mt-2">
+                    We also texted this code to your phone.
+                  </p>
+                )}
+                <Link
+                  href={`/book/${deal.business.publicId}`}
+                  className="inline-block mt-4 text-sm font-medium text-primary hover:underline"
+                >
+                  Optional: Book now
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

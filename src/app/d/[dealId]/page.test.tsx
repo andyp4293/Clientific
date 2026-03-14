@@ -6,6 +6,29 @@ import PublicDealClaimPage from './page';
 
 const mockUseQuery = vi.fn();
 
+function makeDealData(viewerCanManage = false) {
+  return {
+    deal: {
+      id: 'deal-1',
+      title: 'Spring Special',
+      description: 'Save on your next visit',
+      discountType: 'percent_off',
+      discountValue: 20,
+      startsAt: '2026-03-01T00:00:00.000Z',
+      expiresAt: '2026-03-31T00:00:00.000Z',
+      service: { name: 'Haircut' },
+      business: {
+        name: 'Test Salon',
+        slug: 'test-salon',
+        publicId: 'pub-1',
+        city: 'Austin',
+        state: 'TX',
+      },
+      viewerCanManage,
+    },
+  };
+}
+
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
 }));
@@ -24,25 +47,7 @@ describe('PublicDealClaimPage', () => {
     mockUseQuery.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: {
-        deal: {
-          id: 'deal-1',
-          title: 'Spring Special',
-          description: 'Save on your next visit',
-          discountType: 'percent_off',
-          discountValue: 20,
-          startsAt: '2026-03-01T00:00:00.000Z',
-          expiresAt: '2026-03-31T00:00:00.000Z',
-          service: { name: 'Haircut' },
-          business: {
-            name: 'Test Salon',
-            slug: 'test-salon',
-            publicId: 'pub-1',
-            city: 'Austin',
-            state: 'TX',
-          },
-        },
-      },
+      data: makeDealData(),
     });
 
     global.fetch = vi.fn().mockResolvedValue({
@@ -54,6 +59,7 @@ describe('PublicDealClaimPage', () => {
   it('requires both name and phone before allowing the claim', () => {
     render(<PublicDealClaimPage />);
 
+    expect(screen.queryByRole('link', { name: /back to deals/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /claim deal code/i })).toBeDisabled();
 
     fireEvent.change(screen.getByLabelText(/your name/i), {
@@ -94,5 +100,20 @@ describe('PublicDealClaimPage', () => {
 
     expect(await screen.findByText('ABCD1234')).toBeInTheDocument();
     expect(screen.getByText(/we also texted this code to your phone/i)).toBeInTheDocument();
+  });
+
+  it('shows a back link to the deals dashboard for the owning business', () => {
+    mockUseQuery.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: makeDealData(true),
+    });
+
+    render(<PublicDealClaimPage />);
+
+    expect(screen.getByRole('link', { name: /back to deals/i })).toHaveAttribute(
+      'href',
+      '/dashboard/campaigns'
+    );
   });
 });

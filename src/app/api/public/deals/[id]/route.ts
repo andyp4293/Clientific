@@ -1,5 +1,8 @@
+import { getServerSession } from 'next-auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { getSessionBusinessId } from '@/lib/session-business';
 
 export async function GET(
   _req: NextRequest,
@@ -28,6 +31,9 @@ export async function GET(
       return NextResponse.json({ error: 'Deal is sold out' }, { status: 404 });
     }
 
+    const session = await getServerSession(authOptions);
+    const sessionBusinessId = getSessionBusinessId(session);
+
     return NextResponse.json({
       deal: {
         id: deal.id,
@@ -39,6 +45,7 @@ export async function GET(
         expiresAt: deal.expiresAt,
         service: deal.service ? { name: deal.service.name } : null,
         business: deal.business,
+        viewerCanManage: sessionBusinessId === deal.businessId,
       },
     });
   } catch (error: any) {
