@@ -43,6 +43,12 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
     form.phone.replace(/\D/g, '').length >= 10 &&
     form.smsMarketingConsent &&
     !isSubmitting;
+  const mobileIntroBody = hasSelectedDeal
+    ? `Join ${config.business.name}'s Clientific text list to receive ${config.deal?.discountLabel} on ${config.deal?.serviceName ?? 'featured services'} plus future service promos and updates.`
+    : `Join ${config.business.name}'s Clientific text list for service specials, last-minute openings, and important business updates.`;
+  const mobileIntroDetail = hasSelectedDeal
+    ? "Enter your info once and we'll text your code right after you submit."
+    : "Enter your info once and you'll be first to hear about new offers by text.";
 
   const consentLabel = useMemo(() => {
     if (config.deal) {
@@ -285,6 +291,64 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
                 </div>
               ) : (
                 <div className="space-y-6">
+                  <div className="space-y-4 md:hidden">
+                    <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">
+                      Clientific
+                    </div>
+
+                    <div className="overflow-hidden rounded-[1.75rem] border border-gray-200/80 bg-[linear-gradient(145deg,rgb(var(--color-gray-50))_0%,rgb(var(--color-primary-50))_100%)] p-5 shadow-[0_22px_50px_-34px_rgb(var(--color-primary-800)/0.4)] dark:border-gray-800 dark:bg-[linear-gradient(145deg,rgb(var(--color-gray-900))_0%,rgb(var(--color-gray-800))_100%)]">
+                      <div className="flex items-center gap-3">
+                        {config.business.logoUrl ? (
+                          <Image
+                            src={config.business.logoUrl}
+                            alt={`${config.business.name} logo`}
+                            width={56}
+                            height={56}
+                            className="h-14 w-14 rounded-2xl border border-primary/10 object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-lg font-bold uppercase text-white shadow-sm">
+                            {config.business.name.charAt(0)}
+                          </div>
+                        )}
+
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
+                            In-store signup
+                          </p>
+                          <h2 className="mt-1 text-2xl font-bold text-gray-950 dark:text-gray-50">
+                            {config.business.name}
+                          </h2>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 rounded-2xl border border-primary/12 bg-white/75 p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
+                          What you'll be joining
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-gray-800 dark:text-gray-100">
+                          {mobileIntroBody}
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-gray-700 dark:text-gray-200">
+                          {mobileIntroDetail}
+                        </p>
+
+                        {config.deal && (
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            <span className="rounded-full bg-primary/12 px-3 py-1 text-xs font-semibold text-primary">
+                              {config.deal.discountLabel}
+                            </span>
+                            {config.deal.serviceName && (
+                              <span className="rounded-full bg-gray-900/6 px-3 py-1 text-xs font-medium text-gray-700 dark:bg-white/10 dark:text-gray-200">
+                                {config.deal.serviceName}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
                     <h2 className="text-2xl font-bold text-gray-950 dark:text-gray-50 sm:text-4xl">
                       {hasSelectedDeal ? "Claim today's offer." : 'Join by text.'}

@@ -50,7 +50,7 @@ describe('CaptureKiosk', () => {
     vi.restoreAllMocks();
   });
 
-  it('keeps mobile minimal and switches to the split layout from md upward', () => {
+  it('shows a branded mobile intro and switches to the split layout from md upward', () => {
     render(<CaptureKiosk config={baseConfig} />);
 
     const layout = screen.getByTestId('capture-kiosk-layout');
@@ -67,7 +67,9 @@ describe('CaptureKiosk', () => {
     expect(form.className).toContain('brand-panel');
     expect(hero.className).toContain('md:order-1');
     expect(form.className).toContain('md:order-2');
-    expect(screen.queryByText('Test Salon')).not.toBeInTheDocument();
+    expect(screen.getByText('Clientific')).toBeInTheDocument();
+    expect(screen.getByText('Test Salon')).toBeInTheDocument();
+    expect(screen.getByText("What you'll be joining")).toBeInTheDocument();
   });
 
   it('supports immediate reset and auto-resets the success screen after 15 seconds', async () => {
