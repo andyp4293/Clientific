@@ -16,6 +16,8 @@ describe('dashboard shell theming', () => {
 
     expect(mobileNav).toContain('brand-panel fixed left-0 right-0');
     expect(mobileNav).toContain('brand-panel sticky top-0');
+    expect(mobileNav).toContain('grid h-12 grid-cols-5');
+    expect(mobileNav).not.toContain('justify-around');
     expect(mobileNav).not.toContain('bg-white/92');
 
     expect(banner).toContain('dark:bg-primary-950/55');

@@ -104,7 +104,7 @@ export function MobileBottomNav() {
         </>
       )}
 
-      <nav className="flex h-12 items-start justify-around px-2">
+      <nav className="grid h-12 grid-cols-5 items-stretch px-1">
         {DASHBOARD_MOBILE_PRIMARY_NAV.map((item) => {
           const isActive = isDashboardRouteActive(pathname, item);
 
@@ -112,7 +112,7 @@ export function MobileBottomNav() {
             <Link
               key={item.key}
               href={item.href}
-              className={`flex min-w-0 flex-1 flex-col items-center justify-start px-1 pt-2 transition-colors ${
+              className={`flex h-full min-w-0 w-full flex-col items-center justify-center px-1 transition-colors ${
                 isActive
                   ? 'text-gray-900 dark:text-white'
                   : 'text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white'
@@ -134,7 +134,7 @@ export function MobileBottomNav() {
 
         <button
           onClick={() => setShowMoreMenu(!showMoreMenu)}
-          className={`flex min-w-0 flex-1 flex-col items-center justify-start px-1 pt-2 transition-colors ${
+          className={`flex h-full min-w-0 w-full flex-col items-center justify-center px-1 transition-colors ${
             isOnMorePage || showMoreMenu
               ? 'text-gray-900 dark:text-white'
               : 'text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white'
