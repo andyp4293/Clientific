@@ -3,6 +3,17 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import { prisma } from '@/lib/prisma';
 import { verifyPassword } from '@/lib/utils';
+import { isBusinessOnboardingComplete } from '@/lib/onboarding';
+
+const ONBOARDING_SELECT = {
+  id: true,
+  phone: true,
+  street: true,
+  city: true,
+  state: true,
+  zipCode: true,
+  country: true,
+} as const;
 
 const providers: NextAuthOptions['providers'] = [
   CredentialsProvider({
@@ -39,6 +50,7 @@ const providers: NextAuthOptions['providers'] = [
           email: business.email,
           name: business.name,
           businessId: business.id,
+          onboardingComplete: isBusinessOnboardingComplete(business),
         };
       } catch (error: any) {
         // Log the actual error for debugging (server-side only)
@@ -109,19 +121,33 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         const businessId = (user as { businessId?: string }).businessId;
+        const onboardingComplete = (user as { onboardingComplete?: boolean }).onboardingComplete;
         if (businessId) {
           token.businessId = businessId;
         }
+        if (typeof onboardingComplete === 'boolean') {
+          token.onboardingComplete = onboardingComplete;
+        }
       }
 
-      if ((!token.businessId || !token.id) && token.email) {
-        const business = await prisma.business.findUnique({
-          where: { email: token.email.toLowerCase() },
-          select: { id: true },
-        });
+      if (!token.businessId || !token.id || typeof token.onboardingComplete !== 'boolean') {
+        const business =
+          token.businessId
+            ? await prisma.business.findUnique({
+                where: { id: token.businessId as string },
+                select: ONBOARDING_SELECT,
+              })
+            : token.email
+              ? await prisma.business.findUnique({
+                  where: { email: token.email.toLowerCase() },
+                  select: ONBOARDING_SELECT,
+                })
+              : null;
+
         if (business) {
           token.id = business.id;
           token.businessId = business.id;
+          token.onboardingComplete = isBusinessOnboardingComplete(business);
         }
       }
       return token;
@@ -134,6 +160,7 @@ export const authOptions: NextAuthOptions = {
         if (token.businessId) {
           session.user.businessId = token.businessId as string;
         }
+        session.user.onboardingComplete = Boolean(token.onboardingComplete);
       }
       return session;
     },

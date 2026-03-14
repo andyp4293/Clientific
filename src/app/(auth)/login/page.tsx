@@ -19,13 +19,16 @@ function LoginForm() {
   const [canResendVerification, setCanResendVerification] = useState(false);
   const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === 'true';
   const oauthError = searchParams.get('error');
+  const postLoginPath =
+    session?.user?.onboardingComplete === false ? '/dashboard/onboarding' : '/dashboard';
 
   // Redirect if already logged in
   useEffect(() => {
     if (status === 'authenticated') {
-      router.push('/dashboard');
+      router.push(postLoginPath);
+      router.refresh();
     }
-  }, [status, router]);
+  }, [status, router, postLoginPath]);
 
   useEffect(() => {
     if (!oauthError) return;
@@ -70,8 +73,7 @@ function LoginForm() {
         setError(userFriendlyError);
         setCanResendVerification(result.error.includes('EmailNotVerified'));
       } else {
-        router.push('/dashboard');
-        router.refresh();
+        setNotice('Signing you in...');
       }
     } catch (err) {
       setError('Unable to connect to the server. Please try again later.');

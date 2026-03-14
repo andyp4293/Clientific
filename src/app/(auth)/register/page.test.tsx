@@ -93,4 +93,63 @@ describe('RegisterPage', () => {
     expect(payload).not.toHaveProperty('zipCode');
     expect(payload).not.toHaveProperty('country');
   });
+
+  it('hides the manual login link while auto-signing in after verification succeeds', async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ available: true }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ verificationEmailSent: true }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true }),
+      } as Response);
+    mockSignIn.mockResolvedValue({ ok: true });
+
+    render(<RegisterPage />);
+
+    fireEvent.change(screen.getByLabelText(/email address/i), {
+      target: { value: 'owner@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/^password \*/i), {
+      target: { value: 'Password123!' },
+    });
+    fireEvent.change(screen.getByLabelText(/confirm password/i), {
+      target: { value: 'Password123!' },
+    });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: /^next$/i }));
+
+    await screen.findByRole('heading', { name: /tell us about your business/i });
+
+    fireEvent.change(screen.getByLabelText(/business name/i), {
+      target: { value: 'Test Salon' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    await screen.findByRole('heading', { name: /check your email/i });
+
+    fireEvent.change(screen.getByLabelText(/verification code/i), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /verify code/i }));
+
+    await waitFor(() => {
+      expect(mockSignIn).toHaveBeenCalledWith('credentials', {
+        email: 'owner@example.com',
+        password: 'Password123!',
+        redirect: false,
+      });
+    });
+
+    expect(screen.getByText(/signing you in/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /log in manually/i })
+    ).not.toBeInTheDocument();
+  });
 });

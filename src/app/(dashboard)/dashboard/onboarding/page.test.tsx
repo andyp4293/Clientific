@@ -89,12 +89,15 @@ describe('Dashboard onboarding', () => {
     await screen.findByRole('heading', { name: /finish your business setup/i });
 
     expect(screen.queryByLabelText(/timezone/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/save your local scheduling timezone automatically/i)
+    ).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/business phone/i), {
       target: { value: '(555) 123-4567' },
     });
     fireEvent.click(screen.getByRole('button', { name: /use suggested address/i }));
-    fireEvent.click(screen.getByRole('button', { name: /unlock dashboard/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledTimes(2);

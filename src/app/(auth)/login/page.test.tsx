@@ -31,6 +31,42 @@ describe('Login page verification actions', () => {
     mockSignIn.mockResolvedValue({ error: 'Invalid credentials' });
   });
 
+  it('redirects authenticated users with incomplete onboarding to onboarding', async () => {
+    mockUseSession.mockReturnValue({
+      status: 'authenticated',
+      data: {
+        user: {
+          onboardingComplete: false,
+        },
+      },
+    });
+
+    render(<LoginPage />);
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/dashboard/onboarding');
+      expect(mockRefresh).toHaveBeenCalled();
+    });
+  });
+
+  it('redirects authenticated users with completed onboarding to the dashboard', async () => {
+    mockUseSession.mockReturnValue({
+      status: 'authenticated',
+      data: {
+        user: {
+          onboardingComplete: true,
+        },
+      },
+    });
+
+    render(<LoginPage />);
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/dashboard');
+      expect(mockRefresh).toHaveBeenCalled();
+    });
+  });
+
   it('does not show resend verification button by default', () => {
     render(<LoginPage />);
     expect(

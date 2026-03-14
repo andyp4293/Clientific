@@ -31,7 +31,7 @@ const PLAN_LABELS: Record<string, string> = {
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
 
   const defaultPlan = searchParams.get('plan') || 'pro';
   const defaultEmail = searchParams.get('email') || '';
@@ -50,6 +50,7 @@ function RegisterForm() {
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
   const [authenticatedRedirect, setAuthenticatedRedirect] = useState<string | null>(null);
+  const [autoSignInFailed, setAutoSignInFailed] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     email: defaultEmail,
@@ -66,9 +67,12 @@ function RegisterForm() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      router.push(authenticatedRedirect || '/dashboard');
+      const defaultAuthenticatedPath =
+        session?.user?.onboardingComplete === false ? '/dashboard/onboarding' : '/dashboard';
+      router.push(authenticatedRedirect || defaultAuthenticatedPath);
+      router.refresh();
     }
-  }, [status, router, authenticatedRedirect]);
+  }, [status, router, authenticatedRedirect, session?.user?.onboardingComplete]);
 
   useEffect(() => {
     const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -227,6 +231,7 @@ function RegisterForm() {
 
       setCurrentStep(3);
       setEmailVerified(false);
+      setAutoSignInFailed(false);
       setVerificationCode('');
       if (!data.verificationEmailSent) {
         setNotice('Account created. Use resend below if your verification code did not arrive.');
@@ -263,6 +268,7 @@ function RegisterForm() {
   const signInAfterVerification = async () => {
     const onboardingPath = '/dashboard/onboarding';
     setAuthenticatedRedirect(onboardingPath);
+    setAutoSignInFailed(false);
 
     const result = await signIn('credentials', {
       email: formData.email.trim().toLowerCase(),
@@ -272,12 +278,10 @@ function RegisterForm() {
 
     if (result?.error) {
       setAuthenticatedRedirect(null);
+      setAutoSignInFailed(true);
       setNotice('Email verified successfully. Please log in to continue onboarding.');
       return;
     }
-
-    router.push(onboardingPath);
-    router.refresh();
   };
 
   const verifyEmailCode = async () => {
@@ -304,6 +308,7 @@ function RegisterForm() {
         throw new Error(body.error || 'Unable to verify email');
       }
       setEmailVerified(true);
+      setAutoSignInFailed(false);
       setNotice('Email verified. Redirecting you to onboarding...');
       await signInAfterVerification();
     } catch (err: any) {
@@ -625,31 +630,38 @@ function RegisterForm() {
                 </ul>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                {!emailVerified && (
-                  <button
-                    type="button"
-                    onClick={verifyEmailCode}
-                    className="btn-primary px-8 py-3"
-                    disabled={isVerifyingCode}
-                  >
-                    {isVerifyingCode ? 'Verifying...' : 'Verify Code'}
-                  </button>
-                )}
-                {!emailVerified && (
-                  <button
-                    type="button"
-                    onClick={resendVerification}
-                    className="btn-outline px-8 py-3"
-                    disabled={isResendingVerification}
-                  >
-                    {isResendingVerification ? 'Sending...' : 'Resend Verification Code'}
-                  </button>
-                )}
-                <Link href="/login" className="btn-primary px-8 py-3 text-center">
-                  {emailVerified ? 'Log In Manually' : 'Go to Login'}
-                </Link>
-              </div>
+              {emailVerified && !autoSignInFailed ? (
+                <div className="flex items-center justify-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
+                  <span>Signing you in...</span>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  {!emailVerified && (
+                    <button
+                      type="button"
+                      onClick={verifyEmailCode}
+                      className="btn-primary px-8 py-3"
+                      disabled={isVerifyingCode}
+                    >
+                      {isVerifyingCode ? 'Verifying...' : 'Verify Code'}
+                    </button>
+                  )}
+                  {!emailVerified && (
+                    <button
+                      type="button"
+                      onClick={resendVerification}
+                      className="btn-outline px-8 py-3"
+                      disabled={isResendingVerification}
+                    >
+                      {isResendingVerification ? 'Sending...' : 'Resend Verification Code'}
+                    </button>
+                  )}
+                  <Link href="/login" className="btn-primary px-8 py-3 text-center">
+                    {autoSignInFailed ? 'Log In Manually' : 'Go to Login'}
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 

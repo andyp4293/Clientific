@@ -264,10 +264,6 @@ export default function DashboardOnboardingPage() {
           </div>
         )}
 
-        <div className="rounded-xl border border-primary/20 bg-primary-50 px-4 py-4 text-sm text-gray-700 dark:border-primary/20 dark:bg-primary/10 dark:text-gray-300">
-          We will save your local scheduling timezone automatically from the address you confirm here.
-        </div>
-
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="onboarding-business-name" className="label">
@@ -420,7 +416,7 @@ export default function DashboardOnboardingPage() {
             disabled={isSaving}
             className="btn-primary"
           >
-            {isSaving ? 'Saving...' : 'Unlock dashboard'}
+            {isSaving ? 'Saving...' : 'Continue'}
           </button>
         </div>
       </div>

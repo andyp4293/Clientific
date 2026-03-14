@@ -99,6 +99,12 @@ const MOCK_BUSINESS = {
   subscriptionStatus: 'active',
   subscriptionPlan: 'starter',
   trialEndsAt: null,
+  phone: '+15551234567',
+  street: '123 Main St',
+  city: 'Austin',
+  state: 'TX',
+  zipCode: '78701',
+  country: 'United States',
 };
 
 beforeEach(() => {
@@ -538,6 +544,14 @@ async function runAuthorize(credentials: { email: string; password: string } | u
     email: (business as any).email,
     name: (business as any).name,
     businessId: (business as any).id,
+    onboardingComplete: Boolean(
+      (business as any).phone &&
+        (business as any).street &&
+        (business as any).city &&
+        (business as any).state &&
+        (business as any).zipCode &&
+        (business as any).country
+    ),
   };
 }
 
@@ -582,6 +596,7 @@ describe('NextAuth sign-in (authorize logic)', () => {
       email: 'owner@example.com',
       name: 'Test Business',
       businessId: 'biz-1',
+      onboardingComplete: true,
     });
   });
 
@@ -603,18 +618,23 @@ describe('NextAuth sign-in (authorize logic)', () => {
 
   it('jwt callback attaches businessId to token', async () => {
     const jwtCallback = authOptions.callbacks?.jwt as Function;
-    const token = await jwtCallback({ token: {}, user: { id: 'biz-1', businessId: 'biz-1' } });
+    const token = await jwtCallback({
+      token: {},
+      user: { id: 'biz-1', businessId: 'biz-1', onboardingComplete: false },
+    });
     expect(token.id).toBe('biz-1');
     expect(token.businessId).toBe('biz-1');
+    expect(token.onboardingComplete).toBe(false);
   });
 
   it('session callback attaches businessId to session user', async () => {
     const sessionCallback = authOptions.callbacks?.session as Function;
     const session = await sessionCallback({
       session: { user: {} },
-      token: { id: 'biz-1', businessId: 'biz-1' },
+      token: { id: 'biz-1', businessId: 'biz-1', onboardingComplete: true },
     });
     expect(session.user.id).toBe('biz-1');
     expect(session.user.businessId).toBe('biz-1');
+    expect(session.user.onboardingComplete).toBe(true);
   });
 });
