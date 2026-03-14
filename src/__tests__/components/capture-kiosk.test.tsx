@@ -72,6 +72,7 @@ describe('CaptureKiosk', () => {
 
     expect(screen.getByText(/your spring special code is ready/i)).toBeInTheDocument();
     expect(screen.getByText('ABCD1234')).toBeInTheDocument();
+    expect(screen.queryByText(/booking link:/i)).not.toBeInTheDocument();
 
     await act(async () => {
       vi.advanceTimersByTime(30000);

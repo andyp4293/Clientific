@@ -16,7 +16,6 @@ type SuccessState = {
     expiresAt: string;
   } | null;
   dealIssue: string | null;
-  bookingUrl: string | null;
   confirmationSent: boolean;
 };
 
@@ -88,7 +87,6 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
         submittedName: form.name.trim(),
         deal: body.deal ?? null,
         dealIssue: body.dealIssue ?? null,
-        bookingUrl: body.bookingUrl ?? null,
         confirmationSent: body.confirmationSent === true,
       });
     } catch (submitError: any) {
@@ -229,11 +227,6 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
                       ? 'A confirmation text has been sent.'
                       : 'You’re signed up. Ask the front desk if you do not receive a text shortly.'}
                   </p>
-                  {success.bookingUrl && (
-                    <p className="text-sm text-gray-700 dark:text-gray-200">
-                      Booking link: <span className="font-medium text-primary">{success.bookingUrl}</span>
-                    </p>
-                  )}
                   <button
                     type="button"
                     onClick={resetForNextCustomer}
