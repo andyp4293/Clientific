@@ -28,10 +28,10 @@ export function MobileBottomNav() {
         <>
           <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setShowMoreMenu(false)} />
           <div
-            className="brand-panel fixed left-0 right-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-2xl rounded-b-none border-x-0 border-b-0 border-t shadow-2xl backdrop-blur-2xl"
+            className="brand-panel fixed left-0 right-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-2xl rounded-b-none border-x-0 border-b-0 border-t bg-[rgb(var(--color-gray-50))] shadow-2xl backdrop-blur-2xl dark:bg-[rgb(var(--color-gray-900))]"
             style={{ bottom: 'calc(3rem + env(safe-area-inset-bottom) + 2px)' }}
           >
-            <div className="brand-panel sticky top-0 flex items-center justify-between rounded-t-2xl rounded-b-none border-x-0 border-t-0 border-b px-4 py-3 backdrop-blur-2xl">
+            <div className="brand-panel sticky top-0 flex items-center justify-between rounded-t-2xl rounded-b-none border-x-0 border-t-0 border-b bg-[rgb(var(--color-gray-50))] px-4 py-3 backdrop-blur-2xl dark:bg-[rgb(var(--color-gray-900))]">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Menu</h3>
               <button
                 onClick={() => setShowMoreMenu(false)}
