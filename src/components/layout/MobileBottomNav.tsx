@@ -118,7 +118,7 @@ export function MobileBottomNav() {
                   : 'text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white'
               }`}
             >
-              <div className={`mb-1 ${isActive ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-200'}`}>
+              <div className={`mb-1 translate-y-px ${isActive ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-200'}`}>
                 <DashboardIcon icon={item.icon} className="h-6 w-6" />
               </div>
               <span
@@ -141,7 +141,7 @@ export function MobileBottomNav() {
           }`}
         >
           <div
-            className={`mb-1 ${
+            className={`mb-1 translate-y-px ${
               isOnMorePage || showMoreMenu ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-200'
             }`}
           >
