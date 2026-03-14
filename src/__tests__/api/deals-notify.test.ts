@@ -41,6 +41,7 @@ vi.mock('@/lib/brand', () => ({
 
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
+import { requireActiveSubscription } from '@/lib/subscription';
 import { formatDealNotificationSMS, sendSMS } from '@/lib/twilio';
 import { POST } from '@/app/api/deals/[id]/notify/route';
 
@@ -146,12 +147,31 @@ describe('POST /api/deals/[id]/notify', () => {
     expect(prisma.customer.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
+          businessId: 'biz-1',
           smsMarketingConsent: true,
           smsOptedOut: false,
           phone: { not: null },
         }),
       })
     );
+  });
+
+  it('scopes recipients to the authenticated businessId when session.user.id differs', async () => {
+    vi.mocked(getServerSession).mockResolvedValue({ user: { id: 'user-1', businessId: 'biz-1' } } as any);
+    vi.mocked(prisma.customer.findMany).mockResolvedValue([{ phone: '5551111111', name: 'Jane Doe' }] as any);
+
+    const res = await POST(notifyReq(), ctx('deal-1'));
+
+    expect(res.status).toBe(200);
+    expect(requireActiveSubscription).toHaveBeenCalledWith('biz-1');
+    expect(prisma.customer.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          businessId: 'biz-1',
+        }),
+      })
+    );
+    expect(sendSMS).toHaveBeenCalledTimes(1);
   });
 
   it('sends dedicated deal landing page URL', async () => {

@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { sendSMS, formatPhoneNumber, formatDealNotificationSMS } from '@/lib/twilio';
 import { APP_URL } from '@/lib/brand';
+import { getSessionBusinessId } from '@/lib/session-business';
 
 export async function POST(
   _req: NextRequest,
@@ -13,11 +14,12 @@ export async function POST(
   try {
     const { id } = await params;
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const businessId = getSessionBusinessId(session);
+    if (!businessId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const subscriptionError = await requireActiveSubscription(session.user.id);
+    const subscriptionError = await requireActiveSubscription(businessId);
     if (subscriptionError) return subscriptionError;
 
     const deal = await prisma.deal.findUnique({
@@ -29,7 +31,7 @@ export async function POST(
       return NextResponse.json({ error: 'Deal not found' }, { status: 404 });
     }
 
-    if (deal.businessId !== session.user.id) {
+    if (deal.businessId !== businessId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -39,7 +41,7 @@ export async function POST(
 
     const customers = await prisma.customer.findMany({
       where: {
-        businessId: session.user.id,
+        businessId,
         smsMarketingConsent: true,
         smsOptedOut: false,
         phone: { not: null },
