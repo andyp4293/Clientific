@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { InStoreCaptureConfig } from '@/lib/in-store-capture';
 
@@ -129,15 +130,26 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
 
   return (
     <div className="page-shell min-h-screen px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
-      <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-6xl items-stretch sm:min-h-[calc(100vh-3rem)]">
-        <div
-          data-testid="capture-kiosk-layout"
-          className="grid flex-1 gap-5 md:grid-cols-[1.05fr,0.95fr] md:gap-6"
-        >
-          <div
-            data-testid="capture-kiosk-shell"
-            className="md:contents"
+      <div className="mx-auto max-w-6xl space-y-3 sm:space-y-4">
+        {config.viewerCanManage && (
+          <Link
+            href="/dashboard/campaigns"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
           >
+            <span aria-hidden="true">&larr;</span>
+            Back to dashboard
+          </Link>
+        )}
+
+        <div className="flex min-h-[calc(100vh-2rem)] items-stretch sm:min-h-[calc(100vh-3rem)]">
+          <div
+            data-testid="capture-kiosk-layout"
+            className="grid flex-1 gap-5 md:grid-cols-[1.05fr,0.95fr] md:gap-6"
+          >
+            <div
+              data-testid="capture-kiosk-shell"
+              className="md:contents"
+            >
             <section
               data-testid="capture-kiosk-hero"
               className="hidden md:order-1 md:flex md:min-h-[640px] md:flex-col md:justify-between md:rounded-[2rem] md:bg-[linear-gradient(135deg,rgb(var(--color-gray-900))_0%,rgb(var(--color-gray-800))_55%,rgb(var(--color-primary-800))_100%)] md:p-8 md:text-white md:shadow-2xl md:shadow-primary-950/20 lg:p-10"
@@ -452,6 +464,7 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
             </section>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -20,6 +20,7 @@ export type InStoreCaptureConfig = {
   } | null;
   captureUrl: string;
   bookingUrl: string | null;
+  viewerCanManage: boolean;
 };
 
 export function formatDealDiscountLabel(discountType: string, discountValue: number): string {
@@ -32,10 +33,12 @@ export async function getInStoreCaptureConfig({
   publicId,
   dealId,
   requestUrl,
+  sessionBusinessId,
 }: {
   publicId: string;
   dealId?: string | null;
   requestUrl?: string;
+  sessionBusinessId?: string | null;
 }): Promise<InStoreCaptureConfig | null> {
   const business = await prisma.business.findUnique({
     where: { publicId },
@@ -110,5 +113,6 @@ export async function getInStoreCaptureConfig({
       : null,
     captureUrl,
     bookingUrl,
+    viewerCanManage: sessionBusinessId === business.id,
   };
 }

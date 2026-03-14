@@ -108,6 +108,7 @@ describe('Public in-store capture route', () => {
       },
       captureUrl: 'https://clientific.app/capture/pub_123?deal=deal-1',
       bookingUrl: 'https://clientific.app/book/test-salon',
+      viewerCanManage: false,
     });
 
     vi.mocked(claimDealForCustomer).mockResolvedValue({

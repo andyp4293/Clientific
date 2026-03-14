@@ -25,6 +25,7 @@ const baseConfig = {
   },
   captureUrl: 'https://clientific.app/capture/pub_123?deal=deal-1',
   bookingUrl: 'https://clientific.app/book/test-salon',
+  viewerCanManage: false,
 };
 
 describe('CaptureKiosk', () => {
@@ -67,9 +68,26 @@ describe('CaptureKiosk', () => {
     expect(form.className).toContain('brand-panel');
     expect(hero.className).toContain('md:order-1');
     expect(form.className).toContain('md:order-2');
+    expect(screen.queryByRole('link', { name: /back to dashboard/i })).not.toBeInTheDocument();
     expect(screen.getByText('Clientific')).toBeInTheDocument();
     expect(screen.getByText('Test Salon')).toBeInTheDocument();
     expect(screen.getByText("What you'll be joining")).toBeInTheDocument();
+  });
+
+  it('shows a dashboard back link only for the owning business session', () => {
+    render(
+      <CaptureKiosk
+        config={{
+          ...baseConfig,
+          viewerCanManage: true,
+        }}
+      />
+    );
+
+    expect(screen.getByRole('link', { name: /back to dashboard/i })).toHaveAttribute(
+      'href',
+      '/dashboard/campaigns'
+    );
   });
 
   it('supports immediate reset and auto-resets the success screen after 15 seconds', async () => {
