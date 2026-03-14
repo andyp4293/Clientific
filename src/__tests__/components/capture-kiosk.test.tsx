@@ -50,7 +50,7 @@ describe('CaptureKiosk', () => {
     vi.restoreAllMocks();
   });
 
-  it('uses a single mobile shell and switches to the split layout from md upward', () => {
+  it('keeps mobile minimal and switches to the split layout from md upward', () => {
     render(<CaptureKiosk config={baseConfig} />);
 
     const layout = screen.getByTestId('capture-kiosk-layout');
@@ -62,10 +62,12 @@ describe('CaptureKiosk', () => {
     expect(shell.className).toContain('md:contents');
     expect(shell).toContainElement(hero);
     expect(shell).toContainElement(form);
-    expect(form.className).toContain('mt-6');
-    expect(form.className).toContain('md:mt-0');
+    expect(hero.className).toContain('hidden');
+    expect(hero.className).toContain('md:flex');
+    expect(form.className).toContain('brand-panel');
     expect(hero.className).toContain('md:order-1');
     expect(form.className).toContain('md:order-2');
+    expect(screen.queryByText('Test Salon')).not.toBeInTheDocument();
   });
 
   it('supports immediate reset and auto-resets the success screen after 15 seconds', async () => {
@@ -100,7 +102,7 @@ describe('CaptureKiosk', () => {
     expect(screen.getByText(/you're all set, jane\./i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /reset now/i }));
 
-    expect(screen.getByText(/enter your info to claim today's offer\./i)).toBeInTheDocument();
+    expect(screen.getByText(/claim today's offer\./i)).toBeInTheDocument();
     expect(screen.getByLabelText(/full name/i)).toHaveValue('');
     expect(screen.getByLabelText(/mobile phone/i)).toHaveValue('');
 
@@ -121,6 +123,6 @@ describe('CaptureKiosk', () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText(/enter your info to claim today's offer\./i)).toBeInTheDocument();
+    expect(screen.getByText(/claim today's offer\./i)).toBeInTheDocument();
   }, 10000);
 });

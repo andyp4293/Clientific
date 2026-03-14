@@ -130,11 +130,11 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
         >
           <div
             data-testid="capture-kiosk-shell"
-            className="brand-hero overflow-hidden rounded-[2rem] p-5 text-white shadow-2xl shadow-primary-950/20 sm:p-6 md:contents"
+            className="md:contents"
           >
             <section
               data-testid="capture-kiosk-hero"
-              className="space-y-6 md:order-1 md:flex md:min-h-[640px] md:flex-col md:justify-between md:rounded-[2rem] md:bg-[linear-gradient(135deg,rgb(var(--color-gray-900))_0%,rgb(var(--color-gray-800))_55%,rgb(var(--color-primary-800))_100%)] md:p-8 md:text-white md:shadow-2xl md:shadow-primary-950/20 lg:p-10"
+              className="hidden md:order-1 md:flex md:min-h-[640px] md:flex-col md:justify-between md:rounded-[2rem] md:bg-[linear-gradient(135deg,rgb(var(--color-gray-900))_0%,rgb(var(--color-gray-800))_55%,rgb(var(--color-primary-800))_100%)] md:p-8 md:text-white md:shadow-2xl md:shadow-primary-950/20 lg:p-10"
             >
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
@@ -209,7 +209,7 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
 
             <section
               data-testid="capture-kiosk-form"
-              className="mt-6 rounded-[1.75rem] border border-white/12 bg-white/95 p-5 text-gray-950 shadow-xl shadow-primary-950/10 backdrop-blur sm:p-6 dark:border-gray-800 dark:bg-gray-900/90 dark:text-gray-50 md:order-2 md:mt-0 md:flex md:min-h-[640px] md:flex-col md:justify-center md:rounded-[2rem] md:border-gray-200 md:bg-[rgb(var(--color-gray-50)/0.86)] md:p-8 md:shadow-[0_24px_60px_-36px_rgb(var(--color-primary-800)/0.42)] md:backdrop-blur-xl lg:p-10"
+              className="brand-panel rounded-[2rem] p-5 text-gray-950 sm:p-6 dark:text-gray-50 md:order-2 md:flex md:min-h-[640px] md:flex-col md:justify-center md:p-8 lg:p-10"
             >
               {success ? (
                 <div className="space-y-6 text-center sm:space-y-7">
@@ -286,16 +286,13 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
               ) : (
                 <div className="space-y-6">
                   <div>
-                    <p className="text-sm font-semibold uppercase tracking-[0.25em] text-primary">
-                      {config.business.name}
-                    </p>
-                    <h2 className="mt-2 text-3xl font-bold text-gray-950 dark:text-gray-50 sm:text-4xl">
-                      {hasSelectedDeal ? "Enter your info to claim today's offer." : 'Enter your info to join.'}
+                    <h2 className="text-2xl font-bold text-gray-950 dark:text-gray-50 sm:text-4xl">
+                      {hasSelectedDeal ? "Claim today's offer." : 'Join by text.'}
                     </h2>
-                    <p className="mt-3 max-w-xl text-base text-gray-700 dark:text-gray-200 sm:text-lg">
+                    <p className="mt-2 max-w-xl text-sm text-gray-700 dark:text-gray-200 sm:text-base md:mt-3 md:text-lg">
                       {hasSelectedDeal
-                        ? "We'll text your service offer code right after you submit."
-                        : "Quick signup. Mobile phone is required, email is optional."}
+                        ? "Mobile phone is required. We'll text your code right after you submit."
+                        : 'Mobile phone is required. Email is optional.'}
                     </p>
                   </div>
 
