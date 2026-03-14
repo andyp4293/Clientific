@@ -3,7 +3,7 @@
  * Covers rendering, stats visibility, and notify button display logic.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
 
@@ -21,6 +21,10 @@ vi.mock('@tanstack/react-query', () => ({
 
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
+}));
+
+vi.mock('qrcode.react', () => ({
+  QRCodeCanvas: () => <div data-testid="qr-code" />,
 }));
 
 import { useQuery } from '@tanstack/react-query';
@@ -54,13 +58,18 @@ function makeDeal(overrides: Record<string, unknown> = {}) {
   };
 }
 
-// useQuery is called twice (deals + services); return deals first, services second
-function mockQueries(deals: unknown[] = [], services: unknown[] = []) {
+// useQuery is called three times (deals + services + business)
+function mockQueries(
+  deals: unknown[] = [],
+  services: unknown[] = [],
+  business: unknown = { name: 'Test Salon', publicId: 'pub_123' }
+) {
   let callCount = 0;
   mockUseQuery.mockImplementation(() => {
     callCount++;
     if (callCount === 1) return { data: { deals }, isLoading: false } as any;
-    return { data: { services }, isLoading: false } as any;
+    if (callCount === 2) return { data: { services }, isLoading: false } as any;
+    return { data: { business }, isLoading: false } as any;
   });
 }
 
@@ -69,6 +78,11 @@ function mockQueries(deals: unknown[] = [], services: unknown[] = []) {
 describe('DealsPage (Campaigns)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn(),
+      },
+    });
   });
 
   it('renders without crash while loading', () => {
@@ -84,8 +98,8 @@ describe('DealsPage (Campaigns)', () => {
   it('shows deal title cards when data is present', () => {
     mockQueries([makeDeal({ title: 'Spring Special' }), makeDeal({ title: 'Happy Hour Deal' })]);
     render(<DealsPage />);
-    expect(screen.getByText('Spring Special')).toBeInTheDocument();
-    expect(screen.getByText('Happy Hour Deal')).toBeInTheDocument();
+    expect(screen.getAllByText('Spring Special').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Happy Hour Deal').length).toBeGreaterThan(0);
   });
 
   it('shows "Text My Customers" button for active deal with no notifiedAt', () => {
@@ -134,5 +148,19 @@ describe('DealsPage (Campaigns)', () => {
     mockQueries([]);
     render(<DealsPage />);
     expect(screen.getByText(/no deals yet/i)).toBeInTheDocument();
+  });
+
+  it('updates the in-store capture link when a deal is selected', () => {
+    mockQueries([makeDeal({ id: 'deal-1', title: 'Spring Special' })]);
+    render(<DealsPage />);
+
+    const linkInput = screen.getByLabelText(/ipad link/i) as HTMLInputElement;
+    expect(linkInput.value).toBe('http://localhost:3000/capture/pub_123');
+
+    fireEvent.change(screen.getByLabelText(/promo shown on ipad/i), {
+      target: { value: 'deal-1' },
+    });
+
+    expect(linkInput.value).toBe('http://localhost:3000/capture/pub_123?deal=deal-1');
   });
 });

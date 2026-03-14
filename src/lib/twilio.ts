@@ -77,6 +77,17 @@ interface DealNotificationDetails {
   customerName?: string | null;
 }
 
+interface KioskSignupDetails {
+  businessName: string;
+  customerName?: string | null;
+  bookingUrl?: string | null;
+}
+
+interface KioskDealClaimDetails extends KioskSignupDetails {
+  dealTitle: string;
+  dealCode: string;
+}
+
 const SMS_COMPLIANCE_FOOTER = 'Reply STOP to opt out, HELP for help.';
 
 export function appendSmsComplianceFooter(message: string): string {
@@ -353,6 +364,22 @@ export function formatDealNotificationSMS(details: DealNotificationDetails): str
   const greeting = firstName ? `Hi ${firstName},` : 'Hi there,';
   const message = `${greeting} ${details.businessName} has a special offer for you: ${details.dealTitle}. Book your appointment here: ${details.dealUrl}`;
   return appendSmsComplianceFooter(message);
+}
+
+export function formatKioskSignupConfirmationSMS(details: KioskSignupDetails): string {
+  const firstName = details.customerName?.trim().split(/\s+/).filter(Boolean)[0] ?? null;
+  const greeting = firstName ? `Hi ${firstName},` : 'Hi there,';
+  const base = `${greeting} you're signed up for ${details.businessName} text offers and updates.`;
+  const withBooking = details.bookingUrl ? `${base} Book anytime: ${details.bookingUrl}` : base;
+  return appendSmsComplianceFooter(withBooking);
+}
+
+export function formatKioskDealClaimSMS(details: KioskDealClaimDetails): string {
+  const firstName = details.customerName?.trim().split(/\s+/).filter(Boolean)[0] ?? null;
+  const greeting = firstName ? `Hi ${firstName},` : 'Hi there,';
+  const base = `${greeting} you're in for ${details.businessName} texts. Your ${details.dealTitle} code is ${details.dealCode}. Show it at checkout.`;
+  const withBooking = details.bookingUrl ? `${base} Book here: ${details.bookingUrl}` : base;
+  return appendSmsComplianceFooter(withBooking);
 }
 
 export async function sendReviewRequest(

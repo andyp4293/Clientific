@@ -7,6 +7,8 @@ import {
   formatAppointmentReminderSMS,
   formatAppointmentRescheduledSMS,
   formatDealNotificationSMS,
+  formatKioskDealClaimSMS,
+  formatKioskSignupConfirmationSMS,
   formatReviewRequestSMS,
 } from './twilio';
 
@@ -128,6 +130,33 @@ describe('twilio sms formatting', () => {
 
     expect(message).toContain('Hi there,');
     expect(message).toContain('Free Add-On');
+    expect(message).toContain(FOOTER);
+  });
+
+  it('formats kiosk signup confirmation with optional booking link', () => {
+    const message = formatKioskSignupConfirmationSMS({
+      businessName: 'Test Salon',
+      customerName: 'Jane Doe',
+      bookingUrl: 'https://clientific.app/book/test-salon',
+    });
+
+    expect(message).toContain("Hi Jane, you're signed up for Test Salon text offers and updates.");
+    expect(message).toContain('Book anytime: https://clientific.app/book/test-salon');
+    expect(message).toContain(FOOTER);
+  });
+
+  it('formats kiosk deal claim confirmation with the redemption code', () => {
+    const message = formatKioskDealClaimSMS({
+      businessName: 'Test Salon',
+      customerName: 'Jane Doe',
+      dealTitle: 'Spring Special',
+      dealCode: 'ABCD1234',
+      bookingUrl: 'https://clientific.app/book/test-salon',
+    });
+
+    expect(message).toContain('Hi Jane,');
+    expect(message).toContain('Your Spring Special code is ABCD1234.');
+    expect(message).toContain('Book here: https://clientific.app/book/test-salon');
     expect(message).toContain(FOOTER);
   });
 });

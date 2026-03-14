@@ -35,7 +35,7 @@ function walk(dir: string): string[] {
 describe('theme helper override audit', () => {
   it('does not override shared themed surfaces with light-only backgrounds', () => {
     const offenders: string[] = [];
-    const classRegex = /className\s*=\s*(?:"([^"]*)"|`([^`]*)`|\{\s*`([^`]*)`\s*\})/gs;
+    const classRegex = /className\s*=\s*(?:"([^"]*)"|`([^`]*)`|\{\s*`([^`]*)`\s*\})/g;
 
     for (const root of UI_ROOTS) {
       for (const filePath of walk(root)) {

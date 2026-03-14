@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/DatePicker';
+import InStoreCapturePanel from '@/components/campaigns/InStoreCapturePanel';
 
 interface Deal {
   id: string;
@@ -82,8 +83,23 @@ export default function DealsPage() {
     queryFn: async () => { const res = await fetch('/api/services'); if (!res.ok) throw new Error(); return res.json(); },
   });
 
+  const { data: businessData } = useQuery({
+    queryKey: ['business'],
+    queryFn: async () => {
+      const res = await fetch('/api/business');
+      if (!res.ok) throw new Error();
+      return res.json();
+    },
+  });
+
   const deals: Deal[] = dealsData?.deals || [];
   const services: { id: string; name: string }[] = servicesData?.services || [];
+  const business: { name: string; publicId: string } | null = businessData?.business
+    ? {
+        name: businessData.business.name,
+        publicId: businessData.business.publicId,
+      }
+    : null;
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof form) => {
@@ -183,6 +199,8 @@ export default function DealsPage() {
           )}
         </button>
       </div>
+
+      <InStoreCapturePanel business={business} deals={deals} />
 
       {/* Create form */}
       {showForm && (

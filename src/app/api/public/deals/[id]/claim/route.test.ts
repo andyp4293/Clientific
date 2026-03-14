@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     deal: { findUnique: vi.fn(), update: vi.fn() },
-    dealRedemption: { findUnique: vi.fn(), create: vi.fn() },
+    dealRedemption: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn() },
     customer: { findFirst: vi.fn() },
     $transaction: vi.fn(),
   },
@@ -15,6 +15,7 @@ import { POST } from './route';
 
 const mockDealFindUnique = prisma.deal.findUnique as ReturnType<typeof vi.fn>;
 const mockRedemptionFindUnique = prisma.dealRedemption.findUnique as ReturnType<typeof vi.fn>;
+const mockRedemptionFindFirst = prisma.dealRedemption.findFirst as ReturnType<typeof vi.fn>;
 const mockCustomerFindFirst = prisma.customer.findFirst as ReturnType<typeof vi.fn>;
 const mockTransaction = prisma.$transaction as ReturnType<typeof vi.fn>;
 
@@ -22,6 +23,7 @@ const now = new Date();
 const activeDeal = {
   id: 'deal-1',
   businessId: 'biz-1',
+  title: 'Spring Special',
   active: true,
   startsAt: new Date(now.getTime() - 86400000), // yesterday
   expiresAt: new Date(now.getTime() + 86400000 * 7), // 7 days from now
@@ -44,6 +46,7 @@ function makeParams(id: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockRedemptionFindUnique.mockResolvedValue(null); // no code collision
+  mockRedemptionFindFirst.mockResolvedValue(null); // no previous claim
 });
 
 describe('POST /api/public/deals/[id]/claim', () => {
@@ -130,6 +133,19 @@ describe('POST /api/public/deals/[id]/claim', () => {
         }),
       })
     );
+  });
+
+  it('reuses an existing code when the same customer already claimed the deal', async () => {
+    mockDealFindUnique.mockResolvedValue(activeDeal);
+    mockCustomerFindFirst.mockResolvedValue({ id: 'cust-1' });
+    mockRedemptionFindFirst.mockResolvedValue({ code: 'EXIST123' });
+
+    const res = await POST(makeRequest('deal-1', { customerPhone: '5551234567' }), makeParams('deal-1'));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.code).toBe('EXIST123');
+    expect(mockTransaction).not.toHaveBeenCalled();
   });
 
   it('allows claiming under max redemptions limit', async () => {
