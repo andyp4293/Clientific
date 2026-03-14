@@ -222,7 +222,10 @@ export default function DealsPage() {
   const nowMs = Date.now();
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl pb-28 md:pb-8 space-y-4 md:space-y-6">
+    <div
+      data-testid="deals-page"
+      className="max-w-7xl space-y-4 sm:space-y-6 pb-28 md:pb-8"
+    >
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
