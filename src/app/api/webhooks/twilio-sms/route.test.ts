@@ -75,8 +75,11 @@ describe('POST /api/webhooks/twilio-sms', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           smsOptedOut: true,
+          smsOptedOutAt: expect.any(Date),
           smsConsent: false,
           smsMarketingConsent: false,
+          optedInMarketing: false,
+          optedOutAt: expect.any(Date),
         }),
       })
     );
@@ -99,8 +102,12 @@ describe('POST /api/webhooks/twilio-sms', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           smsOptedOut: false,
+          smsOptedOutAt: null,
           smsConsent: true,
           smsMarketingConsent: true,
+          smsMarketingConsentAt: expect.any(Date),
+          optedInMarketing: true,
+          optedOutAt: null,
         }),
       })
     );
