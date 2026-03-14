@@ -126,7 +126,8 @@ describe('twilio sms formatting', () => {
       bookingUrl: 'https://clientific.app/book/test-salon',
     });
 
-    expect(message).toContain("Hi Jane, you're signed up for Test Salon text offers and updates.");
+    expect(message).toContain('Hi Jane, thanks for signing up with Test Salon.');
+    expect(message).toContain("You're now on the Test Salon text list for offers and updates.");
     expect(message).toContain('Book anytime: https://clientific.app/book/test-salon');
     expect(message).toContain(FOOTER);
   });
@@ -141,6 +142,8 @@ describe('twilio sms formatting', () => {
     });
 
     expect(message).toContain('Hi Jane,');
+    expect(message).toContain('thanks for signing up with Test Salon.');
+    expect(message).toContain("You're now on the Test Salon text list for future offers and updates.");
     expect(message).toContain('Your Spring Special code is ABCD1234.');
     expect(message).toContain('Book here: https://clientific.app/book/test-salon');
     expect(message).toContain(FOOTER);

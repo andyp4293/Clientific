@@ -371,7 +371,7 @@ export function formatDealClaimCodeSMS(details: DealClaimCodeDetails): string {
 export function formatKioskSignupConfirmationSMS(details: KioskSignupDetails): string {
   const firstName = details.customerName?.trim().split(/\s+/).filter(Boolean)[0] ?? null;
   const greeting = firstName ? `Hi ${firstName},` : 'Hi there,';
-  const base = `${greeting} you're signed up for ${details.businessName} text offers and updates.`;
+  const base = `${greeting} thanks for signing up with ${details.businessName}. You're now on the ${details.businessName} text list for offers and updates.`;
   const withBooking = details.bookingUrl ? `${base} Book anytime: ${details.bookingUrl}` : base;
   return appendSmsComplianceFooter(withBooking);
 }
@@ -379,7 +379,7 @@ export function formatKioskSignupConfirmationSMS(details: KioskSignupDetails): s
 export function formatKioskDealClaimSMS(details: KioskDealClaimDetails): string {
   const firstName = details.customerName?.trim().split(/\s+/).filter(Boolean)[0] ?? null;
   const greeting = firstName ? `Hi ${firstName},` : 'Hi there,';
-  const base = `${greeting} you're in for ${details.businessName} texts. Your ${details.dealTitle} code is ${details.dealCode}. Show it at checkout.`;
+  const base = `${greeting} thanks for signing up with ${details.businessName}. You're now on the ${details.businessName} text list for future offers and updates. Your ${details.dealTitle} code is ${details.dealCode}. Show it at checkout.`;
   const withBooking = details.bookingUrl ? `${base} Book here: ${details.bookingUrl}` : base;
   return appendSmsComplianceFooter(withBooking);
 }
