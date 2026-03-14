@@ -159,7 +159,7 @@ export default function InStoreCapturePanel({
             <ol className="mt-3 space-y-2 text-sm text-gray-700 dark:text-gray-200">
               <li>1. Open this link on the device and add it to the Home Screen.</li>
               <li>2. Turn on Guided Access so customers stay on the capture page.</li>
-              <li>3. Leave the page open; it resets automatically after every signup.</li>
+              <li>3. Leave the page open and tap reset when you are ready for the next customer.</li>
             </ol>
           </div>
         </div>

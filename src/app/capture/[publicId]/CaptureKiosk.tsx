@@ -18,7 +18,6 @@ type SuccessState = {
   dealIssue: string | null;
   bookingUrl: string | null;
   confirmationSent: boolean;
-  resetAfterMs: number;
 };
 
 const DEFAULT_FORM = {
@@ -33,7 +32,6 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<SuccessState | null>(null);
-  const [secondsRemaining, setSecondsRemaining] = useState(0);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   const hasSelectedDeal = Boolean(config.deal);
@@ -54,31 +52,12 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
     nameInputRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    if (!success) {
-      setSecondsRemaining(0);
-      return;
-    }
-
-    const totalSeconds = Math.max(1, Math.ceil(success.resetAfterMs / 1000));
-    setSecondsRemaining(totalSeconds);
-
-    const countdownInterval = window.setInterval(() => {
-      setSecondsRemaining((current) => (current > 1 ? current - 1 : 1));
-    }, 1000);
-
-    const resetTimer = window.setTimeout(() => {
-      setForm(DEFAULT_FORM);
-      setSuccess(null);
-      setError(null);
-      window.setTimeout(() => nameInputRef.current?.focus(), 0);
-    }, success.resetAfterMs);
-
-    return () => {
-      window.clearInterval(countdownInterval);
-      window.clearTimeout(resetTimer);
-    };
-  }, [success]);
+  function resetForNextCustomer() {
+    setForm(DEFAULT_FORM);
+    setSuccess(null);
+    setError(null);
+    window.setTimeout(() => nameInputRef.current?.focus(), 0);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -111,7 +90,6 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
         dealIssue: body.dealIssue ?? null,
         bookingUrl: body.bookingUrl ?? null,
         confirmationSent: body.confirmationSent === true,
-        resetAfterMs: typeof body.resetAfterMs === 'number' ? body.resetAfterMs : 6000,
       });
     } catch (submitError: any) {
       setError(submitError?.message || 'Could not save signup');
@@ -195,7 +173,7 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
                 <ol className="mt-3 space-y-3 text-sm text-white/85">
                   <li>1. Enter your name and phone number.</li>
                   <li>2. We text your confirmation immediately.</li>
-                  <li>3. This screen resets for the next customer automatically.</li>
+                  <li>3. Tap reset when you are ready for the next customer.</li>
                 </ol>
               </div>
             </div>
@@ -256,9 +234,13 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
                       Booking link: <span className="font-medium text-primary">{success.bookingUrl}</span>
                     </p>
                   )}
-                  <p className="text-xs font-medium uppercase tracking-[0.22em] text-gray-600 dark:text-gray-200">
-                    Resetting for the next customer in {secondsRemaining}s
-                  </p>
+                  <button
+                    type="button"
+                    onClick={resetForNextCustomer}
+                    className="btn-secondary min-h-[56px] w-full text-base font-semibold"
+                  >
+                    Reset for next customer
+                  </button>
                 </div>
               </div>
             ) : (

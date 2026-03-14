@@ -42,7 +42,6 @@ describe('CaptureKiosk', () => {
         dealIssue: null,
         bookingUrl: 'https://clientific.app/book/test-salon',
         confirmationSent: true,
-        resetAfterMs: 2000,
       }),
     } as never);
   });
@@ -52,7 +51,7 @@ describe('CaptureKiosk', () => {
     vi.restoreAllMocks();
   });
 
-  it('submits the signup, shows the deal code, and resets back to the form for the next customer', async () => {
+  it('holds on the success state until staff manually resets for the next customer', async () => {
     render(<CaptureKiosk config={baseConfig} />);
 
     fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'Jane Doe' } });
@@ -75,9 +74,12 @@ describe('CaptureKiosk', () => {
     expect(screen.getByText('ABCD1234')).toBeInTheDocument();
 
     await act(async () => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(30000);
       await Promise.resolve();
     });
+
+    expect(screen.getByText(/your spring special code is ready/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /reset for next customer/i }));
 
     expect(screen.getByText(/enter your info to get the code/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/full name/i)).toHaveValue('');

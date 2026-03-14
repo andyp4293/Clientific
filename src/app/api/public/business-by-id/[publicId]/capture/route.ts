@@ -239,7 +239,6 @@ export async function POST(
       dealIssue,
       bookingUrl,
       confirmationSent: smsResult?.success ?? false,
-      resetAfterMs: 6000,
       message: claimedDeal
         ? 'Promo claimed and customer enrolled for text offers.'
         : 'Customer enrolled for text offers.',
