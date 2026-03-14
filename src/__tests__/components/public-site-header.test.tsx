@@ -13,6 +13,8 @@ describe('PublicSiteHeader', () => {
     expect(screen.getByRole('link', { name: 'Refer & Earn' })).toHaveAttribute('href', '/partner');
     expect(screen.getByRole('link', { name: 'Start Free Trial' })).toHaveAttribute('href', '/register');
     expect(screen.getByRole('link', { name: 'Log In' })).toHaveAttribute('href', '/login');
+    expect(screen.getByRole('banner')).toHaveClass('bg-white/80');
+    expect(screen.getByRole('banner')).toHaveClass('dark:bg-gray-950/90');
   });
 
   it('hides login link when showLogin is false', () => {

@@ -3,13 +3,13 @@
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useState } from 'react';
-import { APP_NAME, APP_DOMAIN } from '@/lib/brand';
+import { APP_DOMAIN, APP_NAME } from '@/lib/brand';
 import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
 
 const faqs = [
   {
     q: 'How does the AI receptionist work?',
-    a: `${APP_NAME} connects an AI-powered phone assistant to your business number. When a customer calls, the AI picks up, answers questions about your services and hours, and books appointments directly — all without you lifting a finger.`,
+    a: `${APP_NAME} connects an AI-powered phone assistant to your business number. When a customer calls, the AI picks up, answers questions about your services and hours, and books appointments directly - all without you lifting a finger.`,
   },
   {
     q: 'How long is the free trial?',
@@ -17,11 +17,11 @@ const faqs = [
   },
   {
     q: 'Do my customers need an account to book?',
-    a: 'No. Customers book through your public booking link or by calling your number — no app or account needed on their end.',
+    a: 'No. Customers book through your public booking link or by calling your number - no app or account needed on their end.',
   },
   {
     q: `What types of businesses is ${APP_NAME} for?`,
-    a: 'Any service-based business — barbershops, salons, spas, nail studios, auto detailers, pet groomers, and more.',
+    a: 'Any service-based business - barbershops, salons, spas, nail studios, auto detailers, pet groomers, and more.',
   },
   {
     q: 'How do SMS reminders work?',
@@ -29,7 +29,7 @@ const faqs = [
   },
   {
     q: 'Can I cancel anytime?',
-    a: 'Yes. No long-term contracts or cancellation fees — cancel anytime from your billing settings.',
+    a: 'Yes. No long-term contracts or cancellation fees - cancel anytime from your billing settings.',
   },
 ];
 
@@ -39,66 +39,106 @@ const features = [
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
     ),
     title: 'AI Phone Receptionist',
-    desc: 'An AI assistant answers your business calls 24/7, books appointments, and answers customer questions — automatically, in your name.',
+    desc: 'An AI assistant answers your business calls 24/7, books appointments, and answers customer questions automatically in your name.',
   },
   {
     icon: (
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
     ),
     title: 'Online Booking',
-    desc: 'Customers book 24/7 through your branded page. Automated confirmations and reminders drastically reduce no-shows.',
+    desc: 'Customers book 24/7 through your branded page. Automated confirmations and reminders reduce no-shows.',
   },
   {
     icon: (
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
     ),
     title: 'Customer Intelligence',
-    desc: `Full client history — visits, spending, notes. ${APP_NAME} automatically segments customers into VIP, Regular, At-Risk, and more.`,
+    desc: `Full client history - visits, spending, and notes. ${APP_NAME} automatically segments customers into actionable groups.`,
   },
   {
     icon: (
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
     ),
     title: 'SMS Automation',
-    desc: 'Booking confirmations, appointment reminders, and review requests — all sent automatically to your customers\' phones.',
+    desc: "Booking confirmations, appointment reminders, and review requests - all sent automatically to your customers' phones.",
   },
   {
     icon: (
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
     ),
-    title: 'Analytics & Insights',
-    desc: 'Track revenue trends, busiest days, top services, and customer segments. Make smarter decisions with real data.',
+    title: 'Analytics and Insights',
+    desc: 'Track revenue trends, busiest days, top services, and customer segments so you can make better decisions with real data.',
   },
   {
     icon: (
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
     ),
     title: 'Walk-In Check-In',
-    desc: 'Digital check-in for walk-in customers. Track visits and spending without any paper or manual entry.',
+    desc: 'Digital check-in for walk-in customers. Track visits and spending without paper or manual entry.',
   },
 ];
 
+const quickStats = [
+  { val: '24/7', label: 'AI answers your calls' },
+  { val: '< 3 min', label: 'Average setup time' },
+  { val: '99.9%', label: 'Platform uptime' },
+  { val: '$0', label: 'To start your trial' },
+];
 
-const StarIcon = () => (
-  <svg className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-  </svg>
-);
+const heroHighlights = [
+  'AI receptionist answers missed calls',
+  'Online booking stays open 24/7',
+  'SMS reminders go out automatically',
+];
 
-const CheckIcon = () => (
-  <svg className="w-4 h-4 text-primary shrink-0" fill="currentColor" viewBox="0 0 20 20">
-    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-  </svg>
-);
+const dashboardStats = [
+  { label: "Today's appointments", val: '8', tone: 'border-primary/25 bg-primary/12 text-primary-200' },
+  { label: 'Customers', val: '247', tone: 'border-primary/20 bg-primary/10 text-primary-300' },
+  { label: 'AI calls', val: '12', tone: 'border-primary/30 bg-primary/15 text-primary-100' },
+];
 
-const CheckIconLight = () => (
-  <svg className="w-4 h-4 text-primary-300 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+const todaySchedule = [
+  { name: 'Alex M.', time: '9:00 AM', service: 'Haircut and beard', source: 'AI' },
+  { name: 'Sarah K.', time: '10:30 AM', service: 'Highlights', source: 'Online' },
+  { name: 'James R.', time: '12:00 PM', service: 'Trim and style', source: 'AI' },
+];
+const pricingFeatures = {
+  starter: ['Up to 100 customers', '2 staff members', 'Online booking page', 'AI phone receptionist', 'SMS reminders', 'Walk-in check-in'],
+  pro: ['Up to 1,000 customers', '10 staff members', 'Everything in Starter', 'Analytics dashboard', 'Walk-in check-in', 'Priority support'],
+  premium: ['Unlimited customers', 'Unlimited staff', 'Everything in Pro', 'Advanced analytics', 'Custom integrations', 'Dedicated support'],
+};
+
+const trustBadges = [
+  {
+    icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
+    label: 'SSL secured',
+  },
+  {
+    icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z',
+    label: 'Secure payments',
+  },
+  {
+    icon: 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636',
+    label: 'Cancel anytime',
+  },
+  {
+    icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+    label: 'Reliable uptime',
+  },
+];
+
+const CheckIcon = ({ className = 'text-primary' }: { className?: string }) => (
+  <svg className={`h-4 w-4 shrink-0 ${className}`} fill="currentColor" viewBox="0 0 20 20">
+    <path
+      fillRule="evenodd"
+      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+      clipRule="evenodd"
+    />
   </svg>
 );
 
 const ArrowRight = () => (
-  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
   </svg>
 );
@@ -117,257 +157,228 @@ export default function HomePage() {
         ctaHref={isAuthenticated ? '/dashboard' : '/register'}
       />
 
-      <div className="border-b border-gray-100 bg-white/90 dark:border-gray-800 dark:bg-gray-900/90">
+      <div className="border-b border-gray-200/80 bg-white/80 dark:border-gray-900 dark:bg-gray-950/80">
         <div className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-4 py-2 sm:px-6 lg:px-8">
-          <a href="#features" className="whitespace-nowrap rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:text-gray-200">
+          <a href="#features" className="whitespace-nowrap rounded-full border border-gray-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-white dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-200 dark:hover:bg-gray-900">
             Platform
           </a>
-          <a href="#pricing" className="whitespace-nowrap rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:text-gray-200">
+          <a href="#pricing" className="whitespace-nowrap rounded-full border border-gray-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-white dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-200 dark:hover:bg-gray-900">
             Pricing
           </a>
-          <a href="#faq" className="whitespace-nowrap rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:text-gray-200">
+          <a href="#faq" className="whitespace-nowrap rounded-full border border-gray-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-white dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-200 dark:hover:bg-gray-900">
             FAQ
           </a>
-          <Link href="/explore" className="whitespace-nowrap rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:text-gray-200">
+          <Link href="/explore" className="whitespace-nowrap rounded-full border border-gray-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-white dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-200 dark:hover:bg-gray-900">
             Book Services
           </Link>
         </div>
       </div>
 
-      {/* ── Hero ── */}
-      <section className="relative overflow-hidden bg-gray-950">
-        {/* Multi-point glow */}
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[1100px] h-[800px] rounded-full bg-primary/12 blur-[140px] pointer-events-none" />
-        <div className="absolute top-1/2 -right-40 w-[500px] h-[500px] rounded-full bg-primary/10 blur-[100px] pointer-events-none" />
-        <div className="absolute top-1/2 -left-40 w-[400px] h-[400px] rounded-full bg-primary/8 blur-[100px] pointer-events-none" />
-        {/* Dot grid */}
+      <section
+        data-testid="homepage-hero"
+        className="relative overflow-hidden border-b border-gray-200/70 bg-gradient-to-br from-white via-primary-50/70 to-gray-100 dark:border-gray-900 dark:from-gray-950 dark:via-gray-950 dark:to-primary-950"
+      >
+        <div className="pointer-events-none absolute -top-40 left-1/2 h-[800px] w-[1100px] -translate-x-1/2 rounded-full bg-primary/12 blur-[140px]" />
+        <div className="pointer-events-none absolute top-1/2 -right-40 h-[500px] w-[500px] rounded-full bg-primary/10 blur-[100px]" />
+        <div className="pointer-events-none absolute top-1/2 -left-40 h-[400px] w-[400px] rounded-full bg-primary/8 blur-[100px]" />
         <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '24px 24px' }}
+          className="pointer-events-none absolute inset-0 dark:hidden"
+          style={{
+            backgroundImage: 'radial-gradient(rgba(6,17,24,0.06) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
+          }}
         />
-        {/* Bottom fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-white dark:from-gray-900 to-transparent pointer-events-none" />
+        <div
+          className="pointer-events-none absolute inset-0 hidden dark:block"
+          style={{
+            backgroundImage: 'radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
+          }}
+        />
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-gray-50 dark:from-gray-950 to-transparent" />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32 lg:py-40">
-          <div className="lg:grid lg:grid-cols-2 lg:gap-20 items-center">
-
-            {/* Copy */}
+        <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8 lg:py-36">
+          <div className="items-center lg:grid lg:grid-cols-2 lg:gap-20">
             <div>
-              <div className="inline-flex items-center gap-2 bg-white/[0.06] border border-white/[0.08] text-primary-300 text-xs font-semibold px-4 py-1.5 rounded-full mb-8 tracking-wide">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary-300 animate-pulse inline-block shrink-0" />
+              <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-white/80 px-4 py-1.5 text-xs font-semibold tracking-wide text-primary-700 dark:border-white/10 dark:bg-white/[0.06] dark:text-primary-300">
+                <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-primary-400" />
                 AI-powered platform for service businesses
               </div>
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-7 leading-[1.05] tracking-tight">
-                Your business,<br />
-                <span
-                  className="bg-clip-text text-transparent"
-                  style={{ backgroundImage: 'linear-gradient(135deg, rgb(var(--color-primary-300)) 0%, rgb(var(--color-primary-600)) 40%, rgb(var(--color-primary-400)) 70%, rgb(var(--color-primary-300)) 100%)', backgroundSize: '200% 200%' }}
-                >
+              <h1 className="mb-7 text-5xl font-bold leading-[1.05] tracking-tight text-gray-950 dark:text-white sm:text-6xl lg:text-7xl">
+                Your business,
+                <br />
+                <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(135deg, rgb(var(--color-primary-500)) 0%, rgb(var(--color-primary-700)) 45%, rgb(var(--color-primary-400)) 100%)' }}>
                   on autopilot
                 </span>
               </h1>
-              <p className="text-lg sm:text-xl text-gray-400 mb-10 max-w-lg leading-relaxed font-light">
-                {APP_NAME} answers your calls, books appointments, sends reminders, and tracks every customer — so you can focus on doing the work.
+              <p className="mb-10 max-w-lg text-lg font-light leading-relaxed text-gray-700 dark:text-gray-300 sm:text-xl">
+                {APP_NAME} answers your calls, books appointments, sends reminders, and tracks every customer so you can focus on doing the work.
               </p>
-              <div className="mb-8 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Choose your path</p>
+
+              <div className="mb-8 rounded-3xl border border-gray-200/80 bg-white/85 p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">Choose your path</p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <Link
-                    href={isAuthenticated ? '/dashboard' : '/register'}
-                    aria-label="I run a business"
-                    className="rounded-xl border border-primary/40 bg-primary/15 px-4 py-3 text-sm font-semibold text-primary-100 transition-colors hover:bg-primary/25"
-                  >
+                  <Link href={isAuthenticated ? '/dashboard' : '/register'} aria-label="I run a business" className="rounded-2xl border border-primary/30 bg-primary-50 px-4 py-3 text-sm font-semibold text-primary-800 transition-colors hover:bg-primary-100 dark:border-primary/40 dark:bg-primary/15 dark:text-primary-100 dark:hover:bg-primary/25">
                     I run a business
                   </Link>
-                  <Link
-                    href="/explore"
-                    aria-label="I'm looking to book"
-                    className="rounded-xl border border-white/20 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-gray-200 transition-colors hover:bg-white/[0.08]"
-                  >
+                  <Link href="/explore" aria-label="I'm looking to book" className="rounded-2xl border border-gray-200 bg-gray-100/90 px-4 py-3 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-200 dark:border-white/20 dark:bg-white/[0.03] dark:text-gray-100 dark:hover:bg-white/[0.08]">
                     I&apos;m looking to book
                   </Link>
                 </div>
               </div>
               {isAuthenticated ? (
-                <Link
-                  href="/dashboard"
-                  className="inline-flex items-center gap-2 bg-white text-gray-900 font-semibold px-8 py-4 rounded-xl hover:bg-gray-100 transition-all duration-200 text-base"
-                >
+                <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-xl bg-gray-950 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-gray-900 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
                   Go to Dashboard <ArrowRight />
                 </Link>
               ) : (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
                   <Link
                     href="/register"
-                    className="inline-flex items-center gap-2 bg-primary text-white font-semibold px-8 py-4 rounded-xl hover:bg-primary-500 transition-all duration-200 text-base"
-                    style={{ boxShadow: '0 0 40px rgb(var(--color-primary-600) / 0.5)' }}
+                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-primary-500"
+                    style={{ boxShadow: '0 0 40px rgb(var(--color-primary-600) / 0.35)' }}
                   >
                     Start Free - 14 Days <ArrowRight />
                   </Link>
-                  <div className="flex items-center gap-1.5 text-sm text-gray-500">
-                    <svg className="w-3.5 h-3.5 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
+                  <div className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300">
+                    <CheckIcon className="text-primary" />
                     No credit card required
                   </div>
                 </div>
               )}
 
-              {/* Social proof */}
-              <div className="mt-10 flex items-center gap-4">
-                <div className="flex -space-x-2.5">
-                  {['M','P','D','S','J'].map((l, i) => (
-                    <div key={i} className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/40 to-primary/20 border-2 border-gray-900 flex items-center justify-center text-xs font-bold text-primary-200">{l}</div>
-                  ))}
-                </div>
-                <div>
-                  <div className="flex items-center gap-0.5 mb-0.5">{[1,2,3,4,5].map(i => <StarIcon key={i} />)}</div>
-                  <p className="text-xs text-gray-500">Trusted by <span className="text-white font-semibold">500+</span> service businesses</p>
-                </div>
+              <div className="mt-10 flex flex-wrap gap-3">
+                {heroHighlights.map((item) => (
+                  <div key={item} className="inline-flex items-center gap-2 rounded-full border border-gray-200/80 bg-white/75 px-3 py-1.5 text-sm text-gray-800 shadow-sm dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-200">
+                    <CheckIcon className="text-primary" />
+                    {item}
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* Dashboard mockup */}
-            <div className="hidden lg:block mt-12 lg:mt-0">
+            <div className="mt-12 hidden lg:block lg:mt-0">
               <div className="relative" style={{ perspective: '1000px' }}>
-                <div className="absolute -inset-8 bg-primary/15 blur-3xl rounded-3xl pointer-events-none" />
-                <div
-                  className="relative bg-gray-900 rounded-2xl shadow-2xl border border-white/10 overflow-hidden"
-                  style={{ transform: 'rotateY(-4deg) rotateX(2deg)' }}
-                >
-                  {/* Browser chrome */}
-                  <div className="bg-gray-800/80 border-b border-white/10 px-4 py-3 flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-500/70" />
-                    <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
-                    <div className="w-3 h-3 rounded-full bg-primary-400/70" />
-                    <div className="flex-1 mx-4 bg-gray-700/60 rounded-md h-5 flex items-center px-3">
-                      <div className="w-2 h-2 rounded-full bg-primary-300/80 mr-1.5 shrink-0" />
-                      <span className="text-[10px] text-gray-500 font-mono">{APP_DOMAIN}/dashboard</span>
+                <div className="pointer-events-none absolute -inset-8 rounded-3xl bg-primary/15 blur-3xl" />
+                <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gray-950 shadow-2xl" style={{ transform: 'rotateY(-4deg) rotateX(2deg)' }}>
+                  <div className="flex items-center gap-2 border-b border-white/10 bg-white/[0.04] px-4 py-3">
+                    <div className="h-3 w-3 rounded-full bg-red-500/70" />
+                    <div className="h-3 w-3 rounded-full bg-yellow-500/70" />
+                    <div className="h-3 w-3 rounded-full bg-primary-400/70" />
+                    <div className="mx-4 flex h-5 flex-1 items-center rounded-md bg-white/5 px-3">
+                      <div className="mr-1.5 h-2 w-2 shrink-0 rounded-full bg-primary-300/80" />
+                      <span className="font-mono text-[10px] text-white/55">{APP_DOMAIN}/dashboard</span>
                     </div>
                   </div>
                   <div className="p-5">
-                    <div className="flex items-center justify-between mb-5">
+                    <div className="mb-5 flex items-center justify-between">
                       <div>
-                        <div className="text-sm font-semibold text-gray-200 mb-0.5">Good morning, Jordan ✨</div>
-                        <div className="text-[11px] text-gray-500">Friday, March 7 · 3 appointments today</div>
+                        <div className="mb-0.5 text-sm font-semibold text-white/90">Good morning, Jordan</div>
+                        <div className="text-[11px] text-white/55">Friday, March 7 - 3 appointments today</div>
                       </div>
-                      <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">J</span>
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+                        <span className="text-xs font-bold text-white">J</span>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-3 mb-5">
-                      {[
-                        { label: "Today's Appts", val: '8', icon: '📅', color: 'border-primary/25 bg-primary/12', text: 'text-primary-200' },
-                        { label: 'Customers', val: '247', icon: '👥', color: 'border-primary/20 bg-primary/10', text: 'text-primary-300' },
-                        { label: 'AI Calls', val: '12', icon: '🤖', color: 'border-primary/30 bg-primary/16', text: 'text-primary-100' },
-                      ].map(stat => (
-                        <div key={stat.label} className={`border ${stat.color} rounded-xl p-3`}>
-                          <div className={`text-xl font-bold tabular-nums ${stat.text}`}>{stat.val}</div>
-                          <div className="text-[10px] text-gray-400 leading-tight mt-0.5">{stat.label}</div>
+
+                    <div className="mb-5 grid grid-cols-3 gap-3">
+                      {dashboardStats.map((stat) => (
+                        <div key={stat.label} className={`rounded-xl border p-3 ${stat.tone}`}>
+                          <div className="text-xl font-bold tabular-nums">{stat.val}</div>
+                          <div className="mt-0.5 text-[10px] leading-tight text-white/60">{stat.label}</div>
                         </div>
                       ))}
                     </div>
-                    <div className="flex items-center justify-between mb-2.5">
-                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Today&apos;s Schedule</p>
-                      <span className="text-[9px] text-primary-300 font-semibold bg-primary/12 px-2 py-0.5 rounded-full">LIVE</span>
+
+                    <div className="mb-2.5 flex items-center justify-between">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-white/55">Today&apos;s schedule</p>
+                      <span className="rounded-full bg-primary/12 px-2 py-0.5 text-[9px] font-semibold text-primary-200">LIVE</span>
                     </div>
+
                     <div className="space-y-2">
-                      {[
-                        { name: 'Alex M.', time: '9:00 AM', service: 'Haircut & Beard', source: 'AI' },
-                        { name: 'Sarah K.', time: '10:30 AM', service: 'Highlights', source: 'Online' },
-                        { name: 'James R.', time: '12:00 PM', service: 'Trim & Style', source: 'AI' },
-                      ].map((appt, i) => (
-                        <div key={appt.name} className={`flex items-center justify-between rounded-lg px-3 py-2 border ${i === 0 ? 'bg-primary/10 border-primary/20' : 'bg-gray-800/60 border-white/5'}`}>
-                          <div className="flex items-center gap-2">
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${i === 0 ? 'bg-primary/30' : 'bg-gray-700'}`}>
-                              <span className={`text-[10px] font-bold ${i === 0 ? 'text-primary-200' : 'text-gray-400'}`}>{appt.name[0]}</span>
+                      {todaySchedule.map((appointment, index) => {
+                        const featured = index === 0;
+
+                        return (
+                          <div key={appointment.name} className={`flex items-center justify-between rounded-lg border px-3 py-2 ${featured ? 'border-primary/20 bg-primary/10' : 'border-white/5 bg-white/[0.04]'}`}>
+                            <div className="flex items-center gap-2">
+                              <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${featured ? 'bg-primary/30' : 'bg-white/10'}`}>
+                                <span className={`text-[10px] font-bold ${featured ? 'text-primary-200' : 'text-white/60'}`}>{appointment.name[0]}</span>
+                              </div>
+                              <div>
+                                <div className="text-xs font-medium text-white/90">{appointment.name}</div>
+                                <div className="text-[10px] text-white/55">{appointment.service}</div>
+                              </div>
                             </div>
-                            <div>
-                              <div className="text-xs font-medium text-gray-200">{appt.name}</div>
-                              <div className="text-[10px] text-gray-500">{appt.service}</div>
+                            <div className="flex items-center gap-1.5">
+                              <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${appointment.source === 'AI' ? 'bg-primary/20 text-primary-200' : 'bg-primary/12 text-primary-300'}`}>
+                                {appointment.source}
+                              </span>
+                              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/75">{appointment.time}</span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${appt.source === 'AI' ? 'bg-primary/20 text-primary-200' : 'bg-primary/12 text-primary-300'}`}>
-                              {appt.source}
-                            </span>
-                            <span className="text-[10px] font-semibold text-gray-300 bg-gray-700/60 px-2 py-0.5 rounded-full">{appt.time}</span>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       </section>
 
-      {/* ── Stats Strip ── */}
-      <section className="border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            {[
-              { val: '24/7', label: 'AI answers your calls' },
-              { val: '< 3 min', label: 'Average setup time' },
-              { val: '99.9%', label: 'Platform uptime' },
-              { val: '$0', label: 'To start your trial' },
-            ].map((stat, i) => (
-              <div key={stat.label} className={i > 0 ? 'md:border-l md:border-gray-100 dark:md:border-gray-800' : ''}>
-                <div className="text-3xl font-bold text-primary mb-1 tabular-nums">{stat.val}</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">{stat.label}</div>
+      <section className="border-b border-gray-200/70 bg-white/70 dark:border-gray-900 dark:bg-gray-950/50">
+        <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 gap-8 text-center md:grid-cols-4">
+            {quickStats.map((stat, index) => (
+              <div key={stat.label} className={index > 0 ? 'md:border-l md:border-gray-200/70 dark:md:border-gray-900' : ''}>
+                <div className="mb-1 text-3xl font-bold tabular-nums text-primary">{stat.val}</div>
+                <div className="text-sm text-gray-700 dark:text-gray-300">{stat.label}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Features ── */}
-      <section id="features" className="bg-white dark:bg-gray-900 py-20 sm:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <div className="inline-block text-xs font-semibold text-primary bg-primary-50 dark:bg-primary/10 px-3 py-1 rounded-full mb-4 uppercase tracking-widest">
+      <section id="features" className="bg-white/70 py-20 sm:py-28 dark:bg-gray-950/30">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-16 text-center">
+            <div className="mb-4 inline-block rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-primary dark:bg-primary/10">
               Features
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">Everything you need, all in one place</h2>
-            <p className="text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">
+            <h2 className="mb-4 text-3xl font-bold text-gray-950 dark:text-gray-100 sm:text-4xl">Everything you need, all in one place</h2>
+            <p className="mx-auto max-w-2xl text-lg text-gray-700 dark:text-gray-300">
               Stop juggling multiple tools. {APP_NAME} brings your booking, customers, AI, and marketing together in one platform.
             </p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {features.map((feat) => (
-              <div
-                key={feat.title}
-                className="group bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 hover:border-primary/30 dark:hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 dark:hover:shadow-primary/10 transition-all duration-300"
-              >
-                <div className="w-11 h-11 bg-gradient-to-br from-primary-50 to-gray-100 dark:from-primary/20 dark:to-gray-800 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200">
-                  <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    {feat.icon}
+
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {features.map((feature) => (
+              <div key={feature.title} className="group rounded-2xl border border-gray-200 bg-white/80 p-6 shadow-sm transition-all duration-300 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 dark:border-gray-800 dark:bg-gray-900/80 dark:hover:border-primary/40 dark:hover:shadow-primary/10">
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-primary-50 to-gray-100 transition-transform duration-200 group-hover:scale-110 dark:from-primary/20 dark:to-gray-800">
+                  <svg className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    {feature.icon}
                   </svg>
                 </div>
-                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">{feat.title}</h3>
-                <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">{feat.desc}</p>
+                <h3 className="mb-2 text-base font-semibold text-gray-950 dark:text-gray-100">{feature.title}</h3>
+                <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">{feature.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
-
-      {/* ── How It Works ── */}
-      <section id="how-it-works" className="bg-gray-50 dark:bg-gray-800 py-20 sm:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <div className="inline-block text-xs font-semibold text-primary bg-primary-50 dark:bg-primary/10 px-3 py-1 rounded-full mb-4 uppercase tracking-widest">
+      <section id="how-it-works" className="bg-gray-50/80 py-20 sm:py-28 dark:bg-gray-900/50">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-16 text-center">
+            <div className="mb-4 inline-block rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-primary dark:bg-primary/10">
               How It Works
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">Up and running in minutes</h2>
-            <p className="text-lg text-gray-500 dark:text-gray-400">Three simple steps to put your business on autopilot.</p>
+            <h2 className="mb-4 text-3xl font-bold text-gray-950 dark:text-gray-100 sm:text-4xl">Up and running in minutes</h2>
+            <p className="text-lg text-gray-700 dark:text-gray-300">Three simple steps to put your business on autopilot.</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-12 md:gap-8 relative">
-            {/* Connector line */}
-            <div className="hidden md:block absolute top-10 left-[calc(16.67%+2.5rem)] right-[calc(16.67%+2.5rem)] h-px bg-gradient-to-r from-primary/20 via-primary/50 to-primary/20" />
+
+          <div className="relative grid gap-12 md:grid-cols-3 md:gap-8">
+            <div className="absolute left-[calc(16.67%+2.5rem)] right-[calc(16.67%+2.5rem)] top-10 hidden h-px bg-gradient-to-r from-primary/20 via-primary/50 to-primary/20 md:block" />
             {[
               {
                 step: '1',
@@ -377,54 +388,49 @@ export default function HomePage() {
               {
                 step: '2',
                 title: 'Share your booking link',
-                desc: 'Drop your link on Instagram, Google, or your website. Customers can book online or just call — your AI handles both.',
+                desc: 'Drop your link on Instagram, Google, or your website. Customers can book online or call - your AI handles both.',
               },
               {
                 step: '3',
-                title: 'Watch your business run itself',
-                desc: `${APP_NAME} books appointments, sends reminders, collects reviews, tracks customers, and reports on your growth — automatically.`,
+                title: 'Let automation take over',
+                desc: `${APP_NAME} books appointments, sends reminders, collects reviews, tracks customers, and reports on your growth automatically.`,
               },
-            ].map(step => (
-              <div key={step.step} className="text-center relative">
-                <div
-                  className="w-20 h-20 bg-gradient-to-br from-primary to-primary-700 rounded-2xl flex items-center justify-center mx-auto mb-6"
-                  style={{ boxShadow: '0 8px 32px rgb(var(--color-primary-600) / 0.3)' }}
-                >
+            ].map((step) => (
+              <div key={step.step} className="relative text-center">
+                <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary-700" style={{ boxShadow: '0 8px 32px rgb(var(--color-primary-600) / 0.3)' }}>
                   <span className="text-3xl font-bold text-white">{step.step}</span>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">{step.title}</h3>
-                <p className="text-gray-500 dark:text-gray-400 max-w-xs mx-auto leading-relaxed text-sm">{step.desc}</p>
+                <h3 className="mb-3 text-lg font-semibold text-gray-950 dark:text-gray-100">{step.title}</h3>
+                <p className="mx-auto max-w-xs text-sm leading-relaxed text-gray-700 dark:text-gray-300">{step.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-
-      {/* ── Pricing ── */}
-      <section id="pricing" className="bg-white dark:bg-gray-900 py-20 sm:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <div className="inline-block text-xs font-semibold text-primary bg-primary-50 dark:bg-primary/10 px-3 py-1 rounded-full mb-4 uppercase tracking-widest">
+      <section id="pricing" className="bg-white/70 py-20 sm:py-28 dark:bg-gray-950/30">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-16 text-center">
+            <div className="mb-4 inline-block rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-primary dark:bg-primary/10">
               Pricing
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">Simple, transparent pricing</h2>
-            <p className="text-lg text-gray-500 dark:text-gray-400">Start free for 14 days. No credit card required.</p>
+            <h2 className="mb-4 text-3xl font-bold text-gray-950 dark:text-gray-100 sm:text-4xl">Simple, transparent pricing</h2>
+            <p className="text-lg text-gray-700 dark:text-gray-300">Start free for 14 days. No credit card required.</p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
 
-            {/* Starter */}
-            <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-8 flex flex-col bg-white dark:bg-gray-800">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">Starter</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Great for solo operators</p>
+          <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
+            <div className="flex flex-col rounded-2xl border border-gray-200 bg-white/85 p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900/80">
+              <h3 className="mb-1 text-xl font-bold text-gray-950 dark:text-gray-100">Starter</h3>
+              <p className="mb-5 text-sm text-gray-700 dark:text-gray-300">Great for solo operators</p>
               <div className="mb-7">
-                <span className="text-4xl font-bold text-gray-900 dark:text-gray-100">$29</span>
-                <span className="text-base text-gray-400 font-normal">/mo</span>
+                <span className="text-4xl font-bold text-gray-950 dark:text-gray-100">$29</span>
+                <span className="text-base font-normal text-gray-700 dark:text-gray-300">/mo</span>
               </div>
-              <ul className="space-y-3 mb-8 flex-1">
-                {['Up to 100 customers', '2 staff members', 'Online booking page', 'AI phone receptionist', 'SMS reminders', 'Walk-in check-in'].map(f => (
-                  <li key={f} className="flex items-center gap-2.5 text-sm text-gray-600 dark:text-gray-300">
-                    <CheckIcon />{f}
+              <ul className="mb-8 flex-1 space-y-3">
+                {pricingFeatures.starter.map((feature) => (
+                  <li key={feature} className="flex items-center gap-2.5 text-sm text-gray-800 dark:text-gray-200">
+                    <CheckIcon />
+                    {feature}
                   </li>
                 ))}
               </ul>
@@ -435,52 +441,49 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* Pro — dark featured card */}
-            <div
-              className="rounded-2xl p-8 flex flex-col relative bg-gray-950 border border-primary/40"
-              style={{ boxShadow: '0 0 50px rgb(var(--color-primary-600) / 0.18)' }}
-            >
+            <div data-testid="homepage-featured-plan" className="relative flex flex-col rounded-2xl border border-primary/30 bg-gradient-to-br from-primary-50 via-white to-gray-100 p-8 shadow-lg shadow-primary/10 dark:border-primary/40 dark:from-gray-950 dark:via-gray-950 dark:to-primary-950">
               <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                <span className="bg-primary text-white px-4 py-1 rounded-full text-xs font-semibold shadow-lg" style={{ boxShadow: '0 2px 12px rgba(59,130,246,0.5)' }}>
+                <span className="rounded-full bg-primary px-4 py-1 text-xs font-semibold text-white shadow-lg" style={{ boxShadow: '0 2px 12px rgb(var(--color-primary-600) / 0.45)' }}>
                   Most Popular
                 </span>
               </div>
-              <h3 className="text-xl font-bold text-white mb-1">Pro</h3>
-              <p className="text-sm text-gray-400 mb-5">For growing businesses</p>
+              <h3 className="mb-1 text-xl font-bold text-gray-950 dark:text-white">Pro</h3>
+              <p className="mb-5 text-sm text-gray-700 dark:text-gray-300">For growing businesses</p>
               <div className="mb-7">
-                <span className="text-4xl font-bold text-white">$79</span>
-                <span className="text-base text-gray-400 font-normal">/mo</span>
+                <span className="text-4xl font-bold text-gray-950 dark:text-white">$79</span>
+                <span className="text-base font-normal text-gray-700 dark:text-gray-300">/mo</span>
               </div>
-              <ul className="space-y-3 mb-8 flex-1">
-                {['Up to 1,000 customers', '10 staff members', 'Everything in Starter', 'Analytics dashboard', 'Walk-in check-in', 'Priority support'].map(f => (
-                  <li key={f} className="flex items-center gap-2.5 text-sm text-gray-300">
-                    <CheckIconLight />{f}
+              <ul className="mb-8 flex-1 space-y-3">
+                {pricingFeatures.pro.map((feature) => (
+                  <li key={feature} className="flex items-center gap-2.5 text-sm text-gray-800 dark:text-gray-200">
+                    <CheckIcon />
+                    {feature}
                   </li>
                 ))}
               </ul>
               {isAuthenticated ? (
-                <Link href="/pricing" className="bg-primary text-white font-semibold text-center w-full py-3 rounded-xl hover:bg-primary-600 transition-colors" style={{ boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' }}>
+                <Link href="/pricing" className="w-full rounded-xl bg-primary py-3 text-center font-semibold text-white transition-colors hover:bg-primary-600" style={{ boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' }}>
                   View Plans
                 </Link>
               ) : (
-                <Link href="/register?plan=pro" className="bg-primary text-white font-semibold text-center w-full py-3 rounded-xl hover:bg-primary-600 transition-colors" style={{ boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' }}>
+                <Link href="/register?plan=pro" className="w-full rounded-xl bg-primary py-3 text-center font-semibold text-white transition-colors hover:bg-primary-600" style={{ boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' }}>
                   Start Free Trial
                 </Link>
               )}
             </div>
 
-            {/* Premium */}
-            <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-8 flex flex-col bg-white dark:bg-gray-800">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">Premium</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">For multi-location businesses</p>
+            <div className="flex flex-col rounded-2xl border border-gray-200 bg-white/85 p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900/80">
+              <h3 className="mb-1 text-xl font-bold text-gray-950 dark:text-gray-100">Premium</h3>
+              <p className="mb-5 text-sm text-gray-700 dark:text-gray-300">For multi-location businesses</p>
               <div className="mb-7">
-                <span className="text-4xl font-bold text-gray-900 dark:text-gray-100">$149</span>
-                <span className="text-base text-gray-400 font-normal">/mo</span>
+                <span className="text-4xl font-bold text-gray-950 dark:text-gray-100">$149</span>
+                <span className="text-base font-normal text-gray-700 dark:text-gray-300">/mo</span>
               </div>
-              <ul className="space-y-3 mb-8 flex-1">
-                {['Unlimited customers', 'Unlimited staff', 'Everything in Pro', 'Advanced analytics', 'Custom integrations', 'Dedicated support'].map(f => (
-                  <li key={f} className="flex items-center gap-2.5 text-sm text-gray-600 dark:text-gray-300">
-                    <CheckIcon />{f}
+              <ul className="mb-8 flex-1 space-y-3">
+                {pricingFeatures.premium.map((feature) => (
+                  <li key={feature} className="flex items-center gap-2.5 text-sm text-gray-800 dark:text-gray-200">
+                    <CheckIcon />
+                    {feature}
                   </li>
                 ))}
               </ul>
@@ -490,37 +493,34 @@ export default function HomePage() {
                 <Link href="/register?plan=premium" className="btn-outline w-full text-center">Start Free Trial</Link>
               )}
             </div>
-
           </div>
         </div>
       </section>
-
-      {/* ── FAQ ── */}
-      <section id="faq" className="bg-gray-50 dark:bg-gray-800 py-20 sm:py-28">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <div className="inline-block text-xs font-semibold text-primary bg-primary-50 dark:bg-primary/10 px-3 py-1 rounded-full mb-4 uppercase tracking-widest">
+      <section id="faq" className="bg-gray-50/80 py-20 sm:py-28 dark:bg-gray-900/50">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-14 text-center">
+            <div className="mb-4 inline-block rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-primary dark:bg-primary/10">
               FAQ
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100">Frequently asked questions</h2>
+            <h2 className="text-3xl font-bold text-gray-950 dark:text-gray-100 sm:text-4xl">Frequently asked questions</h2>
           </div>
+
           <div className="space-y-2">
-            {faqs.map((faq, i) => (
-              <div key={i} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+            {faqs.map((faq, index) => (
+              <div key={faq.q} className="overflow-hidden rounded-xl border border-gray-200 bg-white/85 dark:border-gray-800 dark:bg-gray-900/80">
                 <button
-                  className="w-full text-left px-6 py-4 flex items-center justify-between font-medium text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  className="flex w-full items-center justify-between px-6 py-4 text-left font-medium text-gray-950 transition-colors hover:bg-gray-50 dark:text-gray-100 dark:hover:bg-gray-800/50"
+                  onClick={() => setOpenFaq(openFaq === index ? null : index)}
                 >
                   <span>{faq.q}</span>
-                  <svg
-                    className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ml-4 ${openFaq === i ? 'rotate-180' : ''}`}
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                  >
+                  <svg className={`ml-4 h-4 w-4 shrink-0 text-gray-700 transition-transform dark:text-gray-300 ${openFaq === index ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-                {openFaq === i && (
-                  <div className="px-6 pb-5 text-gray-500 dark:text-gray-400 text-sm leading-relaxed border-t border-gray-50 dark:border-gray-800 pt-4">{faq.a}</div>
+                {openFaq === index && (
+                  <div className="border-t border-gray-200 px-6 pb-5 pt-4 text-sm leading-relaxed text-gray-700 dark:border-gray-800 dark:text-gray-300">
+                    {faq.a}
+                  </div>
                 )}
               </div>
             ))}
@@ -528,83 +528,90 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── CTA ── */}
-      <section className="relative overflow-hidden bg-[#030712] py-20 sm:py-28">
+      <section
+        data-testid="homepage-cta"
+        className="relative overflow-hidden border-y border-gray-200/70 bg-gradient-to-br from-primary-50 via-white to-gray-100 py-20 sm:py-28 dark:border-gray-900 dark:from-gray-950 dark:via-gray-950 dark:to-primary-950"
+      >
         <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px)', backgroundSize: '28px 28px' }}
+          className="pointer-events-none absolute inset-0 dark:hidden"
+          style={{
+            backgroundImage: 'radial-gradient(rgba(6,17,24,0.05) 1px, transparent 1px)',
+            backgroundSize: '28px 28px',
+          }}
         />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 tracking-tight">Ready to put your business on autopilot?</h2>
-          <p className="text-lg text-gray-400 mb-9">Start your free 14-day trial. No credit card required.</p>
+        <div
+          className="pointer-events-none absolute inset-0 hidden dark:block"
+          style={{
+            backgroundImage: 'radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px)',
+            backgroundSize: '28px 28px',
+          }}
+        />
+        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[400px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[100px]" />
+        <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
+          <h2 className="mb-4 text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">Ready to put your business on autopilot?</h2>
+          <p className="mb-9 text-lg text-gray-700 dark:text-gray-300">Start your free 14-day trial. No credit card required.</p>
           {isAuthenticated ? (
-            <Link href="/dashboard" className="inline-flex items-center gap-2 bg-white text-gray-900 font-semibold px-8 py-3.5 rounded-xl hover:bg-gray-100 transition-colors">
+            <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-xl bg-gray-950 px-8 py-3.5 font-semibold text-white transition-colors hover:bg-gray-900 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
               Go to Dashboard <ArrowRight />
             </Link>
           ) : (
-            <Link href="/register" className="inline-flex items-center gap-2 bg-white text-gray-900 font-semibold px-8 py-3.5 rounded-xl hover:bg-gray-100 transition-colors">
+            <Link href="/register" className="inline-flex items-center gap-2 rounded-xl bg-gray-950 px-8 py-3.5 font-semibold text-white transition-colors hover:bg-gray-900 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
               Get Started Free <ArrowRight />
             </Link>
           )}
-          <div className="flex flex-wrap items-center justify-center gap-6 mt-10">
-            {[
-              { icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', label: 'SSL Secured' },
-              { icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z', label: 'Secure Payments' },
-              { icon: 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636', label: 'Cancel Anytime' },
-              { icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', label: '99.9% Uptime' },
-            ].map(b => (
-              <div key={b.label} className="flex items-center gap-2 text-gray-500 text-sm">
-                <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={b.icon} />
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-6">
+            {trustBadges.map((badge) => (
+              <div key={badge.label} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <svg className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={badge.icon} />
                 </svg>
-                {b.label}
+                {badge.label}
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer className="bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
+      <footer className="border-t border-gray-200/70 bg-gray-50 dark:border-gray-900 dark:bg-gray-950">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 gap-8 md:grid-cols-3">
             <div className="col-span-2 md:col-span-1">
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-xl">C</span>
+              <div className="mb-4 flex items-center space-x-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+                  <span className="text-xl font-bold text-white">C</span>
                 </div>
-                <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{APP_NAME}</span>
+                <span className="text-xl font-bold text-gray-950 dark:text-gray-100">{APP_NAME}</span>
               </div>
-              <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
+              <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
                 The AI-powered platform for service businesses to manage bookings, customers, and growth.
               </p>
             </div>
+
             <div>
-              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 text-sm">Product</h4>
-              <ul className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
-                <li><a href="#features" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">Features</a></li>
-                <li><Link href="/explore" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">Explore Deals</Link></li>
-                <li><Link href="/partner" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">Refer &amp; Earn</Link></li>
-                <li><a href="#pricing" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">Pricing</a></li>
-                <li><a href="#faq" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">FAQ</a></li>
+              <h4 className="mb-4 text-sm font-semibold text-gray-950 dark:text-gray-100">Product</h4>
+              <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                <li><a href="#features" className="transition-colors hover:text-gray-950 dark:hover:text-gray-100">Features</a></li>
+                <li><Link href="/explore" className="transition-colors hover:text-gray-950 dark:hover:text-gray-100">Explore Deals</Link></li>
+                <li><Link href="/partner" className="transition-colors hover:text-gray-950 dark:hover:text-gray-100">Refer and Earn</Link></li>
+                <li><a href="#pricing" className="transition-colors hover:text-gray-950 dark:hover:text-gray-100">Pricing</a></li>
+                <li><a href="#faq" className="transition-colors hover:text-gray-950 dark:hover:text-gray-100">FAQ</a></li>
               </ul>
             </div>
+
             <div>
-              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 text-sm">Legal</h4>
-              <ul className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
-                <li><Link href="/privacy" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">Privacy Policy</Link></li>
-                <li><Link href="/terms" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">Terms of Service</Link></li>
+              <h4 className="mb-4 text-sm font-semibold text-gray-950 dark:text-gray-100">Legal</h4>
+              <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                <li><Link href="/privacy" className="transition-colors hover:text-gray-950 dark:hover:text-gray-100">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="transition-colors hover:text-gray-950 dark:hover:text-gray-100">Terms of Service</Link></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-gray-100 dark:border-gray-800 mt-10 pt-8 text-center text-sm text-gray-400 dark:text-gray-500">
-            <span>© 2026 {APP_NAME}. All rights reserved.</span>
+
+          <div className="mt-10 border-t border-gray-200/70 pt-8 text-center text-sm text-gray-700 dark:border-gray-900 dark:text-gray-300">
+            <span>Copyright 2026 {APP_NAME}. All rights reserved.</span>
           </div>
         </div>
       </footer>
-
     </div>
   );
 }
-
