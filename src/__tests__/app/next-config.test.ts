@@ -8,13 +8,11 @@ describe('next.config redirects', () => {
     expect(typeof nextConfig.redirects).toBe('function');
   });
 
-  it('redirects clientific.net to clientific.app', async () => {
+  it('does not redirect clientific.net to clientific.app', async () => {
     const redirects = await nextConfig.redirects();
-    expect(redirects).toContainEqual(
+    expect(redirects).not.toContainEqual(
       expect.objectContaining({
         has: [{ type: 'host', value: 'clientific.net' }],
-        destination: 'https://clientific.app/:path*',
-        permanent: true,
       })
     );
   });

@@ -22,12 +22,6 @@ const nextConfig = {
     return [
       {
         source: '/:path*',
-        has: [{ type: 'host', value: 'clientific.net' }],
-        destination: 'https://clientific.app/:path*',
-        permanent: true,
-      },
-      {
-        source: '/:path*',
         has: [{ type: 'host', value: 'clientell.io' }],
         destination: 'https://clientific.app/:path*',
         permanent: true,
