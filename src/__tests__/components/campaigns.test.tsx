@@ -28,6 +28,38 @@ vi.mock('qrcode.react', () => ({
   QRCodeCanvas: () => <div data-testid="qr-code" />,
 }));
 
+vi.mock('@/components/ui/DatePicker', () => ({
+  DatePicker: ({
+    value,
+    onChange,
+    minDate,
+    placeholder,
+  }: {
+    value: Date | null;
+    onChange: (date: Date) => void;
+    minDate?: Date;
+    placeholder?: string;
+  }) => {
+    const toInputValue = (date: Date | null | undefined) => {
+      if (!date) return '';
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    return (
+      <input
+        data-testid={placeholder}
+        type="date"
+        value={toInputValue(value)}
+        min={minDate ? toInputValue(minDate) : undefined}
+        onChange={(event) => onChange(new Date(`${event.target.value}T00:00:00`))}
+      />
+    );
+  },
+}));
+
 import { useQuery } from '@tanstack/react-query';
 import DealsPage from '@/app/(dashboard)/dashboard/campaigns/page';
 
@@ -58,6 +90,13 @@ function makeDeal(overrides: Record<string, unknown> = {}) {
     notificationSends: [],
     ...overrides,
   };
+}
+
+function formatDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 // useQuery is called three times (deals + services + business)
@@ -183,6 +222,28 @@ describe('DealsPage (Campaigns)', () => {
     expect(
       screen.queryByRole('dialog', { name: /create a new promotion/i })
     ).not.toBeInTheDocument();
+  });
+
+  it('limits deal dates to today or later and keeps the end date after the start date', () => {
+    mockQueries([]);
+    render(<DealsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /new deal/i }));
+
+    const startInput = screen.getByTestId('Select start date') as HTMLInputElement;
+    const endInput = screen.getByTestId('Select end date') as HTMLInputElement;
+    const today = new Date();
+    const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+    expect(startInput.min).toBe(formatDateInputValue(today));
+    expect(startInput.value).toBe(formatDateInputValue(today));
+    expect(endInput.min).toBe(formatDateInputValue(tomorrow));
+    expect(endInput.value).toBe(formatDateInputValue(tomorrow));
+
+    fireEvent.change(startInput, { target: { value: '2026-04-10' } });
+
+    expect(endInput.min).toBe('2026-04-11');
+    expect(endInput.value).toBe('2026-04-11');
   });
 
   it('updates the in-store capture link when a deal is selected', () => {

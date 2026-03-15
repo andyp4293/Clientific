@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import { NextRequest } from 'next/server';
 
 vi.mock('@/lib/prisma', () => ({
@@ -36,8 +36,8 @@ const validDealBody = {
   title: '20% Off Haircut',
   discountType: 'percent_off',
   discountValue: 20,
-  startsAt: new Date(Date.now() - 1000).toISOString(),
-  expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  startsAt: '2026-03-10',
+  expiresAt: '2026-03-12',
 };
 
 function makeRequest(body: Record<string, unknown> = validDealBody) {
@@ -50,6 +50,12 @@ function makeRequest(body: Record<string, unknown> = validDealBody) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-03-10T15:00:00.000Z'));
+});
+
+afterAll(() => {
+  vi.useRealTimers();
 });
 
 describe('GET /api/deals', () => {
@@ -132,19 +138,33 @@ describe('POST /api/deals', () => {
     expect(body.error).toMatch(/invalid deal dates/i);
   });
 
-  it('returns 400 when end date is before start date', async () => {
+  it('returns 400 when start date is earlier than today', async () => {
     mockSession.mockResolvedValue(activeSession);
     mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
     const res = await POST(
       makeRequest({
         ...validDealBody,
-        startsAt: '2026-03-08',
-        expiresAt: '2026-03-07',
+        startsAt: '2026-03-09',
       })
     );
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toMatch(/end date must be after start date/i);
+    expect(body.error).toMatch(/start date cannot be earlier than today/i);
+  });
+
+  it('returns 400 when end date is the same day as start date', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
+    const res = await POST(
+      makeRequest({
+        ...validDealBody,
+        startsAt: '2026-03-10',
+        expiresAt: '2026-03-10',
+      })
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/end date must be at least one day after start date/i);
   });
 
   it('creates deal successfully with active subscription', async () => {
@@ -164,8 +184,8 @@ describe('POST /api/deals', () => {
     const freeDeal = {
       title: 'Free Consultation',
       discountType: 'free_service',
-      startsAt: new Date(Date.now() - 1000).toISOString(),
-      expiresAt: new Date(Date.now() + 86400000).toISOString(),
+      startsAt: '2026-03-10',
+      expiresAt: '2026-03-11',
     };
     const fakeDeal = { id: 'deal-2', ...freeDeal, discountValue: 0, businessId: 'biz-1', service: null };
     mockDealCreate.mockResolvedValue(fakeDeal);
@@ -186,8 +206,8 @@ describe('POST /api/deals', () => {
     const res = await POST(
       makeRequest({
         ...validDealBody,
-        startsAt: '2026-03-08',
-        expiresAt: '2026-03-08',
+        startsAt: '2026-03-10',
+        expiresAt: '2026-03-11',
       })
     );
     expect(res.status).toBe(201);

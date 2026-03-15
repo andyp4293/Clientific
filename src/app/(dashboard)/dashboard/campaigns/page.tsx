@@ -5,6 +5,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/DatePicker';
 import InStoreCapturePanel from '@/components/campaigns/InStoreCapturePanel';
+import {
+  addDays,
+  fromDateOnlyValue,
+  isDealEndSameOrBeforeStart,
+  isDealStartBeforeToday,
+  toDateOnlyValue,
+} from '@/lib/deal-dates';
 import { getDealNotifyCooldownRemainingMs } from '@/lib/deal-notify';
 
 interface Deal {
@@ -73,34 +80,24 @@ function fmtPhone(phone: string) {
   return phone;
 }
 
-function toDateInputValue(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+function createDefaultForm() {
+  const today = new Date();
+  return {
+    title: '',
+    description: '',
+    discountType: 'percent_off',
+    discountValue: '',
+    serviceId: '',
+    startsAt: toDateOnlyValue(today),
+    expiresAt: toDateOnlyValue(addDays(today, 1)),
+    maxRedemptions: '',
+  };
 }
-
-function fromDateInputValue(value: string) {
-  const [year, month, day] = value.split('-').map(Number);
-  if (!year || !month || !day) return null;
-  return new Date(year, month - 1, day);
-}
-
-const defaultForm = {
-  title: '',
-  description: '',
-  discountType: 'percent_off',
-  discountValue: '',
-  serviceId: '',
-  startsAt: toDateInputValue(new Date()),
-  expiresAt: '',
-  maxRedemptions: '',
-};
 
 export default function DealsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(defaultForm);
+  const [form, setForm] = useState(createDefaultForm);
   const [expandedDeal, setExpandedDeal] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [confirmingNotify, setConfirmingNotify] = useState<string | null>(null);
@@ -155,7 +152,7 @@ export default function DealsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deals'] });
-      setForm(defaultForm);
+      setForm(createDefaultForm());
       setShowForm(false);
       toast.success('Deal created!');
     },
@@ -215,6 +212,14 @@ export default function DealsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title || !form.startsAt || !form.expiresAt) { toast.error('Fill in all required fields'); return; }
+    if (isDealStartBeforeToday(form.startsAt)) {
+      toast.error('Start date cannot be earlier than today');
+      return;
+    }
+    if (isDealEndSameOrBeforeStart(form.startsAt, form.expiresAt)) {
+      toast.error('End date must be at least one day after start date');
+      return;
+    }
     createMutation.mutate(form);
   };
 
@@ -245,6 +250,7 @@ export default function DealsPage() {
 
   const labelClass = 'block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1';
   const nowMs = Date.now();
+  const minimumEndDate = addDays(fromDateOnlyValue(form.startsAt) ?? new Date(), 1);
 
   return (
     <div
@@ -372,8 +378,24 @@ export default function DealsPage() {
                 <div>
                   <label className={labelClass}>Start date <span className="text-red-500">*</span></label>
                   <DatePicker
-                    value={fromDateInputValue(form.startsAt)}
-                    onChange={(date) => setForm(f => ({ ...f, startsAt: toDateInputValue(date) }))}
+                    value={fromDateOnlyValue(form.startsAt)}
+                    onChange={(date) =>
+                      setForm((currentForm) => {
+                        const startsAt = toDateOnlyValue(date);
+                        const currentEndDate = fromDateOnlyValue(currentForm.expiresAt);
+                        const nextMinimumEndDate = addDays(date, 1);
+
+                        return {
+                          ...currentForm,
+                          startsAt,
+                          expiresAt:
+                            !currentEndDate || isDealEndSameOrBeforeStart(date, currentEndDate)
+                              ? toDateOnlyValue(nextMinimumEndDate)
+                              : currentForm.expiresAt,
+                        };
+                      })
+                    }
+                    minDate={new Date()}
                     placeholder="Select start date"
                   />
                 </div>
@@ -381,9 +403,9 @@ export default function DealsPage() {
                 <div>
                   <label className={labelClass}>End date <span className="text-red-500">*</span></label>
                   <DatePicker
-                    value={fromDateInputValue(form.expiresAt)}
-                    onChange={(date) => setForm(f => ({ ...f, expiresAt: toDateInputValue(date) }))}
-                    minDate={fromDateInputValue(form.startsAt) ?? undefined}
+                    value={fromDateOnlyValue(form.expiresAt)}
+                    onChange={(date) => setForm(f => ({ ...f, expiresAt: toDateOnlyValue(date) }))}
+                    minDate={minimumEndDate}
                     placeholder="Select end date"
                   />
                 </div>

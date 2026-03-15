@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
 vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
@@ -28,7 +28,7 @@ const activeSession = { user: { id: 'biz-1' } };
 const existingDeal = {
   id: 'deal-1',
   businessId: 'biz-1',
-  startsAt: new Date('2026-03-01T00:00:00.000Z'),
+  startsAt: new Date('2026-03-11T00:00:00.000Z'),
   expiresAt: new Date('2026-03-31T23:59:59.999Z'),
 };
 
@@ -42,9 +42,15 @@ function makePatchRequest(body: Record<string, unknown>) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-03-10T15:00:00.000Z'));
   mockSession.mockResolvedValue(activeSession);
   mockRequireActiveSubscription.mockResolvedValue(null);
   mockDealFindUnique.mockResolvedValue(existingDeal);
+});
+
+afterAll(() => {
+  vi.useRealTimers();
 });
 
 describe('PATCH /api/deals/[id]', () => {
@@ -66,15 +72,27 @@ describe('PATCH /api/deals/[id]', () => {
     expect(mockDealUpdate).not.toHaveBeenCalled();
   });
 
-  it('returns 400 when end date is before start date', async () => {
+  it('returns 400 when start date is earlier than today', async () => {
     const res = await PATCH(
-      makePatchRequest({ startsAt: '2026-03-10', expiresAt: '2026-03-09' }),
+      makePatchRequest({ startsAt: '2026-03-09' }),
       { params: Promise.resolve({ id: 'deal-1' }) }
     );
 
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toMatch(/end date must be after start date/i);
+    expect(body.error).toMatch(/start date cannot be earlier than today/i);
+    expect(mockDealUpdate).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when end date is the same day as start date', async () => {
+    const res = await PATCH(
+      makePatchRequest({ startsAt: '2026-03-12', expiresAt: '2026-03-12' }),
+      { params: Promise.resolve({ id: 'deal-1' }) }
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/end date must be at least one day after start date/i);
     expect(mockDealUpdate).not.toHaveBeenCalled();
   });
 
@@ -82,7 +100,7 @@ describe('PATCH /api/deals/[id]', () => {
     mockDealUpdate.mockResolvedValue({ ...existingDeal, id: 'deal-1' });
 
     const res = await PATCH(
-      makePatchRequest({ startsAt: '2026-03-08', expiresAt: '2026-03-08' }),
+      makePatchRequest({ startsAt: '2026-03-10', expiresAt: '2026-03-11' }),
       { params: Promise.resolve({ id: 'deal-1' }) }
     );
 

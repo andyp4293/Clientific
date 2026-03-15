@@ -2,17 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import {
+  isDealEndSameOrBeforeStart,
+  isDealStartBeforeToday,
+  parseDealDate,
+} from '@/lib/deal-dates';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
-
-function parseDealDate(value: string, endOfDay: boolean): Date | null {
-  const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/;
-  const parsed = dateOnlyPattern.test(value)
-    ? new Date(`${value}T${endOfDay ? '23:59:59.999' : '00:00:00.000'}`)
-    : new Date(value);
-
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
 
 export async function GET() {
   try {
@@ -90,8 +86,11 @@ export async function POST(req: NextRequest) {
     if (!parsedStartsAt || !parsedExpiresAt) {
       return NextResponse.json({ error: 'Invalid deal dates' }, { status: 400 });
     }
-    if (parsedExpiresAt <= parsedStartsAt) {
-      return NextResponse.json({ error: 'End date must be after start date' }, { status: 400 });
+    if (isDealStartBeforeToday(parsedStartsAt)) {
+      return NextResponse.json({ error: 'Start date cannot be earlier than today' }, { status: 400 });
+    }
+    if (isDealEndSameOrBeforeStart(parsedStartsAt, parsedExpiresAt)) {
+      return NextResponse.json({ error: 'End date must be at least one day after start date' }, { status: 400 });
     }
 
     const deal = await prisma.deal.create({
