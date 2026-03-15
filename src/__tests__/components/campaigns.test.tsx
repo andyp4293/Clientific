@@ -160,22 +160,14 @@ describe('DealsPage (Campaigns)', () => {
     expect(screen.getByRole('button', { name: /text my customers/i })).toBeInTheDocument();
   });
 
-  it('shows disabled "Text My Customers" button with cooldown notice when recently notified', () => {
-    const recentlyNotified = new Date(Date.now() - 1 * 86400000).toISOString(); // 1 day ago
+  it('keeps "Text My Customers" available even when the deal was notified recently', () => {
+    const recentlyNotified = new Date(Date.now() - 1 * 86400000).toISOString();
     mockQueries([makeDeal({ active: true, notifiedAt: recentlyNotified })]);
     render(<DealsPage />);
     const button = screen.getByRole('button', { name: /text my customers/i });
     expect(button).toBeInTheDocument();
-    expect(button).toBeDisabled();
-    expect(screen.getByText(/cooldown: available in/i)).toBeInTheDocument();
-  });
-
-  it('shows "Text My Customers" button when notifiedAt is older than 3 days', () => {
-    const oldNotified = new Date(Date.now() - 4 * 86400000).toISOString(); // 4 days ago
-    mockQueries([makeDeal({ active: true, notifiedAt: oldNotified })]);
-    render(<DealsPage />);
-    expect(screen.getByRole('button', { name: /text my customers/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /text my customers/i })).not.toBeDisabled();
+    expect(button).not.toBeDisabled();
+    expect(screen.queryByText(/cooldown:/i)).not.toBeInTheDocument();
   });
 
   it('hides "Text My Customers" button for inactive deal', () => {

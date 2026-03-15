@@ -12,7 +12,6 @@ import {
   isDealStartBeforeToday,
   toDateOnlyValue,
 } from '@/lib/deal-dates';
-import { getDealNotifyCooldownRemainingMs } from '@/lib/deal-notify';
 
 interface Deal {
   id: string;
@@ -189,20 +188,38 @@ export default function DealsPage() {
     mutationFn: async (dealId: string) => {
       const res = await fetch(`/api/deals/${dealId}/notify`, { method: 'POST' });
       if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Failed'); }
-      return res.json() as Promise<{ sent: number; skipped?: number }>;
+      return res.json() as Promise<{ sent: number; skipped?: number; alreadySent?: number }>;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['deals'] });
-      if (data.sent === 0 && (data.skipped ?? 0) > 0) {
+      const alreadySent = data.alreadySent ?? 0;
+      const skipped = data.skipped ?? 0;
+      if (data.sent === 0 && alreadySent > 0 && skipped === 0) {
+        toast.success(
+          `No new texts sent. ${alreadySent} customer${alreadySent !== 1 ? 's already' : ' already'} received this deal.`
+        );
+      } else if (data.sent === 0 && skipped > 0 && alreadySent > 0) {
+        toast.success(
+          `${alreadySent} customer${alreadySent !== 1 ? 's already' : ' already'} received this deal. ${skipped} recipient${skipped !== 1 ? 's could not' : ' could not'} be issued a new code.`
+        );
+      } else if (data.sent === 0 && skipped > 0) {
         toast.success('No texts sent because this deal has no remaining personalized codes.');
       } else if (data.sent === 0) {
         toast.success('No customers have opted in to receive texts yet');
-      } else if ((data.skipped ?? 0) > 0) {
+      } else if (alreadySent > 0 && skipped > 0) {
         toast.success(
-          `Sent ${data.sent} personalized code${data.sent !== 1 ? 's' : ''}. Skipped ${data.skipped} recipient${data.skipped !== 1 ? 's' : ''}.`
+          `Sent ${data.sent} new personalized code${data.sent !== 1 ? 's' : ''}. ${alreadySent} customer${alreadySent !== 1 ? 's already' : ' already'} received this deal, and ${skipped} recipient${skipped !== 1 ? 's could not' : ' could not'} be issued a new code.`
+        );
+      } else if (alreadySent > 0) {
+        toast.success(
+          `Sent ${data.sent} new personalized code${data.sent !== 1 ? 's' : ''}. ${alreadySent} customer${alreadySent !== 1 ? 's already' : ' already'} received this deal.`
+        );
+      } else if (skipped > 0) {
+        toast.success(
+          `Sent ${data.sent} new personalized code${data.sent !== 1 ? 's' : ''}. Skipped ${skipped} recipient${skipped !== 1 ? 's' : ''}.`
         );
       } else {
-        toast.success(`Sent ${data.sent} personalized code${data.sent !== 1 ? 's' : ''}!`);
+        toast.success(`Sent ${data.sent} new personalized code${data.sent !== 1 ? 's' : ''}!`);
       }
     },
     onError: (e: any) => toast.error(e.message || 'Failed to send texts'),
@@ -249,7 +266,6 @@ export default function DealsPage() {
   }, [showForm, createMutation.isPending]);
 
   const labelClass = 'block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1';
-  const nowMs = Date.now();
   const minimumEndDate = addDays(fromDateOnlyValue(form.startsAt) ?? new Date(), 1);
 
   return (
@@ -451,13 +467,8 @@ export default function DealsPage() {
             const isExpired = new Date(deal.expiresAt) <= new Date();
             const isFull = deal.maxRedemptions !== null && deal.redemptionCount >= deal.maxRedemptions;
             const isExpanded = expandedDeal === deal.id;
-            const cooldownRemainingMs = getDealNotifyCooldownRemainingMs(deal.notifiedAt, nowMs);
-            const notifyOnCooldown = cooldownRemainingMs > 0;
-            const cooldownDaysRemaining = notifyOnCooldown
-              ? Math.ceil(cooldownRemainingMs / (24 * 60 * 60 * 1000))
-              : 0;
             const isSendingThisDeal = sendingNotifyId === deal.id;
-            const notifyButtonsDisabled = sendingNotifyId !== null || notifyOnCooldown;
+            const notifyButtonsDisabled = sendingNotifyId !== null;
 
             return (
               <div key={deal.id} className="card overflow-hidden">
@@ -530,7 +541,7 @@ export default function DealsPage() {
                     </button>
 
                     {deal.active && (
-                      confirmingNotify === deal.id && !notifyOnCooldown ? (
+                      confirmingNotify === deal.id ? (
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs text-gray-600 dark:text-gray-400">Send each opted-in customer a personalized redemption code by text?</span>
                           <button
@@ -565,11 +576,6 @@ export default function DealsPage() {
                             </svg>
                             {isSendingThisDeal ? 'Sending...' : 'Text My Customers'}
                           </button>
-                          {notifyOnCooldown && (
-                            <p className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
-                              Cooldown: available in {cooldownDaysRemaining} day{cooldownDaysRemaining !== 1 ? 's' : ''}
-                            </p>
-                          )}
                         </div>
                       )
                     )}

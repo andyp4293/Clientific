@@ -7,6 +7,9 @@ vi.mock('@/lib/prisma', () => ({
       findUnique: vi.fn(),
       updateMany: vi.fn(),
     },
+    dealRedemption: {
+      findMany: vi.fn(),
+    },
     dealNotificationSend: {
       createMany: vi.fn(),
     },
@@ -95,6 +98,7 @@ describe('POST /api/deals/[id]/notify', () => {
     vi.mocked(getServerSession).mockResolvedValue(SESSION as any);
     vi.mocked(prisma.deal.findUnique).mockResolvedValue(DEAL as any);
     vi.mocked(prisma.deal.updateMany).mockResolvedValue({ count: 1 } as any);
+    vi.mocked(prisma.dealRedemption.findMany).mockResolvedValue([]);
     vi.mocked(prisma.dealNotificationSend.createMany).mockResolvedValue({ count: 0 } as any);
     vi.mocked(prisma.customer.findMany).mockResolvedValue([]);
     vi.mocked(claimDealForCustomer).mockResolvedValue({
@@ -139,26 +143,14 @@ describe('POST /api/deals/[id]/notify', () => {
     expect(res.status).toBe(400);
   });
 
-  it('returns 429 when the deal is still on cooldown', async () => {
-    const recentlyNotified = new Date(Date.now() - 1 * 86400000).toISOString();
-    vi.mocked(prisma.deal.findUnique).mockResolvedValue({ ...DEAL, notifiedAt: recentlyNotified } as any);
-
-    const res = await POST(notifyReq(), ctx('deal-1'));
-
-    expect(res.status).toBe(429);
-    expect(prisma.customer.findMany).not.toHaveBeenCalled();
-    expect(claimDealForCustomer).not.toHaveBeenCalled();
-    expect(sendSMS).not.toHaveBeenCalled();
-  });
-
   it('issues personalized codes and texts eligible customers', async () => {
     vi.mocked(prisma.customer.findMany).mockResolvedValue([
       { id: 'cust-1', phone: '5551111111', name: 'Jane Doe' },
       { id: 'cust-2', phone: '5552222222', name: 'Alex' },
     ] as any);
     vi.mocked(claimDealForCustomer)
-      .mockResolvedValueOnce({ code: 'JANE1234' } as any)
-      .mockResolvedValueOnce({ code: 'ALEX5678' } as any);
+      .mockResolvedValueOnce({ code: 'JANE1234', created: true } as any)
+      .mockResolvedValueOnce({ code: 'ALEX5678', created: true } as any);
 
     const res = await POST(notifyReq(), ctx('deal-1'));
 
@@ -166,6 +158,7 @@ describe('POST /api/deals/[id]/notify', () => {
     const body = await res.json();
     expect(body.sent).toBe(2);
     expect(body.skipped).toBe(0);
+    expect(body.alreadySent).toBe(0);
     expect(claimDealForCustomer).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
@@ -195,6 +188,81 @@ describe('POST /api/deals/[id]/notify', () => {
     );
   });
 
+  it('skips customers who already have this deal and only texts new recipients', async () => {
+    vi.mocked(prisma.customer.findMany).mockResolvedValue([
+      { id: 'cust-1', phone: '5551111111', name: 'Jane Doe' },
+      { id: 'cust-2', phone: '5552222222', name: 'Alex' },
+    ] as any);
+    vi.mocked(prisma.dealRedemption.findMany).mockResolvedValue([
+      {
+        customerId: 'cust-1',
+        customer: { phone: '5551111111' },
+      },
+    ] as any);
+
+    const res = await POST(notifyReq(), ctx('deal-1'));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.sent).toBe(1);
+    expect(body.skipped).toBe(0);
+    expect(body.alreadySent).toBe(1);
+    expect(claimDealForCustomer).toHaveBeenCalledTimes(1);
+    expect(claimDealForCustomer).toHaveBeenCalledWith(
+      expect.objectContaining({ customerId: 'cust-2' })
+    );
+    expect(sendSMS).toHaveBeenCalledTimes(1);
+    expect(sendSMS).toHaveBeenCalledWith(
+      expect.objectContaining({ to: '5552222222' })
+    );
+  });
+
+  it('skips duplicate customer records when the same phone already has the deal', async () => {
+    vi.mocked(prisma.customer.findMany).mockResolvedValue([
+      { id: 'cust-new', phone: '5551111111', name: 'Jane Duplicate' },
+      { id: 'cust-2', phone: '5552222222', name: 'Alex' },
+    ] as any);
+    vi.mocked(prisma.dealRedemption.findMany).mockResolvedValue([
+      {
+        customerId: 'cust-old',
+        customer: { phone: '5551111111' },
+      },
+    ] as any);
+
+    const res = await POST(notifyReq(), ctx('deal-1'));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.sent).toBe(1);
+    expect(body.alreadySent).toBe(1);
+    expect(claimDealForCustomer).toHaveBeenCalledTimes(1);
+    expect(claimDealForCustomer).toHaveBeenCalledWith(
+      expect.objectContaining({ customerId: 'cust-2' })
+    );
+    expect(sendSMS).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not text a customer again when claim creation reports the deal already exists', async () => {
+    vi.mocked(prisma.customer.findMany).mockResolvedValue([
+      { id: 'cust-1', phone: '5551111111', name: 'Jane Doe' },
+    ] as any);
+    vi.mocked(claimDealForCustomer).mockResolvedValueOnce({
+      code: 'JANE1234',
+      created: false,
+      customerId: 'cust-1',
+    } as any);
+
+    const res = await POST(notifyReq(), ctx('deal-1'));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.sent).toBe(0);
+    expect(body.skipped).toBe(0);
+    expect(body.alreadySent).toBe(1);
+    expect(sendSMS).not.toHaveBeenCalled();
+    expect(prisma.dealNotificationSend.createMany).not.toHaveBeenCalled();
+  });
+
   it('counts only successful SMS sends', async () => {
     vi.mocked(prisma.customer.findMany).mockResolvedValue([
       { id: 'cust-1', phone: '5551111111', name: 'Jane Doe' },
@@ -209,6 +277,7 @@ describe('POST /api/deals/[id]/notify', () => {
 
     expect(body.sent).toBe(1);
     expect(body.skipped).toBe(0);
+    expect(body.alreadySent).toBe(0);
     expect(prisma.dealNotificationSend.createMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.arrayContaining([
@@ -240,6 +309,7 @@ describe('POST /api/deals/[id]/notify', () => {
     const body = await res.json();
     expect(body.sent).toBe(0);
     expect(body.skipped).toBe(0);
+    expect(body.alreadySent).toBe(0);
     expect(sendSMS).not.toHaveBeenCalled();
   });
 
@@ -321,7 +391,7 @@ describe('POST /api/deals/[id]/notify', () => {
     ] as any);
     vi.mocked(claimDealForCustomer)
       .mockRejectedValueOnce(new DealClaimError('Deal has reached maximum redemptions', 400))
-      .mockResolvedValueOnce({ code: 'ALEX5678' } as any);
+      .mockResolvedValueOnce({ code: 'ALEX5678', created: true } as any);
 
     const res = await POST(notifyReq(), ctx('deal-1'));
     const body = await res.json();
@@ -329,6 +399,7 @@ describe('POST /api/deals/[id]/notify', () => {
     expect(res.status).toBe(200);
     expect(body.sent).toBe(1);
     expect(body.skipped).toBe(1);
+    expect(body.alreadySent).toBe(0);
     expect(sendSMS).toHaveBeenCalledTimes(1);
   });
 });

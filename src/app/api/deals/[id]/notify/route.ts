@@ -6,7 +6,6 @@ import { requireActiveSubscription } from '@/lib/subscription';
 import { sendSMS, formatPhoneNumber, formatDealClaimCodeSMS } from '@/lib/twilio';
 import { APP_URL } from '@/lib/brand';
 import { getSessionBusinessId } from '@/lib/session-business';
-import { DEAL_NOTIFY_COOLDOWN_DAYS, getDealNotifyCooldownRemainingMs } from '@/lib/deal-notify';
 import { claimDealForCustomer, DealClaimError } from '@/lib/deal-claims';
 
 function normalizeNotifiedAt(value: Date | string | null | undefined) {
@@ -56,17 +55,6 @@ export async function POST(
       return NextResponse.json({ error: 'Deal is not active' }, { status: 400 });
     }
 
-    const cooldownRemainingMs = getDealNotifyCooldownRemainingMs(deal.notifiedAt);
-    if (cooldownRemainingMs > 0) {
-      const cooldownDaysRemaining = Math.ceil(cooldownRemainingMs / (24 * 60 * 60 * 1000));
-      return NextResponse.json(
-        {
-          error: `Deal notifications are on cooldown for ${cooldownDaysRemaining} more day${cooldownDaysRemaining !== 1 ? 's' : ''}. You can send again every ${DEAL_NOTIFY_COOLDOWN_DAYS} days.`,
-        },
-        { status: 429 }
-      );
-    }
-
     const customers = await prisma.customer.findMany({
       where: {
         businessId,
@@ -104,13 +92,58 @@ export async function POST(
       return acc;
     }, []);
 
+    if (uniqueRecipients.length === 0) {
+      return NextResponse.json({ sent: 0, skipped: 0, alreadySent: 0, dealId: deal.id });
+    }
+
+    const existingRedemptions = await prisma.dealRedemption.findMany({
+      where: {
+        dealId: deal.id,
+        OR: [
+          { customerId: { in: uniqueRecipients.map((customer) => customer.id) } },
+          {
+            customer: {
+              is: {
+                businessId,
+                phone: { in: uniqueRecipients.map((customer) => customer.phone) },
+              },
+            },
+          },
+        ],
+      },
+      select: {
+        customerId: true,
+        customer: {
+          select: {
+            phone: true,
+          },
+        },
+      },
+    });
+
+    const alreadyRedeemedCustomerIds = new Set(
+      existingRedemptions.flatMap((redemption) =>
+        redemption.customerId ? [redemption.customerId] : []
+      )
+    );
+    const alreadyRedeemedPhones = new Set(
+      existingRedemptions.flatMap((redemption) =>
+        redemption.customer?.phone ? [formatPhoneNumber(redemption.customer.phone)] : []
+      )
+    );
+    const pendingRecipients = uniqueRecipients.filter(
+      (customer) =>
+        !alreadyRedeemedCustomerIds.has(customer.id) &&
+        !alreadyRedeemedPhones.has(customer.phone)
+    );
+
     const bookingUrl =
       deal.business.enableOnlineBooking && deal.business.slug
         ? `${APP_URL}/book/${deal.business.slug}`
         : null;
 
     const results = await Promise.all(
-      uniqueRecipients.map(async (customer) => {
+      pendingRecipients.map(async (customer) => {
         try {
           const claim = await claimDealForCustomer({
             dealId: deal.id,
@@ -119,6 +152,19 @@ export async function POST(
             customerPhone: customer.phone,
             customerName: customer.name,
           });
+
+          if (!claim.created) {
+            return {
+              success: false,
+              skipped: false,
+              alreadySent: true,
+              customerId: customer.id,
+              customerName: customer.name,
+              customerPhone: customer.phone,
+              code: null,
+              errorMessage: null,
+            };
+          }
 
           const smsResult = await sendSMS({
             to: customer.phone,
@@ -135,6 +181,7 @@ export async function POST(
           return {
             success: smsResult.success,
             skipped: false,
+            alreadySent: false,
             customerId: customer.id,
             customerName: customer.name,
             customerPhone: customer.phone,
@@ -146,6 +193,7 @@ export async function POST(
             return {
               success: false,
               skipped: true,
+              alreadySent: false,
               customerId: customer.id,
               customerName: customer.name,
               customerPhone: customer.phone,
@@ -182,9 +230,11 @@ export async function POST(
     }
 
     const sent = results.filter((r) => r.success).length;
+    const alreadySent =
+      uniqueRecipients.length - pendingRecipients.length + results.filter((r) => r.alreadySent).length;
     const skipped = results.filter((r) => r.skipped).length;
 
-    return NextResponse.json({ sent, skipped, dealId: deal.id });
+    return NextResponse.json({ sent, skipped, alreadySent, dealId: deal.id });
   } catch (error: any) {
     console.error('POST /api/deals/[id]/notify error:', error?.message ?? error);
     return NextResponse.json(
