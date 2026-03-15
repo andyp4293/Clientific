@@ -124,11 +124,23 @@ export async function sendEmailVerificationEmail(email: string, code: string) {
   const FROM = getResendFromEmail();
   const APP_URL = getConfiguredAppBaseUrl();
   const verifyUrl = `${APP_URL}/verify-email?email=${encodeURIComponent(email)}`;
+  const text = [
+    `Verify your email for ${APP_NAME}`,
+    '',
+    `Thanks for signing up for ${APP_NAME}.`,
+    `Your verification code is: ${code}`,
+    '',
+    'This code expires in 10 minutes and can only be used once.',
+    `Enter it here: ${verifyUrl}`,
+    '',
+    "If you didn't request this, you can ignore this email.",
+  ].join('\n');
 
   await resend.emails.send({
     from: `${APP_NAME} <${FROM}>`,
     to: email,
     subject: `Your ${APP_NAME} verification code`,
+    text,
     html: `
       <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px;">
         <h1 style="font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 12px;">Verify your email</h1>

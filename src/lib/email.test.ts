@@ -34,6 +34,7 @@ describe('email sender configuration', () => {
         from: 'Clientific <noreply@clientific.app>',
         to: 'owner@example.com',
         subject: expect.stringContaining('verification code'),
+        text: expect.stringContaining('Your verification code is: 123456'),
         html: expect.stringContaining('123456'),
       })
     );
