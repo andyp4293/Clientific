@@ -1,10 +1,10 @@
-const CACHE_NAME = 'clientific-v2';
+const CACHE_NAME = 'clientific-v3';
+const OFFLINE_FALLBACK_URL = '/offline.html';
 
 // Assets to cache on install (app shell)
 const PRECACHE_URLS = [
   '/',
-  '/dashboard',
-  '/login',
+  OFFLINE_FALLBACK_URL,
   '/icons/icon-192.png',
   '/icons/icon-512.png',
 ];
@@ -33,15 +33,32 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
 
   // Only handle same-origin requests
-  if (url.origin !== location.origin) return;
+  if (request.method !== 'GET' || url.origin !== location.origin) return;
 
   // For API routes: network only (never serve stale API data)
   if (url.pathname.startsWith('/api/')) return;
 
-  // For navigation requests: network first, fall back to cache
+  // For navigation requests, only return a static offline document on failure.
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(() => caches.match('/dashboard') || caches.match('/login'))
+      (async () => {
+        try {
+          return await fetch(request);
+        } catch {
+          const offlineResponse = await caches.match(OFFLINE_FALLBACK_URL);
+          if (offlineResponse) {
+            return offlineResponse;
+          }
+
+          return new Response('Offline', {
+            status: 503,
+            headers: {
+              'Content-Type': 'text/plain; charset=utf-8',
+              'Cache-Control': 'no-store',
+            },
+          });
+        }
+      })()
     );
     return;
   }
