@@ -164,6 +164,27 @@ describe('DealsPage (Campaigns)', () => {
     expect(screen.getByText(/no deals yet/i)).toBeInTheDocument();
   });
 
+  it('opens the new deal form in a modal so the form stays in view', () => {
+    mockQueries([]);
+    render(<DealsPage />);
+
+    expect(
+      screen.queryByRole('dialog', { name: /create a new promotion/i })
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /new deal/i }));
+
+    expect(
+      screen.getByRole('dialog', { name: /create a new promotion/i })
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /close new deal modal/i }));
+
+    expect(
+      screen.queryByRole('dialog', { name: /create a new promotion/i })
+    ).not.toBeInTheDocument();
+  });
+
   it('updates the in-store capture link when a deal is selected', () => {
     mockQueries([makeDeal({ id: 'deal-1', title: 'Spring Special' })]);
     render(<DealsPage />);
