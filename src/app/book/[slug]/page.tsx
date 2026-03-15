@@ -7,6 +7,7 @@ import { DatePicker } from '@/components/ui/DatePicker';
 import Link from 'next/link';
 import { ChevronDown, Info } from 'lucide-react';
 import { APP_NAME } from '@/lib/brand';
+import { getEmptyAvailabilityState } from '@/lib/booking-availability';
 import { groupServicesForDisplay } from '@/lib/service-grouping';
 import { toggleServiceSelection } from '@/lib/service-selection';
 
@@ -240,6 +241,15 @@ export default function PublicBookingPage() {
   const deals: Deal[] = dealsData?.deals || [];
   const availableSlots: string[] = slotsData?.slots || [];
   const unavailableSlots: string[] = slotsData?.unavailableSlots || [];
+  const selectedStaffName =
+    selectedStaff && selectedStaff !== 'anyone'
+      ? staff.find((member) => member.id === selectedStaff)?.fullName ?? null
+      : null;
+  const emptyAvailabilityState = getEmptyAvailabilityState({
+    availabilityReason: slotsData?.availabilityReason,
+    selectedDate,
+    selectedStaffName,
+  });
   const groupedServices = useMemo(
     () => groupServicesForDisplay(services, groups),
     [services, groups]
@@ -579,8 +589,19 @@ export default function PublicBookingPage() {
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                   </div>
                 ) : allSlots.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-gray-600 dark:text-gray-400">No available times for this date. Please select another date.</p>
+                  <div
+                    className={`rounded-2xl border px-4 py-5 text-left ${
+                      emptyAvailabilityState.tone === 'staff_off'
+                        ? 'border-amber-200 bg-amber-50/80 dark:border-amber-700 dark:bg-amber-900/20'
+                        : 'border-gray-200 bg-gray-50/80 dark:border-gray-700 dark:bg-gray-800/60'
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {emptyAvailabilityState.title}
+                    </p>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                      {emptyAvailabilityState.description}
+                    </p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-96 overflow-y-auto">

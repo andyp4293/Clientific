@@ -9,4 +9,12 @@ describe('public booking page source', () => {
     expect(source).toContain('Other Services');
     expect(source).toContain('ServiceOptionCard');
   });
+
+  it('shows a dedicated off-day empty state when the selected staff member is not working', () => {
+    const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('getEmptyAvailabilityState');
+    expect(source).toContain("availabilityReason: slotsData?.availabilityReason");
+    expect(source).toContain('selectedStaffName');
+  });
 });
