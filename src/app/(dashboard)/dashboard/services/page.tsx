@@ -2,6 +2,11 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  removeServiceFromQueryData,
+  syncServiceGroupCounts,
+  upsertServicesQueryData,
+} from '@/lib/service-cache';
 
 interface Service {
   id: string;
@@ -501,11 +506,22 @@ export default function ServicesPage() {
         const error = await res.json();
         throw new Error(error.error || 'Failed to save service');
       }
-      return res.json();
+      return res.json() as Promise<{ service: Service }>;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['services'] });
-      queryClient.invalidateQueries({ queryKey: ['service-groups'] });
+    onSuccess: ({ service }) => {
+      const previousGroupId = editingService?.groupId ?? null;
+      const nextGroupId = service.groupId ?? null;
+
+      queryClient.setQueryData(
+        ['services'],
+        (current: { services: Service[] } | undefined) =>
+          upsertServicesQueryData(current, service)
+      );
+      queryClient.setQueryData(
+        ['service-groups'],
+        (current: { groups: ServiceGroup[] } | undefined) =>
+          syncServiceGroupCounts(current, previousGroupId, nextGroupId)
+      );
       closeModal();
     },
   });
@@ -518,11 +534,27 @@ export default function ServicesPage() {
         const error = await res.json();
         throw new Error(error.error || 'Failed to delete service');
       }
-      return res.json();
+      return { id };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['services'] });
-      queryClient.invalidateQueries({ queryKey: ['service-groups'] });
+    onSuccess: ({ id }) => {
+      const removedService =
+        queryClient.getQueryData<{ services: Service[] }>(['services'])?.services.find(
+          (service) => service.id === id
+        ) ?? null;
+
+      queryClient.setQueryData(
+        ['services'],
+        (current: { services: Service[] } | undefined) =>
+          removeServiceFromQueryData(current, id)
+      );
+
+      if (removedService) {
+        queryClient.setQueryData(
+          ['service-groups'],
+          (current: { groups: ServiceGroup[] } | undefined) =>
+            syncServiceGroupCounts(current, removedService.groupId ?? null, null)
+        );
+      }
     },
   });
 
