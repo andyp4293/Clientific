@@ -6,13 +6,17 @@ describe('PublicSiteHeader', () => {
   it('renders primary navigation and default CTA', () => {
     render(<PublicSiteHeader />);
 
+    const loginLink = screen.getByRole('link', { name: 'Log In' });
+
     expect(screen.getByRole('link', { name: /Clientific/i })).toHaveAttribute('href', '/');
     expect(screen.getByRole('link', { name: 'For Businesses' })).toHaveAttribute('href', '/');
     expect(screen.getByRole('link', { name: 'For Customers' })).toHaveAttribute('href', '/explore');
     expect(screen.getByRole('link', { name: 'Pricing' })).toHaveAttribute('href', '/pricing');
     expect(screen.getByRole('link', { name: 'Refer & Earn' })).toHaveAttribute('href', '/partner');
     expect(screen.getByRole('link', { name: 'Start Free Trial' })).toHaveAttribute('href', '/register');
-    expect(screen.getByRole('link', { name: 'Log In' })).toHaveAttribute('href', '/login');
+    expect(loginLink).toHaveAttribute('href', '/login');
+    expect(loginLink).toHaveClass('inline-flex');
+    expect(loginLink).not.toHaveClass('hidden');
     expect(screen.getByRole('banner')).toHaveClass('bg-white/80');
     expect(screen.getByRole('banner')).toHaveClass('dark:bg-gray-950/90');
   });

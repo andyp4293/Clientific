@@ -61,18 +61,18 @@ export function PublicSiteHeader({
           })}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {showLogin && (
             <Link
               href="/login"
-              className="hidden rounded-lg border border-gray-200 bg-white/80 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-white dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-200 dark:hover:bg-gray-900 sm:inline-flex"
+              className="inline-flex shrink-0 rounded-lg border border-gray-200 bg-white/80 px-2.5 py-2 text-xs font-medium text-gray-700 transition-colors hover:bg-white dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-200 dark:hover:bg-gray-900 sm:px-3 sm:text-sm"
             >
               Log In
             </Link>
           )}
           <Link
             href={ctaHref}
-            className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700"
+            className="shrink-0 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary-700 sm:text-sm"
           >
             {ctaLabel}
           </Link>
