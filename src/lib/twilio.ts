@@ -89,6 +89,11 @@ interface KioskDealClaimDetails extends KioskSignupDetails {
   dealCode: string;
 }
 
+interface DirectCustomerMessageDetails {
+  businessName: string;
+  message: string;
+}
+
 const SMS_COMPLIANCE_FOOTER = 'Reply STOP to opt out, HELP for help.';
 
 export function appendSmsComplianceFooter(message: string): string {
@@ -382,6 +387,10 @@ export function formatKioskDealClaimSMS(details: KioskDealClaimDetails): string 
   const base = `${greeting} thanks for signing up with ${details.businessName}. You're now on the ${details.businessName} text list for future offers and updates. Your ${details.dealTitle} code is ${details.dealCode}. Show it at checkout.`;
   const withBooking = details.bookingUrl ? `${base} Book here: ${details.bookingUrl}` : base;
   return appendSmsComplianceFooter(withBooking);
+}
+
+export function formatDirectCustomerMessageSMS(details: DirectCustomerMessageDetails): string {
+  return appendSmsComplianceFooter(`${details.businessName}: ${details.message.trim()}`);
 }
 
 export async function sendReviewRequest(

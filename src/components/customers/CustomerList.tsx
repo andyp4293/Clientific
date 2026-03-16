@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import AddCustomerModal from "./AddCustomerModal";
 import EditCustomerModal from "./EditCustomerModal";
+import SendCustomerMessageModal from "./SendCustomerMessageModal";
 import Link from "next/link";
 
 type Customer = {
@@ -12,12 +13,15 @@ type Customer = {
   name: string;
   email: string | null;
   phone: string | null;
+  smsConsent: boolean;
+  smsOptedOut: boolean;
   segment: string;
   points: number;
   totalSpent: number;
   lastVisit: Date | null;
   birthday: Date | null;
-  notes: string | null;  createdAt: Date;
+  notes: string | null;
+  createdAt: Date;
   _count: {
     checkIns: number;
     appointments: number;
@@ -63,6 +67,7 @@ export default function CustomerList({
   const [search, setSearch] = useState(initialSearch);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [messagingCustomer, setMessagingCustomer] = useState<Customer | null>(null);
 
   const handleSearch = (value: string) => {
     setSearch(value);
@@ -241,6 +246,25 @@ export default function CustomerList({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <div className="inline-flex items-center gap-1">
+                      {customer.phone && (
+                        <button
+                          onClick={() => setMessagingCustomer(customer)}
+                          disabled={!customer.smsConsent || customer.smsOptedOut}
+                          title={
+                            customer.smsOptedOut
+                              ? "This customer has opted out of SMS"
+                              : !customer.smsConsent
+                                ? "This customer has not consented to SMS"
+                                : "Send a text message"
+                          }
+                          className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 dark:disabled:bg-gray-700 dark:disabled:text-gray-500"
+                        >
+                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4-.823L3 20l1.055-3.165A7.421 7.421 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                          Text
+                        </button>
+                      )}
                       <button
                         onClick={() => setEditingCustomer(customer)}
                         title="Edit customer"
@@ -281,6 +305,13 @@ export default function CustomerList({
           customer={editingCustomer}
           isOpen={true}
           onClose={() => setEditingCustomer(null)}
+        />
+      )}
+      {messagingCustomer && (
+        <SendCustomerMessageModal
+          customer={messagingCustomer}
+          isOpen={true}
+          onClose={() => setMessagingCustomer(null)}
         />
       )}
     </>

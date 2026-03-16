@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import EditCustomerModal from "./EditCustomerModal";
+import SendCustomerMessageModal from "./SendCustomerMessageModal";
 
 type SmsLog = {
   id: string;
@@ -32,7 +33,8 @@ type Customer = {
   checkIns: Array<{
     id: string;
     createdAt: Date;
-    amountSpent: number | null;    pointsEarned: number;
+    amountSpent: number | null;
+    pointsEarned: number;
   }>;
   appointments: Array<{
     id: string;
@@ -56,7 +58,8 @@ type Customer = {
     amount: number;
     description: string;
     createdAt: Date;
-  }>;  _count: {
+  }>;
+  _count: {
     checkIns: number;
     appointments: number;
   };
@@ -79,11 +82,12 @@ const segmentLabels: Record<string, string> = {
 };
 
 const messageTypeLabels: Record<string, string> = {
-  confirmation: 'Booking Confirmed',
-  reminder: 'Reminder',
-  cancellation: 'Cancellation',
-  reschedule: 'Reschedule',
-  review_request: 'Review Request',
+  confirmation: "Booking Confirmed",
+  reminder: "Reminder",
+  cancellation: "Cancellation",
+  reschedule: "Reschedule",
+  review_request: "Review Request",
+  custom: "Direct Message",
 };
 
 export default function CustomerDetail({
@@ -96,19 +100,23 @@ export default function CustomerDetail({
   yelpUrl?: string | null;
 }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "history" | "messages" | "points">(
     "overview"
   );
   const [requestingReview, setRequestingReview] = useState(false);
 
-  const { data: smsData, isLoading: smsLoading } = useQuery({
-    queryKey: ['sms-logs', customer.id],
+  const canSendCustomSms = Boolean(customer.phone && customer.smsConsent && !customer.smsOptedOut);
+  const canRequestReview = canSendCustomSms && Boolean(googleReviewUrl || yelpUrl);
+
+  const { data: smsData, isLoading: smsLoading, refetch: refetchSmsLogs } = useQuery({
+    queryKey: ["sms-logs", customer.id],
     queryFn: async () => {
       const res = await fetch(`/api/customers/${customer.id}/sms-logs`);
       if (!res.ok) return { logs: [] };
       return res.json();
     },
-    enabled: activeTab === 'messages',
+    enabled: activeTab === "messages",
   });
 
   const smsLogs: SmsLog[] = smsData?.logs ?? [];
@@ -116,23 +124,22 @@ export default function CustomerDetail({
   return (
     <>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-start">
+        <div className="flex justify-between items-start gap-4">
           <div>
-            <div className="flex items-center gap-3 mb-2">
+            <div className="mb-2 flex items-center gap-3">
               <Link
                 href="/dashboard/customers"
-                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+                className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
               >
-                ← Back to Customers
+                Back to Customers
               </Link>
             </div>
             <div className="flex items-center gap-4">
-              <div className="h-16 w-16 bg-primary-100 rounded-full flex items-center justify-center">
-                <span className="text-primary-600 font-bold text-xl">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-100">
+                <span className="text-xl font-bold text-primary-600">
                   {customer.name
                     .split(" ")
-                    .map((n) => n[0])
+                    .map((namePart) => namePart[0])
                     .join("")
                     .toUpperCase()
                     .slice(0, 2)}
@@ -142,11 +149,9 @@ export default function CustomerDetail({
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                   {customer.name}
                 </h1>
-                <div className="flex items-center gap-3 mt-1">
+                <div className="mt-1 flex items-center gap-3">
                   <span
-                    className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                      segmentColors[customer.segment]
-                    }`}
+                    className={`rounded-full px-2 py-1 text-xs font-semibold ${segmentColors[customer.segment]}`}
                   >
                     {segmentLabels[customer.segment]}
                   </span>
@@ -158,20 +163,20 @@ export default function CustomerDetail({
             </div>
           </div>
           <div className="flex gap-2">
-            {customer.phone && customer.smsConsent && !customer.smsOptedOut && (googleReviewUrl || yelpUrl) && (
+            {canRequestReview && (
               <button
                 onClick={async () => {
                   setRequestingReview(true);
                   try {
-                    const res = await fetch('/api/reviews/request', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
+                    const res = await fetch("/api/reviews/request", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ customerId: customer.id }),
                     });
                     if (!res.ok) throw new Error();
-                    toast.success('Review request sent!');
+                    toast.success("Review request sent!");
                   } catch {
-                    toast.error('Failed to send review request');
+                    toast.error("Failed to send review request");
                   } finally {
                     setRequestingReview(false);
                   }
@@ -179,22 +184,18 @@ export default function CustomerDetail({
                 disabled={requestingReview}
                 className="btn-outline text-sm"
               >
-                {requestingReview ? 'Sending…' : 'Request Review'}
+                {requestingReview ? "Sending..." : "Request Review"}
               </button>
             )}
-            <button
-              onClick={() => setIsEditModalOpen(true)}
-              className="btn-primary"
-            >
+            <button onClick={() => setIsEditModalOpen(true)} className="btn-primary">
               Edit Customer
             </button>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <div className="mb-1 text-sm font-medium text-gray-600 dark:text-gray-400">
               Total Visits
             </div>
             <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -202,8 +203,8 @@ export default function CustomerDetail({
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+          <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <div className="mb-1 text-sm font-medium text-gray-600 dark:text-gray-400">
               Total Spent
             </div>
             <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -211,37 +212,34 @@ export default function CustomerDetail({
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+          <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <div className="mb-1 text-sm font-medium text-gray-600 dark:text-gray-400">
               Appointments
             </div>
-            <div className="text-2xl font-bold text-primary">
-              {customer._count.appointments}
-            </div>
+            <div className="text-2xl font-bold text-primary">{customer._count.appointments}</div>
           </div>
         </div>
 
-        {/* Contact Information */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
             Contact Information
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Email</div>
-              <div className="text-gray-900 dark:text-gray-100 mt-1">
+              <div className="mt-1 text-gray-900 dark:text-gray-100">
                 {customer.email || "Not provided"}
               </div>
             </div>
             <div>
               <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Phone</div>
-              <div className="text-gray-900 dark:text-gray-100 mt-1">
+              <div className="mt-1 text-gray-900 dark:text-gray-100">
                 {customer.phone || "Not provided"}
               </div>
             </div>
             <div>
               <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Birthday</div>
-              <div className="text-gray-900 dark:text-gray-100 mt-1">
+              <div className="mt-1 text-gray-900 dark:text-gray-100">
                 {customer.birthday
                   ? format(new Date(customer.birthday), "MMMM d, yyyy")
                   : "Not provided"}
@@ -249,7 +247,7 @@ export default function CustomerDetail({
             </div>
             <div>
               <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Last Visit</div>
-              <div className="text-gray-900 dark:text-gray-100 mt-1">
+              <div className="mt-1 text-gray-900 dark:text-gray-100">
                 {customer.lastVisit
                   ? format(new Date(customer.lastVisit), "MMM d, yyyy")
                   : "Never"}
@@ -259,51 +257,50 @@ export default function CustomerDetail({
           {customer.notes && (
             <div className="mt-4">
               <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Notes</div>
-              <div className="text-gray-900 dark:text-gray-100 mt-1">{customer.notes}</div>
+              <div className="mt-1 text-gray-900 dark:text-gray-100">{customer.notes}</div>
             </div>
           )}
         </div>
 
-        {/* Tabs */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
           <div className="border-b border-gray-200 dark:border-gray-700">
-            <nav className="flex -mb-px">
+            <nav className="-mb-px flex">
               <button
                 onClick={() => setActiveTab("overview")}
-                className={`px-6 py-3 text-sm font-medium border-b-2 ${
+                className={`border-b-2 px-6 py-3 text-sm font-medium ${
                   activeTab === "overview"
                     ? "border-primary text-primary"
-                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
+                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-gray-300"
                 }`}
               >
                 Overview
               </button>
               <button
                 onClick={() => setActiveTab("history")}
-                className={`px-6 py-3 text-sm font-medium border-b-2 ${
+                className={`border-b-2 px-6 py-3 text-sm font-medium ${
                   activeTab === "history"
                     ? "border-primary text-primary"
-                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
+                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-gray-300"
                 }`}
               >
                 Visit History
               </button>
               <button
                 onClick={() => setActiveTab("messages")}
-                className={`px-6 py-3 text-sm font-medium border-b-2 ${
+                className={`border-b-2 px-6 py-3 text-sm font-medium ${
                   activeTab === "messages"
                     ? "border-primary text-primary"
-                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
+                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-gray-300"
                 }`}
               >
                 Messages
               </button>
               <button
                 onClick={() => setActiveTab("points")}
-                className={`px-6 py-3 text-sm font-medium border-b-2 ${
+                className={`border-b-2 px-6 py-3 text-sm font-medium ${
                   activeTab === "points"
                     ? "border-primary text-primary"
-                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
+                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-gray-300"
                 }`}
               >
                 Points & Rewards
@@ -314,9 +311,8 @@ export default function CustomerDetail({
           <div className="p-6">
             {activeTab === "overview" && (
               <div className="space-y-6">
-                {/* Recent Check-Ins */}
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                  <h3 className="mb-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
                     Recent Check-Ins
                   </h3>
                   {customer.checkIns.length === 0 ? (
@@ -326,7 +322,7 @@ export default function CustomerDetail({
                       {customer.checkIns.map((checkIn) => (
                         <div
                           key={checkIn.id}
-                          className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                          className="flex items-center justify-between rounded-lg bg-gray-50 p-3 dark:bg-gray-700"
                         >
                           <div>
                             <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -341,7 +337,6 @@ export default function CustomerDetail({
                     </div>
                   )}
                 </div>
-
               </div>
             )}
 
@@ -353,27 +348,27 @@ export default function CustomerDetail({
                   customer.appointments.map((appointment) => (
                     <div
                       key={appointment.id}
-                      className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                      className="rounded-lg bg-gray-50 p-4 dark:bg-gray-700"
                     >
-                      <div className="flex justify-between items-start">
+                      <div className="flex items-start justify-between">
                         <div>
                           <div className="font-medium text-gray-900 dark:text-gray-100">
                             {appointment.service?.name || "General Appointment"}
                           </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                             {format(new Date(appointment.startTime), "MMM d, yyyy h:mm a")}
-                            {appointment.staff && ` • with ${appointment.staff.fullName}`}
+                            {appointment.staff ? ` - with ${appointment.staff.fullName}` : ""}
                           </div>
                         </div>
                         <span
-                          className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          className={`rounded-full px-2 py-1 text-xs font-medium ${
                             appointment.status === "COMPLETED"
                               ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200"
                               : appointment.status === "CONFIRMED"
-                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
-                              : appointment.status === "CANCELLED"
-                              ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200"
-                              : "bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200"
+                                ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
+                                : appointment.status === "CANCELLED"
+                                  ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200"
+                                  : "bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200"
                           }`}
                         >
                           {appointment.status}
@@ -387,39 +382,54 @@ export default function CustomerDetail({
 
             {activeTab === "points" && (
               <div className="space-y-6">
-                {/* Points Balance */}
-                <div className="flex items-center gap-4 p-4 bg-primary-50 dark:bg-primary/10 rounded-lg">
+                <div className="flex items-center gap-4 rounded-lg bg-primary-50 p-4 dark:bg-primary/10">
                   <div className="text-4xl font-bold text-primary">{customer.points}</div>
                   <div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">Points Balance</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">Available to redeem</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Points Balance
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      Available to redeem
+                    </div>
                   </div>
                 </div>
 
-                {/* Points Transactions */}
                 <div>
-                  <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">Points History</h3>
+                  <h3 className="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">
+                    Points History
+                  </h3>
                   {customer.pointsTransactions.length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">No points activity yet.</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      No points activity yet.
+                    </p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="text-left text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                          <tr className="border-b border-gray-200 text-left text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
                             <th className="pb-2 pr-4 font-medium">Date</th>
                             <th className="pb-2 pr-4 font-medium">Description</th>
-                            <th className="pb-2 font-medium text-right">Points</th>
+                            <th className="pb-2 text-right font-medium">Points</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                          {customer.pointsTransactions.map((tx) => (
-                            <tr key={tx.id}>
-                              <td className="py-2 pr-4 text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                                {format(new Date(tx.createdAt), 'MMM d, yyyy')}
+                          {customer.pointsTransactions.map((transaction) => (
+                            <tr key={transaction.id}>
+                              <td className="whitespace-nowrap py-2 pr-4 text-gray-600 dark:text-gray-400">
+                                {format(new Date(transaction.createdAt), "MMM d, yyyy")}
                               </td>
-                              <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">{tx.description}</td>
-                              <td className={`py-2 text-right font-medium whitespace-nowrap ${tx.amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                {tx.amount >= 0 ? '+' : ''}{tx.amount}
+                              <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">
+                                {transaction.description}
+                              </td>
+                              <td
+                                className={`whitespace-nowrap py-2 text-right font-medium ${
+                                  transaction.amount >= 0
+                                    ? "text-green-600 dark:text-green-400"
+                                    : "text-red-600 dark:text-red-400"
+                                }`}
+                              >
+                                {transaction.amount >= 0 ? "+" : ""}
+                                {transaction.amount}
                               </td>
                             </tr>
                           ))}
@@ -429,22 +439,33 @@ export default function CustomerDetail({
                   )}
                 </div>
 
-                {/* Redemptions */}
                 <div>
-                  <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">Rewards Redeemed</h3>
+                  <h3 className="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">
+                    Rewards Redeemed
+                  </h3>
                   {customer.redemptions.length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">No rewards redeemed yet.</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      No rewards redeemed yet.
+                    </p>
                   ) : (
                     <div className="space-y-2">
-                      {customer.redemptions.map((r) => (
-                        <div key={r.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      {customer.redemptions.map((redemption) => (
+                        <div
+                          key={redemption.id}
+                          className="flex items-center justify-between rounded-lg bg-gray-50 p-3 dark:bg-gray-700"
+                        >
                           <div>
-                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{r.reward.name}</div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                              {format(new Date(r.createdAt), 'MMM d, yyyy')} · Code: <span className="font-mono">{r.code}</span>
+                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                              {redemption.reward.name}
+                            </div>
+                            <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                              {format(new Date(redemption.createdAt), "MMM d, yyyy")} - Code:{" "}
+                              <span className="font-mono">{redemption.code}</span>
                             </div>
                           </div>
-                          <div className="text-sm font-medium text-red-600 dark:text-red-400">−{r.pointsSpent} pts</div>
+                          <div className="text-sm font-medium text-red-600 dark:text-red-400">
+                            -{redemption.pointsSpent} pts
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -455,19 +476,51 @@ export default function CustomerDetail({
 
             {activeTab === "messages" && (
               <div>
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                      Message History
+                    </h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      View prior SMS activity and send one-off texts to this customer.
+                    </p>
+                  </div>
+                  {canSendCustomSms && (
+                    <button
+                      type="button"
+                      onClick={() => setIsMessageModalOpen(true)}
+                      className="btn-primary w-full sm:w-auto"
+                    >
+                      Send Text
+                    </button>
+                  )}
+                </div>
+
                 {!customer.phone ? (
-                  <p className="text-gray-500 dark:text-gray-400">No phone number on file — SMS history unavailable.</p>
+                  <p className="text-gray-500 dark:text-gray-400">
+                    No phone number on file - SMS history unavailable.
+                  </p>
+                ) : customer.smsOptedOut ? (
+                  <p className="text-gray-500 dark:text-gray-400">
+                    This customer has opted out of SMS, so new messages are unavailable.
+                  </p>
+                ) : !customer.smsConsent ? (
+                  <p className="text-gray-500 dark:text-gray-400">
+                    This customer has not consented to SMS yet, so new messages are unavailable.
+                  </p>
                 ) : smsLoading ? (
                   <div className="flex justify-center py-8">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+                    <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary" />
                   </div>
                 ) : smsLogs.length === 0 ? (
-                  <p className="text-gray-500 dark:text-gray-400">No messages sent to this customer yet.</p>
+                  <p className="text-gray-500 dark:text-gray-400">
+                    No messages sent to this customer yet.
+                  </p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="text-left text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                        <tr className="border-b border-gray-200 text-left text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
                           <th className="pb-2 pr-4 font-medium">Date</th>
                           <th className="pb-2 pr-4 font-medium">Type</th>
                           <th className="pb-2 pr-4 font-medium">Status</th>
@@ -477,24 +530,26 @@ export default function CustomerDetail({
                       <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                         {smsLogs.map((log) => (
                           <tr key={log.id} className="align-top">
-                            <td className="py-2 pr-4 text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                            <td className="whitespace-nowrap py-2 pr-4 text-gray-600 dark:text-gray-400">
                               {format(new Date(log.createdAt), "MMM d, yyyy h:mm a")}
                             </td>
-                            <td className="py-2 pr-4 text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                            <td className="whitespace-nowrap py-2 pr-4 text-gray-900 dark:text-gray-100">
                               {messageTypeLabels[log.messageType] ?? log.messageType}
                             </td>
                             <td className="py-2 pr-4">
-                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                log.status === 'delivered'
-                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200'
-                                  : log.status === 'failed'
-                                  ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200'
-                                  : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                              }`}>
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                                  log.status === "delivered"
+                                    ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200"
+                                    : log.status === "failed"
+                                      ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200"
+                                      : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                                }`}
+                              >
                                 {log.status}
                               </span>
                             </td>
-                            <td className="py-2 text-gray-600 dark:text-gray-400 max-w-xs truncate">
+                            <td className="max-w-xs truncate py-2 text-gray-600 dark:text-gray-400">
                               {log.message}
                             </td>
                           </tr>
@@ -509,11 +564,18 @@ export default function CustomerDetail({
         </div>
       </div>
 
-      {/* Edit Modal */}
       <EditCustomerModal
         customer={customer}
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
+      />
+      <SendCustomerMessageModal
+        customer={customer}
+        isOpen={isMessageModalOpen}
+        onClose={() => setIsMessageModalOpen(false)}
+        onSent={async () => {
+          await refetchSmsLogs();
+        }}
       />
     </>
   );
