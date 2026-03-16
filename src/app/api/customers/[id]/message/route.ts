@@ -52,8 +52,6 @@ export async function POST(
         select: {
           id: true,
           name: true,
-          vapiPhoneNumber: true,
-          smsAiPhoneNumber: true,
         },
       }),
     ]);
@@ -82,11 +80,9 @@ export async function POST(
       businessName: business.name,
       message: rawMessage,
     });
-    const senderPhone = business.vapiPhoneNumber || business.smsAiPhoneNumber || null;
 
     const smsResult = await sendSMS({
       to: customer.phone,
-      from: senderPhone,
       message,
     });
 

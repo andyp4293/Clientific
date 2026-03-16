@@ -91,13 +91,12 @@ describe('POST /api/customers/[id]/message', () => {
     expect(mockSendSMS).not.toHaveBeenCalled();
   });
 
-  it('prefixes the business name, sends the SMS, and logs the full outbound message', async () => {
+  it('uses the shared SMS sender for direct messages, prefixes the business name, and logs the full outbound message', async () => {
     const response = await POST(makeRequest({ message: 'See you tomorrow.' }), makeParams());
 
     expect(response.status).toBe(200);
     expect(mockSendSMS).toHaveBeenCalledWith({
       to: '+15551234567',
-      from: '+15557654321',
       message: 'Test Salon: See you tomorrow. Reply STOP to opt out, HELP for help.',
     });
     expect(mockSmsLogCreate).toHaveBeenCalledWith({
