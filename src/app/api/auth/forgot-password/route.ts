@@ -35,7 +35,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    await sendPasswordResetEmail(business.email, token);
+    try {
+      await sendPasswordResetEmail(business.email, token);
+    } catch (emailError: any) {
+      // Log the failure but don't surface it — token is stored, user can retry
+      console.error('Password reset email send failed:', emailError?.message ?? emailError);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

@@ -82,16 +82,18 @@ describe('POST /api/auth/forgot-password', () => {
     expect(sendPasswordResetEmail).toHaveBeenCalledWith('owner@example.com', expect.any(String));
   });
 
-  it('returns 500 when email provider send fails', async () => {
+  it('returns 200 even when email provider send fails', async () => {
     vi.mocked(prisma.business.findUnique).mockResolvedValue({
       id: 'biz-1',
       email: 'owner@example.com',
     } as any);
     vi.mocked(prisma.business.update).mockResolvedValue({} as any);
-    vi.mocked(sendPasswordResetEmail).mockRejectedValueOnce(new Error('Missing API key'));
+    vi.mocked(sendPasswordResetEmail).mockRejectedValueOnce(new Error('Domain not verified'));
 
     const res = await POST(req({ email: 'owner@example.com' }));
-    expect(res.status).toBe(500);
+    // Token is stored — silently succeed so user sees "check your inbox" rather than an error
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ success: true });
     expect(prisma.business.update).toHaveBeenCalled();
   });
 });
