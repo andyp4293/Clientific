@@ -165,12 +165,12 @@ function LoginForm() {
           <h1 className="text-xl sm:text-2xl font-bold text-center mb-4 sm:mb-6 text-gray-900 dark:text-gray-100">Welcome Back</h1>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4 text-sm">
+            <div className="bg-red-50 border border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300 px-4 py-3 rounded-md mb-4 text-sm">
               {error}
             </div>
           )}
           {notice && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md mb-4 text-sm">
+            <div className="bg-green-50 border border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300 px-4 py-3 rounded-md mb-4 text-sm">
               {notice}
             </div>
           )}

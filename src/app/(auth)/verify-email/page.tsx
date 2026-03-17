@@ -166,7 +166,7 @@ function VerifyEmailContent() {
         {message && (
           <p
             className={`mt-3 text-xs ${
-              state === 'error' ? 'text-red-600' : state === 'success' ? 'text-green-600' : 'text-gray-500'
+              state === 'error' ? 'text-red-600 dark:text-red-400' : state === 'success' ? 'text-green-600 dark:text-green-400' : 'text-gray-500'
             }`}
           >
             {message}

@@ -259,7 +259,7 @@ export default function DashboardOnboardingPage() {
 
       <div className="card p-6 md:p-8 space-y-6">
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}

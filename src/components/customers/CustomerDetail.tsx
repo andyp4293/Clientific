@@ -135,8 +135,8 @@ export default function CustomerDetail({
               </Link>
             </div>
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-100">
-                <span className="text-xl font-bold text-primary-600">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-100 dark:bg-primary/15">
+                <span className="text-xl font-bold text-primary-600 dark:text-primary-300">
                   {customer.name
                     .split(" ")
                     .map((namePart) => namePart[0])

@@ -198,8 +198,8 @@ export default function CustomerList({
                 <tr key={customer.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10 bg-primary-100 rounded-full flex items-center justify-center">
-                        <span className="text-primary-600 font-medium text-sm">
+                      <div className="flex-shrink-0 h-10 w-10 bg-primary-100 dark:bg-primary/15 rounded-full flex items-center justify-center">
+                        <span className="text-primary-600 dark:text-primary-300 font-medium text-sm">
                           {customer.name
                             .split(" ")
                             .map((n) => n[0])
