@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { useSession } from 'next-auth/react';
 import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
 
 interface DealPurchaseResponse {
@@ -57,6 +58,7 @@ function formatCents(amount: number) {
 export default function DealPurchaseReceiptPage() {
   const params = useParams();
   const token = params.token as string;
+  const { data: session } = useSession();
 
   const { data, isLoading, isError } = useQuery<DealPurchaseResponse>({
     queryKey: ['deal-purchase', token],
@@ -108,6 +110,11 @@ export default function DealPurchaseReceiptPage() {
       <PublicSiteHeader active="deal" showLogin={false} showCta={false} />
       <div className="px-4 py-8">
         <div className="mx-auto max-w-3xl space-y-4">
+          {session && (
+            <Link href="/dashboard/campaigns" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
+              <span aria-hidden="true">&larr;</span> Back to deals
+            </Link>
+          )}
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -225,6 +232,12 @@ export default function DealPurchaseReceiptPage() {
                 className="inline-flex rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-900 hover:border-primary hover:text-primary dark:border-gray-700 dark:text-gray-100"
               >
                 View business
+              </Link>
+              <Link
+                href={purchase.business.city ? `/explore?location=${encodeURIComponent(purchase.business.city)}` : '/explore'}
+                className="inline-flex rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-900 hover:border-primary hover:text-primary dark:border-gray-700 dark:text-gray-100"
+              >
+                Find more deals
               </Link>
             </div>
           </div>

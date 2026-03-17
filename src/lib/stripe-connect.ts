@@ -35,9 +35,24 @@ export async function ensureBusinessConnectAccount(
   appUrl: string
 ) {
   if (business.stripeConnectAccountId) {
-    const existing = await stripe.accounts.retrieve(business.stripeConnectAccountId);
-    await syncBusinessConnectAccount(business.id, existing);
-    return existing;
+    try {
+      const existing = await stripe.accounts.retrieve(business.stripeConnectAccountId);
+      await syncBusinessConnectAccount(business.id, existing);
+      return existing;
+    } catch (err: any) {
+      // In test mode, Connect accounts can be deleted. Clear the stale ID and create a new one.
+      if (err?.code !== 'resource_missing') throw err;
+      await prisma.business.update({
+        where: { id: business.id },
+        data: {
+          stripeConnectAccountId: null,
+          stripeConnectChargesEnabled: false,
+          stripeConnectPayoutsEnabled: false,
+          stripeConnectDetailsSubmitted: false,
+          stripeConnectOnboardedAt: null,
+        },
+      });
+    }
   }
 
   const created = await stripe.accounts.create({

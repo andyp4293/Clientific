@@ -163,6 +163,13 @@ export async function POST(
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
+    // Surface Stripe errors with their actual message to aid debugging
+    if (error?.type?.startsWith('Stripe') || error?.raw?.type) {
+      const stripeMessage = error?.message ?? 'Stripe error';
+      console.error('POST /api/public/deals/[id]/payment-intent Stripe error:', error);
+      return NextResponse.json({ error: stripeMessage }, { status: 502 });
+    }
+
     console.error('POST /api/public/deals/[id]/payment-intent error:', error);
     return NextResponse.json({ error: 'Failed to start checkout' }, { status: 500 });
   }
