@@ -208,12 +208,13 @@ model Service {
   price        Float?
   active       Boolean       @default(true)
   sortOrder    Int           @default(0)
-  appointments Appointment[]
-  checkIns     CheckIn[]
-  deals        Deal[]
-  dealEligibleFor Deal[] @relation("DealEligibleServices")
-  business     Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  group        ServiceGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  appointments      Appointment[]
+  checkIns          CheckIn[]
+  deals             Deal[]
+  dealEligibleFor   Deal[]         @relation("DealEligibleServices")
+  staffAssignments  StaffService[]
+  business          Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  group             ServiceGroup?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   @@index([businessId, active])
   @@index([businessId, groupId, sortOrder])
@@ -233,19 +234,30 @@ model ServiceGroup {
 }
 
 model Staff {
-  id           String        @id @default(cuid())
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  businessId   String
-  fullName     String
-  email        String?
-  phone        String?
-  role         String        @default("staff")
-  active       Boolean       @default(true)
-  workDays     Int[]         @default([0, 1, 2, 3, 4, 5, 6])
-  appointments Appointment[]
-  checkIns     CheckIn[]
-  business     Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  id              String         @id @default(cuid())
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  businessId      String
+  fullName        String
+  email           String?
+  phone           String?
+  role            String         @default("staff")
+  active          Boolean        @default(true)
+  workDays        Int[]          @default([0, 1, 2, 3, 4, 5, 6])
+  appointments    Appointment[]
+  checkIns        CheckIn[]
+  business        Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  serviceAssignments StaffService[]
+}
+
+model StaffService {
+  staffId   String
+  serviceId String
+  staff     Staff   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@id([staffId, serviceId])
+  @@index([serviceId])
 }
 
 model Reward {
@@ -560,7 +572,7 @@ model Referral {
   referrerId   String
   refereeId    String    @unique
   status       String    @default("pending")
-  creditAmount Float     @default(15.00)
+  creditAmount Float     @default(0)
   referrer     Business  @relation("ReferrerOf", fields: [referrerId], references: [id])
   referee      Business  @relation("RefereeOf", fields: [refereeId], references: [id])
 
@@ -584,7 +596,7 @@ model AffiliateSignup {
   affiliateId String
   businessId  String    @unique
   status      String    @default("pending")
-  earnAmount  Float     @default(15.00)
+  earnAmount  Float     @default(0)
   earnedAt    DateTime?
   affiliate   Affiliate @relation(fields: [affiliateId], references: [id])
   business    Business  @relation(fields: [businessId], references: [id])

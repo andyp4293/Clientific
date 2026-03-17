@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Copy, Download, ExternalLink, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 
 type DealOption = {
   id: string;
@@ -93,20 +94,15 @@ export default function InStoreCapturePanel({
             >
               Promo shown on device
             </label>
-            <select
+            <CustomSelect
               id="in-store-capture-deal"
               className="input text-sm"
               value={selectedDealId}
-              onChange={(event) => setSelectedDealId(event.target.value)}
+              onChange={(val) => setSelectedDealId(val)}
               disabled={!business}
-            >
-              <option value="">General VIP signup only</option>
-              {activeDeals.map((deal) => (
-                <option key={deal.id} value={deal.id}>
-                  {deal.title}
-                </option>
-              ))}
-            </select>
+              placeholder="General VIP signup only"
+              options={activeDeals.map((deal) => ({ value: deal.id, label: deal.title }))}
+            />
             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
               {activeDeals.length > 0
                 ? 'Only currently active deals appear here. The selected deal is baked into the kiosk URL.'

@@ -249,9 +249,9 @@ describe('DealsPage (Campaigns)', () => {
     const linkInput = screen.getByLabelText(/device link/i) as HTMLInputElement;
     expect(linkInput.value).toBe('http://localhost:3000/capture/pub_123');
 
-    fireEvent.change(screen.getByLabelText(/promo shown on device/i), {
-      target: { value: 'deal-1' },
-    });
+    // CustomSelect uses a button trigger — click to open, then click the listbox option
+    fireEvent.click(screen.getByLabelText(/promo shown on device/i));
+    fireEvent.click(screen.getByRole('option', { name: 'Spring Special' }));
 
     expect(linkInput.value).toBe('http://localhost:3000/capture/pub_123?deal=deal-1');
   });

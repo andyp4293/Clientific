@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 
 interface Appointment {
   id: string;
@@ -228,16 +229,15 @@ export default function AppointmentsPage() {
 
           {/* Staff filter */}
           {staffList.length > 0 && (
-            <select
-              value={selectedStaffId}
-              onChange={(e) => setSelectedStaffId(e.target.value)}
-              className="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary sm:w-auto"
-            >
-              <option value="">All Staff</option>
-              {staffList.map(s => (
-                <option key={s.id} value={s.id}>{s.fullName}</option>
-              ))}
-            </select>
+            <div className="w-full sm:w-auto">
+              <CustomSelect
+                value={selectedStaffId}
+                onChange={(val) => setSelectedStaffId(val)}
+                className="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary"
+                placeholder="All Staff"
+                options={staffList.map(s => ({ value: s.id, label: s.fullName }))}
+              />
+            </div>
           )}
 
           {/* View toggle — stretches full width on mobile */}
@@ -957,18 +957,19 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
               {/* Duration */}
               <div>
                 <label className={labelClass}>Duration</label>
-                <select
-                  value={formData.duration}
-                  onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
+                <CustomSelect
+                  value={String(formData.duration)}
+                  onChange={(val) => setFormData({ ...formData, duration: parseInt(val) })}
                   className="input text-sm"
-                >
-                  <option value="15">15 min</option>
-                  <option value="30">30 min</option>
-                  <option value="45">45 min</option>
-                  <option value="60">1 hour</option>
-                  <option value="90">1.5 hours</option>
-                  <option value="120">2 hours</option>
-                </select>
+                  options={[
+                    { value: '15', label: '15 min' },
+                    { value: '30', label: '30 min' },
+                    { value: '45', label: '45 min' },
+                    { value: '60', label: '1 hour' },
+                    { value: '90', label: '1.5 hours' },
+                    { value: '120', label: '2 hours' },
+                  ]}
+                />
               </div>
             </div>
 
@@ -994,17 +995,14 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
                   ))}
                 </div>
                 {customerMode === 'existing' ? (
-                  <select
+                  <CustomSelect
                     value={formData.customerId}
-                    onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
+                    onChange={(val) => setFormData({ ...formData, customerId: val })}
                     className="input text-sm"
+                    placeholder="Select customer…"
                     required={customerMode === 'existing'}
-                  >
-                    <option value="">Select customer…</option>
-                    {customers.map((c: any) => (
-                      <option key={c.id} value={c.id}>{c.name}{c.phone ? `  ·  ${c.phone}` : ''}</option>
-                    ))}
-                  </select>
+                    options={customers.map((c: any) => ({ value: c.id, label: c.name + (c.phone ? `  ·  ${c.phone}` : '') }))}
+                  />
                 ) : (
                   <div className="space-y-2">
                     <input
@@ -1027,31 +1025,25 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
               {/* Service */}
               <div>
                 <label className={labelClass}>Service</label>
-                <select
+                <CustomSelect
                   value={formData.serviceId}
-                  onChange={(e) => setFormData({ ...formData, serviceId: e.target.value })}
+                  onChange={(val) => setFormData({ ...formData, serviceId: val })}
                   className="input text-sm"
-                >
-                  <option value="">No service</option>
-                  {services.map((s: any) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
+                  placeholder="No service"
+                  options={services.map((s: any) => ({ value: s.id, label: s.name }))}
+                />
               </div>
 
               {/* Staff */}
               <div>
                 <label className={labelClass}>Staff</label>
-                <select
+                <CustomSelect
                   value={formData.staffId}
-                  onChange={(e) => setFormData({ ...formData, staffId: e.target.value })}
+                  onChange={(val) => setFormData({ ...formData, staffId: val })}
                   className="input text-sm"
-                >
-                  <option value="">Any available</option>
-                  {staffList.map((s: any) => (
-                    <option key={s.id} value={s.id}>{s.fullName}</option>
-                  ))}
-                </select>
+                  placeholder="Any available"
+                  options={staffList.map((s: any) => ({ value: s.id, label: s.fullName }))}
+                />
               </div>
 
               {/* Notes */}
@@ -1160,33 +1152,49 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
             </div>
             <div>
               <label className="label">Duration *</label>
-              <select value={formData.duration} onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })} className="input" required>
-                <option value="15">15 minutes</option>
-                <option value="30">30 minutes</option>
-                <option value="45">45 minutes</option>
-                <option value="60">1 hour</option>
-                <option value="90">1.5 hours</option>
-                <option value="120">2 hours</option>
-              </select>
+              <CustomSelect
+                value={String(formData.duration)}
+                onChange={(val) => setFormData({ ...formData, duration: parseInt(val) })}
+                className="input"
+                required
+                options={[
+                  { value: '15', label: '15 minutes' },
+                  { value: '30', label: '30 minutes' },
+                  { value: '45', label: '45 minutes' },
+                  { value: '60', label: '1 hour' },
+                  { value: '90', label: '1.5 hours' },
+                  { value: '120', label: '2 hours' },
+                ]}
+              />
             </div>
             <div>
               <label className="label">Status</label>
-              <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="input">
-                <option value="pending">Pending</option>
-                <option value="scheduled">Scheduled</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="completed">Completed</option>
-                <option value="no_show">No Show</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
+              <CustomSelect
+                value={formData.status}
+                onChange={(val) => setFormData({ ...formData, status: val })}
+                className="input"
+                options={[
+                  { value: 'pending', label: 'Pending' },
+                  { value: 'scheduled', label: 'Scheduled' },
+                  { value: 'confirmed', label: 'Confirmed' },
+                  { value: 'completed', label: 'Completed' },
+                  { value: 'no_show', label: 'No Show' },
+                  { value: 'cancelled', label: 'Cancelled' },
+                ]}
+              />
             </div>
             <div>
               <label className="label">Booked via</label>
-              <select value={formData.source} onChange={(e) => setFormData({ ...formData, source: e.target.value })} className="input">
-                <option value="dashboard">Dashboard (manual)</option>
-                <option value="online">Online booking</option>
-                <option value="ai">AI receptionist</option>
-              </select>
+              <CustomSelect
+                value={formData.source}
+                onChange={(val) => setFormData({ ...formData, source: val })}
+                className="input"
+                options={[
+                  { value: 'dashboard', label: 'Dashboard (manual)' },
+                  { value: 'online', label: 'Online booking' },
+                  { value: 'ai', label: 'AI receptionist' },
+                ]}
+              />
             </div>
             <div>
               <label className="label">Notes</label>

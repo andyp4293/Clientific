@@ -3,7 +3,10 @@ import { localToUTC } from '@/lib/timezone';
 
 const businessTimeToUTC = localToUTC;
 
-export type AvailabilityReason = 'business_closed' | 'staff_off_day';
+export type AvailabilityReason =
+  | 'business_closed'
+  | 'staff_off_day'
+  | 'staff_cant_do_service';
 
 export type PublicAvailableSlotsInput = {
   businessLookup: { slug: string } | { publicId: string };
@@ -43,9 +46,7 @@ export async function getPublicAvailableSlots({
 
   const business = await prisma.business.findUnique({
     where: businessLookup,
-    include: {
-      businessHours: true,
-    },
+    include: { businessHours: true },
   });
 
   if (!business) {
@@ -96,15 +97,33 @@ export async function getPublicAvailableSlots({
   if (staffId && staffId !== 'anyone') {
     const staffMember = await prisma.staff.findUnique({
       where: { id: staffId },
-      select: { workDays: true },
+      select: {
+        workDays: true,
+        serviceAssignments: { select: { serviceId: true } },
+      },
     });
-    if (staffMember && !staffMember.workDays.includes(dayOfWeek)) {
-      return {
-        slots: [],
-        unavailableSlots: [],
-        availabilityReason: 'staff_off_day',
-        message: 'Selected staff member is off on this day.',
-      };
+
+    if (staffMember) {
+      // Check working day
+      if (!staffMember.workDays.includes(dayOfWeek)) {
+        return {
+          slots: [],
+          unavailableSlots: [],
+          availabilityReason: 'staff_off_day',
+          message: 'Selected staff member is off on this day.',
+        };
+      }
+
+      // Check service capability (only if the staff member has restrictions)
+      const assigned = staffMember.serviceAssignments.map((a) => a.serviceId);
+      if (assigned.length > 0 && !assigned.includes(serviceId)) {
+        return {
+          slots: [],
+          unavailableSlots: [],
+          availabilityReason: 'staff_cant_do_service',
+          message: 'Selected staff member does not perform this service.',
+        };
+      }
     }
   }
 
@@ -123,13 +142,8 @@ export async function getPublicAvailableSlots({
           where: {
             businessId: business.id,
             staffId,
-            status: {
-              in: ['pending', 'scheduled', 'confirmed'],
-            },
-            startTime: {
-              gte: startOfDay,
-              lte: endOfDay,
-            },
+            status: { in: ['pending', 'scheduled', 'confirmed'] },
+            startTime: { gte: startOfDay, lte: endOfDay },
           },
         })
       : [];

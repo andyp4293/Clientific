@@ -275,7 +275,7 @@ describe('Stripe webhook — invoice.payment_succeeded referral credit', () => {
     });
   }
 
-  it('credits referrer $15 when pending referral exists', async () => {
+  it('credits referrer a percentage of the invoice when pending referral exists', async () => {
     vi.mocked(prisma.referral.findFirst).mockResolvedValue({
       id: 'ref-1',
       status: 'pending',
@@ -288,9 +288,40 @@ describe('Stripe webhook — invoice.payment_succeeded referral credit', () => {
     const res = await stripeWebhookPOST(webhookReq());
     expect(res.status).toBe(200);
 
+    // Invoice is $29 (2900 cents); 20% commission = 580 cents
+    const { REFERRAL_COMMISSION_PERCENT } = await import('@/lib/referral-config');
+    const expectedCents = Math.round(2900 * REFERRAL_COMMISSION_PERCENT);
     expect(stripe.customers.createBalanceTransaction).toHaveBeenCalledWith(
       'cus_referrer',
-      { amount: -1500, currency: 'usd', description: 'Referral reward: new subscriber' }
+      expect.objectContaining({ amount: -expectedCents, currency: 'usd' })
+    );
+  });
+
+  it('payout scales with subscription plan price', async () => {
+    // Higher plan invoice ($79 = 7900 cents) should yield a larger credit
+    vi.mocked(stripe.webhooks.constructEvent).mockReturnValue(makeInvoiceEvent(7900) as any);
+    vi.mocked(prisma.referral.findFirst).mockResolvedValue({
+      id: 'ref-2',
+      status: 'pending',
+      referrerId: 'biz-referrer',
+      referrer: referrerBiz,
+    } as any);
+    vi.mocked(prisma.referral.update).mockResolvedValue({} as any);
+    vi.mocked(prisma.business.update).mockResolvedValue({} as any);
+
+    await stripeWebhookPOST(
+      new NextRequest('http://localhost/api/webhooks/stripe', {
+        method: 'POST',
+        body: JSON.stringify(makeInvoiceEvent(7900)),
+        headers: { 'Content-Type': 'application/json', 'stripe-signature': 'sig_test' },
+      })
+    );
+
+    const { REFERRAL_COMMISSION_PERCENT } = await import('@/lib/referral-config');
+    const expectedCents = Math.round(7900 * REFERRAL_COMMISSION_PERCENT);
+    expect(stripe.customers.createBalanceTransaction).toHaveBeenCalledWith(
+      'cus_referrer',
+      expect.objectContaining({ amount: -expectedCents, currency: 'usd' })
     );
   });
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   removeServiceFromQueryData,
@@ -38,6 +39,8 @@ interface Staff {
   bio: string | null;
   isActive: boolean;
   workDays: number[];
+  /** Empty = no restrictions (can perform all services). Non-empty = restricted to these service IDs. */
+  serviceIds: string[];
 }
 
 type Tab = 'services' | 'staff';
@@ -321,10 +324,12 @@ function ServiceRow({
 // Staff Tab Component
 function StaffTab({
   staff,
+  services,
   onEdit,
-  onDelete
+  onDelete,
 }: {
   staff: Staff[];
+  services: Service[];
   onEdit: (staff: Staff) => void;
   onDelete: (id: string) => void;
 }) {
@@ -404,6 +409,34 @@ function StaffTab({
             </div>
           )}
 
+          {/* Service assignment indicator */}
+          <div className="mb-3">
+            {!member.serviceIds || member.serviceIds.length === 0 ? (
+              <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                <svg className="w-3.5 h-3.5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                All services
+              </span>
+            ) : (
+              <div className="flex flex-wrap gap-1">
+                {member.serviceIds.slice(0, 3).map((svcId) => {
+                  const svc = services.find((s) => s.id === svcId);
+                  return svc ? (
+                    <span key={svcId} className="px-1.5 py-0.5 text-xs rounded bg-primary-50 dark:bg-primary/10 text-primary-700 dark:text-primary-300 font-medium truncate max-w-[110px]">
+                      {svc.name}
+                    </span>
+                  ) : null;
+                })}
+                {member.serviceIds.length > 3 && (
+                  <span className="px-1.5 py-0.5 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-medium">
+                    +{member.serviceIds.length - 3} more
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="flex gap-2">
             <button
               onClick={() => onEdit(member)}
@@ -454,6 +487,7 @@ export default function ServicesPage() {
     bio: '',
     isActive: true,
     workDays: ALL_DAYS,
+    serviceIds: [] as string[],
   });
 
   // Fetch services
@@ -724,6 +758,7 @@ export default function ServicesPage() {
         bio: staffMember.bio || '',
         isActive: staffMember.isActive,
         workDays: staffMember.workDays ?? ALL_DAYS,
+        serviceIds: staffMember.serviceIds ?? [],
       });
     } else {
       setEditingStaff(null);
@@ -735,6 +770,7 @@ export default function ServicesPage() {
         bio: '',
         isActive: true,
         workDays: ALL_DAYS,
+        serviceIds: [],
       });
     }
     setModalType('staff');
@@ -885,6 +921,7 @@ export default function ServicesPage() {
       ) : (
         <StaffTab
           staff={staff}
+          services={services}
           onEdit={openStaffModal}
           onDelete={(id) => deleteStaffMutation.mutate(id)}
         />
@@ -938,21 +975,15 @@ export default function ServicesPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Service Group
                 </label>
-                <select
+                <CustomSelect
                   value={serviceFormData.groupId}
-                  onChange={(e) => setServiceFormData({ ...serviceFormData, groupId: e.target.value })}
-                  className="input w-full"
-                >
-                  <option value="">No group</option>
-                  {groups
+                  onChange={(val) => setServiceFormData({ ...serviceFormData, groupId: val })}
+                  placeholder="No group"
+                  options={groups
                     .slice()
                     .sort((a, b) => a.sortOrder - b.sortOrder)
-                    .map((group) => (
-                      <option key={group.id} value={group.id}>
-                        {group.name}
-                      </option>
-                    ))}
-                </select>
+                    .map((group) => ({ value: group.id, label: group.name }))}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -1147,6 +1178,187 @@ export default function ServicesPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Service Assignments */}
+              <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Services This Staff Can Perform</p>
+                  <button
+                    type="button"
+                    onClick={() => setStaffFormData({ ...staffFormData, serviceIds: [] })}
+                    className="text-xs text-primary dark:text-primary-300 hover:underline"
+                  >
+                    All services
+                  </button>
+                </div>
+
+                {staffFormData.serviceIds.length === 0 ? (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    No restrictions — this staff member can be booked for any service. Select specific services below to restrict.
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Restricted to {staffFormData.serviceIds.length} service{staffFormData.serviceIds.length !== 1 ? 's' : ''}. Customers can only book this staff member for the selected services.
+                  </p>
+                )}
+
+                {/* Group + service toggles */}
+                {groups.length > 0 ? (
+                  <div className="space-y-3">
+                    {groups
+                      .slice()
+                      .sort((a, b) => a.sortOrder - b.sortOrder)
+                      .map((group) => {
+                        const groupServices = services.filter((s) => s.groupId === group.id && s.isActive);
+                        if (groupServices.length === 0) return null;
+                        const allSelected = groupServices.every((s) => staffFormData.serviceIds.includes(s.id));
+                        const noneSelected = groupServices.every((s) => !staffFormData.serviceIds.includes(s.id));
+                        return (
+                          <div key={group.id}>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{group.name}</span>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  disabled={allSelected && staffFormData.serviceIds.length === groupServices.length && noneSelected === false}
+                                  onClick={() => {
+                                    const groupIds = groupServices.map((s) => s.id);
+                                    const next = [...new Set([...staffFormData.serviceIds, ...groupIds])];
+                                    setStaffFormData({ ...staffFormData, serviceIds: next });
+                                  }}
+                                  className="text-xs text-primary dark:text-primary-300 hover:underline disabled:opacity-40"
+                                >
+                                  Select all
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const groupIds = new Set(groupServices.map((s) => s.id));
+                                    setStaffFormData({
+                                      ...staffFormData,
+                                      serviceIds: staffFormData.serviceIds.filter((id) => !groupIds.has(id)),
+                                    });
+                                  }}
+                                  className="text-xs text-gray-500 dark:text-gray-400 hover:underline"
+                                >
+                                  Clear
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {groupServices.map((svc) => {
+                                const isSelected = staffFormData.serviceIds.includes(svc.id);
+                                return (
+                                  <button
+                                    key={svc.id}
+                                    type="button"
+                                    onClick={() => {
+                                      const next = isSelected
+                                        ? staffFormData.serviceIds.filter((id) => id !== svc.id)
+                                        : [...staffFormData.serviceIds, svc.id];
+                                      setStaffFormData({ ...staffFormData, serviceIds: next });
+                                    }}
+                                    className={`px-2.5 py-1 text-xs rounded-full border font-medium transition-colors ${
+                                      isSelected
+                                        ? 'bg-primary text-white border-primary'
+                                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:border-primary dark:hover:border-primary'
+                                    }`}
+                                  >
+                                    {svc.name}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    {/* Ungrouped services */}
+                    {(() => {
+                      const ungrouped = services.filter((s) => !s.groupId && s.isActive);
+                      if (ungrouped.length === 0) return null;
+                      return (
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Other</span>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const ids = ungrouped.map((s) => s.id);
+                                  setStaffFormData({ ...staffFormData, serviceIds: [...new Set([...staffFormData.serviceIds, ...ids])] });
+                                }}
+                                className="text-xs text-primary dark:text-primary-300 hover:underline"
+                              >
+                                Select all
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const ids = new Set(ungrouped.map((s) => s.id));
+                                  setStaffFormData({ ...staffFormData, serviceIds: staffFormData.serviceIds.filter((id) => !ids.has(id)) });
+                                }}
+                                className="text-xs text-gray-500 dark:text-gray-400 hover:underline"
+                              >
+                                Clear
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {ungrouped.map((svc) => {
+                              const isSelected = staffFormData.serviceIds.includes(svc.id);
+                              return (
+                                <button
+                                  key={svc.id}
+                                  type="button"
+                                  onClick={() => {
+                                    const next = isSelected
+                                      ? staffFormData.serviceIds.filter((id) => id !== svc.id)
+                                      : [...staffFormData.serviceIds, svc.id];
+                                    setStaffFormData({ ...staffFormData, serviceIds: next });
+                                  }}
+                                  className={`px-2.5 py-1 text-xs rounded-full border font-medium transition-colors ${
+                                    isSelected
+                                      ? 'bg-primary text-white border-primary'
+                                      : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:border-primary dark:hover:border-primary'
+                                  }`}
+                                >
+                                  {svc.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  /* No groups — flat list */
+                  <div className="flex flex-wrap gap-1.5">
+                    {services.filter((s) => s.isActive).map((svc) => {
+                      const isSelected = staffFormData.serviceIds.includes(svc.id);
+                      return (
+                        <button
+                          key={svc.id}
+                          type="button"
+                          onClick={() => {
+                            const next = isSelected
+                              ? staffFormData.serviceIds.filter((id) => id !== svc.id)
+                              : [...staffFormData.serviceIds, svc.id];
+                            setStaffFormData({ ...staffFormData, serviceIds: next });
+                          }}
+                          className={`px-2.5 py-1 text-xs rounded-full border font-medium transition-colors ${
+                            isSelected
+                              ? 'bg-primary text-white border-primary'
+                              : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:border-primary dark:hover:border-primary'
+                          }`}
+                        >
+                          {svc.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">

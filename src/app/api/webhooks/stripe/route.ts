@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { revalidateTag } from 'next/cache';
 import { finalizeDealPurchaseFromCheckoutSession, finalizeDealPurchaseFromPaymentIntent } from '@/lib/deal-purchases';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
+import { REFERRAL_COMMISSION_PERCENT } from '@/lib/referral-config';
 
 function getPlanFromPriceId(priceId: string): string | null {
   const entry = Object.entries(PRICING_PLANS).find(
@@ -238,45 +239,53 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
     update: {},
   });
 
-  // Credit referrer $15 on the referee's first paid invoice
+  // Credit referrer a percentage of the referee's first paid invoice
   if (invoice.amount_paid > 0) {
     const referral = await prisma.referral.findFirst({
       where: { refereeId: business.id, status: 'pending' },
       include: { referrer: { select: { id: true, stripeCustomerId: true } } },
     });
     if (referral?.referrer.stripeCustomerId) {
+      // Compute commission: percentage of the actual invoice amount (cents → dollars)
+      const commissionCents = Math.round(invoice.amount_paid * REFERRAL_COMMISSION_PERCENT);
+      const commissionDollars = commissionCents / 100;
       try {
         await stripe.customers.createBalanceTransaction(
           referral.referrer.stripeCustomerId,
-          { amount: -1500, currency: 'usd', description: 'Referral reward: new subscriber' }
+          {
+            amount: -commissionCents,
+            currency: 'usd',
+            description: `Referral reward: ${Math.round(REFERRAL_COMMISSION_PERCENT * 100)}% of referee's first month`,
+          }
         );
         await prisma.$transaction([
           prisma.referral.update({
             where: { id: referral.id },
-            data: { status: 'credited', creditedAt: new Date() },
+            data: { status: 'credited', creditedAt: new Date(), creditAmount: commissionDollars },
           }),
           prisma.business.update({
             where: { id: referral.referrerId },
-            data: { referralCredits: { increment: 15 } },
+            data: { referralCredits: { increment: commissionDollars } },
           }),
         ]);
-        console.log(`✅ Referral credit applied: $15 to business ${referral.referrerId}`);
+        console.log(`✅ Referral credit applied: $${commissionDollars.toFixed(2)} to business ${referral.referrerId}`);
       } catch (err) {
         console.warn('⚠️  Referral credit failed:', err);
       }
     }
 
-    // Mark affiliate signup as earned (owner manually pays via their payoutInfo)
+    // Mark affiliate signup as earned and record the amount (owner is paid manually)
     const affSignup = await prisma.affiliateSignup.findFirst({
       where: { businessId: business.id, status: 'pending' },
     });
     if (affSignup) {
+      const affCommissionDollars = Math.round(invoice.amount_paid * REFERRAL_COMMISSION_PERCENT) / 100;
       try {
         await prisma.affiliateSignup.update({
           where: { id: affSignup.id },
-          data: { status: 'earned', earnedAt: new Date() },
+          data: { status: 'earned', earnedAt: new Date(), earnAmount: affCommissionDollars },
         });
-        console.log(`✅ Affiliate signup earned: ${affSignup.affiliateId}`);
+        console.log(`✅ Affiliate signup earned: $${affCommissionDollars.toFixed(2)} for ${affSignup.affiliateId}`);
       } catch (err) {
         console.warn('⚠️  Affiliate signup update failed:', err);
       }

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 
 interface Customer {
   id: string;
@@ -342,10 +343,9 @@ export default function CheckInsPage() {
               {/* Service */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Service (Optional)</label>
-                <select
+                <CustomSelect
                   value={formData.serviceId}
-                  onChange={(e) => {
-                    const serviceId = e.target.value;
+                  onChange={(serviceId) => {
                     setFormData({ ...formData, serviceId });
                     // Auto-fill amount if service has a price
                     const service = services.find(s => s.id === serviceId);
@@ -353,32 +353,23 @@ export default function CheckInsPage() {
                       setFormData(prev => ({ ...prev, serviceId, amountSpent: service.price!.toString() }));
                     }
                   }}
-                  className="input"
-                >
-                  <option value="">No service</option>
-                  {services.map((service) => (
-                    <option key={service.id} value={service.id}>
-                      {service.name} {service.price ? `- $${service.price.toFixed(2)}` : ''}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="No service"
+                  options={services.map((service) => ({
+                    value: service.id,
+                    label: service.name + (service.price ? ` - $${service.price.toFixed(2)}` : ''),
+                  }))}
+                />
               </div>
 
               {/* Staff */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Staff (Optional)</label>
-                <select
+                <CustomSelect
                   value={formData.staffId}
-                  onChange={(e) => setFormData({ ...formData, staffId: e.target.value })}
-                  className="input"
-                >
-                  <option value="">No staff</option>
-                  {staff.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.fullName}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setFormData({ ...formData, staffId: val })}
+                  placeholder="No staff"
+                  options={staff.map((member) => ({ value: member.id, label: member.fullName }))}
+                />
               </div>
 
               {/* Amount Spent */}

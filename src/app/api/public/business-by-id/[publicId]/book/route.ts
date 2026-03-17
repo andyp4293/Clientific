@@ -4,6 +4,7 @@ import { sendAppointmentConfirmation, formatPhoneNumber } from '@/lib/twilio';
 import { sendNewBookingEmail } from '@/lib/email';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
+import { validateStaffCanPerformServices } from '@/lib/staff-service-validation';
 
 // POST - Create public booking (no auth required)
 export async function POST(
@@ -114,20 +115,15 @@ export async function POST(
       );
     }
 
-    // Verify staff belongs to this business (if provided)
+    // Verify staff belongs to this business and can perform all selected services
     if (staffId && staffId !== 'anyone') {
-      const staff = await prisma.staff.findFirst({
-        where: {
-          id: staffId,
-          businessId: business.id,
-        },
+      const staffError = await validateStaffCanPerformServices({
+        staffId,
+        businessId: business.id,
+        serviceIds,
       });
-
-      if (!staff) {
-        return NextResponse.json(
-          { error: 'Staff member not found' },
-          { status: 404 }
-        );
+      if (staffError) {
+        return NextResponse.json({ error: staffError.error }, { status: staffError.status });
       }
     }
 

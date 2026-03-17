@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import AddressAutocomplete, { type AddressComponents } from '@/components/ui/AddressAutocomplete';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { toast } from 'sonner';
 import Cropper from 'react-easy-crop';
@@ -544,17 +545,11 @@ export default function SettingsPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Business Type *
                 </label>
-                <select
+                <CustomSelect
                   value={formData.businessType || ''}
-                  onChange={(e) => handleInputChange('businessType', e.target.value)}
-                  className="input"
-                >
-                  {businessTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => handleInputChange('businessType', val)}
+                  options={businessTypes.map((type) => ({ value: type, label: type }))}
+                />
               </div>
 
               {/* Phone */}
@@ -642,19 +637,19 @@ export default function SettingsPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Timezone
                 </label>
-                <select
+                <CustomSelect
                   value={formData.timezone || ''}
-                  onChange={(e) => handleInputChange('timezone', e.target.value)}
-                  className="input"
-                >
-                  <option value="America/New_York">Eastern Time</option>
-                  <option value="America/Chicago">Central Time</option>
-                  <option value="America/Denver">Mountain Time</option>
-                  <option value="America/Los_Angeles">Pacific Time</option>
-                  <option value="America/Phoenix">Arizona</option>
-                  <option value="America/Anchorage">Alaska</option>
-                  <option value="Pacific/Honolulu">Hawaii</option>
-                </select>
+                  onChange={(val) => handleInputChange('timezone', val)}
+                  options={[
+                    { value: 'America/New_York', label: 'Eastern Time' },
+                    { value: 'America/Chicago', label: 'Central Time' },
+                    { value: 'America/Denver', label: 'Mountain Time' },
+                    { value: 'America/Los_Angeles', label: 'Pacific Time' },
+                    { value: 'America/Phoenix', label: 'Arizona' },
+                    { value: 'America/Anchorage', label: 'Alaska' },
+                    { value: 'Pacific/Honolulu', label: 'Hawaii' },
+                  ]}
+                />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Selecting an address auto-fills timezone. You can still override it here.
                 </p>

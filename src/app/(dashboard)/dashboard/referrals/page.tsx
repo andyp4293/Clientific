@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Gift, Copy, Download, Users, CheckCircle, Clock, TrendingUp } from 'lucide-react';
+import { REFERRAL_COMMISSION_DISPLAY, REFERRAL_BONUS_TRIAL_DAYS } from '@/lib/referral-config';
 
 interface Referral {
   id: string;
@@ -64,9 +65,9 @@ export default function ReferralsPage() {
           <h1 className="text-xl font-bold tracking-tight">Refer &amp; Earn</h1>
         </div>
         <p className="text-white/80 text-sm leading-relaxed mb-5">
-          Invite another business owner to Clientific. When they become a paying subscriber, you get{' '}
-          <span className="text-white font-semibold">$15 off your next bill</span> and they get{' '}
-          <span className="text-white font-semibold">30 extra free days</span> to try it out.
+          Invite another business owner to Clientific. When they become a paying subscriber, you earn{' '}
+          <span className="text-white font-semibold">{REFERRAL_COMMISSION_DISPLAY} of their first month</span> as a credit on your next bill — so higher plans mean a bigger reward. They also get{' '}
+          <span className="text-white font-semibold">{REFERRAL_BONUS_TRIAL_DAYS - 14} extra free days</span> to try it out.
         </p>
 
         {/* Stats row */}
@@ -156,8 +157,8 @@ export default function ReferralsPage() {
         <div className="space-y-3">
           {[
             'Share your unique link with another business owner',
-            'They sign up and get 30 extra free trial days',
-            'Once they subscribe, you automatically get $15 off your next bill',
+            `They sign up and get ${REFERRAL_BONUS_TRIAL_DAYS - 14} extra free trial days`,
+            `Once they subscribe, you automatically earn ${REFERRAL_COMMISSION_DISPLAY} of their first month's payment as a bill credit — the higher their plan, the more you earn`,
           ].map((text, i) => (
             <div key={i} className="flex items-start gap-3">
               <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
@@ -233,7 +234,7 @@ export default function ReferralsPage() {
       </div>
 
       <p className="text-xs text-gray-400 dark:text-gray-500 mt-4 text-center leading-relaxed">
-        Credits apply automatically to your next invoice. No limit on referrals.
+        Credits apply automatically to your next invoice. No limit on referrals — each one earns {REFERRAL_COMMISSION_DISPLAY} of their first month.
       </p>
     </div>
   );

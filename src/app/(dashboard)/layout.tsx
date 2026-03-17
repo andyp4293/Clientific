@@ -141,7 +141,7 @@ export default async function DashboardLayout({
 
       <div
         className="dashboard-nav-bar lg:hidden fixed bottom-0 left-0 right-0 brand-panel border-t border-gray-200 dark:border-gray-800 z-50"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 2px)' }}
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 4px)' }}
       >
         <MobileBottomNav />
       </div>

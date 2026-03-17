@@ -5,6 +5,7 @@ import { signIn, useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { APP_NAME } from '@/lib/brand';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 
 type Step = 1 | 2 | 3;
 
@@ -559,19 +560,13 @@ function RegisterForm() {
                 <label htmlFor="businessType" className="label">
                   Business Type *
                 </label>
-                <select
+                <CustomSelect
                   id="businessType"
                   value={formData.businessType}
-                  onChange={(e) => updateFormData({ businessType: e.target.value })}
-                  className="input"
+                  onChange={(val) => updateFormData({ businessType: val })}
+                  options={businessTypes.map((type) => ({ value: type, label: type }))}
                   required
-                >
-                  {businessTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
             </div>
           )}

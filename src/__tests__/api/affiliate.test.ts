@@ -282,7 +282,7 @@ describe('Stripe webhook — invoice.payment_succeeded affiliate tracking', () =
 
     expect(prisma.affiliateSignup.update).toHaveBeenCalledWith({
       where: { id: 'asup-1' },
-      data: { status: 'earned', earnedAt: expect.any(Date) },
+      data: { status: 'earned', earnedAt: expect.any(Date), earnAmount: expect.any(Number) },
     });
   });
 

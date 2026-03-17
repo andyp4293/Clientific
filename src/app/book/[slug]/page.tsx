@@ -52,6 +52,7 @@ interface ServiceGroup {
 interface Staff {
   id: string;
   fullName: string;
+  role?: string | null;
 }
 
 interface Deal {
@@ -182,14 +183,20 @@ export default function PublicBookingPage() {
     enabled: !!businessData,
   });
 
-  // Fetch staff
+  // Fetch staff — filtered to those who can perform the selected services
+  const selectedServiceIds = selectedServices.map((s) => s.id);
   const { data: staffData } = useQuery({
-    queryKey: ['staff', slugOrPublicId],
+    queryKey: ['staff', slugOrPublicId, selectedServiceIds.join(',')],
     queryFn: async () => {
-      const res = await fetch(`${apiBase}/staff`);
+      const params = new URLSearchParams();
+      if (selectedServiceIds.length > 0) {
+        params.set('serviceIds', selectedServiceIds.join(','));
+      }
+      const res = await fetch(`${apiBase}/staff?${params}`);
       if (!res.ok) throw new Error('Failed to fetch staff');
       return res.json();
     },
+    // Fetch eagerly once business is loaded so step 2 is instant
     enabled: !!businessData,
   });
 
@@ -273,6 +280,9 @@ export default function PublicBookingPage() {
   const unavailableSet = new Set(unavailableSlots);
 
   const toggleService = (service: Service) => {
+    // Reset staff selection when services change — the previously chosen staff
+    // may not be able to perform the new service combination.
+    setSelectedStaff(null);
     setSelectedServices((prev) => toggleServiceSelection(prev, service));
   };
 
@@ -516,7 +526,15 @@ export default function PublicBookingPage() {
           {/* Step 2: Select Staff */}
           {step === 2 && (
             <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6">Choose Staff Member</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">Choose Staff Member</h2>
+              {staff.length > 0 && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-5 flex items-center gap-1.5">
+                  <svg className="w-4 h-4 shrink-0 text-primary dark:text-primary-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Showing staff available for your selected {selectedServices.length === 1 ? 'service' : 'services'}
+                </p>
+              )}
               <div className="space-y-3">
                 <button
                   onClick={() => setSelectedStaff('anyone')}
@@ -541,13 +559,22 @@ export default function PublicBookingPage() {
                     }`}
                   >
                     <h3 className="font-semibold text-gray-900 dark:text-gray-100">{member.fullName}</h3>
+                    {member.role && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{member.role}</p>
+                    )}
                   </button>
                 ))}
+
+                {staff.length === 0 && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                    No specific staff available for these services — select "Anyone Available" above.
+                  </p>
+                )}
               </div>
 
               <div className="flex gap-3 mt-6">
                 <button
-                  onClick={() => setStep(1)}
+                  onClick={() => { setStep(1); setSelectedStaff(null); }}
                   className="flex-1 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   ← Back

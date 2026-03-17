@@ -5,6 +5,11 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: { findUnique: vi.fn() },
     staff: { findMany: vi.fn(), create: vi.fn(), count: vi.fn() },
+    staffService: { deleteMany: vi.fn(), createMany: vi.fn() },
+    $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn({
+      staff: { create: vi.fn(), update: vi.fn(), findUniqueOrThrow: vi.fn() },
+      staffService: { deleteMany: vi.fn(), createMany: vi.fn() },
+    })),
   },
 }));
 
@@ -27,7 +32,7 @@ import { GET, POST } from './route';
 const mockSession = getServerSession as ReturnType<typeof vi.fn>;
 const mockBusiness = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockStaffFindMany = prisma.staff.findMany as ReturnType<typeof vi.fn>;
-const mockStaffCreate = prisma.staff.create as ReturnType<typeof vi.fn>;
+const mockTransaction = prisma.$transaction as ReturnType<typeof vi.fn>;
 
 function makeRequest(body: Record<string, unknown> = { fullName: 'John Doe' }) {
   return new NextRequest('http://localhost/api/staff', {
@@ -56,7 +61,7 @@ describe('GET /api/staff', () => {
 
   it('returns staff list for authenticated business', async () => {
     mockSession.mockResolvedValue(activeSession);
-    mockStaffFindMany.mockResolvedValue([{ id: 'staff-1', fullName: 'John Doe' }]);
+    mockStaffFindMany.mockResolvedValue([{ id: 'staff-1', fullName: 'John Doe', serviceAssignments: [] }]);
     const res = await GET(makeGetRequest());
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -131,8 +136,30 @@ describe('POST /api/staff', () => {
         subscriptionPlan: 'starter',
         _count: { customers: 0, staff: 0, services: 0 },
       });
-    const fakeStaff = { id: 'staff-1', fullName: 'John Doe', businessId: 'biz-1' };
-    mockStaffCreate.mockResolvedValue(fakeStaff);
+    const fakeStaff = {
+      id: 'staff-1',
+      fullName: 'John Doe',
+      businessId: 'biz-1',
+      email: null,
+      phone: null,
+      role: null,
+      active: true,
+      workDays: [0, 1, 2, 3, 4, 5, 6],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      serviceAssignments: [],
+    };
+    mockTransaction.mockImplementationOnce(async (fn: any) => {
+      const tx = {
+        staff: {
+          create: vi.fn().mockResolvedValue(fakeStaff),
+          update: vi.fn(),
+          findUniqueOrThrow: vi.fn().mockResolvedValue(fakeStaff),
+        },
+        staffService: { deleteMany: vi.fn(), createMany: vi.fn() },
+      };
+      return fn(tx);
+    });
     const res = await POST(makeRequest({ fullName: 'John Doe' }));
     expect(res.status).toBe(201);
     const body = await res.json();

@@ -5,6 +5,20 @@ import { authOptions } from '../../auth/[...nextauth]/route';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 
+const STAFF_SELECT = {
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  businessId: true,
+  fullName: true,
+  email: true,
+  phone: true,
+  role: true,
+  active: true,
+  workDays: true,
+  serviceAssignments: { select: { serviceId: true } },
+} as const;
+
 // PATCH - Update staff member
 export async function PATCH(
   req: NextRequest,
@@ -14,10 +28,7 @@ export async function PATCH(
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const subscriptionError = await requireActiveSubscription(session.user.id);
@@ -25,7 +36,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { fullName, email, phone, role, bio, isActive, workDays } = body;
+    const { fullName, email, phone, role, bio, isActive, workDays, serviceIds } = body;
 
     const blockedField = getBlockedFieldLabel([
       { label: 'Staff name', value: fullName },
@@ -33,47 +44,58 @@ export async function PATCH(
       { label: 'Bio', value: bio },
     ]);
     if (blockedField) {
-      return NextResponse.json(
-        { error: blockedContentError(blockedField) },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
     }
 
     // Verify staff belongs to this business
-    const existingStaff = await prisma.staff.findUnique({
-      where: { id },
+    const existingStaff = await prisma.staff.findUnique({ where: { id } });
+    if (!existingStaff || existingStaff.businessId !== session.user.id) {
+      return NextResponse.json({ error: 'Staff member not found' }, { status: 404 });
+    }
+
+    const staff = await prisma.$transaction(async (tx) => {
+      const updated = await tx.staff.update({
+        where: { id },
+        data: {
+          fullName,
+          email,
+          phone,
+          role,
+          active: isActive,
+          ...(Array.isArray(workDays) && { workDays }),
+        },
+      });
+
+      // serviceIds present in the body → replace assignments wholesale.
+      // serviceIds absent/undefined → leave assignments untouched.
+      if (Array.isArray(serviceIds)) {
+        await tx.staffService.deleteMany({ where: { staffId: id } });
+        if (serviceIds.length > 0) {
+          await tx.staffService.createMany({
+            data: serviceIds.map((serviceId: string) => ({ staffId: id, serviceId })),
+            skipDuplicates: true,
+          });
+        }
+      }
+
+      return tx.staff.findUniqueOrThrow({
+        where: { id: updated.id },
+        select: STAFF_SELECT,
+      });
     });
 
-    if (!existingStaff || existingStaff.businessId !== session.user.id) {
-      return NextResponse.json(
-        { error: 'Staff member not found' },
-        { status: 404 }
-      );
-    }    const staff = await prisma.staff.update({
-      where: { id },
-      data: {
-        fullName,
-        email,
-        phone,
-        role,
-        active: isActive,
-        ...(Array.isArray(workDays) && { workDays }),
+    const { serviceAssignments, active, ...rest } = staff;
+    return NextResponse.json({
+      staff: {
+        ...rest,
+        active,
+        isActive: active,
+        serviceIds: serviceAssignments.map((a) => a.serviceId),
       },
     });
-
-    // Map database 'active' field to frontend 'isActive'
-    const staffWithIsActive = {
-      ...staff,
-      isActive: staff.active,
-    };
-
-    return NextResponse.json({ staff: staffWithIsActive });
   } catch (error: any) {
     console.error('Error updating staff:', error);
-    return NextResponse.json(
-      { error: 'Failed to update staff member' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to update staff member' }, { status: 500 });
   }
 }
 
@@ -86,10 +108,7 @@ export async function DELETE(
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const subscriptionError = await requireActiveSubscription(session.user.id);
@@ -98,24 +117,16 @@ export async function DELETE(
     const { id } = await params;
 
     // Verify staff belongs to this business
-    const existingStaff = await prisma.staff.findUnique({
-      where: { id },
-    });
-
+    const existingStaff = await prisma.staff.findUnique({ where: { id } });
     if (!existingStaff || existingStaff.businessId !== session.user.id) {
-      return NextResponse.json(
-        { error: 'Staff member not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Staff member not found' }, { status: 404 });
     }
 
-    // Check if staff has any appointments
+    // Check if staff has any active appointments
     const appointmentCount = await prisma.appointment.count({
       where: {
         staffId: id,
-        status: {
-          in: ['scheduled', 'confirmed'],
-        },
+        status: { in: ['scheduled', 'confirmed'] },
       },
     });
 
@@ -126,16 +137,12 @@ export async function DELETE(
       );
     }
 
-    await prisma.staff.delete({
-      where: { id },
-    });
+    // StaffService rows cascade-delete automatically via schema onDelete: Cascade
+    await prisma.staff.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting staff:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete staff member' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to delete staff member' }, { status: 500 });
   }
 }

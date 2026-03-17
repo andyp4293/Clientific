@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getPublicStaff } from '@/lib/public-staff';
 
 // GET - Get staff for a business (public)
 export async function GET(
@@ -15,35 +16,22 @@ export async function GET(
     });
 
     if (!business) {
-      return NextResponse.json(
-        { error: 'Business not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
     const infoOnly = req.nextUrl.searchParams.get('infoOnly') === 'true';
 
     if (!business.enableOnlineBooking && !infoOnly) {
-      return NextResponse.json(
-        { error: 'Online booking is not enabled' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Online booking is not enabled' }, { status: 403 });
     }
 
-    const staff = await prisma.staff.findMany({
-      where: {
-        businessId: business.id,
-        active: true,
-      },
-      select: {
-        id: true,
-        fullName: true,
-        role: true,
-      },
-      orderBy: {
-        fullName: 'asc',
-      },
-    });
+    // Optional: filter to staff who can perform all of these service IDs
+    const serviceIdsParam = req.nextUrl.searchParams.get('serviceIds');
+    const requiredServiceIds = serviceIdsParam
+      ? serviceIdsParam.split(',').filter(Boolean)
+      : [];
+
+    const staff = await getPublicStaff({ businessId: business.id, requiredServiceIds });
 
     return NextResponse.json({ staff });
   } catch (error: any) {
