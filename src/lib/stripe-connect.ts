@@ -92,6 +92,32 @@ export async function fetchConnectAccountOverview(accountId: string) {
   };
 }
 
+export async function fetchConnectPayoutsOverview(accountId: string) {
+  const [balance, payouts] = await Promise.all([
+    stripe.balance.retrieve({}, { stripeAccount: accountId }),
+    stripe.payouts.list(
+      { limit: 20, expand: ['data.destination'] },
+      { stripeAccount: accountId }
+    ),
+  ]);
+
+  return {
+    balance,
+    payouts: payouts.data.map((payout) => {
+      const destination = payout.destination as Stripe.BankAccount | null;
+      return {
+        id: payout.id,
+        amount: payout.amount,
+        currency: payout.currency,
+        arrivalDate: payout.arrival_date,
+        status: payout.status,
+        bankLast4: destination?.last4 ?? null,
+        bankName: destination?.bank_name ?? null,
+      };
+    }),
+  };
+}
+
 export async function createConnectAccountSession(accountId: string) {
   return stripe.accountSessions.create({
     account: accountId,
