@@ -1,7 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx vitest:*)"
+      "Bash(npx vitest:*)",
+      "Bash(wc -l \"c:\\\\Users\\\\andyp\\\\Desktop\\\\Clientific\\\\src\\\\app\\\\\\(dashboard\\)\\\\dashboard\\\\services\\\\page.tsx\")",
+      "WebFetch(domain:cluely.com)",
+      "WebFetch(domain:brandfetch.com)",
+      "WebFetch(domain:logosystem.co)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:x.com)",
+      "WebFetch(domain:dribbble.com)",
+      "WebFetch(domain:www.lapa.ninja)"
     ]
   }
 }

@@ -684,11 +684,17 @@ export default function ServicesPage() {
     mutationFn: async (data: typeof staffFormData) => {
       const url = editingStaff ? `/api/staff/${editingStaff.id}` : '/api/staff';
       const method = editingStaff ? 'PATCH' : 'POST';
-      
+
+      // If all active services are selected, send [] (no restrictions) so new services
+      // added in future are automatically available to this staff member.
+      const allActiveIds = services.filter((s) => s.isActive).map((s) => s.id);
+      const allSelected = allActiveIds.length > 0 && allActiveIds.every((id) => data.serviceIds.includes(id));
+      const payload = { ...data, serviceIds: allSelected ? [] : data.serviceIds };
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       
       if (!res.ok) {
@@ -748,6 +754,7 @@ export default function ServicesPage() {
   };
 
   const openStaffModal = (staffMember?: Staff) => {
+    const allActiveIds = services.filter((s) => s.isActive).map((s) => s.id);
     if (staffMember) {
       setEditingStaff(staffMember);
       setStaffFormData({
@@ -758,7 +765,10 @@ export default function ServicesPage() {
         bio: staffMember.bio || '',
         isActive: staffMember.isActive,
         workDays: staffMember.workDays ?? ALL_DAYS,
-        serviceIds: staffMember.serviceIds ?? [],
+        // Empty serviceIds = no restrictions = highlight all services in the UI
+        serviceIds: (staffMember.serviceIds && staffMember.serviceIds.length > 0)
+          ? staffMember.serviceIds
+          : allActiveIds,
       });
     } else {
       setEditingStaff(null);
@@ -770,7 +780,7 @@ export default function ServicesPage() {
         bio: '',
         isActive: true,
         workDays: ALL_DAYS,
-        serviceIds: [],
+        serviceIds: allActiveIds,
       });
     }
     setModalType('staff');
@@ -1186,22 +1196,29 @@ export default function ServicesPage() {
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Services This Staff Can Perform</p>
                   <button
                     type="button"
-                    onClick={() => setStaffFormData({ ...staffFormData, serviceIds: [] })}
+                    onClick={() => {
+                      const allIds = services.filter((s) => s.isActive).map((s) => s.id);
+                      setStaffFormData({ ...staffFormData, serviceIds: allIds });
+                    }}
                     className="text-xs text-primary dark:text-primary-300 hover:underline"
                   >
                     All services
                   </button>
                 </div>
 
-                {staffFormData.serviceIds.length === 0 ? (
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    No restrictions — this staff member can be booked for any service. Select specific services below to restrict.
-                  </p>
-                ) : (
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Restricted to {staffFormData.serviceIds.length} service{staffFormData.serviceIds.length !== 1 ? 's' : ''}. Customers can only book this staff member for the selected services.
-                  </p>
-                )}
+                {(() => {
+                  const allActiveIds = services.filter((s) => s.isActive).map((s) => s.id);
+                  const allSelected = allActiveIds.length > 0 && allActiveIds.every((id) => staffFormData.serviceIds.includes(id));
+                  return (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {allSelected
+                        ? 'All services selected — this staff member can be booked for everything.'
+                        : staffFormData.serviceIds.length === 0
+                          ? 'No services selected — deselecting all will prevent this staff member from being booked.'
+                          : `Restricted to ${staffFormData.serviceIds.length} service${staffFormData.serviceIds.length !== 1 ? 's' : ''}. Customers can only book this staff member for the selected services.`}
+                    </p>
+                  );
+                })()}
 
                 {/* Group + service toggles */}
                 {groups.length > 0 ? (

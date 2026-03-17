@@ -1,4 +1,5 @@
 import twilio from 'twilio';
+import { PLATFORM_SMS_NUMBER } from '@/lib/sms-config';
 
 interface SendSMSParams {
   to: string;
@@ -158,8 +159,6 @@ function formatTime(date: Date, timezone?: string): string {
 export async function sendSMS({ to, message, from }: SendSMSParams): Promise<SMSResult> {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER || null;
-
   if (!accountSid || !authToken) {
     console.log('SMS disabled (Twilio not configured)');
     console.log('Would have sent to:', to);
@@ -172,74 +171,33 @@ export async function sendSMS({ to, message, from }: SendSMSParams): Promise<SMS
     return { success: false, error: 'Invalid phone number format' };
   }
 
-  const client = twilio(accountSid, authToken);
-  const formattedPhone = formatPhoneNumber(to);
-  const preferredFrom = from && isValidPhoneNumber(from) ? formatPhoneNumber(from) : null;
-  const fallbackFrom = twilioPhoneNumber && isValidPhoneNumber(twilioPhoneNumber)
-    ? formatPhoneNumber(twilioPhoneNumber)
+  // Always send from the platform number (PLATFORM_SMS_NUMBER / TWILIO_PHONE_NUMBER).
+  // Per-business Vapi numbers are voice-only and cannot send SMS reliably.
+  // To change the sender number, update TWILIO_PHONE_NUMBER in env vars or sms-config.ts.
+  const sender = isValidPhoneNumber(PLATFORM_SMS_NUMBER)
+    ? formatPhoneNumber(PLATFORM_SMS_NUMBER)
     : null;
 
-  if (from && !preferredFrom) {
-    console.warn(
-      'SMS sender fallback',
-      JSON.stringify({
-        reason: 'invalid_preferred_from',
-        preferredFrom: from,
-        fallbackFrom,
-      })
-    );
-  }
-
-  const primarySender = preferredFrom || fallbackFrom;
-  if (!primarySender) {
-    console.log('SMS disabled (Twilio sender number not configured)');
+  if (!sender) {
+    console.log('SMS disabled (PLATFORM_SMS_NUMBER not configured)');
     console.log('Would have sent to:', to);
     console.log('Message:', message);
     return { success: false, error: 'Twilio not configured' };
   }
 
+  const client = twilio(accountSid, authToken);
+  const formattedPhone = formatPhoneNumber(to);
+
   try {
     const result = await client.messages.create({
       body: message,
-      from: primarySender,
+      from: sender,
       to: formattedPhone,
     });
 
     console.log('SMS sent successfully:', result.sid);
     return { success: true, sid: result.sid };
   } catch (error: any) {
-    const shouldRetryWithFallback =
-      !!preferredFrom &&
-      !!fallbackFrom &&
-      fallbackFrom !== preferredFrom;
-
-    if (shouldRetryWithFallback) {
-      console.warn(
-        'SMS sender fallback',
-        JSON.stringify({
-          reason: 'preferred_send_failed',
-          preferredFrom,
-          fallbackFrom,
-          error: error?.message || 'unknown_error',
-        })
-      );
-
-      try {
-        const fallbackResult = await client.messages.create({
-          body: message,
-          from: fallbackFrom,
-          to: formattedPhone,
-        });
-        console.log('SMS sent successfully with fallback sender:', fallbackResult.sid);
-        return { success: true, sid: fallbackResult.sid };
-      } catch (fallbackError: any) {
-        console.error('Failed to send SMS with fallback sender:', fallbackError);
-        return {
-          success: false,
-          error: fallbackError?.message || 'Failed to send SMS',
-        };
-      }
-    }
 
     console.error('Failed to send SMS:', error);
     return {
