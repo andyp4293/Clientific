@@ -242,14 +242,22 @@ function LoginForm() {
           )}
 
           {canResendVerification && (
-            <button
-              type="button"
-              onClick={handleResendVerification}
-              className="mt-3 text-sm font-medium text-primary dark:text-primary-300 hover:text-primary-700 dark:hover:text-primary-200"
-              disabled={isResendingVerification}
-            >
-              {isResendingVerification ? 'Sending verification code...' : 'Resend verification code'}
-            </button>
+            <div className="mt-3 flex flex-col items-start gap-2">
+              <Link
+                href={`/verify-email${email ? `?email=${encodeURIComponent(email.toLowerCase())}` : ''}`}
+                className="text-sm font-medium text-primary dark:text-primary-300 hover:text-primary-700 dark:hover:text-primary-200"
+              >
+                Enter verification code
+              </Link>
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                className="text-sm font-medium text-primary dark:text-primary-300 hover:text-primary-700 dark:hover:text-primary-200"
+                disabled={isResendingVerification}
+              >
+                {isResendingVerification ? 'Sending verification code...' : 'Resend verification code'}
+              </button>
+            </div>
           )}
 
           <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">

@@ -11,6 +11,7 @@ vi.mock('@/lib/prisma', () => ({
       findMany: vi.fn(),
     },
     dealNotificationSend: {
+      findMany: vi.fn(),
       createMany: vi.fn(),
     },
     customer: {
@@ -58,8 +59,8 @@ vi.mock('@/lib/twilio', () => ({
   ),
 }));
 
-vi.mock('@/lib/brand', () => ({
-  APP_URL: 'https://clientific.app',
+vi.mock('@/lib/app-url', () => ({
+  getAppBaseUrlFromRequest: vi.fn().mockReturnValue('https://clientific.app'),
 }));
 
 import { getServerSession } from 'next-auth';
@@ -99,6 +100,7 @@ describe('POST /api/deals/[id]/notify', () => {
     vi.mocked(prisma.deal.findUnique).mockResolvedValue(DEAL as any);
     vi.mocked(prisma.deal.updateMany).mockResolvedValue({ count: 1 } as any);
     vi.mocked(prisma.dealRedemption.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.dealNotificationSend.findMany).mockResolvedValue([]);
     vi.mocked(prisma.dealNotificationSend.createMany).mockResolvedValue({ count: 0 } as any);
     vi.mocked(prisma.customer.findMany).mockResolvedValue([]);
     vi.mocked(claimDealForCustomer).mockResolvedValue({
@@ -193,11 +195,8 @@ describe('POST /api/deals/[id]/notify', () => {
       { id: 'cust-1', phone: '5551111111', name: 'Jane Doe' },
       { id: 'cust-2', phone: '5552222222', name: 'Alex' },
     ] as any);
-    vi.mocked(prisma.dealRedemption.findMany).mockResolvedValue([
-      {
-        customerId: 'cust-1',
-        customer: { phone: '5551111111' },
-      },
+    vi.mocked(prisma.dealNotificationSend.findMany).mockResolvedValue([
+      { customerId: 'cust-1', customerPhone: '5551111111' },
     ] as any);
 
     const res = await POST(notifyReq(), ctx('deal-1'));
@@ -222,11 +221,8 @@ describe('POST /api/deals/[id]/notify', () => {
       { id: 'cust-new', phone: '5551111111', name: 'Jane Duplicate' },
       { id: 'cust-2', phone: '5552222222', name: 'Alex' },
     ] as any);
-    vi.mocked(prisma.dealRedemption.findMany).mockResolvedValue([
-      {
-        customerId: 'cust-old',
-        customer: { phone: '5551111111' },
-      },
+    vi.mocked(prisma.dealNotificationSend.findMany).mockResolvedValue([
+      { customerId: 'cust-old', customerPhone: '5551111111' },
     ] as any);
 
     const res = await POST(notifyReq(), ctx('deal-1'));
