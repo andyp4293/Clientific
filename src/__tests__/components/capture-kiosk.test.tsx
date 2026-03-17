@@ -19,6 +19,7 @@ const baseConfig = {
     id: 'deal-1',
     title: 'Spring Special',
     description: null,
+    deliveryType: 'code_claim',
     discountLabel: '20% off',
     expiresAt: '2026-03-20T00:00:00.000Z',
     serviceName: 'Gel manicure',
@@ -36,6 +37,7 @@ describe('CaptureKiosk', () => {
       json: async () => ({
         success: true,
         deal: {
+          deliveryType: 'code_claim',
           code: 'ABCD1234',
           title: 'Spring Special',
           expiresAt: '2026-03-20T00:00:00.000Z',

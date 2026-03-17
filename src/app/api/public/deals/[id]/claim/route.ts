@@ -20,6 +20,23 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    const deal = await prisma.deal.findUnique({
+      where: { id },
+      select: { deliveryType: true },
+    });
+
+    if (!deal) {
+      return NextResponse.json({ error: 'Deal not found' }, { status: 404 });
+    }
+
+    if (deal.deliveryType === 'purchase_link') {
+      return NextResponse.json(
+        { error: 'This deal must be purchased instead of claimed' },
+        { status: 400 }
+      );
+    }
+
     const claim = await claimDealForCustomer({
       dealId: id,
       customerName,

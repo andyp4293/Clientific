@@ -13,9 +13,11 @@ type SuccessState = {
   submittedName: string;
   submittedPhoneLast4: string;
   deal: {
-    code: string;
+    deliveryType: string;
     title: string;
-    expiresAt: string;
+    code?: string;
+    dealUrl?: string;
+    expiresAt?: string;
   } | null;
   dealIssue: string | null;
   confirmationSent: boolean;
@@ -48,7 +50,9 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
     ? `Join ${config.business.name}'s Clientific text list to receive ${config.deal?.discountLabel} on ${config.deal?.serviceName ?? 'featured services'} plus future service promos and updates.`
     : `Join ${config.business.name}'s Clientific text list for service specials, last-minute openings, and important business updates.`;
   const mobileIntroDetail = hasSelectedDeal
-    ? "Enter your info once and we'll text your code right after you submit."
+    ? config.deal?.deliveryType === 'purchase_link'
+      ? "Enter your info once and we'll text your purchase link right after you submit."
+      : "Enter your info once and we'll text your code right after you submit."
     : "Enter your info once and you'll be first to hear about new offers by text.";
 
   const consentLabel = useMemo(() => {
@@ -182,7 +186,7 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
                 <div className="max-w-2xl space-y-4">
                   <p className="text-lg text-white/92 sm:text-xl">
                     {config.deal
-                      ? `${config.deal.discountLabel} on ${config.deal.serviceName ?? 'featured services'} from ${config.business.name}. Enter your info and we'll text your code right away.`
+                      ? `${config.deal.discountLabel} on ${config.deal.serviceName ?? 'featured services'} from ${config.business.name}. Enter your info and we'll text your ${config.deal.deliveryType === 'purchase_link' ? 'purchase link' : 'code'} right away.`
                       : `Get first access to specials, last-minute openings, seasonal promos, and client updates from ${config.business.name}.`}
                   </p>
                   {config.business.publicProfileHeadline && (
@@ -244,12 +248,14 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
                     </h2>
                     <p className="mx-auto max-w-xl text-base text-gray-700 dark:text-gray-200 sm:text-lg">
                       {success.deal
-                        ? `Your ${success.deal.title} code is ready. Keep it handy for checkout today.`
+                        ? success.deal.deliveryType === 'purchase_link'
+                          ? `Your ${success.deal.title} purchase link is on the way by text.`
+                          : `Your ${success.deal.title} code is ready. Keep it handy for checkout today.`
                         : `You are now on ${config.business.name}'s VIP text list for service specials, openings, and updates.`}
                     </p>
                   </div>
 
-                  {success.deal && (
+                  {success.deal && success.deal.deliveryType !== 'purchase_link' && (
                     <div className="rounded-3xl border border-primary/20 bg-primary/8 p-5 sm:p-6">
                       <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">Claim code</p>
                       <p className="mt-3 font-mono text-4xl font-bold tracking-[0.22em] text-gray-950 dark:text-gray-50 sm:text-5xl">
@@ -257,7 +263,7 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
                       </p>
                       <p className="mt-3 text-sm text-gray-700 dark:text-gray-200 sm:text-base">
                         Show this code at checkout before{' '}
-                        {new Date(success.deal.expiresAt).toLocaleDateString('en-US', {
+                        {new Date(success.deal.expiresAt!).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',
@@ -276,9 +282,9 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
                   <div className="space-y-4 rounded-3xl border border-primary/16 bg-primary/6 p-5 text-left sm:p-6">
                     <div className="space-y-2">
                       <p className="text-sm font-semibold text-gray-950 dark:text-gray-50">
-                        {success.confirmationSent && success.submittedPhoneLast4
-                          ? `We just sent a confirmation text to the mobile number ending in ${success.submittedPhoneLast4}.`
-                          : "You're signed up. If a text does not arrive shortly, the front desk can help."}
+                      {success.confirmationSent && success.submittedPhoneLast4
+                        ? `We just sent a confirmation text to the mobile number ending in ${success.submittedPhoneLast4}.`
+                        : "You're signed up. If a text does not arrive shortly, the front desk can help."}
                       </p>
                       <p className="text-sm text-gray-700 dark:text-gray-200">
                         This screen resets for the next guest in {resetCountdown} second{resetCountdown === 1 ? '' : 's'}.
@@ -364,7 +370,7 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
                     </h2>
                     <p className="mt-2 max-w-xl text-sm text-gray-700 dark:text-gray-200 sm:text-base md:mt-3 md:text-lg">
                       {hasSelectedDeal
-                        ? "Mobile phone is required. We'll text your code right after you submit."
+                        ? `Mobile phone is required. We'll text your ${config.deal?.deliveryType === 'purchase_link' ? 'purchase link' : 'code'} right after you submit.`
                         : 'Mobile phone is required. Email is optional.'}
                     </p>
                   </div>

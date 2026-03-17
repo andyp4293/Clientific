@@ -1,21 +1,35 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { useMemo, useState } from 'react';
 import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+
+interface DealService {
+  id: string;
+  name: string;
+  price: number | null;
+  duration: number;
+}
 
 interface DealResponse {
   deal: {
     id: string;
     title: string;
     description: string | null;
+    deliveryType: string;
+    serviceScope: string;
     discountType: string;
     discountValue: number;
     startsAt: string;
     expiresAt: string;
     service: { name: string } | null;
+    selectableServices: DealService[];
     business: {
       name: string;
       slug: string;
@@ -33,15 +47,125 @@ function discountLabel(type: string, value: number): string {
   return 'Free service';
 }
 
+function formatMoney(value: number | null | undefined): string {
+  if (typeof value !== 'number') return 'Price set in-store';
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+}
+
+function calculatePreviewTotals(
+  discountType: string,
+  discountValue: number,
+  selectedServices: DealService[]
+) {
+  const subtotal = selectedServices.reduce((sum, service) => sum + (service.price ?? 0), 0);
+  if (discountType === 'free_service') {
+    return { subtotal, discount: subtotal, total: 0 };
+  }
+  if (discountType === 'percent_off') {
+    const total = Math.max(0, subtotal * (1 - discountValue / 100));
+    return { subtotal, discount: subtotal - total, total };
+  }
+  const discount = Math.min(subtotal, discountValue);
+  return { subtotal, discount, total: subtotal - discount };
+}
+
+// ─── Embedded payment form (shown in step 2) ─────────────────────────────────
+
+interface PaymentFormProps {
+  purchaseToken: string;
+  onBack: () => void;
+}
+
+function PaymentForm({ purchaseToken, onBack }: PaymentFormProps) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handlePay() {
+    if (!stripe || !elements) return;
+    setIsSubmitting(true);
+    setError(null);
+
+    const result = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/deal-purchases/${purchaseToken}`,
+      },
+      redirect: 'if_required',
+    });
+
+    if (result.error) {
+      setError(result.error.message ?? 'Payment failed. Please try again.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Payment succeeded without a redirect (Apple Pay, Google Pay, most cards)
+    router.push(`/deal-purchases/${purchaseToken}`);
+  }
+
+  return (
+    <div className="space-y-5">
+      <PaymentElement
+        options={{
+          layout: 'tabs',
+          wallets: { applePay: 'auto', googlePay: 'auto' },
+        }}
+      />
+
+      {error && (
+        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
+          {error}
+        </p>
+      )}
+
+      <button
+        type="button"
+        onClick={handlePay}
+        disabled={!stripe || isSubmitting}
+        className="w-full rounded-xl bg-primary py-3.5 text-base font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {isSubmitting ? 'Processing...' : 'Pay now'}
+      </button>
+
+      <button
+        type="button"
+        onClick={onBack}
+        disabled={isSubmitting}
+        className="w-full text-sm font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+      >
+        ← Go back
+      </button>
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
 export default function PublicDealClaimPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const dealId = params.dealId as string;
+
+  // Step 1: info collection
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
+
+  // Step 2: payment
+  const [checkoutStep, setCheckoutStep] = useState<'form' | 'payment'>('form');
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [purchaseToken, setPurchaseToken] = useState<string | null>(null);
+
+  // Legacy code-claim state
   const [claimCode, setClaimCode] = useState<string | null>(null);
   const [claimConfirmationSent, setClaimConfirmationSent] = useState(false);
-  const [isClaiming, setIsClaiming] = useState(false);
-  const [claimError, setClaimError] = useState<string | null>(null);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const { data, isLoading, isError } = useQuery<DealResponse>({
     queryKey: ['public-deal', dealId],
@@ -56,12 +180,63 @@ export default function PublicDealClaimPage() {
     enabled: !!dealId,
   });
 
-  const nameReady = customerName.trim().length > 0;
+  const deal = data?.deal;
+  const isPurchaseFlow = deal?.deliveryType === 'purchase_link';
+  const selectedServices = useMemo(
+    () => (deal?.selectableServices ?? []).filter((s) => selectedServiceIds.includes(s.id)),
+    [deal?.selectableServices, selectedServiceIds]
+  );
+  const totals = useMemo(
+    () => calculatePreviewTotals(deal?.discountType ?? 'percent_off', deal?.discountValue ?? 0, selectedServices),
+    [deal?.discountType, deal?.discountValue, selectedServices]
+  );
   const phoneReady = useMemo(() => customerPhone.replace(/\D/g, '').length >= 10, [customerPhone]);
+  const checkoutCanceled = searchParams.get('checkout') === 'canceled';
+  const canContinue = customerName.trim().length > 0 && phoneReady && selectedServiceIds.length > 0 && !isSubmitting;
 
-  const claimDeal = async () => {
-    setIsClaiming(true);
-    setClaimError(null);
+  function toggleService(serviceId: string) {
+    if (!deal) return;
+    if (deal.discountType === 'free_service') {
+      setSelectedServiceIds((cur) => (cur[0] === serviceId ? [] : [serviceId]));
+      return;
+    }
+    setSelectedServiceIds((cur) =>
+      cur.includes(serviceId) ? cur.filter((id) => id !== serviceId) : [...cur, serviceId]
+    );
+  }
+
+  async function startPaymentIntent() {
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const res = await fetch(`/api/public/deals/${dealId}/payment-intent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerName, customerPhone, selectedServiceIds }),
+      });
+
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Could not start checkout');
+
+      if (body.immediate) {
+        router.push(body.url);
+        return;
+      }
+
+      setClientSecret(body.clientSecret);
+      setPurchaseToken(body.purchaseToken);
+      setCheckoutStep('payment');
+    } catch (err: any) {
+      setSubmitError(err?.message || 'Could not start checkout');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function claimDeal() {
+    setIsSubmitting(true);
+    setSubmitError(null);
     setClaimCode(null);
     setClaimConfirmationSent(false);
 
@@ -78,12 +253,12 @@ export default function PublicDealClaimPage() {
       const body = await res.json();
       setClaimCode(body.code);
       setClaimConfirmationSent(body.confirmationSent === true);
-    } catch (error: any) {
-      setClaimError(error?.message || 'Could not claim this deal');
+    } catch (err: any) {
+      setSubmitError(err?.message || 'Could not claim this deal');
     } finally {
-      setIsClaiming(false);
+      setIsSubmitting(false);
     }
-  };
+  }
 
   if (isLoading) {
     return (
@@ -96,139 +271,265 @@ export default function PublicDealClaimPage() {
     );
   }
 
-  if (isError || !data?.deal) {
+  if (isError || !deal) {
     return (
       <div className="page-shell min-h-screen">
         <PublicSiteHeader active="deal" />
         <div className="flex items-center justify-center px-4 py-20">
-          <div className="max-w-md w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 text-center">
-            <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Deal unavailable</h1>
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-              This promotion is no longer active.
-            </p>
-            <Link href="/explore" className="text-sm font-medium text-primary hover:underline">
-              Browse active deals
-            </Link>
+          <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 text-center dark:border-gray-700 dark:bg-gray-800">
+            <h1 className="mb-2 text-lg font-semibold text-gray-900 dark:text-gray-100">Deal unavailable</h1>
+            <p className="mb-4 text-sm text-gray-600 dark:text-gray-300">This promotion is no longer active.</p>
+            <Link href="/explore" className="text-sm font-medium text-primary hover:underline">Browse active deals</Link>
           </div>
         </div>
       </div>
     );
   }
 
-  const { deal } = data;
-
   return (
     <div className="page-shell min-h-screen">
       <PublicSiteHeader active="deal" />
-      <div className="py-8 px-4">
-        <div className="max-w-xl mx-auto space-y-4">
+      <div className="px-4 py-8">
+        <div className="mx-auto max-w-3xl space-y-4">
           {deal.viewerCanManage && (
-            <Link
-              href="/dashboard/campaigns"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
-            >
-              <span aria-hidden="true">&larr;</span>
-              Back to deals
+            <Link href="/dashboard/campaigns" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
+              <span aria-hidden="true">&larr;</span> Back to deals
             </Link>
           )}
 
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm p-6 space-y-6">
+          <div className="space-y-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            {/* Deal header */}
             <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
-                {deal.business.name}
-              </p>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">{deal.title}</h1>
-              <p className="inline-block bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-sm font-semibold px-2.5 py-1 rounded">
-                {discountLabel(deal.discountType, deal.discountValue)}
-              </p>
-              {deal.description && (
-                <p className="mt-3 text-sm text-gray-700 dark:text-gray-300">{deal.description}</p>
-              )}
+              <p className="mb-2 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{deal.business.name}</p>
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{deal.title}</h1>
+                <span className="rounded bg-amber-100 px-2.5 py-1 text-sm font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                  {discountLabel(deal.discountType, deal.discountValue)}
+                </span>
+              </div>
+              {deal.description && <p className="mt-3 text-sm text-gray-700 dark:text-gray-300">{deal.description}</p>}
               <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                {deal.service?.name ?? 'Any service'} - Expires{' '}
-                {new Date(deal.expiresAt).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })}
+                Expires{' '}
+                {new Date(deal.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </p>
             </div>
 
             <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-medium">
-              <Link href={`/business/${deal.business.publicId}`} className="text-primary hover:underline">
-                View business profile
-              </Link>
-              <Link
-                href={deal.business.city ? `/explore?location=${encodeURIComponent(deal.business.city)}` : '/explore'}
-                className="text-primary hover:underline"
-              >
-                Find more deals nearby
-              </Link>
+              <Link href={`/business/${deal.business.publicId}`} className="text-primary hover:underline">View business profile</Link>
+              <Link href={deal.business.city ? `/explore?location=${encodeURIComponent(deal.business.city)}` : '/explore'} className="text-primary hover:underline">Find more deals nearby</Link>
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <label
-                  htmlFor="deal-claim-name"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
-                  Your Name
-                </label>
-                <input
-                  id="deal-claim-name"
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="Jane Doe"
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                />
+            {checkoutCanceled && isPurchaseFlow && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100">
+                Checkout was canceled. Your selected deal is still here if you want to try again.
               </div>
-              <div>
-                <label
-                  htmlFor="deal-claim-phone"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            )}
+
+            {/* Purchase link flow */}
+            {isPurchaseFlow ? (
+              checkoutStep === 'payment' && clientSecret && purchaseToken ? (
+                // ── Step 2: Embedded payment ──────────────────────────────
+                <div className="space-y-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Complete your purchase</h2>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      Pay securely with Apple Pay, Google Pay, or a card.
+                    </p>
+                  </div>
+                  {/* Order summary mini */}
+                  <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-900/60">
+                    <div className="flex items-center justify-between text-gray-700 dark:text-gray-200">
+                      <span>{deal.title}</span>
+                      <span className="font-semibold">{formatMoney(totals.total)}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-primary">
+                      {discountLabel(deal.discountType, deal.discountValue)} applied
+                    </p>
+                  </div>
+                  <Elements
+                    stripe={stripePromise}
+                    options={{
+                      clientSecret,
+                      appearance: {
+                        theme: 'stripe',
+                        variables: { colorPrimary: '#7B22D4', borderRadius: '12px' },
+                      },
+                    }}
+                  >
+                    <PaymentForm
+                      purchaseToken={purchaseToken}
+                      onBack={() => {
+                        setCheckoutStep('form');
+                        setClientSecret(null);
+                        setPurchaseToken(null);
+                      }}
+                    />
+                  </Elements>
+                </div>
+              ) : (
+                // ── Step 1: Service + customer info ───────────────────────
+                <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
+                  <div className="space-y-4">
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Choose what you want to purchase</h2>
+                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                        {deal.serviceScope === 'all_services'
+                          ? 'This deal applies to any of the services below.'
+                          : 'This deal only applies to these eligible services.'}
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      {deal.selectableServices.map((service) => {
+                        const selected = selectedServiceIds.includes(service.id);
+                        return (
+                          <button
+                            key={service.id}
+                            type="button"
+                            onClick={() => toggleService(service.id)}
+                            className={`w-full rounded-2xl border p-4 text-left transition-colors ${
+                              selected
+                                ? 'border-primary bg-primary/5'
+                                : 'border-gray-200 bg-white hover:border-primary/40 dark:border-gray-700 dark:bg-gray-900'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-4">
+                              <div>
+                                <p className="font-semibold text-gray-900 dark:text-gray-100">{service.name}</p>
+                                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{service.duration} min</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-semibold text-gray-900 dark:text-gray-100">{formatMoney(service.price)}</p>
+                                <p className="mt-1 text-xs text-primary">
+                                  {selected ? 'Selected' : deal.discountType === 'free_service' ? 'Choose one' : 'Tap to add'}
+                                </p>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <label htmlFor="deal-purchase-name" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Your Name</label>
+                        <input
+                          id="deal-purchase-name"
+                          type="text"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          placeholder="Jane Doe"
+                          className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="deal-purchase-phone" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Mobile Phone</label>
+                        <input
+                          id="deal-purchase-phone"
+                          type="tel"
+                          value={customerPhone}
+                          onChange={(e) => setCustomerPhone(e.target.value)}
+                          placeholder="(555) 123-4567"
+                          className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">We'll text your redemption code after payment.</p>
+                    </div>
+                  </div>
+
+                  <aside className="rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-900/70">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Order summary</h2>
+                    <div className="mt-4 space-y-3">
+                      {selectedServices.length === 0 ? (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Select at least one eligible service to continue.</p>
+                      ) : (
+                        selectedServices.map((service) => (
+                          <div key={service.id} className="flex items-start justify-between gap-4 text-sm">
+                            <span className="text-gray-700 dark:text-gray-200">{service.name}</span>
+                            <span className="font-medium text-gray-900 dark:text-gray-100">{formatMoney(service.price)}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <div className="mt-5 space-y-2 border-t border-gray-200 pt-4 dark:border-gray-700">
+                      <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-300">
+                        <span>Subtotal</span><span>{formatMoney(totals.subtotal)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm text-primary">
+                        <span>Deal discount</span><span>-{formatMoney(totals.discount)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-base font-semibold text-gray-900 dark:text-gray-100">
+                        <span>Total due now</span><span>{formatMoney(totals.total)}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={startPaymentIntent}
+                      disabled={!canContinue}
+                      className="mt-5 w-full rounded-xl bg-primary py-3.5 text-base font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isSubmitting ? 'Loading...' : 'Buy now'}
+                    </button>
+
+                    <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                      Apple Pay, Google Pay, and cards accepted.
+                    </p>
+
+                    {submitError && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{submitError}</p>}
+                  </aside>
+                </div>
+              )
+            ) : (
+              // ── Legacy code-claim flow ────────────────────────────────────
+              <div className="space-y-3">
+                <div>
+                  <label htmlFor="deal-claim-name" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Your Name</label>
+                  <input
+                    id="deal-claim-name"
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Jane Doe"
+                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="deal-claim-phone" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Mobile Phone</label>
+                  <input
+                    id="deal-claim-phone"
+                    type="tel"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    placeholder="(555) 123-4567"
+                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  By claiming, you consent to receive your redemption code by text. Reply STOP to opt out, HELP for help.
+                </p>
+                <button
+                  type="button"
+                  onClick={claimDeal}
+                  disabled={!customerName.trim() || !phoneReady || isSubmitting}
+                  className="w-full rounded-xl bg-primary py-3 font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Mobile Phone
-                </label>
-                <input
-                  id="deal-claim-phone"
-                  type="tel"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  placeholder="(555) 123-4567"
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                />
+                  {isSubmitting ? 'Claiming...' : 'Claim Deal Code'}
+                </button>
+                {submitError && <p className="text-sm text-red-600 dark:text-red-400">{submitError}</p>}
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                By claiming, you consent to receive your redemption code by text. Reply STOP to opt out, HELP for help.
-              </p>
-              <button
-                type="button"
-                onClick={claimDeal}
-                disabled={!nameReady || !phoneReady || isClaiming}
-                className="w-full py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isClaiming ? 'Claiming...' : 'Claim Deal Code'}
-              </button>
-              {claimError && <p className="text-sm text-red-600 dark:text-red-400">{claimError}</p>}
-            </div>
+            )}
 
             {claimCode && (
-              <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-4">
-                <p className="text-sm text-green-800 dark:text-green-300 mb-1">Your code is ready:</p>
+              <div className="rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20">
+                <p className="mb-1 text-sm text-green-800 dark:text-green-300">Your code is ready:</p>
                 <p className="font-mono text-lg font-bold text-green-900 dark:text-green-200">{claimCode}</p>
-                <p className="text-xs text-green-800 dark:text-green-300 mt-2">
-                  Show this code at checkout for redemption.
-                </p>
+                <p className="mt-2 text-xs text-green-800 dark:text-green-300">Show this code at checkout for redemption.</p>
                 {claimConfirmationSent && (
-                  <p className="text-xs text-green-800 dark:text-green-300 mt-2">
-                    We also texted this code to your phone.
-                  </p>
+                  <p className="mt-2 text-xs text-green-800 dark:text-green-300">We also texted this code to your phone.</p>
                 )}
-                <Link
-                  href={`/book/${deal.business.publicId}`}
-                  className="inline-block mt-4 text-sm font-medium text-primary hover:underline"
-                >
+                <Link href={`/book/${deal.business.publicId}`} className="mt-4 inline-block text-sm font-medium text-primary hover:underline">
                   Optional: Book now
                 </Link>
               </div>

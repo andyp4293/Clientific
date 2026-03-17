@@ -21,7 +21,30 @@ export async function GET() {
       where: { businessId: session.user.id },
       include: {
         service: { select: { name: true } },
+        eligibleServices: {
+          select: {
+            id: true,
+            name: true,
+            price: true,
+          },
+          orderBy: { sortOrder: 'asc' },
+        },
         redemptions: { orderBy: { createdAt: 'desc' } },
+        purchases: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            items: {
+              orderBy: { createdAt: 'asc' },
+              select: {
+                id: true,
+                serviceName: true,
+                quantity: true,
+                originalUnitAmount: true,
+                discountedUnitAmount: true,
+              },
+            },
+          },
+        },
         notificationSends: {
           orderBy: { createdAt: 'desc' },
           select: {
@@ -31,6 +54,8 @@ export async function GET() {
             customerName: true,
             customerPhone: true,
             code: true,
+            purchaseUrl: true,
+            deliveryType: true,
             status: true,
             errorMessage: true,
           },
@@ -39,11 +64,23 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
     });
 
-    const withStats = deals.map(deal => ({
-      ...deal,
-      revenueTracked: deal.redemptions.reduce((s: number, r: any) => s + (r.transactionAmount ?? 0), 0),
-      platformFeesOwed: deal.redemptions.reduce((s: number, r: any) => s + (r.platformFee ?? 0), 0),
-    }));
+    const withStats = deals.map((deal: any) => {
+      const purchases = deal.purchases ?? [];
+      const redemptions = deal.redemptions ?? [];
+      return {
+        ...deal,
+        purchases,
+        redemptions,
+        eligibleServices: deal.eligibleServices ?? [],
+        notificationSends: deal.notificationSends ?? [],
+        revenueTracked:
+          purchases.reduce((sum: number, purchase: any) => sum + purchase.totalAmount / 100, 0) +
+          redemptions.reduce((sum: number, redemption: any) => sum + (redemption.transactionAmount ?? 0), 0),
+        platformFeesOwed:
+          purchases.reduce((sum: number, purchase: any) => sum + purchase.applicationFeeAmount / 100, 0) +
+          redemptions.reduce((sum: number, redemption: any) => sum + (redemption.platformFee ?? 0), 0),
+      };
+    });
 
     return NextResponse.json({ deals: withStats });
   } catch (error: any) {
@@ -63,7 +100,19 @@ export async function POST(req: NextRequest) {
     if (subscriptionError) return subscriptionError;
 
     const body = await req.json();
-    const { title, description, discountType, discountValue, serviceId, startsAt, expiresAt, maxRedemptions } = body;
+    const {
+      title,
+      description,
+      discountType,
+      discountValue,
+      serviceId,
+      serviceScope: rawServiceScope,
+      deliveryType: rawDeliveryType,
+      eligibleServiceIds: rawEligibleServiceIds,
+      startsAt,
+      expiresAt,
+      maxRedemptions,
+    } = body;
 
     if (!title || !discountType || !startsAt || !expiresAt) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -93,19 +142,86 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'End date must be at least one day after start date' }, { status: 400 });
     }
 
+    const deliveryType =
+      rawDeliveryType === 'code_claim' ? 'code_claim' : 'purchase_link';
+    const serviceScope =
+      rawServiceScope === 'all_services'
+        ? 'all_services'
+        : rawServiceScope === 'selected_services'
+          ? 'selected_services'
+          : serviceId
+            ? 'selected_services'
+            : 'all_services';
+    const eligibleServiceIds = Array.isArray(rawEligibleServiceIds)
+      ? rawEligibleServiceIds.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      : [];
+
+    let eligibleServicesConnect:
+      | {
+          connect: { id: string }[];
+        }
+      | undefined;
+
+    if (deliveryType === 'purchase_link') {
+      if (serviceScope === 'selected_services') {
+        const combinedServiceIds = Array.from(
+          new Set([...(serviceId ? [serviceId] : []), ...eligibleServiceIds])
+        );
+
+        if (combinedServiceIds.length === 0) {
+          return NextResponse.json(
+            { error: 'Choose at least one eligible service for this deal' },
+            { status: 400 }
+          );
+        }
+
+        const validServices = await prisma.service.findMany({
+          where: {
+            businessId: session.user.id,
+            id: { in: combinedServiceIds },
+            active: true,
+          },
+          select: { id: true },
+        });
+
+        if (validServices.length !== combinedServiceIds.length) {
+          return NextResponse.json(
+            { error: 'One or more selected services are invalid for this deal' },
+            { status: 400 }
+          );
+        }
+
+        eligibleServicesConnect = {
+          connect: validServices.map((service) => ({ id: service.id })),
+        };
+      }
+    }
+
     const deal = await prisma.deal.create({
       data: {
         businessId: session.user.id,
         title: title.trim(),
         description: description?.trim() || null,
+        deliveryType,
+        serviceScope,
         discountType,
         discountValue: discountType === 'free_service' ? 0 : Number(discountValue),
-        serviceId: serviceId || null,
+        serviceId: deliveryType === 'code_claim' ? serviceId || null : null,
+        ...(eligibleServicesConnect && { eligibleServices: eligibleServicesConnect }),
         startsAt: parsedStartsAt,
         expiresAt: parsedExpiresAt,
         maxRedemptions: maxRedemptions ? Number(maxRedemptions) : null,
       },
-      include: { service: { select: { name: true } } },
+      include: {
+        service: { select: { name: true } },
+        eligibleServices: {
+          select: {
+            id: true,
+            name: true,
+            price: true,
+          },
+        },
+      },
     });
 
     return NextResponse.json({ deal }, { status: 201 });

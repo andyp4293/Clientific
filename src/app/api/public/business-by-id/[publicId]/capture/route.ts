@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
   formatKioskDealClaimSMS,
+  formatKioskDealPurchaseSMS,
   formatKioskSignupConfirmationSMS,
   formatPhoneNumber,
   isValidPhoneNumber,
@@ -157,25 +158,61 @@ export async function POST(
 
     let claimedDeal:
       | {
-          code: string;
+          deliveryType: string;
           title: string;
-          expiresAt: string;
+          code?: string;
+          dealUrl?: string;
+          expiresAt?: string;
         }
       | null = null;
     let dealIssue: string | null = null;
 
     if (dealId) {
       try {
-        const claim = await claimDealForCustomer({
-          dealId,
-          businessId: business.id,
-          customerId: customer.id,
+        const selectedDeal = await prisma.deal.findFirst({
+          where: {
+            id: dealId,
+            businessId: business.id,
+            active: true,
+            startsAt: { lte: now },
+            expiresAt: { gt: now },
+          },
+          select: {
+            id: true,
+            title: true,
+            deliveryType: true,
+            expiresAt: true,
+            maxRedemptions: true,
+            redemptionCount: true,
+          },
         });
-        claimedDeal = {
-          code: claim.code,
-          title: claim.deal.title,
-          expiresAt: claim.expiresAt.toISOString(),
-        };
+
+        if (!selectedDeal) {
+          throw new DealClaimError('Deal is not currently active', 400);
+        }
+        if (selectedDeal.maxRedemptions !== null && selectedDeal.redemptionCount >= selectedDeal.maxRedemptions) {
+          throw new DealClaimError('Deal is sold out', 400);
+        }
+
+        if (selectedDeal.deliveryType === 'purchase_link') {
+          claimedDeal = {
+            deliveryType: selectedDeal.deliveryType,
+            title: selectedDeal.title,
+            dealUrl: `${getAppBaseUrlFromRequest(req.url)}/d/${selectedDeal.id}`,
+          };
+        } else {
+          const claim = await claimDealForCustomer({
+            dealId,
+            businessId: business.id,
+            customerId: customer.id,
+          });
+          claimedDeal = {
+            deliveryType: 'code_claim',
+            code: claim.code,
+            title: claim.deal.title,
+            expiresAt: claim.expiresAt.toISOString(),
+          };
+        }
       } catch (error) {
         if (error instanceof DealClaimError && error.status < 500) {
           dealIssue = error.message;
@@ -212,13 +249,21 @@ export async function POST(
         : null;
 
     const smsMessage = claimedDeal
-      ? formatKioskDealClaimSMS({
-          businessName: business.name,
-          customerName: customer.name,
-          dealTitle: claimedDeal.title,
-          dealCode: claimedDeal.code,
-          bookingUrl,
-        })
+      ? claimedDeal.deliveryType === 'purchase_link'
+        ? formatKioskDealPurchaseSMS({
+            businessName: business.name,
+            customerName: customer.name,
+            dealTitle: claimedDeal.title,
+            dealUrl: claimedDeal.dealUrl!,
+            bookingUrl,
+          })
+        : formatKioskDealClaimSMS({
+            businessName: business.name,
+            customerName: customer.name,
+            dealTitle: claimedDeal.title,
+            dealCode: claimedDeal.code!,
+            bookingUrl,
+          })
       : formatKioskSignupConfirmationSMS({
           businessName: business.name,
           customerName: customer.name,
@@ -240,7 +285,9 @@ export async function POST(
       bookingUrl,
       confirmationSent: smsResult?.success ?? false,
       message: claimedDeal
-        ? 'Promo claimed and customer enrolled for text offers.'
+        ? claimedDeal.deliveryType === 'purchase_link'
+          ? 'Purchase link sent and customer enrolled for text offers.'
+          : 'Promo claimed and customer enrolled for text offers.'
         : 'Customer enrolled for text offers.',
     });
   } catch (error: any) {

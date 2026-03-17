@@ -3,10 +3,15 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
-import { sendSMS, formatPhoneNumber, formatDealClaimCodeSMS } from '@/lib/twilio';
-import { APP_URL } from '@/lib/brand';
+import {
+  sendSMS,
+  formatPhoneNumber,
+  formatDealClaimCodeSMS,
+  formatDealPurchaseLinkSMS,
+} from '@/lib/twilio';
 import { getSessionBusinessId } from '@/lib/session-business';
 import { claimDealForCustomer, DealClaimError } from '@/lib/deal-claims';
+import { getAppBaseUrlFromRequest } from '@/lib/app-url';
 
 function normalizeNotifiedAt(value: Date | string | null | undefined) {
   if (!value) return null;
@@ -15,7 +20,7 @@ function normalizeNotifiedAt(value: Date | string | null | undefined) {
 }
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -34,6 +39,7 @@ export async function POST(
       include: {
         business: {
           select: {
+            id: true,
             name: true,
             slug: true,
             enableOnlineBooking: true,
@@ -96,55 +102,71 @@ export async function POST(
       return NextResponse.json({ sent: 0, skipped: 0, alreadySent: 0, dealId: deal.id });
     }
 
-    const existingRedemptions = await prisma.dealRedemption.findMany({
+    const existingNotificationSends = await prisma.dealNotificationSend.findMany({
       where: {
         dealId: deal.id,
         OR: [
           { customerId: { in: uniqueRecipients.map((customer) => customer.id) } },
-          {
-            customer: {
-              is: {
-                businessId,
-                phone: { in: uniqueRecipients.map((customer) => customer.phone) },
-              },
-            },
-          },
+          { customerPhone: { in: uniqueRecipients.map((customer) => customer.phone) } },
         ],
       },
       select: {
         customerId: true,
-        customer: {
-          select: {
-            phone: true,
-          },
-        },
+        customerPhone: true,
       },
     });
 
-    const alreadyRedeemedCustomerIds = new Set(
-      existingRedemptions.flatMap((redemption) =>
-        redemption.customerId ? [redemption.customerId] : []
+    const alreadySentCustomerIds = new Set(
+      existingNotificationSends.flatMap((notification) =>
+        notification.customerId ? [notification.customerId] : []
       )
     );
-    const alreadyRedeemedPhones = new Set(
-      existingRedemptions.flatMap((redemption) =>
-        redemption.customer?.phone ? [formatPhoneNumber(redemption.customer.phone)] : []
+    const alreadySentPhones = new Set(
+      existingNotificationSends.flatMap((notification) =>
+        notification.customerPhone ? [formatPhoneNumber(notification.customerPhone)] : []
       )
     );
     const pendingRecipients = uniqueRecipients.filter(
       (customer) =>
-        !alreadyRedeemedCustomerIds.has(customer.id) &&
-        !alreadyRedeemedPhones.has(customer.phone)
+        !alreadySentCustomerIds.has(customer.id) &&
+        !alreadySentPhones.has(customer.phone)
     );
 
     const bookingUrl =
       deal.business.enableOnlineBooking && deal.business.slug
-        ? `${APP_URL}/book/${deal.business.slug}`
+        ? `${getAppBaseUrlFromRequest(req.url)}/book/${deal.business.slug}`
         : null;
+    const appBaseUrl = getAppBaseUrlFromRequest(req.url);
 
     const results = await Promise.all(
       pendingRecipients.map(async (customer) => {
         try {
+          if (deal.deliveryType === 'purchase_link') {
+            const purchaseUrl = `${appBaseUrl}/d/${deal.id}`;
+            const smsResult = await sendSMS({
+              to: customer.phone,
+              from: deal.business.vapiPhoneNumber ?? null,
+              message: formatDealPurchaseLinkSMS({
+                businessName: deal.business.name,
+                dealTitle: deal.title,
+                dealUrl: purchaseUrl,
+                customerName: customer.name,
+              }),
+            });
+
+            return {
+              success: smsResult.success,
+              skipped: false,
+              alreadySent: false,
+              customerId: customer.id,
+              customerName: customer.name,
+              customerPhone: customer.phone,
+              code: null,
+              purchaseUrl,
+              errorMessage: smsResult.success ? null : smsResult.error ?? 'Failed to send SMS',
+            };
+          }
+
           const claim = await claimDealForCustomer({
             dealId: deal.id,
             businessId,
@@ -186,6 +208,7 @@ export async function POST(
             customerName: customer.name,
             customerPhone: customer.phone,
             code: claim.code,
+            purchaseUrl: null,
             errorMessage: smsResult.success ? null : smsResult.error ?? 'Failed to send SMS',
           };
         } catch (error) {
@@ -198,6 +221,7 @@ export async function POST(
               customerName: customer.name,
               customerPhone: customer.phone,
               code: null,
+              purchaseUrl: null,
               errorMessage: error.message,
             };
           }
@@ -207,14 +231,16 @@ export async function POST(
     );
 
     const notificationSendLogs = results
-      .filter((result) => !result.skipped && result.code)
+      .filter((result) => !result.skipped && (result.code || result.purchaseUrl))
       .map((result) => ({
         businessId,
         dealId: deal.id,
         customerId: result.customerId,
         customerName: result.customerName,
         customerPhone: result.customerPhone,
-        code: result.code as string,
+        code: result.code as string | null,
+        purchaseUrl: result.purchaseUrl ?? null,
+        deliveryType: deal.deliveryType,
         status: result.success ? 'sent' : 'failed',
         errorMessage: result.errorMessage,
       }));

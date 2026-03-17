@@ -4,6 +4,7 @@ import { NextRequest } from 'next/server';
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: { findUnique: vi.fn() },
+    deal: { findFirst: vi.fn() },
     customer: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
     smsConsentEvent: { create: vi.fn() },
   },
@@ -11,6 +12,7 @@ vi.mock('@/lib/prisma', () => ({
 
 vi.mock('@/lib/twilio', () => ({
   formatKioskDealClaimSMS: vi.fn(() => 'deal sms'),
+  formatKioskDealPurchaseSMS: vi.fn(() => 'purchase sms'),
   formatKioskSignupConfirmationSMS: vi.fn(() => 'signup sms'),
   formatPhoneNumber: vi.fn((phone: string) => {
     const digits = phone.replace(/\D/g, '');
@@ -87,6 +89,14 @@ describe('Public in-store capture route', () => {
       phone: '+15551234567',
       email: 'jane@example.com',
     } as any);
+    vi.mocked(prisma.deal.findFirst).mockResolvedValue({
+      id: 'deal-1',
+      title: 'Spring Special',
+      deliveryType: 'code_claim',
+      expiresAt: new Date('2026-03-20T00:00:00.000Z'),
+      maxRedemptions: null,
+      redemptionCount: 0,
+    } as any);
     vi.mocked(prisma.smsConsentEvent.create).mockResolvedValue({ id: 'evt-1' } as any);
 
     vi.mocked(getInStoreCaptureConfig).mockResolvedValue({
@@ -102,6 +112,7 @@ describe('Public in-store capture route', () => {
         id: 'deal-1',
         title: 'Spring Special',
         description: null,
+        deliveryType: 'code_claim',
         discountLabel: '20% off',
         expiresAt: '2026-03-20T00:00:00.000Z',
         serviceName: 'Gel manicure',

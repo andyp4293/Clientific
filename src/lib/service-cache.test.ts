@@ -7,11 +7,12 @@ import {
 
 describe('service cache helpers', () => {
   it('upserts services into the shared services query data in sort order', () => {
+    type ServiceShape = { id: string; sortOrder: number; groupId: string | null; name: string };
     const current = {
       services: [
         { id: 'svc-1', sortOrder: 0, groupId: null, name: 'Haircut' },
         { id: 'svc-3', sortOrder: 2, groupId: null, name: 'Color' },
-      ],
+      ] as ServiceShape[],
     };
 
     const next = upsertServicesQueryData(current, {
@@ -25,10 +26,11 @@ describe('service cache helpers', () => {
   });
 
   it('replaces an existing service in the shared services query data', () => {
+    type ServiceShape = { id: string; sortOrder: number; groupId: string | null; name: string };
     const current = {
       services: [
         { id: 'svc-1', sortOrder: 0, groupId: null, name: 'Haircut' },
-      ],
+      ] as ServiceShape[],
     };
 
     const next = upsertServicesQueryData(current, {
@@ -44,11 +46,12 @@ describe('service cache helpers', () => {
   });
 
   it('removes a deleted service from the shared services query data', () => {
+    type ServiceShape = { id: string; sortOrder: number; groupId: string | null; name: string };
     const current = {
       services: [
         { id: 'svc-1', sortOrder: 0, groupId: null, name: 'Haircut' },
         { id: 'svc-2', sortOrder: 1, groupId: 'grp-1', name: 'Blowout' },
-      ],
+      ] as ServiceShape[],
     };
 
     const next = removeServiceFromQueryData(current, 'svc-1');

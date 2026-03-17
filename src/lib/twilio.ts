@@ -78,6 +78,21 @@ interface DealClaimCodeDetails {
   bookingUrl?: string | null;
 }
 
+interface DealPurchaseLinkDetails {
+  businessName: string;
+  dealTitle: string;
+  dealUrl: string;
+  customerName?: string | null;
+}
+
+interface DealPurchaseConfirmationDetails {
+  businessName: string;
+  dealTitle: string;
+  redemptionCode: string;
+  receiptUrl: string;
+  customerName?: string | null;
+}
+
 interface KioskSignupDetails {
   businessName: string;
   customerName?: string | null;
@@ -87,6 +102,11 @@ interface KioskSignupDetails {
 interface KioskDealClaimDetails extends KioskSignupDetails {
   dealTitle: string;
   dealCode: string;
+}
+
+interface KioskDealPurchaseDetails extends KioskSignupDetails {
+  dealTitle: string;
+  dealUrl: string;
 }
 
 interface DirectCustomerMessageDetails {
@@ -373,6 +393,22 @@ export function formatDealClaimCodeSMS(details: DealClaimCodeDetails): string {
   return appendSmsComplianceFooter(withBooking);
 }
 
+export function formatDealPurchaseLinkSMS(details: DealPurchaseLinkDetails): string {
+  const firstName = details.customerName?.trim().split(/\s+/).filter(Boolean)[0] ?? null;
+  const greeting = firstName ? `Hi ${firstName},` : 'Hi there,';
+  return appendSmsComplianceFooter(
+    `${greeting} ${details.businessName} sent you ${details.dealTitle}. Buy it here: ${details.dealUrl}`
+  );
+}
+
+export function formatDealPurchaseConfirmationSMS(details: DealPurchaseConfirmationDetails): string {
+  const firstName = details.customerName?.trim().split(/\s+/).filter(Boolean)[0] ?? null;
+  const greeting = firstName ? `Hi ${firstName},` : 'Hi there,';
+  return appendSmsComplianceFooter(
+    `${greeting} thanks for purchasing ${details.dealTitle} from ${details.businessName}. Your redemption code is ${details.redemptionCode}. View your receipt: ${details.receiptUrl}`
+  );
+}
+
 export function formatKioskSignupConfirmationSMS(details: KioskSignupDetails): string {
   const firstName = details.customerName?.trim().split(/\s+/).filter(Boolean)[0] ?? null;
   const greeting = firstName ? `Hi ${firstName},` : 'Hi there,';
@@ -386,6 +422,14 @@ export function formatKioskDealClaimSMS(details: KioskDealClaimDetails): string 
   const greeting = firstName ? `Hi ${firstName},` : 'Hi there,';
   const base = `${greeting} thanks for signing up with ${details.businessName}. You're now on the ${details.businessName} text list for future offers and updates. Your ${details.dealTitle} code is ${details.dealCode}. Show it at checkout.`;
   const withBooking = details.bookingUrl ? `${base} Book here: ${details.bookingUrl}` : base;
+  return appendSmsComplianceFooter(withBooking);
+}
+
+export function formatKioskDealPurchaseSMS(details: KioskDealPurchaseDetails): string {
+  const firstName = details.customerName?.trim().split(/\s+/).filter(Boolean)[0] ?? null;
+  const greeting = firstName ? `Hi ${firstName},` : 'Hi there,';
+  const base = `${greeting} thanks for signing up with ${details.businessName}. You're on the ${details.businessName} text list, and your ${details.dealTitle} purchase link is ready: ${details.dealUrl}`;
+  const withBooking = details.bookingUrl ? `${base} Book here anytime: ${details.bookingUrl}` : base;
   return appendSmsComplianceFooter(withBooking);
 }
 

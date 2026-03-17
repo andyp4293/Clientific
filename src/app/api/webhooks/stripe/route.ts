@@ -3,6 +3,8 @@ import Stripe from 'stripe';
 import { stripe, PRICING_PLANS } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
 import { revalidateTag } from 'next/cache';
+import { finalizeDealPurchaseFromCheckoutSession, finalizeDealPurchaseFromPaymentIntent } from '@/lib/deal-purchases';
+import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 
 function getPlanFromPriceId(priceId: string): string | null {
   const entry = Object.entries(PRICING_PLANS).find(
@@ -67,6 +69,12 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        await handlePaymentIntentSucceeded(paymentIntent);
+        break;
+      }
+
       default:
         console.log(`Unhandled event type: ${event.type}`);
     }
@@ -82,6 +90,11 @@ export async function POST(req: NextRequest) {
 }
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
+  if (session.metadata?.dealPurchaseId) {
+    await finalizeDealPurchaseFromCheckoutSession(session, getConfiguredAppBaseUrl());
+    return;
+  }
+
   const businessId = session.metadata?.businessId;
   const plan = session.metadata?.plan;
 
@@ -269,6 +282,11 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
       }
     }
   }
+}
+
+async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent) {
+  if (paymentIntent.metadata?.kind !== 'deal_purchase') return;
+  await finalizeDealPurchaseFromPaymentIntent(paymentIntent, getConfiguredAppBaseUrl());
 }
 
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {

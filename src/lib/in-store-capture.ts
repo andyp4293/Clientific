@@ -14,6 +14,7 @@ export type InStoreCaptureConfig = {
     id: string;
     title: string;
     description: string | null;
+    deliveryType: string;
     discountLabel: string;
     expiresAt: string;
     serviceName: string | null;
@@ -69,11 +70,17 @@ export async function getInStoreCaptureConfig({
           id: true,
           title: true,
           description: true,
+          deliveryType: true,
+          serviceScope: true,
           discountType: true,
           discountValue: true,
           expiresAt: true,
           maxRedemptions: true,
           redemptionCount: true,
+          eligibleServices: {
+            where: { active: true },
+            select: { name: true },
+          },
           service: { select: { name: true } },
         },
       })
@@ -106,9 +113,12 @@ export async function getInStoreCaptureConfig({
           id: selectedDeal.id,
           title: selectedDeal.title,
           description: selectedDeal.description,
+          deliveryType: selectedDeal.deliveryType,
           discountLabel: formatDealDiscountLabel(selectedDeal.discountType, selectedDeal.discountValue),
           expiresAt: selectedDeal.expiresAt.toISOString(),
-          serviceName: selectedDeal.service?.name ?? null,
+          serviceName:
+            selectedDeal.service?.name ??
+            (selectedDeal.eligibleServices.length === 1 ? selectedDeal.eligibleServices[0].name : null),
         }
       : null,
     captureUrl,

@@ -14,7 +14,37 @@ export async function GET(
       where: { id },
       include: {
         service: { select: { name: true } },
-        business: { select: { name: true, slug: true, publicId: true, city: true, state: true } },
+        eligibleServices: {
+          where: { active: true },
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            duration: true,
+            active: true,
+          },
+        },
+        business: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            publicId: true,
+            city: true,
+            state: true,
+            services: {
+              where: { active: true },
+              select: {
+                id: true,
+                name: true,
+                price: true,
+                duration: true,
+                active: true,
+              },
+              orderBy: { sortOrder: 'asc' },
+            },
+          },
+        },
       },
     });
 
@@ -39,11 +69,25 @@ export async function GET(
         id: deal.id,
         title: deal.title,
         description: deal.description,
+        deliveryType: deal.deliveryType,
+        serviceScope: deal.serviceScope,
         discountType: deal.discountType,
         discountValue: deal.discountValue,
         startsAt: deal.startsAt,
         expiresAt: deal.expiresAt,
         service: deal.service ? { name: deal.service.name } : null,
+        selectableServices:
+          deal.deliveryType === 'purchase_link'
+            ? (deal.serviceScope === 'all_services'
+                ? deal.business.services
+                : deal.eligibleServices
+              ).map((service) => ({
+                id: service.id,
+                name: service.name,
+                price: service.price,
+                duration: service.duration,
+              }))
+            : [],
         business: deal.business,
         viewerCanManage: sessionBusinessId === deal.businessId,
       },

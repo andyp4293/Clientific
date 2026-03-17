@@ -63,20 +63,81 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'End date must be at least one day after start date' }, { status: 400 });
     }
 
+    const deliveryType =
+      body.deliveryType === undefined
+        ? existing.deliveryType
+        : body.deliveryType === 'code_claim'
+          ? 'code_claim'
+          : 'purchase_link';
+    const serviceScope =
+      body.serviceScope === undefined
+        ? existing.serviceScope
+        : body.serviceScope === 'all_services'
+          ? 'all_services'
+          : body.serviceScope === 'selected_services'
+            ? 'selected_services'
+            : body.serviceId
+              ? 'selected_services'
+              : 'all_services';
+    const requestedEligibleServiceIds = Array.isArray(body.eligibleServiceIds)
+      ? body.eligibleServiceIds.filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 0)
+      : undefined;
+
+    let eligibleServicesData:
+      | {
+          set: { id: string }[];
+        }
+      | undefined;
+
+    if (requestedEligibleServiceIds !== undefined) {
+      if (deliveryType === 'purchase_link' && serviceScope === 'selected_services') {
+        const validServices = await prisma.service.findMany({
+          where: {
+            businessId: session.user.id,
+            id: { in: requestedEligibleServiceIds },
+            active: true,
+          },
+          select: { id: true },
+        });
+
+        if (validServices.length !== requestedEligibleServiceIds.length) {
+          return NextResponse.json({ error: 'One or more selected services are invalid for this deal' }, { status: 400 });
+        }
+
+        eligibleServicesData = {
+          set: validServices.map((service) => ({ id: service.id })),
+        };
+      } else {
+        eligibleServicesData = { set: [] };
+      }
+    }
+
     const deal = await prisma.deal.update({
       where: { id },
       data: {
         ...(body.title !== undefined && { title: body.title }),
         ...(body.description !== undefined && { description: body.description }),
         ...(body.active !== undefined && { active: body.active }),
+        ...(body.deliveryType !== undefined && { deliveryType }),
+        ...(body.serviceScope !== undefined && { serviceScope }),
         ...(body.discountType !== undefined && { discountType: body.discountType }),
         ...(body.discountValue !== undefined && { discountValue: Number(body.discountValue) }),
-        ...(body.serviceId !== undefined && { serviceId: body.serviceId || null }),
+        ...(body.serviceId !== undefined && { serviceId: deliveryType === 'code_claim' ? body.serviceId || null : null }),
+        ...(eligibleServicesData && { eligibleServices: eligibleServicesData }),
         ...(parsedStartsAt !== undefined && { startsAt: parsedStartsAt }),
         ...(parsedExpiresAt !== undefined && { expiresAt: parsedExpiresAt }),
         ...(body.maxRedemptions !== undefined && { maxRedemptions: body.maxRedemptions ? Number(body.maxRedemptions) : null }),
       },
-      include: { service: { select: { name: true } } },
+      include: {
+        service: { select: { name: true } },
+        eligibleServices: {
+          select: {
+            id: true,
+            name: true,
+            price: true,
+          },
+        },
+      },
     });
 
     return NextResponse.json({ deal });
