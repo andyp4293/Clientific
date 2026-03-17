@@ -216,7 +216,7 @@ function LoginForm() {
                 />
                 <span className="text-gray-600 dark:text-gray-400">Remember me</span>
               </label>
-              <Link href="/forgot-password" className="text-primary hover:text-primary-700">
+              <Link href="/forgot-password" className="text-primary dark:text-primary-300 hover:text-primary-700 dark:hover:text-primary-200">
                 Forgot password?
               </Link>
             </div>
@@ -245,7 +245,7 @@ function LoginForm() {
             <button
               type="button"
               onClick={handleResendVerification}
-              className="mt-3 text-sm font-medium text-primary hover:text-primary-700"
+              className="mt-3 text-sm font-medium text-primary dark:text-primary-300 hover:text-primary-700 dark:hover:text-primary-200"
               disabled={isResendingVerification}
             >
               {isResendingVerification ? 'Sending verification code...' : 'Resend verification code'}
@@ -254,7 +254,7 @@ function LoginForm() {
 
           <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
             Don't have an account?{' '}
-            <Link href="/register" className="text-primary hover:text-primary-700 font-medium">
+            <Link href="/register" className="text-primary dark:text-primary-300 hover:text-primary-700 dark:hover:text-primary-200 font-medium">
               Start your free trial
             </Link>
           </div>

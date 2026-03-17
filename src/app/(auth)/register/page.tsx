@@ -465,21 +465,21 @@ function RegisterForm() {
                   <div className="mt-3 space-y-2 text-sm">
                     <div
                       className={`flex items-center ${
-                        passwordChecks.minLength ? 'text-success' : 'text-gray-500'
+                        passwordChecks.minLength ? 'text-success dark:text-primary-300' : 'text-gray-500'
                       }`}
                     >
                       <span>At least 8 characters</span>
                     </div>
                     <div
                       className={`flex items-center ${
-                        passwordChecks.hasNumber ? 'text-success' : 'text-gray-500'
+                        passwordChecks.hasNumber ? 'text-success dark:text-primary-300' : 'text-gray-500'
                       }`}
                     >
                       <span>Contains a number</span>
                     </div>
                     <div
                       className={`flex items-center ${
-                        passwordChecks.hasSpecialChar ? 'text-success' : 'text-gray-500'
+                        passwordChecks.hasSpecialChar ? 'text-success dark:text-primary-300' : 'text-gray-500'
                       }`}
                     >
                       <span>Contains a special character (!@#$%^&*)</span>
@@ -513,11 +513,11 @@ function RegisterForm() {
                 />
                 <label htmlFor="acceptTerms" className="text-sm text-gray-600 dark:text-gray-400">
                   I accept the{' '}
-                  <Link href="/terms" target="_blank" className="text-primary hover:underline">
+                  <Link href="/terms" target="_blank" className="text-primary dark:text-primary-300 hover:underline">
                     Terms of Service
                   </Link>{' '}
                   and{' '}
-                  <Link href="/privacy" target="_blank" className="text-primary hover:underline">
+                  <Link href="/privacy" target="_blank" className="text-primary dark:text-primary-300 hover:underline">
                     Privacy Policy
                   </Link>
                 </label>
