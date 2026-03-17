@@ -263,7 +263,7 @@ export default function PublicDealClaimPage() {
   if (isLoading) {
     return (
       <div className="page-shell min-h-screen">
-        <PublicSiteHeader active="deal" />
+        <PublicSiteHeader active="deal" showLogin={false} showCta={false} />
         <div className="flex items-center justify-center px-4 py-20">
           <p className="text-sm text-gray-600 dark:text-gray-300">Loading deal...</p>
         </div>
@@ -274,7 +274,7 @@ export default function PublicDealClaimPage() {
   if (isError || !deal) {
     return (
       <div className="page-shell min-h-screen">
-        <PublicSiteHeader active="deal" />
+        <PublicSiteHeader active="deal" showLogin={false} showCta={false} />
         <div className="flex items-center justify-center px-4 py-20">
           <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 text-center dark:border-gray-700 dark:bg-gray-800">
             <h1 className="mb-2 text-lg font-semibold text-gray-900 dark:text-gray-100">Deal unavailable</h1>
@@ -288,7 +288,7 @@ export default function PublicDealClaimPage() {
 
   return (
     <div className="page-shell min-h-screen">
-      <PublicSiteHeader active="deal" />
+      <PublicSiteHeader active="deal" showLogin={false} showCta={false} />
       <div className="px-4 py-8">
         <div className="mx-auto max-w-3xl space-y-4">
           {deal.viewerCanManage && (

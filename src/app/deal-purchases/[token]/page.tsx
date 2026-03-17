@@ -74,7 +74,7 @@ export default function DealPurchaseReceiptPage() {
   if (isLoading) {
     return (
       <div className="page-shell min-h-screen">
-        <PublicSiteHeader active="deal" />
+        <PublicSiteHeader active="deal" showLogin={false} showCta={false} />
         <div className="flex items-center justify-center px-4 py-20">
           <p className="text-sm text-gray-600 dark:text-gray-300">Loading receipt...</p>
         </div>
@@ -85,7 +85,7 @@ export default function DealPurchaseReceiptPage() {
   if (isError || !data?.purchase) {
     return (
       <div className="page-shell min-h-screen">
-        <PublicSiteHeader active="deal" />
+        <PublicSiteHeader active="deal" showLogin={false} showCta={false} />
         <div className="flex items-center justify-center px-4 py-20">
           <div className="max-w-md w-full rounded-2xl border border-gray-200 bg-white p-6 text-center dark:border-gray-700 dark:bg-gray-800">
             <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Receipt unavailable</h1>
@@ -105,7 +105,7 @@ export default function DealPurchaseReceiptPage() {
 
   return (
     <div className="page-shell min-h-screen">
-      <PublicSiteHeader active="deal" />
+      <PublicSiteHeader active="deal" showLogin={false} showCta={false} />
       <div className="px-4 py-8">
         <div className="mx-auto max-w-3xl space-y-4">
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">

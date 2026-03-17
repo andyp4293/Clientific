@@ -10,6 +10,7 @@ interface PublicSiteHeaderProps {
   ctaLabel?: string;
   ctaHref?: string;
   showLogin?: boolean;
+  showCta?: boolean;
 }
 
 interface NavItem {
@@ -31,6 +32,7 @@ export function PublicSiteHeader({
   ctaLabel = 'Start Free Trial',
   ctaHref = '/register',
   showLogin = true,
+  showCta = true,
 }: PublicSiteHeaderProps) {
   return (
     <header className="sticky top-0 z-40 border-b border-gray-200/70 bg-white/80 backdrop-blur-md dark:border-gray-900 dark:bg-gray-950/90">
@@ -61,22 +63,26 @@ export function PublicSiteHeader({
           })}
         </nav>
 
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {showLogin && (
-            <Link
-              href="/login"
-              className="inline-flex shrink-0 rounded-lg border border-gray-200 bg-white/80 px-2.5 py-2 text-xs font-medium text-gray-700 transition-colors hover:bg-white dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-200 dark:hover:bg-gray-900 sm:px-3 sm:text-sm"
-            >
-              Log In
-            </Link>
-          )}
-          <Link
-            href={ctaHref}
-            className="shrink-0 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary-700 sm:text-sm"
-          >
-            {ctaLabel}
-          </Link>
-        </div>
+        {(showLogin || showCta) && (
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {showLogin && (
+              <Link
+                href="/login"
+                className="inline-flex shrink-0 rounded-lg border border-gray-200 bg-white/80 px-2.5 py-2 text-xs font-medium text-gray-700 transition-colors hover:bg-white dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-200 dark:hover:bg-gray-900 sm:px-3 sm:text-sm"
+              >
+                Log In
+              </Link>
+            )}
+            {showCta && (
+              <Link
+                href={ctaHref}
+                className="shrink-0 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary-700 sm:text-sm"
+              >
+                {ctaLabel}
+              </Link>
+            )}
+          </div>
+        )}
       </div>
     </header>
   );
