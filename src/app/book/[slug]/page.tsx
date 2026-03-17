@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useSession } from 'next-auth/react';
 import { DatePicker } from '@/components/ui/DatePicker';
 import Link from 'next/link';
 import { ChevronDown, Info } from 'lucide-react';
@@ -119,6 +120,7 @@ function ServiceOptionCard({
 export default function PublicBookingPage() {
   const params = useParams();
   const router = useRouter();
+  const { data: session } = useSession();
   const slugOrPublicId = params.slug as string;
   const [step, setStep] = useState(1);
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
@@ -331,6 +333,11 @@ export default function PublicBookingPage() {
       {/* Header */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+          {session && (
+            <Link href="/dashboard/appointments" className="inline-flex items-center gap-2 mb-3 text-sm font-semibold text-primary hover:underline">
+              <span aria-hidden="true">&larr;</span> Back to appointments
+            </Link>
+          )}
           <div className="flex items-center justify-between gap-3 sm:gap-4">
             <div className="flex items-center gap-3 sm:gap-4 min-w-0">
               {business.logoUrl && (

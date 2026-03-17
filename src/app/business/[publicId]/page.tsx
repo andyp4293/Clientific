@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Clock3,
@@ -80,6 +81,7 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 export default function BusinessInfoPage() {
   const params = useParams();
   const publicId = params.publicId as string;
+  const { data: session } = useSession();
   const apiBase = `/api/public/business-by-id/${publicId}`;
 
   const { data: businessData, isLoading } = useQuery({
@@ -171,6 +173,15 @@ export default function BusinessInfoPage() {
 
   return (
     <div className="page-shell min-h-screen">
+      {session && (
+        <div className="bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-800 px-4 py-2">
+          <div className="max-w-6xl mx-auto">
+            <Link href="/dashboard/preview" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
+              <span aria-hidden="true">&larr;</span> Back to preview
+            </Link>
+          </div>
+        </div>
+      )}
       <div className="border-b border-gray-200 dark:border-gray-800 bg-gradient-to-br from-gray-900 via-gray-800 to-primary-900">
         <div className="max-w-6xl mx-auto px-4 py-10 sm:py-14">
           <div className="flex flex-col sm:flex-row sm:items-start gap-5">
