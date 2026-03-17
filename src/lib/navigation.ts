@@ -15,6 +15,7 @@ export type DashboardNavIcon =
   | 'megaphone'
   | 'creditcard'
   | 'banknotes'
+  | 'eye'
   | 'settings';
 
 export interface DashboardNavItem {
@@ -125,6 +126,14 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
     href: '/dashboard/payouts',
     icon: 'banknotes',
     section: 'growth',
+  },
+  {
+    key: 'preview',
+    name: 'Customer View',
+    href: '/dashboard/preview',
+    icon: 'eye',
+    section: 'operations',
+    exact: true,
   },
   {
     key: 'billing',
