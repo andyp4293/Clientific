@@ -36,6 +36,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
+    if (body.discountValue !== undefined) {
+      const effectiveType = body.discountType ?? existing.discountType;
+      const numericDiscount = Number(body.discountValue);
+      if (effectiveType === 'percent_off' && (numericDiscount <= 0 || numericDiscount > 100)) {
+        return NextResponse.json({ error: 'Percent discount must be between 1% and 100%' }, { status: 400 });
+      }
+      if (effectiveType === 'amount_off' && numericDiscount <= 0) {
+        return NextResponse.json({ error: 'Dollar discount must be greater than $0' }, { status: 400 });
+      }
+    }
+
     let parsedStartsAt: Date | undefined;
     if (body.startsAt !== undefined) {
       const parsed = parseDealDate(body.startsAt, false);

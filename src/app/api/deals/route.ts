@@ -131,6 +131,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'discountValue required for this discount type' }, { status: 400 });
     }
 
+    const numericDiscount = discountType === 'free_service' ? 0 : Number(discountValue);
+    if (discountType === 'percent_off' && (numericDiscount <= 0 || numericDiscount > 100)) {
+      return NextResponse.json({ error: 'Percent discount must be between 1% and 100%' }, { status: 400 });
+    }
+    if (discountType === 'amount_off' && numericDiscount <= 0) {
+      return NextResponse.json({ error: 'Dollar discount must be greater than $0' }, { status: 400 });
+    }
+
     const parsedStartsAt = parseDealDate(startsAt, false);
     const parsedExpiresAt = parseDealDate(expiresAt, true);
     if (!parsedStartsAt || !parsedExpiresAt) {

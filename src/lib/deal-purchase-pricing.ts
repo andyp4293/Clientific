@@ -109,6 +109,23 @@ export function resolveSelectedServicesForDeal(
   return resolved;
 }
 
+// Stripe rejects charges below $0.50. If rounding produces a positive total
+// below that floor, treat the purchase as free rather than attempting an
+// unchargeable amount or rounding up (which would charge more than advertised).
+const STRIPE_MINIMUM_CHARGE_CENTS = 50;
+
+function applyStripeMinimum(result: DealPurchaseTotals): DealPurchaseTotals {
+  if (result.totalAmount > 0 && result.totalAmount < STRIPE_MINIMUM_CHARGE_CENTS) {
+    return {
+      subtotalAmount: result.subtotalAmount,
+      discountAmount: result.subtotalAmount,
+      totalAmount: 0,
+      items: result.items.map((item) => ({ ...item, discountedUnitAmount: 0 })),
+    };
+  }
+  return result;
+}
+
 export function calculateDealPurchaseTotals(
   deal: DealPricingInput,
   selectedServices: DealService[]
@@ -138,28 +155,28 @@ export function calculateDealPurchaseTotals(
   }
 
   if (deal.discountType === 'percent_off') {
+    if (deal.discountValue <= 0 || deal.discountValue > 100) {
+      throw new DealPurchasePricingError('Percent discount must be between 1% and 100%');
+    }
+
     const items = baseItems.map((item) => {
       const discountedUnitAmount = Math.max(
         0,
         Math.round(item.originalUnitAmount * (1 - deal.discountValue / 100))
       );
-
-      return {
-        ...item,
-        discountedUnitAmount,
-      };
+      return { ...item, discountedUnitAmount };
     });
 
     const totalAmount = items.reduce((sum, item) => sum + item.discountedUnitAmount, 0);
-    return {
-      subtotalAmount,
-      discountAmount: subtotalAmount - totalAmount,
-      totalAmount,
-      items,
-    };
+    const result = { subtotalAmount, discountAmount: subtotalAmount - totalAmount, totalAmount, items };
+    return applyStripeMinimum(result);
   }
 
   if (deal.discountType === 'amount_off') {
+    if (deal.discountValue <= 0) {
+      throw new DealPurchasePricingError('Dollar discount must be greater than $0');
+    }
+
     const discountAmount = Math.min(subtotalAmount, Math.round(deal.discountValue * 100));
     const distributed = distributeAmountAcrossItems(
       discountAmount,
@@ -169,12 +186,13 @@ export function calculateDealPurchaseTotals(
       ...item,
       discountedUnitAmount: Math.max(0, item.originalUnitAmount - distributed[index]),
     }));
-    return {
+    const result = {
       subtotalAmount,
       discountAmount,
       totalAmount: subtotalAmount - discountAmount,
       items,
     };
+    return applyStripeMinimum(result);
   }
 
   throw new DealPurchasePricingError('Unsupported deal discount type');

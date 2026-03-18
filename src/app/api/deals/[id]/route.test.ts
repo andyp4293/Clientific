@@ -96,6 +96,57 @@ describe('PATCH /api/deals/[id]', () => {
     expect(mockDealUpdate).not.toHaveBeenCalled();
   });
 
+  it('returns 400 when patching percent_off > 100', async () => {
+    const res = await PATCH(
+      makePatchRequest({ discountType: 'percent_off', discountValue: 150 }),
+      { params: Promise.resolve({ id: 'deal-1' }) }
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/between 1% and 100%/i);
+    expect(mockDealUpdate).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when patching percent_off to 0', async () => {
+    const res = await PATCH(
+      makePatchRequest({ discountType: 'percent_off', discountValue: 0 }),
+      { params: Promise.resolve({ id: 'deal-1' }) }
+    );
+    expect(res.status).toBe(400);
+    expect(mockDealUpdate).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when patching amount_off to negative value', async () => {
+    const res = await PATCH(
+      makePatchRequest({ discountType: 'amount_off', discountValue: -10 }),
+      { params: Promise.resolve({ id: 'deal-1' }) }
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/greater than \$0/i);
+    expect(mockDealUpdate).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when patching amount_off to 0', async () => {
+    const res = await PATCH(
+      makePatchRequest({ discountType: 'amount_off', discountValue: 0 }),
+      { params: Promise.resolve({ id: 'deal-1' }) }
+    );
+    expect(res.status).toBe(400);
+    expect(mockDealUpdate).not.toHaveBeenCalled();
+  });
+
+  it('validates discountValue against existing discountType when type is not in patch body', async () => {
+    // existing deal has discountType, patch only sends discountValue
+    mockDealFindUnique.mockResolvedValue({ ...existingDeal, discountType: 'percent_off' });
+    const res = await PATCH(
+      makePatchRequest({ discountValue: 110 }), // no discountType in body — uses existing 'percent_off'
+      { params: Promise.resolve({ id: 'deal-1' }) }
+    );
+    expect(res.status).toBe(400);
+    expect(mockDealUpdate).not.toHaveBeenCalled();
+  });
+
   it('normalizes date-only inputs to full-day bounds', async () => {
     mockDealUpdate.mockResolvedValue({ ...existingDeal, id: 'deal-1' });
 

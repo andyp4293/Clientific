@@ -193,6 +193,55 @@ describe('POST /api/deals', () => {
     expect(res.status).toBe(201);
   });
 
+  it('returns 400 for percent_off > 100', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
+    const res = await POST(makeRequest({ ...validDealBody, discountType: 'percent_off', discountValue: 150 }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/between 1% and 100%/i);
+  });
+
+  it('returns 400 for percent_off = 0', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
+    const res = await POST(makeRequest({ ...validDealBody, discountType: 'percent_off', discountValue: 0 }));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 for negative percent_off', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
+    const res = await POST(makeRequest({ ...validDealBody, discountType: 'percent_off', discountValue: -10 }));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 for amount_off = 0', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
+    const res = await POST(makeRequest({ ...validDealBody, discountType: 'amount_off', discountValue: 0 }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/greater than \$0/i);
+  });
+
+  it('returns 400 for negative amount_off', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
+    const res = await POST(makeRequest({ ...validDealBody, discountType: 'amount_off', discountValue: -5 }));
+    expect(res.status).toBe(400);
+  });
+
+  it('allows amount_off larger than any single service price (discount is capped at checkout)', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
+    const fakeDeal = { id: 'deal-x', discountType: 'amount_off', discountValue: 50, businessId: 'biz-1', service: null };
+    mockDealCreate.mockResolvedValue(fakeDeal);
+    // $50 off is valid at creation time — we don't know service prices yet for all_services deals
+    const res = await POST(makeRequest({ ...validDealBody, discountType: 'amount_off', discountValue: 50 }));
+    expect(res.status).toBe(201);
+  });
+
   it('normalizes date-only inputs to full-day bounds', async () => {
     mockSession.mockResolvedValue(activeSession);
     mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
