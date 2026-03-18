@@ -198,22 +198,29 @@ describe('POST /api/public/deals/[id]/payment-intent', () => {
     expect((await res.json()).error).toMatch(/not ready/i);
   });
 
-  it('creates a PaymentIntent with Connect transfer and returns clientSecret + token', async () => {
+  it('creates a PaymentIntent with Connect transfer and returns clientSecret + purchaseToken', async () => {
     const res = await POST(makeRequest({ customerName: 'Jane Doe', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] }), { params: Promise.resolve({ id: 'deal-1' }) });
 
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.clientSecret).toBe('pi_test_123_secret_abc');
-    expect(body.purchaseId).toBe('purchase-1');
-    expect(body.purchaseToken).toBe('tok_abc');
+    // purchaseToken is a random base64url string — just verify it exists and is a string
+    expect(typeof body.purchaseToken).toBe('string');
+    expect(body.purchaseToken.length).toBeGreaterThan(10);
+    // No DB record created upfront — purchaseId should not be in the response
+    expect(body.purchaseId).toBeUndefined();
 
     expect(mockPaymentIntentCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         amount: 4000,
         currency: 'usd',
-        application_fee_amount: basePurchase.applicationFeeAmount,
         transfer_data: { destination: readyConnectAccount.id },
-        metadata: expect.objectContaining({ kind: 'deal_purchase', dealPurchaseId: 'purchase-1' }),
+        metadata: expect.objectContaining({
+          kind: 'deal_purchase',
+          dealId: 'deal-1',
+          customerName: 'Jane Doe',
+          selectedServiceIds: JSON.stringify(['svc-1']),
+        }),
       })
     );
   });
@@ -225,11 +232,11 @@ describe('POST /api/public/deals/[id]/payment-intent', () => {
     expect(callArg).not.toHaveProperty('payment_method_types');
   });
 
-  it('stores the PaymentIntent id on the DealPurchase record', async () => {
+  it('does not write to the database before payment succeeds', async () => {
     await POST(makeRequest({ customerName: 'Jane Doe', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] }), { params: Promise.resolve({ id: 'deal-1' }) });
-    expect(mockDealPurchaseUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { stripePaymentIntentId: 'pi_test_123' } })
-    );
+    // No DealPurchase record should be created or updated until the webhook fires
+    expect(mockDealPurchaseUpdate).not.toHaveBeenCalled();
+    expect(mockCreatePending).not.toHaveBeenCalled();
   });
 
   it('returns 500 when stripe.paymentIntents.create throws', async () => {

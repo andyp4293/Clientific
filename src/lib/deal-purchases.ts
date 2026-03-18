@@ -192,6 +192,160 @@ async function resolveReceiptUrl(paymentIntentId: string | null | undefined): Pr
   };
 }
 
+/**
+ * Called by the payment_intent.succeeded webhook for the new flow where no
+ * DealPurchase row is created upfront. All purchase data comes from the
+ * PaymentIntent metadata; the DB record is created here for the first time.
+ */
+export async function createDealPurchaseFromPaymentIntent(
+  paymentIntent: Stripe.PaymentIntent,
+  appBaseUrl: string
+) {
+  const meta = paymentIntent.metadata ?? {};
+  const {
+    purchaseToken,
+    dealId,
+    businessId,
+    customerName,
+    customerPhone,
+    selectedServiceIds: selectedServiceIdsJson,
+    subtotalAmount,
+    discountAmount,
+    totalAmount,
+    applicationFeeAmount,
+    expiresAt,
+  } = meta;
+
+  if (!purchaseToken || !dealId || !businessId || !customerName || !customerPhone) {
+    console.warn('createDealPurchaseFromPaymentIntent: missing required metadata', meta);
+    return null;
+  }
+
+  // Idempotency: if a purchase with this token was already created, return it
+  const existing = await prisma.dealPurchase.findUnique({ where: { token: purchaseToken } });
+  if (existing) {
+    return existing;
+  }
+
+  // Re-fetch deal + services to build line items
+  let selectedIds: string[] = [];
+  try {
+    selectedIds = JSON.parse(selectedServiceIdsJson ?? '[]');
+  } catch {
+    selectedIds = [];
+  }
+
+  const deal = await prisma.deal.findUnique({
+    where: { id: dealId },
+    include: {
+      eligibleServices: {
+        where: { active: true },
+        select: { id: true, name: true, price: true, active: true },
+      },
+      business: {
+        select: {
+          id: true,
+          name: true,
+          vapiPhoneNumber: true,
+          services: {
+            where: { active: true },
+            select: { id: true, name: true, price: true, active: true },
+            orderBy: { sortOrder: 'asc' },
+          },
+        },
+      },
+    },
+  });
+
+  if (!deal) {
+    throw new Error(`Deal ${dealId} not found during purchase finalization`);
+  }
+
+  const { getSelectableServicesForDeal, resolveSelectedServicesForDeal, calculateDealPurchaseTotals } =
+    await import('@/lib/deal-purchase-pricing');
+
+  const selectableServices = getSelectableServicesForDeal(deal, deal.eligibleServices, deal.business.services);
+  const resolvedServices = resolveSelectedServicesForDeal(deal, selectableServices, selectedIds);
+  const totals = calculateDealPurchaseTotals(deal, resolvedServices);
+
+  const feeAmount = Number(applicationFeeAmount) || Math.round(totals.totalAmount * (deal.platformFeePercent / 100));
+  const netAmount = Math.max(0, totals.totalAmount - feeAmount);
+
+  const receiptMeta = await resolveReceiptUrl(paymentIntent.id);
+  const redemptionCode = await generateUniquePurchaseRedemptionCode();
+  const purchasedAt = new Date();
+  const receiptUrl =
+    receiptMeta.stripeReceiptUrl ?? `${appBaseUrl}/deal-purchases/${purchaseToken}`;
+
+  const customer = await resolveCustomerForPurchase({ businessId, customerName, customerPhone });
+
+  const purchase = await prisma.$transaction(async (tx) => {
+    const created = await tx.dealPurchase.create({
+      data: {
+        businessId,
+        dealId,
+        customerId: customer.id,
+        token: purchaseToken,
+        status: 'paid',
+        customerName,
+        customerPhone: formatPhoneNumber(customerPhone),
+        subtotalAmount: totals.subtotalAmount,
+        discountAmount: totals.discountAmount,
+        totalAmount: totals.totalAmount,
+        applicationFeeAmount: feeAmount,
+        businessNetAmount: netAmount,
+        stripePaymentIntentId: paymentIntent.id,
+        stripeChargeId: receiptMeta.stripeChargeId,
+        stripeReceiptUrl: receiptUrl,
+        redemptionCode,
+        purchasedAt,
+        expiresAt: expiresAt ? new Date(expiresAt) : deal.expiresAt,
+        items: {
+          create: totals.items.map((item) => ({
+            serviceId: item.serviceId,
+            serviceName: item.serviceName,
+            quantity: item.quantity,
+            originalUnitAmount: item.originalUnitAmount,
+            discountedUnitAmount: item.discountedUnitAmount,
+          })),
+        },
+      },
+      include: {
+        deal: { select: { id: true, title: true, businessId: true } },
+        business: { select: { name: true, vapiPhoneNumber: true } },
+      },
+    });
+
+    await tx.deal.update({
+      where: { id: dealId },
+      data: { redemptionCount: { increment: 1 } },
+    });
+
+    return created;
+  });
+
+  const smsResult = await sendSMS({
+    to: purchase.customerPhone,
+    message: formatDealPurchaseConfirmationSMS({
+      businessName: purchase.business.name,
+      dealTitle: purchase.deal.title,
+      redemptionCode: purchase.redemptionCode!,
+      receiptUrl,
+      customerName: purchase.customerName,
+    }),
+  });
+
+  await prisma.dealPurchase.update({
+    where: { id: purchase.id },
+    data: {
+      smsConfirmationSentAt: smsResult.success ? new Date() : null,
+      smsConfirmationError: smsResult.success ? null : smsResult.error ?? 'Failed to send SMS',
+    },
+  });
+
+  return purchase;
+}
+
 export async function finalizeDealPurchaseFromCheckoutSession(
   session: Stripe.Checkout.Session,
   appBaseUrl: string

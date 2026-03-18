@@ -71,6 +71,10 @@ export default function DealPurchaseReceiptPage() {
       return res.json();
     },
     enabled: !!token,
+    // The purchase row is created by the Stripe webhook which fires async after
+    // payment; retry a few times to handle the brief window where it's not yet in DB.
+    retry: 6,
+    retryDelay: (attempt) => Math.min(1000 * attempt, 4000),
   });
 
   if (isLoading) {
@@ -78,7 +82,7 @@ export default function DealPurchaseReceiptPage() {
       <div className="page-shell min-h-screen">
         <PublicSiteHeader active="deal" showLogin={false} showCta={false} />
         <div className="flex items-center justify-center px-4 py-20">
-          <p className="text-sm text-gray-600 dark:text-gray-300">Loading receipt...</p>
+          <p className="text-sm text-gray-600 dark:text-gray-300">Confirming your purchase...</p>
         </div>
       </div>
     );

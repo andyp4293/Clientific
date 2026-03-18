@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 import { stripe, PRICING_PLANS } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
 import { revalidateTag } from 'next/cache';
-import { finalizeDealPurchaseFromCheckoutSession, finalizeDealPurchaseFromPaymentIntent } from '@/lib/deal-purchases';
+import { createDealPurchaseFromPaymentIntent, finalizeDealPurchaseFromCheckoutSession, finalizeDealPurchaseFromPaymentIntent } from '@/lib/deal-purchases';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { REFERRAL_COMMISSION_PERCENT } from '@/lib/referral-config';
 
@@ -295,7 +295,17 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 
 async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent) {
   if (paymentIntent.metadata?.kind !== 'deal_purchase') return;
-  await finalizeDealPurchaseFromPaymentIntent(paymentIntent, getConfiguredAppBaseUrl());
+
+  // New flow: metadata carries purchaseToken — create the purchase row for the first time
+  if (paymentIntent.metadata?.purchaseToken) {
+    await createDealPurchaseFromPaymentIntent(paymentIntent, getConfiguredAppBaseUrl());
+    return;
+  }
+
+  // Legacy flow: purchase row was created upfront, just finalize it
+  if (paymentIntent.metadata?.dealPurchaseId) {
+    await finalizeDealPurchaseFromPaymentIntent(paymentIntent, getConfiguredAppBaseUrl());
+  }
 }
 
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {

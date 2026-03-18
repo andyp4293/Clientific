@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
@@ -8,7 +9,11 @@ import {
   getSelectableServicesForDeal,
   resolveSelectedServicesForDeal,
 } from '@/lib/deal-purchase-pricing';
-import { createPendingDealPurchase, finalizeDealPurchaseFromPaymentIntent } from '@/lib/deal-purchases';
+import {
+  createDealPurchaseFromPaymentIntent,
+  createPendingDealPurchase,
+  finalizeDealPurchaseFromPaymentIntent,
+} from '@/lib/deal-purchases';
 import { ensureBusinessConnectAccount } from '@/lib/stripe-connect';
 import { formatPhoneNumber, isValidPhoneNumber } from '@/lib/twilio';
 
@@ -92,7 +97,7 @@ export async function POST(
     const totals = calculateDealPurchaseTotals(deal, resolvedServices);
     const appUrl = getAppBaseUrlFromRequest(req.url);
 
-    // Free deal: create + finalize immediately (no payment required)
+    // Free deal: create + finalize immediately (no payment required, no pending record)
     if (totals.totalAmount === 0) {
       const purchase = await createPendingDealPurchase({
         deal,
@@ -115,7 +120,7 @@ export async function POST(
       });
     }
 
-    // Paid deal: verify Connect account is ready BEFORE creating any DB records
+    // Paid deal: verify Connect account is ready — no DB writes happen until payment succeeds
     let connectAccount;
     try {
       connectAccount = await ensureBusinessConnectAccount(
@@ -128,7 +133,6 @@ export async function POST(
         appUrl
       );
     } catch (err: any) {
-      // Stripe Connect not enabled on platform account, or other account-creation error
       console.error('POST /api/public/deals/[id]/payment-intent Connect error:', err);
       return NextResponse.json(
         { error: 'This business is not ready to accept purchased deals yet' },
@@ -143,50 +147,42 @@ export async function POST(
       );
     }
 
-    // Connect account is ready — now create the purchase record and payment intent
-    const purchase = await createPendingDealPurchase({
-      deal,
-      customerName,
-      customerPhone: formatPhoneNumber(customerPhone),
-      totals,
-    });
+    // Generate a receipt token in-memory — the DealPurchase row is created only
+    // when the Stripe webhook fires (payment_intent.succeeded).
+    const purchaseToken = randomBytes(18).toString('base64url');
+    const applicationFeeAmount = Math.round(
+      totals.totalAmount * (deal.platformFeePercent / 100)
+    );
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: totals.totalAmount,
       currency: 'usd',
-      application_fee_amount: purchase.applicationFeeAmount,
-      transfer_data: {
-        destination: connectAccount.id,
-      },
+      application_fee_amount: applicationFeeAmount,
+      transfer_data: { destination: connectAccount.id },
       automatic_payment_methods: { enabled: true },
       metadata: {
         kind: 'deal_purchase',
-        dealPurchaseId: purchase.id,
+        purchaseToken,
         dealId: deal.id,
         businessId: deal.business.id,
+        customerName,
+        customerPhone: formatPhoneNumber(customerPhone),
+        selectedServiceIds: JSON.stringify(selectedServiceIds),
+        subtotalAmount: String(totals.subtotalAmount),
+        discountAmount: String(totals.discountAmount),
+        totalAmount: String(totals.totalAmount),
+        applicationFeeAmount: String(applicationFeeAmount),
+        expiresAt: deal.expiresAt.toISOString(),
       },
-    });
-
-    await prisma.dealPurchase.update({
-      where: { id: purchase.id },
-      data: { stripePaymentIntentId: paymentIntent.id },
     });
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
-      purchaseId: purchase.id,
-      purchaseToken: purchase.token,
+      purchaseToken,
     });
   } catch (error: any) {
     if (error instanceof DealPurchasePricingError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    // Surface Stripe errors with their actual message to aid debugging
-    if (error?.type?.startsWith('Stripe') || error?.raw?.type) {
-      const stripeMessage = error?.message ?? 'Stripe error';
-      console.error('POST /api/public/deals/[id]/payment-intent Stripe error:', error);
-      return NextResponse.json({ error: stripeMessage }, { status: 502 });
     }
 
     console.error('POST /api/public/deals/[id]/payment-intent error:', error);
