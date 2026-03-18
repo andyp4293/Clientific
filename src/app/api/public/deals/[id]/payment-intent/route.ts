@@ -90,16 +90,16 @@ export async function POST(
       selectedServiceIds
     );
     const totals = calculateDealPurchaseTotals(deal, resolvedServices);
-    const purchase = await createPendingDealPurchase({
-      deal,
-      customerName,
-      customerPhone: formatPhoneNumber(customerPhone),
-      totals,
-    });
-
     const appUrl = getAppBaseUrlFromRequest(req.url);
 
+    // Free deal: create + finalize immediately (no payment required)
     if (totals.totalAmount === 0) {
+      const purchase = await createPendingDealPurchase({
+        deal,
+        customerName,
+        customerPhone: formatPhoneNumber(customerPhone),
+        totals,
+      });
       const finalized = await finalizeDealPurchaseFromPaymentIntent(
         {
           id: `free_${purchase.id}`,
@@ -115,6 +115,7 @@ export async function POST(
       });
     }
 
+    // Paid deal: verify Connect account is ready BEFORE creating any DB records
     const connectAccount = await ensureBusinessConnectAccount(
       {
         id: deal.business.id,
@@ -131,6 +132,14 @@ export async function POST(
         { status: 409 }
       );
     }
+
+    // Connect account is ready — now create the purchase record and payment intent
+    const purchase = await createPendingDealPurchase({
+      deal,
+      customerName,
+      customerPhone: formatPhoneNumber(customerPhone),
+      totals,
+    });
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: totals.totalAmount,

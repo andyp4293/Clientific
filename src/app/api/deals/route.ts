@@ -31,6 +31,7 @@ export async function GET() {
         },
         redemptions: { orderBy: { createdAt: 'desc' } },
         purchases: {
+          where: { status: 'paid' },
           orderBy: { createdAt: 'desc' },
           include: {
             items: {
