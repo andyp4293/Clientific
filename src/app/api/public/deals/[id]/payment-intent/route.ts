@@ -116,15 +116,25 @@ export async function POST(
     }
 
     // Paid deal: verify Connect account is ready BEFORE creating any DB records
-    const connectAccount = await ensureBusinessConnectAccount(
-      {
-        id: deal.business.id,
-        email: deal.business.email,
-        name: deal.business.name,
-        stripeConnectAccountId: deal.business.stripeConnectAccountId,
-      },
-      appUrl
-    );
+    let connectAccount;
+    try {
+      connectAccount = await ensureBusinessConnectAccount(
+        {
+          id: deal.business.id,
+          email: deal.business.email,
+          name: deal.business.name,
+          stripeConnectAccountId: deal.business.stripeConnectAccountId,
+        },
+        appUrl
+      );
+    } catch (err: any) {
+      // Stripe Connect not enabled on platform account, or other account-creation error
+      console.error('POST /api/public/deals/[id]/payment-intent Connect error:', err);
+      return NextResponse.json(
+        { error: 'This business is not ready to accept purchased deals yet' },
+        { status: 409 }
+      );
+    }
 
     if (!(connectAccount.charges_enabled && connectAccount.payouts_enabled && connectAccount.details_submitted)) {
       return NextResponse.json(
