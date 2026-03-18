@@ -216,6 +216,13 @@ export default function DealCheckoutPage() {
   const phoneReady = customerPhone.replace(/\D/g, '').length >= 10;
   const contactReady = nameReady && emailReady && phoneReady;
 
+  // Auto-load payment intent as soon as all contact fields are valid
+  useEffect(() => {
+    if (!contactReady || contactLocked || clientSecret || isLoadingPayment) return;
+    handleLoadPayment();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contactReady, contactLocked, clientSecret, isLoadingPayment]);
+
   function handleEditContact() {
     setContactLocked(false);
     setClientSecret(null);
@@ -446,54 +453,41 @@ export default function DealCheckoutPage() {
                   >
                     <PaymentForm purchaseToken={purchaseToken} totalAmount={totals.total} />
                   </Elements>
+                ) : isLoadingPayment ? (
+                  <div className="flex flex-col items-center gap-3 py-8">
+                    <svg className="h-6 w-6 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    <p className="text-sm text-gray-400 dark:text-gray-500">Setting up payment...</p>
+                  </div>
                 ) : (
                   <div className="space-y-4">
-                    {/* Wallet logos preview */}
-                    <div className="flex flex-wrap items-center gap-2">
-                      {['Apple Pay', 'Google Pay', 'Visa', 'Mastercard', 'Amex'].map((name) => (
-                        <span key={name} className="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
-                          {name}
-                        </span>
-                      ))}
-                    </div>
-
-                    {loadError && (
+                    {loadError ? (
                       <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900/40 dark:bg-red-900/20">
                         <svg className="mt-0.5 h-4 w-4 shrink-0 text-red-500" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                         </svg>
-                        <p className="text-sm text-red-700 dark:text-red-300">{loadError}</p>
+                        <div className="flex-1">
+                          <p className="text-sm text-red-700 dark:text-red-300">{loadError}</p>
+                          <button
+                            type="button"
+                            onClick={handleLoadPayment}
+                            className="mt-1.5 text-xs font-semibold text-red-600 underline dark:text-red-400"
+                          >
+                            Try again
+                          </button>
+                        </div>
                       </div>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={handleLoadPayment}
-                      disabled={!contactReady || isLoadingPayment}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 text-base font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {isLoadingPayment ? (
-                        <>
-                          <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                          </svg>
-                          Setting up payment...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                          </svg>
-                          Continue to Payment — {fmt(totals.total)}
-                        </>
-                      )}
-                    </button>
-
-                    {!contactReady && (
-                      <p className="text-center text-xs text-gray-400 dark:text-gray-500">
-                        Fill in your contact info above to continue.
-                      </p>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-gray-200 bg-gray-50 py-8 dark:border-gray-700 dark:bg-gray-800/40">
+                        <svg className="h-6 w-6 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                        <p className="text-sm text-gray-400 dark:text-gray-500">
+                          Payment form loads automatically
+                        </p>
+                      </div>
                     )}
                   </div>
                 )}
