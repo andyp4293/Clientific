@@ -157,8 +157,9 @@ function formatTime(date: Date, timezone?: string): string {
 }
 
 export async function sendSMS({ to, message, from }: SendSMSParams): Promise<SMSResult> {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  // Some env providers (Vercel) preserve trailing newlines from copied values — trim defensively.
+  const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim();
+  const authToken = process.env.TWILIO_AUTH_TOKEN?.trim();
   if (!accountSid || !authToken) {
     console.log('SMS disabled (Twilio not configured)');
     console.log('Would have sent to:', to);
