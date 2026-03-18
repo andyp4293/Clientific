@@ -31,10 +31,6 @@ vi.mock('@/lib/deal-purchases', () => ({
   finalizeDealPurchaseFromPaymentIntent: vi.fn(),
 }));
 
-vi.mock('@/lib/stripe-connect', () => ({
-  ensureBusinessConnectAccount: vi.fn(),
-}));
-
 vi.mock('@/lib/twilio', () => ({
   formatPhoneNumber: vi.fn((phone: string) => phone),
   isValidPhoneNumber: vi.fn(() => true),
@@ -53,7 +49,6 @@ import {
   DealPurchasePricingError,
 } from '@/lib/deal-purchase-pricing';
 import { createPendingDealPurchase, finalizeDealPurchaseFromPaymentIntent } from '@/lib/deal-purchases';
-import { ensureBusinessConnectAccount } from '@/lib/stripe-connect';
 import { isValidPhoneNumber } from '@/lib/twilio';
 import { POST } from './route';
 
@@ -62,7 +57,6 @@ const mockDealPurchaseUpdate = prisma.dealPurchase.update as ReturnType<typeof v
 const mockPaymentIntentCreate = stripe.paymentIntents.create as ReturnType<typeof vi.fn>;
 const mockCreatePending = createPendingDealPurchase as ReturnType<typeof vi.fn>;
 const mockFinalize = finalizeDealPurchaseFromPaymentIntent as ReturnType<typeof vi.fn>;
-const mockEnsureConnect = ensureBusinessConnectAccount as ReturnType<typeof vi.fn>;
 const mockIsValidPhone = isValidPhoneNumber as ReturnType<typeof vi.fn>;
 const mockGetSelectable = getSelectableServicesForDeal as ReturnType<typeof vi.fn>;
 const mockResolveSelected = resolveSelectedServicesForDeal as ReturnType<typeof vi.fn>;
@@ -89,7 +83,6 @@ const baseDeal = {
     name: 'Test Salon',
     email: 'salon@test.com',
     slug: 'test-salon',
-    stripeConnectAccountId: 'acct_123',
     services: [{ id: 'svc-1', name: 'Haircut', price: 50, active: true }],
   },
 };
@@ -99,13 +92,6 @@ const basePurchase = {
   token: 'tok_abc',
   applicationFeeAmount: 600,
   customer: { email: 'customer@test.com' },
-};
-
-const readyConnectAccount = {
-  id: 'acct_123',
-  charges_enabled: true,
-  payouts_enabled: true,
-  details_submitted: true,
 };
 
 function makeRequest(body: object) {
@@ -124,7 +110,6 @@ beforeEach(() => {
   mockResolveSelected.mockReturnValue([{ id: 'svc-1', name: 'Haircut', price: 50, active: true }]);
   mockCalculateTotals.mockReturnValue({ subtotalAmount: 5000, discountAmount: 1000, totalAmount: 4000, items: [] });
   mockCreatePending.mockResolvedValue(basePurchase);
-  mockEnsureConnect.mockResolvedValue(readyConnectAccount);
   mockPaymentIntentCreate.mockResolvedValue({ id: 'pi_test_123', client_secret: 'pi_test_123_secret_abc' });
   mockDealPurchaseUpdate.mockResolvedValue({});
 });
@@ -191,30 +176,20 @@ describe('POST /api/public/deals/[id]/payment-intent', () => {
     expect((await res.json()).error).toMatch(/eligible/i);
   });
 
-  it('returns 409 when business Connect account is not ready', async () => {
-    mockEnsureConnect.mockResolvedValue({ ...readyConnectAccount, charges_enabled: false });
-    const res = await POST(makeRequest({ customerName: 'Jane', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] }), { params: Promise.resolve({ id: 'deal-1' }) });
-    expect(res.status).toBe(409);
-    expect((await res.json()).error).toMatch(/not ready/i);
-  });
-
-  it('creates a PaymentIntent with Connect transfer and returns clientSecret + purchaseToken', async () => {
+  it('creates a PaymentIntent on Clientific account (no Connect transfer) and returns clientSecret + purchaseToken', async () => {
     const res = await POST(makeRequest({ customerName: 'Jane Doe', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] }), { params: Promise.resolve({ id: 'deal-1' }) });
 
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.clientSecret).toBe('pi_test_123_secret_abc');
-    // purchaseToken is a random base64url string — just verify it exists and is a string
     expect(typeof body.purchaseToken).toBe('string');
     expect(body.purchaseToken.length).toBeGreaterThan(10);
-    // No DB record created upfront — purchaseId should not be in the response
     expect(body.purchaseId).toBeUndefined();
 
     expect(mockPaymentIntentCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         amount: 4000,
         currency: 'usd',
-        transfer_data: { destination: readyConnectAccount.id },
         metadata: expect.objectContaining({
           kind: 'deal_purchase',
           dealId: 'deal-1',
@@ -223,6 +198,11 @@ describe('POST /api/public/deals/[id]/payment-intent', () => {
         }),
       })
     );
+
+    // No Connect transfer — money stays in Clientific's account
+    const callArg = mockPaymentIntentCreate.mock.calls[0][0];
+    expect(callArg).not.toHaveProperty('transfer_data');
+    expect(callArg).not.toHaveProperty('application_fee_amount');
   });
 
   it('uses automatic_payment_methods so Apple Pay and Google Pay are enabled', async () => {
@@ -234,7 +214,6 @@ describe('POST /api/public/deals/[id]/payment-intent', () => {
 
   it('does not write to the database before payment succeeds', async () => {
     await POST(makeRequest({ customerName: 'Jane Doe', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] }), { params: Promise.resolve({ id: 'deal-1' }) });
-    // No DealPurchase record should be created or updated until the webhook fires
     expect(mockDealPurchaseUpdate).not.toHaveBeenCalled();
     expect(mockCreatePending).not.toHaveBeenCalled();
   });

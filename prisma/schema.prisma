@@ -109,7 +109,7 @@ model BusinessBankAccount {
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
   businessId              String   @unique
-  stripeExternalAccountId String
+  stripeExternalAccountId String?
   bankName                String?
   last4                   String
   routingNumberLast4      String

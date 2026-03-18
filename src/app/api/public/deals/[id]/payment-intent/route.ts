@@ -10,11 +10,9 @@ import {
   resolveSelectedServicesForDeal,
 } from '@/lib/deal-purchase-pricing';
 import {
-  createDealPurchaseFromPaymentIntent,
   createPendingDealPurchase,
   finalizeDealPurchaseFromPaymentIntent,
 } from '@/lib/deal-purchases';
-import { ensureBusinessConnectAccount } from '@/lib/stripe-connect';
 import { formatPhoneNumber, isValidPhoneNumber } from '@/lib/twilio';
 
 export async function POST(
@@ -53,7 +51,6 @@ export async function POST(
             name: true,
             email: true,
             slug: true,
-            stripeConnectAccountId: true,
             services: {
               where: { active: true },
               select: { id: true, name: true, price: true, active: true },
@@ -97,7 +94,7 @@ export async function POST(
     const totals = calculateDealPurchaseTotals(deal, resolvedServices);
     const appUrl = getAppBaseUrlFromRequest(req.url);
 
-    // Free deal: create + finalize immediately (no payment required, no pending record)
+    // Free deal: create + finalize immediately (no payment required)
     if (totals.totalAmount === 0) {
       const purchase = await createPendingDealPurchase({
         deal,
@@ -120,35 +117,9 @@ export async function POST(
       });
     }
 
-    // Paid deal: verify Connect account is ready — no DB writes happen until payment succeeds
-    let connectAccount;
-    try {
-      connectAccount = await ensureBusinessConnectAccount(
-        {
-          id: deal.business.id,
-          email: deal.business.email,
-          name: deal.business.name,
-          stripeConnectAccountId: deal.business.stripeConnectAccountId,
-        },
-        appUrl
-      );
-    } catch (err: any) {
-      console.error('POST /api/public/deals/[id]/payment-intent Connect error:', err);
-      return NextResponse.json(
-        { error: 'This business is not ready to accept purchased deals yet' },
-        { status: 409 }
-      );
-    }
-
-    if (!connectAccount.charges_enabled) {
-      return NextResponse.json(
-        { error: 'This business is not ready to accept purchased deals yet' },
-        { status: 409 }
-      );
-    }
-
-    // Generate a receipt token in-memory — the DealPurchase row is created only
-    // when the Stripe webhook fires (payment_intent.succeeded).
+    // Paid deal: charge Clientific's account — no Connect sub-account needed.
+    // Platform fee (applicationFeeAmount) is tracked in metadata for DB recording;
+    // payouts to businesses are handled separately by Clientific on a weekly schedule.
     const purchaseToken = randomBytes(18).toString('base64url');
     const applicationFeeAmount = Math.round(
       totals.totalAmount * (deal.platformFeePercent / 100)
@@ -157,8 +128,6 @@ export async function POST(
     const paymentIntent = await stripe.paymentIntents.create({
       amount: totals.totalAmount,
       currency: 'usd',
-      application_fee_amount: applicationFeeAmount,
-      transfer_data: { destination: connectAccount.id },
       automatic_payment_methods: { enabled: true },
       metadata: {
         kind: 'deal_purchase',
