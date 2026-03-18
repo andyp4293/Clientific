@@ -1,14 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { useMemo, useState } from 'react';
 import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
-
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 interface DealService {
   id: string;
@@ -69,101 +65,18 @@ function calculatePreviewTotals(
   return { subtotal, discount, total: subtotal - discount };
 }
 
-// ─── Embedded payment form (shown in step 2) ─────────────────────────────────
-
-interface PaymentFormProps {
-  purchaseToken: string;
-  onBack: () => void;
-}
-
-function PaymentForm({ purchaseToken, onBack }: PaymentFormProps) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handlePay() {
-    if (!stripe || !elements) return;
-    setIsSubmitting(true);
-    setError(null);
-
-    const result = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/deal-purchases/${purchaseToken}`,
-      },
-      redirect: 'if_required',
-    });
-
-    if (result.error) {
-      setError(result.error.message ?? 'Payment failed. Please try again.');
-      setIsSubmitting(false);
-      return;
-    }
-
-    // Payment succeeded without a redirect (Apple Pay, Google Pay, most cards)
-    router.push(`/deal-purchases/${purchaseToken}`);
-  }
-
-  return (
-    <div className="space-y-5">
-      <PaymentElement
-        options={{
-          layout: 'tabs',
-          wallets: { applePay: 'auto', googlePay: 'auto' },
-        }}
-      />
-
-      {error && (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
-          {error}
-        </p>
-      )}
-
-      <button
-        type="button"
-        onClick={handlePay}
-        disabled={!stripe || isSubmitting}
-        className="w-full rounded-xl bg-primary py-3.5 text-base font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {isSubmitting ? 'Processing...' : 'Pay now'}
-      </button>
-
-      <button
-        type="button"
-        onClick={onBack}
-        disabled={isSubmitting}
-        className="w-full text-sm font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-      >
-        ← Go back
-      </button>
-    </div>
-  );
-}
-
-// ─── Main page ────────────────────────────────────────────────────────────────
-
 export default function PublicDealClaimPage() {
   const params = useParams();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const dealId = params.dealId as string;
 
-  // Step 1: info collection
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
 
-  // Step 2: payment
-  const [checkoutStep, setCheckoutStep] = useState<'form' | 'payment'>('form');
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [purchaseToken, setPurchaseToken] = useState<string | null>(null);
-
-  // Legacy code-claim state
+  // Code-claim flow state
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
   const [claimCode, setClaimCode] = useState<string | null>(null);
   const [claimConfirmationSent, setClaimConfirmationSent] = useState(false);
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -182,6 +95,7 @@ export default function PublicDealClaimPage() {
 
   const deal = data?.deal;
   const isPurchaseFlow = deal?.deliveryType === 'purchase_link';
+
   const selectedServices = useMemo(
     () => (deal?.selectableServices ?? []).filter((s) => selectedServiceIds.includes(s.id)),
     [deal?.selectableServices, selectedServiceIds]
@@ -190,9 +104,8 @@ export default function PublicDealClaimPage() {
     () => calculatePreviewTotals(deal?.discountType ?? 'percent_off', deal?.discountValue ?? 0, selectedServices),
     [deal?.discountType, deal?.discountValue, selectedServices]
   );
+
   const phoneReady = useMemo(() => customerPhone.replace(/\D/g, '').length >= 10, [customerPhone]);
-  const checkoutCanceled = searchParams.get('checkout') === 'canceled';
-  const canContinue = customerName.trim().length > 0 && phoneReady && selectedServiceIds.length > 0 && !isSubmitting;
 
   function toggleService(serviceId: string) {
     if (!deal) return;
@@ -205,33 +118,9 @@ export default function PublicDealClaimPage() {
     );
   }
 
-  async function startPaymentIntent() {
-    setIsSubmitting(true);
-    setSubmitError(null);
-
-    try {
-      const res = await fetch(`/api/public/deals/${dealId}/payment-intent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerName, customerPhone, selectedServiceIds }),
-      });
-
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error || 'Could not start checkout');
-
-      if (body.immediate) {
-        router.push(body.url);
-        return;
-      }
-
-      setClientSecret(body.clientSecret);
-      setPurchaseToken(body.purchaseToken);
-      setCheckoutStep('payment');
-    } catch (err: any) {
-      setSubmitError(err?.message || 'Could not start checkout');
-    } finally {
-      setIsSubmitting(false);
-    }
+  function handleContinueToCheckout() {
+    const query = selectedServiceIds.join(',');
+    router.push(`/d/${dealId}/checkout?services=${encodeURIComponent(query)}`);
   }
 
   async function claimDeal() {
@@ -319,170 +208,94 @@ export default function PublicDealClaimPage() {
               <Link href={deal.business.city ? `/explore?location=${encodeURIComponent(deal.business.city)}` : '/explore'} className="text-primary hover:underline">Find more deals nearby</Link>
             </div>
 
-            {checkoutCanceled && isPurchaseFlow && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100">
-                Checkout was canceled. Your selected deal is still here if you want to try again.
-              </div>
-            )}
-
-            {/* Purchase link flow */}
+            {/* Purchase link flow: service selection + order summary */}
             {isPurchaseFlow ? (
-              checkoutStep === 'payment' && clientSecret && purchaseToken ? (
-                // ── Step 2: Embedded payment ──────────────────────────────
+              <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
                 <div className="space-y-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Complete your purchase</h2>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      Pay securely with Apple Pay, Google Pay, or a card.
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Choose your services</h2>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                      {deal.serviceScope === 'all_services'
+                        ? 'This deal applies to any of the services below.'
+                        : 'This deal only applies to these eligible services.'}
                     </p>
                   </div>
-                  {/* Order summary mini */}
-                  <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-900/60">
-                    <div className="flex items-center justify-between text-gray-700 dark:text-gray-200">
-                      <span>{deal.title}</span>
-                      <span className="font-semibold">{formatMoney(totals.total)}</span>
-                    </div>
-                    <p className="mt-1 text-xs text-primary">
-                      {discountLabel(deal.discountType, deal.discountValue)} applied
-                    </p>
-                  </div>
-                  <Elements
-                    stripe={stripePromise}
-                    options={{
-                      clientSecret,
-                      appearance: {
-                        theme: 'stripe',
-                        variables: { colorPrimary: '#7B22D4', borderRadius: '12px' },
-                      },
-                    }}
-                  >
-                    <PaymentForm
-                      purchaseToken={purchaseToken}
-                      onBack={() => {
-                        setCheckoutStep('form');
-                        setClientSecret(null);
-                        setPurchaseToken(null);
-                      }}
-                    />
-                  </Elements>
-                </div>
-              ) : (
-                // ── Step 1: Service + customer info ───────────────────────
-                <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
-                  <div className="space-y-4">
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Choose what you want to purchase</h2>
-                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                        {deal.serviceScope === 'all_services'
-                          ? 'This deal applies to any of the services below.'
-                          : 'This deal only applies to these eligible services.'}
-                      </p>
-                    </div>
 
-                    <div className="space-y-3">
-                      {deal.selectableServices.map((service) => {
-                        const selected = selectedServiceIds.includes(service.id);
-                        return (
-                          <button
-                            key={service.id}
-                            type="button"
-                            onClick={() => toggleService(service.id)}
-                            className={`w-full rounded-2xl border p-4 text-left transition-colors ${
-                              selected
-                                ? 'border-primary bg-primary/5'
-                                : 'border-gray-200 bg-white hover:border-primary/40 dark:border-gray-700 dark:bg-gray-900'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-4">
-                              <div>
-                                <p className="font-semibold text-gray-900 dark:text-gray-100">{service.name}</p>
-                                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{service.duration} min</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-semibold text-gray-900 dark:text-gray-100">{formatMoney(service.price)}</p>
-                                <p className="mt-1 text-xs text-primary">
-                                  {selected ? 'Selected' : deal.discountType === 'free_service' ? 'Choose one' : 'Tap to add'}
-                                </p>
-                              </div>
+                  <div className="space-y-3">
+                    {deal.selectableServices.map((service) => {
+                      const selected = selectedServiceIds.includes(service.id);
+                      return (
+                        <button
+                          key={service.id}
+                          type="button"
+                          onClick={() => toggleService(service.id)}
+                          className={`w-full rounded-2xl border p-4 text-left transition-colors ${
+                            selected
+                              ? 'border-primary bg-primary/5'
+                              : 'border-gray-200 bg-white hover:border-primary/40 dark:border-gray-700 dark:bg-gray-900'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-4">
+                            <div>
+                              <p className="font-semibold text-gray-900 dark:text-gray-100">{service.name}</p>
+                              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{service.duration} min</p>
                             </div>
-                          </button>
-                        );
-                      })}
-                    </div>
+                            <div className="text-right">
+                              <p className="font-semibold text-gray-900 dark:text-gray-100">{formatMoney(service.price)}</p>
+                              <p className="mt-1 text-xs text-primary">
+                                {selected ? 'Selected' : deal.discountType === 'free_service' ? 'Choose one' : 'Tap to add'}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-                    <div className="space-y-3">
-                      <div>
-                        <label htmlFor="deal-purchase-name" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Your Name</label>
-                        <input
-                          id="deal-purchase-name"
-                          type="text"
-                          value={customerName}
-                          onChange={(e) => setCustomerName(e.target.value)}
-                          placeholder="Jane Doe"
-                          className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="deal-purchase-phone" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Mobile Phone</label>
-                        <input
-                          id="deal-purchase-phone"
-                          type="tel"
-                          value={customerPhone}
-                          onChange={(e) => setCustomerPhone(e.target.value)}
-                          placeholder="(555) 123-4567"
-                          className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                        />
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">We'll text your redemption code after payment.</p>
+                <aside className="rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-900/70">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Order summary</h2>
+                  <div className="mt-4 space-y-3">
+                    {selectedServices.length === 0 ? (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Select at least one service to continue.</p>
+                    ) : (
+                      selectedServices.map((service) => (
+                        <div key={service.id} className="flex items-start justify-between gap-4 text-sm">
+                          <span className="text-gray-700 dark:text-gray-200">{service.name}</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">{formatMoney(service.price)}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="mt-5 space-y-2 border-t border-gray-200 pt-4 dark:border-gray-700">
+                    <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-300">
+                      <span>Subtotal</span><span>{formatMoney(totals.subtotal)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-primary">
+                      <span>Deal discount</span><span>-{formatMoney(totals.discount)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-base font-semibold text-gray-900 dark:text-gray-100">
+                      <span>Total due</span><span>{formatMoney(totals.total)}</span>
                     </div>
                   </div>
 
-                  <aside className="rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-900/70">
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Order summary</h2>
-                    <div className="mt-4 space-y-3">
-                      {selectedServices.length === 0 ? (
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Select at least one eligible service to continue.</p>
-                      ) : (
-                        selectedServices.map((service) => (
-                          <div key={service.id} className="flex items-start justify-between gap-4 text-sm">
-                            <span className="text-gray-700 dark:text-gray-200">{service.name}</span>
-                            <span className="font-medium text-gray-900 dark:text-gray-100">{formatMoney(service.price)}</span>
-                          </div>
-                        ))
-                      )}
-                    </div>
+                  <button
+                    type="button"
+                    onClick={handleContinueToCheckout}
+                    disabled={selectedServiceIds.length === 0}
+                    className="mt-5 w-full rounded-xl bg-primary py-3.5 text-base font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Continue to Checkout
+                  </button>
 
-                    <div className="mt-5 space-y-2 border-t border-gray-200 pt-4 dark:border-gray-700">
-                      <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-300">
-                        <span>Subtotal</span><span>{formatMoney(totals.subtotal)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm text-primary">
-                        <span>Deal discount</span><span>-{formatMoney(totals.discount)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-base font-semibold text-gray-900 dark:text-gray-100">
-                        <span>Total due now</span><span>{formatMoney(totals.total)}</span>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={startPaymentIntent}
-                      disabled={!canContinue}
-                      className="mt-5 w-full rounded-xl bg-primary py-3.5 text-base font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {isSubmitting ? 'Loading...' : 'Buy now'}
-                    </button>
-
-                    <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                      Apple Pay, Google Pay, and cards accepted.
-                    </p>
-
-                    {submitError && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{submitError}</p>}
-                  </aside>
-                </div>
-              )
+                  <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                    Apple Pay, Google Pay, and cards accepted.
+                  </p>
+                </aside>
+              </div>
             ) : (
-              // ── Legacy code-claim flow ────────────────────────────────────
+              // ── Code-claim flow (inline, unchanged) ─────────────────────
               <div className="space-y-3">
                 <div>
                   <label htmlFor="deal-claim-name" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Your Name</label>

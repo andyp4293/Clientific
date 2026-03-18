@@ -24,6 +24,8 @@ export async function POST(
     const body = await req.json().catch(() => ({}));
     const customerName =
       typeof body.customerName === 'string' ? body.customerName.trim() : '';
+    const customerEmail =
+      typeof body.customerEmail === 'string' ? body.customerEmail.trim() : '';
     const customerPhone =
       typeof body.customerPhone === 'string' ? body.customerPhone.trim() : '';
     const selectedServiceIds = Array.isArray(body.selectedServiceIds)
@@ -99,6 +101,7 @@ export async function POST(
       const purchase = await createPendingDealPurchase({
         deal,
         customerName,
+        customerEmail: customerEmail || null,
         customerPhone: formatPhoneNumber(customerPhone),
         totals,
       });
@@ -135,6 +138,7 @@ export async function POST(
         dealId: deal.id,
         businessId: deal.business.id,
         customerName,
+        customerEmail: customerEmail || '',
         customerPhone: formatPhoneNumber(customerPhone),
         selectedServiceIds: JSON.stringify(selectedServiceIds),
         subtotalAmount: String(totals.subtotalAmount),

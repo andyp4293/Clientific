@@ -7,6 +7,7 @@ import {
   formatPhoneNumber,
   sendSMS,
 } from '@/lib/twilio';
+import { sendDealPurchaseReceiptEmail } from '@/lib/email';
 import type { DealPurchaseTotals } from '@/lib/deal-purchase-pricing';
 
 const DEAL_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -108,6 +109,7 @@ async function resolveCustomerForPurchase({
 export async function createPendingDealPurchase({
   deal,
   customerName,
+  customerEmail,
   customerPhone,
   totals,
 }: {
@@ -118,6 +120,7 @@ export async function createPendingDealPurchase({
     platformFeePercent: number;
   };
   customerName: string;
+  customerEmail?: string | null;
   customerPhone: string;
   totals: DealPurchaseTotals;
 }) {
@@ -142,6 +145,7 @@ export async function createPendingDealPurchase({
       customerId: customer.id,
       token,
       customerName,
+      customerEmail: customerEmail || null,
       customerPhone: formatPhoneNumber(customerPhone),
       subtotalAmount: totals.subtotalAmount,
       discountAmount: totals.discountAmount,
@@ -207,6 +211,7 @@ export async function createDealPurchaseFromPaymentIntent(
     dealId,
     businessId,
     customerName,
+    customerEmail,
     customerPhone,
     selectedServiceIds: selectedServiceIdsJson,
     subtotalAmount,
@@ -288,6 +293,7 @@ export async function createDealPurchaseFromPaymentIntent(
         token: purchaseToken,
         status: 'paid',
         customerName,
+        customerEmail: customerEmail || null,
         customerPhone: formatPhoneNumber(customerPhone),
         subtotalAmount: totals.subtotalAmount,
         discountAmount: totals.discountAmount,
@@ -342,6 +348,23 @@ export async function createDealPurchaseFromPaymentIntent(
       smsConfirmationError: smsResult.success ? null : smsResult.error ?? 'Failed to send SMS',
     },
   });
+
+  if (customerEmail) {
+    sendDealPurchaseReceiptEmail({
+      to: customerEmail,
+      customerName: purchase.customerName,
+      businessName: purchase.business.name,
+      dealTitle: purchase.deal.title,
+      redemptionCode: purchase.redemptionCode!,
+      receiptUrl,
+      totalAmount: purchase.totalAmount,
+      items: totals.items.map((item) => ({
+        name: item.serviceName,
+        originalAmount: item.originalUnitAmount,
+        discountedAmount: item.discountedUnitAmount,
+      })),
+    }).catch((err) => console.error('Failed to send deal receipt email:', err));
+  }
 
   return purchase;
 }

@@ -22,18 +22,6 @@ vi.mock('@/components/layout/PublicSiteHeader', () => ({
   PublicSiteHeader: () => <div data-testid="public-site-header" />,
 }));
 
-vi.mock('@stripe/stripe-js', () => ({
-  loadStripe: vi.fn(() => Promise.resolve({})),
-}));
-
-const mockConfirmPayment = vi.fn();
-vi.mock('@stripe/react-stripe-js', () => ({
-  Elements: ({ children }: any) => <div data-testid="stripe-elements">{children}</div>,
-  PaymentElement: () => <div data-testid="payment-element" />,
-  useStripe: () => ({ confirmPayment: mockConfirmPayment }),
-  useElements: () => ({}),
-}));
-
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 function makeCodeClaimDeal(viewerCanManage = false) {
@@ -127,17 +115,13 @@ describe('PublicDealClaimPage — code_claim flow', () => {
   });
 });
 
-// ── Purchase link / Payment Element tests ─────────────────────────────────────
+// ── Purchase link flow tests ──────────────────────────────────────────────────
 
 describe('PublicDealClaimPage — purchase_link flow', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseSearchParams.mockReturnValue(new URLSearchParams());
     mockUseQuery.mockReturnValue({ isLoading: false, isError: false, data: makePurchaseLinkDeal() });
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ clientSecret: 'pi_test_secret', purchaseToken: 'tok_abc', purchaseId: 'purchase-1' }),
-    } as Response);
   });
 
   it('renders selectable services', () => {
@@ -146,107 +130,46 @@ describe('PublicDealClaimPage — purchase_link flow', () => {
     expect(screen.getByText('Color')).toBeInTheDocument();
   });
 
-  it('disables Buy now until a service, name, and phone are all provided', () => {
+  it('disables Continue to Checkout until at least one service is selected', () => {
     render(<PublicDealClaimPage />);
-    expect(screen.getByRole('button', { name: /buy now/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /continue to checkout/i })).toBeDisabled();
 
-    fireEvent.click(screen.getByText('Haircut'));
-    expect(screen.getByRole('button', { name: /buy now/i })).toBeDisabled();
-
-    fireEvent.change(screen.getByLabelText(/your name/i), { target: { value: 'Jane Doe' } });
-    expect(screen.getByRole('button', { name: /buy now/i })).toBeDisabled();
-
-    fireEvent.change(screen.getByLabelText(/mobile phone/i), { target: { value: '(555) 123-4567' } });
-    expect(screen.getByRole('button', { name: /buy now/i })).not.toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: /haircut/i }));
+    expect(screen.getByRole('button', { name: /continue to checkout/i })).not.toBeDisabled();
   });
 
-  it('calls the payment-intent endpoint and shows the embedded PaymentElement on success', async () => {
+  it('navigates to checkout page with selected service IDs on Continue', () => {
     render(<PublicDealClaimPage />);
+    fireEvent.click(screen.getByRole('button', { name: /haircut/i }));
+    fireEvent.click(screen.getByRole('button', { name: /continue to checkout/i }));
 
-    fireEvent.click(screen.getByText('Haircut'));
-    fireEvent.change(screen.getByLabelText(/your name/i), { target: { value: 'Jane Doe' } });
-    fireEvent.change(screen.getByLabelText(/mobile phone/i), { target: { value: '(555) 123-4567' } });
-    fireEvent.click(screen.getByRole('button', { name: /buy now/i }));
-
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/public/deals/deal-1/payment-intent',
-        expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify({ customerName: 'Jane Doe', customerPhone: '(555) 123-4567', selectedServiceIds: ['svc-1'] }),
-        })
-      );
-    });
-
-    expect(await screen.findByTestId('stripe-elements')).toBeInTheDocument();
-    expect(screen.getByTestId('payment-element')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /pay now/i })).toBeInTheDocument();
+    expect(mockRouterPush).toHaveBeenCalledWith('/d/deal-1/checkout?services=svc-1');
   });
 
-  it('shows the order summary in step 2 with the deal title and discounted total', async () => {
+  it('passes multiple selected service IDs to checkout URL', () => {
     render(<PublicDealClaimPage />);
-    fireEvent.click(screen.getByText('Haircut'));
-    fireEvent.change(screen.getByLabelText(/your name/i), { target: { value: 'Jane Doe' } });
-    fireEvent.change(screen.getByLabelText(/mobile phone/i), { target: { value: '(555) 123-4567' } });
-    fireEvent.click(screen.getByRole('button', { name: /buy now/i }));
+    fireEvent.click(screen.getByRole('button', { name: /haircut/i }));
+    fireEvent.click(screen.getByRole('button', { name: /color/i }));
+    fireEvent.click(screen.getByRole('button', { name: /continue to checkout/i }));
 
-    await screen.findByTestId('stripe-elements');
-    // The compact order summary shows the deal title and discount label
-    expect(screen.getAllByText('Summer Promo').length).toBeGreaterThan(0);
-    expect(screen.getByText(/20% off applied/i)).toBeInTheDocument();
+    expect(mockRouterPush).toHaveBeenCalledWith('/d/deal-1/checkout?services=svc-1%2Csvc-2');
   });
 
-  it('Go back button returns to step 1 form', async () => {
+  it('shows order summary with selected service price and discounted total', () => {
     render(<PublicDealClaimPage />);
-    fireEvent.click(screen.getByText('Haircut'));
-    fireEvent.change(screen.getByLabelText(/your name/i), { target: { value: 'Jane Doe' } });
-    fireEvent.change(screen.getByLabelText(/mobile phone/i), { target: { value: '(555) 123-4567' } });
-    fireEvent.click(screen.getByRole('button', { name: /buy now/i }));
+    fireEvent.click(screen.getByRole('button', { name: /haircut/i }));
 
-    await screen.findByTestId('stripe-elements');
-    fireEvent.click(screen.getByRole('button', { name: /go back/i }));
-
-    expect(screen.queryByTestId('stripe-elements')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /buy now/i })).toBeInTheDocument();
+    // Haircut $50, 20% off = $40
+    expect(screen.getAllByText('$50.00').length).toBeGreaterThan(0);
+    expect(screen.getByText('$40.00')).toBeInTheDocument();
   });
 
-  it('shows inline error and stays on step 1 when payment-intent endpoint fails', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      json: async () => ({ error: 'Business not ready to accept payments' }),
-    } as Response);
-
+  it('toggles service selection on repeated clicks', () => {
     render(<PublicDealClaimPage />);
-    fireEvent.click(screen.getByText('Haircut'));
-    fireEvent.change(screen.getByLabelText(/your name/i), { target: { value: 'Jane Doe' } });
-    fireEvent.change(screen.getByLabelText(/mobile phone/i), { target: { value: '(555) 123-4567' } });
-    fireEvent.click(screen.getByRole('button', { name: /buy now/i }));
+    fireEvent.click(screen.getByRole('button', { name: /haircut/i }));
+    expect(screen.getByRole('button', { name: /continue to checkout/i })).not.toBeDisabled();
 
-    expect(await screen.findByText(/business not ready to accept payments/i)).toBeInTheDocument();
-    expect(screen.queryByTestId('stripe-elements')).not.toBeInTheDocument();
-  });
-
-  it('routes to receipt directly for a free deal (immediate: true)', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ immediate: true, url: '/deal-purchases/tok_free', purchaseId: 'purchase-free' }),
-    } as Response);
-
-    render(<PublicDealClaimPage />);
-    fireEvent.click(screen.getByText('Haircut'));
-    fireEvent.change(screen.getByLabelText(/your name/i), { target: { value: 'Jane Doe' } });
-    fireEvent.change(screen.getByLabelText(/mobile phone/i), { target: { value: '(555) 123-4567' } });
-    fireEvent.click(screen.getByRole('button', { name: /buy now/i }));
-
-    await waitFor(() => {
-      expect(mockRouterPush).toHaveBeenCalledWith('/deal-purchases/tok_free');
-    });
-    expect(screen.queryByTestId('stripe-elements')).not.toBeInTheDocument();
-  });
-
-  it('shows canceled checkout notice when returning from Stripe with checkout=canceled', () => {
-    mockUseSearchParams.mockReturnValue(new URLSearchParams('checkout=canceled'));
-    render(<PublicDealClaimPage />);
-    expect(screen.getByText(/checkout was canceled/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /haircut/i }));
+    expect(screen.getByRole('button', { name: /continue to checkout/i })).toBeDisabled();
   });
 });

@@ -119,6 +119,92 @@ export async function sendPasswordResetEmail(email: string, token: string) {
   });
 }
 
+interface DealPurchaseReceiptDetails {
+  to: string;
+  customerName: string;
+  businessName: string;
+  dealTitle: string;
+  redemptionCode: string;
+  receiptUrl: string;
+  totalAmount: number;
+  items: Array<{ name: string; originalAmount: number; discountedAmount: number }>;
+}
+
+export async function sendDealPurchaseReceiptEmail(details: DealPurchaseReceiptDetails): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const FROM = getResendFromEmail();
+
+  function formatCents(amount: number) {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount / 100);
+  }
+
+  const itemRows = details.items
+    .map(
+      (item) => `
+    <tr>
+      <td style="padding: 8px 12px; color: #374151; font-size: 14px;">${item.name}</td>
+      <td style="padding: 8px 12px; color: #6b7280; font-size: 14px; text-decoration: line-through; text-align: right;">${formatCents(item.originalAmount)}</td>
+      <td style="padding: 8px 12px; color: #111827; font-size: 14px; font-weight: 600; text-align: right;">${formatCents(item.discountedAmount)}</td>
+    </tr>`
+    )
+    .join('');
+
+  await resend.emails.send({
+    from: `${APP_NAME} <${FROM}>`,
+    to: details.to,
+    subject: `Your deal receipt — ${details.dealTitle}`,
+    html: `
+      <div style="font-family: ui-sans-serif, system-ui, sans-serif; max-width: 540px; margin: 0 auto; padding: 32px 24px; background: #ffffff;">
+        <div style="margin-bottom: 24px;">
+          <span style="font-size: 22px; font-weight: 700; color: #111827;">${APP_NAME}</span>
+        </div>
+
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
+          <p style="margin: 0 0 4px; font-size: 13px; color: #15803d; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Purchase confirmed</p>
+          <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 700; color: #111827;">${details.dealTitle}</h1>
+          <p style="margin: 0; font-size: 14px; color: #6b7280;">${details.businessName}</p>
+        </div>
+
+        <div style="background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
+          <p style="margin: 0 0 8px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: #7B22D4;">Your redemption code</p>
+          <p style="margin: 0; font-family: monospace; font-size: 28px; font-weight: 700; color: #111827; letter-spacing: 4px;">${details.redemptionCode}</p>
+          <p style="margin: 8px 0 0; font-size: 12px; color: #6b7280;">Show this code when you visit ${details.businessName}</p>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+          <thead>
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <th style="padding: 8px 12px; text-align: left; font-size: 12px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Service</th>
+              <th style="padding: 8px 12px; text-align: right; font-size: 12px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Original</th>
+              <th style="padding: 8px 12px; text-align: right; font-size: 12px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">You pay</th>
+            </tr>
+          </thead>
+          <tbody>${itemRows}</tbody>
+          <tfoot>
+            <tr style="border-top: 2px solid #e5e7eb;">
+              <td colspan="2" style="padding: 12px 12px 4px; font-size: 14px; font-weight: 700; color: #111827;">Total paid</td>
+              <td style="padding: 12px 12px 4px; text-align: right; font-size: 16px; font-weight: 700; color: #7B22D4;">${formatCents(details.totalAmount)}</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div style="text-align: center; margin-bottom: 24px;">
+          <a href="${details.receiptUrl}"
+             style="display: inline-block; background: #7B22D4; color: #fff; font-weight: 600;
+                    padding: 12px 28px; border-radius: 10px; text-decoration: none; font-size: 14px;">
+            View receipt online
+          </a>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+        <p style="color: #9ca3af; font-size: 12px; margin: 0; text-align: center;">
+          Hi ${details.customerName} — thanks for your purchase! Your redemption code was also sent by text message.
+        </p>
+      </div>
+    `,
+  });
+}
+
 export async function sendEmailVerificationEmail(email: string, code: string) {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const FROM = getResendFromEmail();
