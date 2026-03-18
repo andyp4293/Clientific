@@ -197,8 +197,11 @@ export async function sendDealPurchaseReceiptEmail(details: DealPurchaseReceiptD
         </div>
 
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-        <p style="color: #9ca3af; font-size: 12px; margin: 0; text-align: center;">
+        <p style="color: #9ca3af; font-size: 12px; margin: 0 0 8px; text-align: center;">
           Hi ${details.customerName} — thanks for your purchase! Your redemption code was also sent by text message.
+        </p>
+        <p style="color: #9ca3af; font-size: 11px; margin: 0; text-align: center;">
+          Your paid value of ${formatCents(details.totalAmount)} never expires and will always be honored by ${details.businessName}, even after the promotional period ends.
         </p>
       </div>
     `,

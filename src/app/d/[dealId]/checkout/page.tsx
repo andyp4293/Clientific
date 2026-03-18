@@ -603,6 +603,7 @@ export default function DealCheckoutPage() {
                     <span>{fmt(totals.total)}</span>
                   </div>
                   <p className="text-xs text-gray-400 dark:text-gray-500">No hidden fees</p>
+                  <p className="text-xs font-medium text-green-600 dark:text-green-400">Paid value never expires</p>
                 </div>
 
                 {/* Expiry */}
