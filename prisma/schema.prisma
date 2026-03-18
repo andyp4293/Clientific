@@ -101,6 +101,20 @@ model Business {
   smsAiSessions                SmsAiSession[]         @relation("BusinessSmsAiSessions")
   smsConsentEvents             SmsConsentEvent[]      @relation("BusinessSmsConsentEvents")
   staff                        Staff[]
+  bankAccount                  BusinessBankAccount?
+}
+
+model BusinessBankAccount {
+  id                      String   @id @default(cuid())
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  businessId              String   @unique
+  stripeExternalAccountId String
+  bankName                String?
+  last4                   String
+  routingNumberLast4      String
+  accountHolderName       String?
+  business                Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 }
 
 model BusinessHours {

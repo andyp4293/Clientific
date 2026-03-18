@@ -67,9 +67,9 @@ describe('ExplorePage', () => {
       'border-primary-200',
       'bg-primary-50',
       'text-primary-900',
-      'dark:border-primary/30',
-      'dark:bg-primary/12',
-      'dark:text-primary-100'
+      'dark:border-primary/50',
+      'dark:bg-primary/25',
+      'dark:text-primary-200'
     );
   });
 });

@@ -118,22 +118,20 @@ export default function PayoutsPage() {
         </p>
       </div>
 
-      {/* Connect setup prompt */}
-      {!payoutsLoading && payoutsData && (payoutsData.notConnected || !payoutsData.onboardingComplete) && (
+      {/* No bank account prompt */}
+      {!payoutsLoading && payoutsData && !payoutsData.payoutsEnabled && (
         <div className="card border-amber-200 bg-amber-50 p-5 dark:border-amber-800 dark:bg-amber-900/20">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-                {payoutsData.notConnected
-                  ? 'Connect your Stripe account to receive payouts'
-                  : 'Finish setting up your Stripe payouts account'}
+                Add a bank account to receive payouts
               </p>
               <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-                You need to complete Stripe onboarding before you can receive payouts from deal purchases.
+                Go to Settings → Payout Account to connect your bank routing and account number. Payouts are sent weekly.
               </p>
             </div>
-            <Link href="/dashboard/campaigns" className="btn-primary text-sm">
-              Set Up Payouts
+            <Link href="/dashboard/settings" className="btn-primary text-sm">
+              Go to Settings
             </Link>
           </div>
         </div>
@@ -217,9 +215,9 @@ export default function PayoutsPage() {
           </div>
         ) : payouts.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {payoutsData?.onboardingComplete
-              ? 'No payouts yet. Payouts arrive automatically as customers purchase deals.'
-              : 'Connect your Stripe account to start receiving payouts.'}
+            {payoutsData?.payoutsEnabled
+              ? 'No payouts yet. Payouts arrive automatically on Mondays.'
+              : 'Add a bank account in Settings → Payout Account to start receiving payouts.'}
           </p>
         ) : (
           <div className="overflow-x-auto">

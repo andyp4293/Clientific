@@ -140,7 +140,7 @@ export async function POST(
       );
     }
 
-    if (!(connectAccount.charges_enabled && connectAccount.payouts_enabled && connectAccount.details_submitted)) {
+    if (!connectAccount.charges_enabled) {
       return NextResponse.json(
         { error: 'This business is not ready to accept purchased deals yet' },
         { status: 409 }

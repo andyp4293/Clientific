@@ -270,7 +270,7 @@ export default function ExplorePage() {
                     <p className="mt-4 flex-1 text-sm leading-relaxed text-gray-700 dark:text-gray-300">{deal.title}</p>
 
                     <div className="mt-5 flex items-center justify-between gap-3">
-                      <span className="inline-flex items-center gap-1 rounded-lg border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-900 shadow-sm dark:border-primary/30 dark:bg-primary/12 dark:text-primary-100">
+                      <span className="inline-flex items-center gap-1 rounded-lg border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-900 shadow-sm dark:border-primary/50 dark:bg-primary/25 dark:text-primary-200">
                         <Tag className="h-3.5 w-3.5" />
                         {discountLabel(deal.discountType, deal.discountValue)}
                       </span>
