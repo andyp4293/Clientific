@@ -46,6 +46,8 @@ export async function POST(
             vapiPhoneNumber: true,
           },
         },
+        service: { select: { name: true } },
+        eligibleServices: { select: { name: true } },
       },
     });
 
@@ -138,6 +140,16 @@ export async function POST(
         : null;
     const appBaseUrl = getAppBaseUrlFromRequest(req.url);
 
+    // Resolve the service label for the SMS ("Haircut", "select services", or null for all)
+    const dealServiceName: string | null =
+      deal.serviceScope === 'selected_services'
+        ? deal.deliveryType === 'code_claim' && deal.service?.name
+          ? deal.service.name
+          : deal.eligibleServices?.length === 1
+            ? deal.eligibleServices[0].name
+            : null // multiple selected services → "select services" via formatDealDescription
+        : null; // all_services → "any service" via formatDealDescription
+
     const results = await Promise.all(
       pendingRecipients.map(async (customer) => {
         try {
@@ -151,6 +163,10 @@ export async function POST(
                 dealTitle: deal.title,
                 dealUrl: purchaseUrl,
                 customerName: customer.name,
+                discountType: deal.discountType,
+                discountValue: deal.discountValue,
+                serviceScope: deal.serviceScope,
+                serviceName: dealServiceName,
               }),
             });
 
@@ -197,6 +213,10 @@ export async function POST(
               dealCode: claim.code,
               customerName: customer.name,
               bookingUrl,
+              discountType: deal.discountType,
+              discountValue: deal.discountValue,
+              serviceScope: deal.serviceScope,
+              serviceName: dealServiceName,
             }),
           });
 

@@ -77,6 +77,10 @@ interface DealClaimCodeDetails {
   dealCode: string;
   customerName?: string | null;
   bookingUrl?: string | null;
+  discountType?: string;
+  discountValue?: number;
+  serviceScope?: string;
+  serviceName?: string | null; // single service name, or null for multi/all
 }
 
 interface DealPurchaseLinkDetails {
@@ -84,6 +88,10 @@ interface DealPurchaseLinkDetails {
   dealTitle: string;
   dealUrl: string;
   customerName?: string | null;
+  discountType?: string;
+  discountValue?: number;
+  serviceScope?: string;
+  serviceName?: string | null; // single service name, or null for multi/all
 }
 
 interface DealPurchaseConfirmationDetails {
@@ -344,10 +352,43 @@ export function formatReviewRequestSMS(details: ReviewRequestDetails): string {
   return appendSmsComplianceFooter(message);
 }
 
+function formatDealDescription(
+  discountType?: string,
+  discountValue?: number,
+  serviceScope?: string,
+  serviceName?: string | null
+): string | null {
+  if (!discountType) return null;
+
+  let discount: string;
+  if (discountType === 'free_service') {
+    discount = serviceName ? `free ${serviceName}` : 'a free service';
+    return discount;
+  }
+  if (discountType === 'percent_off' && discountValue != null) {
+    discount = `${discountValue}% off`;
+  } else if (discountType === 'amount_off' && discountValue != null) {
+    discount = `$${discountValue % 1 === 0 ? discountValue : discountValue.toFixed(2)} off`;
+  } else {
+    return null;
+  }
+
+  const scope =
+    serviceScope === 'selected_services'
+      ? serviceName
+        ? ` ${serviceName}`
+        : ' select services'
+      : ' any service';
+
+  return `${discount}${scope}`;
+}
+
 export function formatDealClaimCodeSMS(details: DealClaimCodeDetails): string {
   const firstName = details.customerName?.trim().split(/\s+/).filter(Boolean)[0] ?? null;
   const greeting = firstName ? `Hi ${firstName},` : 'Hi there,';
-  const base = `${greeting} your ${details.businessName} ${details.dealTitle} code is ${details.dealCode}. Show it at checkout.`;
+  const desc = formatDealDescription(details.discountType, details.discountValue, details.serviceScope, details.serviceName);
+  const dealInfo = desc ? `${details.dealTitle} — ${desc}` : details.dealTitle;
+  const base = `${greeting} ${details.businessName} sent you a deal: ${dealInfo}. Your code is ${details.dealCode}. Show it at checkout.`;
   const withBooking = details.bookingUrl ? `${base} Book here: ${details.bookingUrl}` : base;
   return appendSmsComplianceFooter(withBooking);
 }
@@ -355,8 +396,10 @@ export function formatDealClaimCodeSMS(details: DealClaimCodeDetails): string {
 export function formatDealPurchaseLinkSMS(details: DealPurchaseLinkDetails): string {
   const firstName = details.customerName?.trim().split(/\s+/).filter(Boolean)[0] ?? null;
   const greeting = firstName ? `Hi ${firstName},` : 'Hi there,';
+  const desc = formatDealDescription(details.discountType, details.discountValue, details.serviceScope, details.serviceName);
+  const dealInfo = desc ? `${details.dealTitle} — ${desc}` : details.dealTitle;
   return appendSmsComplianceFooter(
-    `${greeting} ${details.businessName} sent you ${details.dealTitle}. Buy it here: ${details.dealUrl}`
+    `${greeting} ${details.businessName} sent you a deal: ${dealInfo}. Claim it here: ${details.dealUrl}`
   );
 }
 

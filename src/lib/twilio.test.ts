@@ -7,6 +7,7 @@ import {
   formatAppointmentReminderSMS,
   formatAppointmentRescheduledSMS,
   formatDealClaimCodeSMS,
+  formatDealPurchaseLinkSMS,
   formatKioskDealClaimSMS,
   formatKioskSignupConfirmationSMS,
   formatReviewRequestSMS,
@@ -104,18 +105,122 @@ describe('twilio sms formatting', () => {
     expect(message).toContain(FOOTER);
   });
 
-  it('formats public deal claim confirmation with the redemption code', () => {
+  // ── Deal claim code SMS ─────────────────────────────────────────────────────
+
+  it('formatDealClaimCodeSMS — percent_off all services', () => {
     const message = formatDealClaimCodeSMS({
       businessName: 'Test Salon',
       customerName: 'Jane Doe',
       dealTitle: 'Spring Special',
       dealCode: 'ABCD1234',
       bookingUrl: 'https://clientific.app/book/test-salon',
+      discountType: 'percent_off',
+      discountValue: 20,
+      serviceScope: 'all_services',
     });
-
     expect(message).toContain('Hi Jane,');
-    expect(message).toContain('your Test Salon Spring Special code is ABCD1234.');
+    expect(message).toContain('sent you a deal: Spring Special — 20% off any service');
+    expect(message).toContain('Your code is ABCD1234');
     expect(message).toContain('Book here: https://clientific.app/book/test-salon');
+    expect(message).toContain(FOOTER);
+  });
+
+  it('formatDealClaimCodeSMS — amount_off single service', () => {
+    const message = formatDealClaimCodeSMS({
+      businessName: 'Test Salon',
+      customerName: 'Jane Doe',
+      dealTitle: 'Summer Cut Deal',
+      dealCode: 'XY99',
+      discountType: 'amount_off',
+      discountValue: 15,
+      serviceScope: 'selected_services',
+      serviceName: 'Haircut',
+    });
+    expect(message).toContain('sent you a deal: Summer Cut Deal — $15 off Haircut');
+    expect(message).toContain('Your code is XY99');
+  });
+
+  it('formatDealClaimCodeSMS — amount_off multiple (select services)', () => {
+    const message = formatDealClaimCodeSMS({
+      businessName: 'Test Salon',
+      customerName: 'Jane',
+      dealTitle: 'Bundle Deal',
+      dealCode: 'BND1',
+      discountType: 'amount_off',
+      discountValue: 25,
+      serviceScope: 'selected_services',
+      serviceName: null, // multiple eligible services
+    });
+    expect(message).toContain('$25 off select services');
+  });
+
+  it('formatDealClaimCodeSMS — free_service', () => {
+    const message = formatDealClaimCodeSMS({
+      businessName: 'Test Salon',
+      customerName: 'Jane',
+      dealTitle: 'Free Blowout',
+      dealCode: 'FREE1',
+      discountType: 'free_service',
+      serviceName: 'Blowout',
+    });
+    expect(message).toContain('free Blowout');
+  });
+
+  // ── Deal purchase link SMS ───────────────────────────────────────────────────
+
+  it('formatDealPurchaseLinkSMS — percent_off all services', () => {
+    const message = formatDealPurchaseLinkSMS({
+      businessName: 'Test Salon',
+      customerName: 'Jane Doe',
+      dealTitle: 'Spring Special',
+      dealUrl: 'https://clientific.app/d/deal-1',
+      discountType: 'percent_off',
+      discountValue: 50,
+      serviceScope: 'all_services',
+    });
+    expect(message).toContain('Hi Jane,');
+    expect(message).toContain('sent you a deal: Spring Special — 50% off any service');
+    expect(message).toContain('Claim it here: https://clientific.app/d/deal-1');
+    expect(message).toContain(FOOTER);
+  });
+
+  it('formatDealPurchaseLinkSMS — dollar off single service', () => {
+    const message = formatDealPurchaseLinkSMS({
+      businessName: 'Test Salon',
+      customerName: 'Bob Smith',
+      dealTitle: 'Color Deal',
+      dealUrl: 'https://clientific.app/d/deal-2',
+      discountType: 'amount_off',
+      discountValue: 30,
+      serviceScope: 'selected_services',
+      serviceName: 'Color',
+    });
+    expect(message).toContain('Hi Bob,');
+    expect(message).toContain('sent you a deal: Color Deal — $30 off Color');
+    expect(message).toContain('Claim it here: https://clientific.app/d/deal-2');
+  });
+
+  it('formatDealPurchaseLinkSMS — select services (multiple eligible)', () => {
+    const message = formatDealPurchaseLinkSMS({
+      businessName: 'Test Salon',
+      dealTitle: 'Multi Deal',
+      dealUrl: 'https://clientific.app/d/deal-3',
+      discountType: 'percent_off',
+      discountValue: 10,
+      serviceScope: 'selected_services',
+      serviceName: null,
+    });
+    expect(message).toContain('10% off select services');
+  });
+
+  it('formatDealPurchaseLinkSMS — falls back gracefully when no discount fields provided', () => {
+    const message = formatDealPurchaseLinkSMS({
+      businessName: 'Test Salon',
+      dealTitle: 'Spring Special',
+      dealUrl: 'https://clientific.app/d/deal-1',
+    });
+    expect(message).toContain('sent you a deal: Spring Special');
+    expect(message).toContain('Claim it here:');
     expect(message).toContain(FOOTER);
   });
 
