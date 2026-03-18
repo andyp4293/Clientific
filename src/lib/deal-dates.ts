@@ -48,7 +48,16 @@ export function isDealStartBeforeToday(
 ): boolean {
   const startKey = toComparableDateKey(value);
   if (!startKey) return false;
-  return startKey < toDateOnlyValue(now);
+  // Use UTC-12 (westernmost timezone) so a date is only rejected if it's
+  // in the past everywhere on earth. Prevents server UTC clock from
+  // rejecting "today" picks from users in western timezones (e.g. US).
+  const utcMinus12 = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+  const todayKey = [
+    utcMinus12.getUTCFullYear(),
+    String(utcMinus12.getUTCMonth() + 1).padStart(2, '0'),
+    String(utcMinus12.getUTCDate()).padStart(2, '0'),
+  ].join('-');
+  return startKey < todayKey;
 }
 
 export function isDealEndSameOrBeforeStart(
