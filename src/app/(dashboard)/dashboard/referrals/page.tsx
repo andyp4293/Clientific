@@ -49,7 +49,7 @@ export default function ReferralsPage() {
     a.click();
   }
 
-  const creditedCount = data?.referrals?.filter(r => r.status === 'credited').length ?? 0;
+  const activeCount = data?.referrals?.filter(r => r.status === 'active' || r.status === 'credited').length ?? 0;
   const pendingCount = data?.referrals?.filter(r => r.status === 'pending').length ?? 0;
   const totalCredits = data?.totalCredits ?? 0;
 
@@ -65,8 +65,8 @@ export default function ReferralsPage() {
           <h1 className="text-xl font-bold tracking-tight">Refer &amp; Earn</h1>
         </div>
         <p className="text-white/80 text-sm leading-relaxed mb-5">
-          Invite another business owner to Clientific. When they become a paying subscriber, you earn{' '}
-          <span className="text-white font-semibold">{REFERRAL_COMMISSION_DISPLAY} of their first month</span> paid out directly to you — no subscription required to collect.
+          Invite another business owner to Clientific. While they stay subscribed, you earn{' '}
+          <span className="text-white font-semibold">{REFERRAL_COMMISSION_DISPLAY} every month</span> paid out directly to you — no subscription required to collect.
         </p>
 
         {/* Stats row */}
@@ -83,9 +83,9 @@ export default function ReferralsPage() {
             {isLoading ? (
               <div className="h-8 w-8 bg-white/20 rounded mx-auto mb-1 animate-pulse" />
             ) : (
-              <div className="text-2xl font-bold">{creditedCount}</div>
+              <div className="text-2xl font-bold">{activeCount}</div>
             )}
-            <div className="text-xs text-white/70 mt-0.5">Credited</div>
+            <div className="text-xs text-white/70 mt-0.5">Active</div>
           </div>
           <div className="bg-white/10 rounded-xl p-3 text-center backdrop-blur-sm">
             {isLoading ? (
@@ -157,7 +157,7 @@ export default function ReferralsPage() {
           {[
             'Share your unique link with another business owner',
             `They sign up and get a free ${STANDARD_TRIAL_DAYS}-day trial`,
-            `Once they subscribe, you automatically earn ${REFERRAL_COMMISSION_DISPLAY} of their first month's payment as a cash payout — the higher their plan, the more you earn`,
+            `Once they subscribe, you automatically earn ${REFERRAL_COMMISSION_DISPLAY} every month they stay subscribed — the higher their plan, the more you earn`,
           ].map((text, i) => (
             <div key={i} className="flex items-start gap-3">
               <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
@@ -214,10 +214,10 @@ export default function ReferralsPage() {
                   </p>
                 </div>
                 <div className="shrink-0">
-                  {referral.status === 'credited' ? (
+                  {(referral.status === 'active' || referral.status === 'credited') ? (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-100 dark:border-green-800/30">
                       <CheckCircle className="w-3 h-3" />
-                      ${referral.creditAmount} earned
+                      ${referral.creditAmount.toFixed(2)} earned
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-100 dark:border-amber-800/30">
@@ -233,7 +233,7 @@ export default function ReferralsPage() {
       </div>
 
       <p className="text-xs text-gray-400 dark:text-gray-500 mt-4 text-center leading-relaxed">
-        Payouts are processed automatically once your referee subscribes. No limit on referrals — each one earns {REFERRAL_COMMISSION_DISPLAY} of their first month.
+        Payouts are processed automatically each month your referee stays subscribed. No limit on referrals — each active subscriber earns you {REFERRAL_COMMISSION_DISPLAY} every month.
       </p>
     </div>
   );

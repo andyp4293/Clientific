@@ -39,13 +39,13 @@ import ReferralsPage from '@/app/(dashboard)/dashboard/referrals/page';
 
 const mockUseQuery = vi.mocked(useQuery);
 
-function makeReferral(status: 'credited' | 'pending', name = 'Test Salon') {
+function makeReferral(status: 'active' | 'credited' | 'pending', name = 'Test Salon') {
   return {
     id: `ref-${Math.random()}`,
     createdAt: '2026-01-01T00:00:00Z',
     status,
     creditAmount: 15,
-    creditedAt: status === 'credited' ? '2026-02-01T00:00:00Z' : null,
+    creditedAt: status !== 'pending' ? '2026-02-01T00:00:00Z' : null,
     referee: { name, createdAt: '2026-01-01T00:00:00Z' },
   };
 }
@@ -90,19 +90,19 @@ describe('ReferralsPage', () => {
     expect(screen.getByText('$30')).toBeInTheDocument();
   });
 
-  it('shows correct credited count', () => {
+  it('shows correct active count (includes credited for backward compat)', () => {
     mockUseQuery.mockReturnValue({
       data: {
         referralCode: 'ABC12345',
         totalCredits: 30,
-        referrals: [makeReferral('credited'), makeReferral('credited'), makeReferral('pending')],
+        referrals: [makeReferral('active'), makeReferral('credited'), makeReferral('pending')],
       },
       isLoading: false,
     } as any);
     render(<ReferralsPage />);
-    // Credited stat box shows "2"
-    const creditedEl = screen.getByText('Credited').previousSibling;
-    expect(creditedEl?.textContent).toBe('2');
+    // Active stat box shows "2" (active + credited both count)
+    const activeEl = screen.getByText('Active').previousSibling;
+    expect(activeEl?.textContent).toBe('2');
   });
 
   it('shows correct pending count', () => {
@@ -110,7 +110,7 @@ describe('ReferralsPage', () => {
       data: {
         referralCode: 'ABC12345',
         totalCredits: 15,
-        referrals: [makeReferral('credited'), makeReferral('pending'), makeReferral('pending')],
+        referrals: [makeReferral('active'), makeReferral('pending'), makeReferral('pending')],
       },
       isLoading: false,
     } as any);
@@ -157,7 +157,7 @@ describe('ReferralsPage', () => {
       data: {
         referralCode: 'MYCODE12',
         totalCredits: 15,
-        referrals: [makeReferral('credited', 'Janes Nails'), makeReferral('pending', 'Cuts by Bob')],
+        referrals: [makeReferral('active', 'Janes Nails'), makeReferral('pending', 'Cuts by Bob')],
       },
       isLoading: false,
     } as any);

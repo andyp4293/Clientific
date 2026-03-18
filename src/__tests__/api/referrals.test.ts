@@ -23,6 +23,10 @@ vi.mock('@/lib/prisma', () => ({
       findFirst: vi.fn(),
       update: vi.fn(),
     },
+    referralCommission: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+    },
     payment: { upsert: vi.fn() },
     invoice: { upsert: vi.fn() },
     notification: { create: vi.fn() },
@@ -64,6 +68,8 @@ vi.mock('@/lib/stripe', () => ({
 // ── Imports (after mocks) ──────────────────────────────────────────────────────
 
 import { prisma } from '@/lib/prisma';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockReferralCommissionFindUnique = (prisma as any).referralCommission.findUnique as ReturnType<typeof vi.fn>;
 import { stripe } from '@/lib/stripe';
 import { getServerSession } from 'next-auth';
 import { POST as registerPOST } from '@/app/api/auth/register/route';
@@ -265,6 +271,8 @@ describe('Stripe webhook — invoice.payment_succeeded referral credit', () => {
     vi.mocked(prisma.notification.create).mockResolvedValue({} as any);
     vi.mocked(prisma.referral.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.affiliateSignup.findFirst).mockResolvedValue(null);
+    // No existing commission by default (new invoice)
+    mockReferralCommissionFindUnique.mockResolvedValue(null);
   });
 
   function webhookReq() {
@@ -325,8 +333,43 @@ describe('Stripe webhook — invoice.payment_succeeded referral credit', () => {
     );
   });
 
-  it('does NOT credit referrer if referral already credited', async () => {
-    // No pending referral found
+  it('credits referrer on active referral (recurring monthly invoice)', async () => {
+    vi.mocked(prisma.referral.findFirst).mockResolvedValue({
+      id: 'ref-1',
+      status: 'active',
+      referrerId: 'biz-referrer',
+      referrer: referrerBiz,
+    } as any);
+    vi.mocked(prisma.referral.update).mockResolvedValue({} as any);
+    vi.mocked(prisma.business.update).mockResolvedValue({} as any);
+
+    const res = await stripeWebhookPOST(webhookReq());
+    expect(res.status).toBe(200);
+
+    const { REFERRAL_COMMISSION_PERCENT } = await import('@/lib/referral-config');
+    const expectedCents = Math.round(2900 * REFERRAL_COMMISSION_PERCENT);
+    expect(stripe.customers.createBalanceTransaction).toHaveBeenCalledWith(
+      'cus_referrer',
+      expect.objectContaining({ amount: -expectedCents, currency: 'usd' })
+    );
+  });
+
+  it('skips commission if same stripeInvoiceId already processed (idempotency)', async () => {
+    vi.mocked(prisma.referral.findFirst).mockResolvedValue({
+      id: 'ref-1',
+      status: 'active',
+      referrerId: 'biz-referrer',
+      referrer: referrerBiz,
+    } as any);
+    // Simulate webhook replay: commission record already exists for this invoice
+    mockReferralCommissionFindUnique.mockResolvedValue({ id: 'existing-commission' } as any);
+
+    await stripeWebhookPOST(webhookReq());
+
+    expect(stripe.customers.createBalanceTransaction).not.toHaveBeenCalled();
+  });
+
+  it('does NOT credit referrer when no referral exists', async () => {
     vi.mocked(prisma.referral.findFirst).mockResolvedValue(null);
 
     await stripeWebhookPOST(webhookReq());

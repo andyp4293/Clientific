@@ -239,38 +239,46 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
     update: {},
   });
 
-  // Credit referrer a percentage of the referee's first paid invoice
+  // Credit referrer a percentage of every referee invoice payment (recurring)
   if (invoice.amount_paid > 0) {
     const referral = await prisma.referral.findFirst({
-      where: { refereeId: business.id, status: 'pending' },
+      where: { refereeId: business.id, status: { in: ['pending', 'active', 'credited'] } },
       include: { referrer: { select: { id: true, stripeCustomerId: true } } },
     });
     if (referral?.referrer.stripeCustomerId) {
-      // Compute commission: percentage of the actual invoice amount (cents → dollars)
-      const commissionCents = Math.round(invoice.amount_paid * REFERRAL_COMMISSION_PERCENT);
-      const commissionDollars = commissionCents / 100;
-      try {
-        await stripe.customers.createBalanceTransaction(
-          referral.referrer.stripeCustomerId,
-          {
-            amount: -commissionCents,
-            currency: 'usd',
-            description: `Referral reward: ${Math.round(REFERRAL_COMMISSION_PERCENT * 100)}% of referee's first month`,
-          }
-        );
-        await prisma.$transaction([
-          prisma.referral.update({
-            where: { id: referral.id },
-            data: { status: 'credited', creditedAt: new Date(), creditAmount: commissionDollars },
-          }),
-          prisma.business.update({
-            where: { id: referral.referrerId },
-            data: { referralCredits: { increment: commissionDollars } },
-          }),
-        ]);
-        console.log(`✅ Referral credit applied: $${commissionDollars.toFixed(2)} to business ${referral.referrerId}`);
-      } catch (err) {
-        console.warn('⚠️  Referral credit failed:', err);
+      // Guard against duplicate webhook delivery — skip if we already recorded this invoice
+      const existing = await prisma.referralCommission.findUnique({
+        where: { stripeInvoiceId: invoice.id },
+      });
+      if (!existing) {
+        const commissionCents = Math.round(invoice.amount_paid * REFERRAL_COMMISSION_PERCENT);
+        const commissionDollars = commissionCents / 100;
+        try {
+          await stripe.customers.createBalanceTransaction(
+            referral.referrer.stripeCustomerId,
+            {
+              amount: -commissionCents,
+              currency: 'usd',
+              description: `Referral reward: ${Math.round(REFERRAL_COMMISSION_PERCENT * 100)}% of referee monthly payment`,
+            }
+          );
+          await prisma.$transaction([
+            prisma.referralCommission.create({
+              data: { referralId: referral.id, stripeInvoiceId: invoice.id, amountDollars: commissionDollars },
+            }),
+            prisma.referral.update({
+              where: { id: referral.id },
+              data: { status: 'active', creditedAt: new Date(), creditAmount: { increment: commissionDollars } },
+            }),
+            prisma.business.update({
+              where: { id: referral.referrerId },
+              data: { referralCredits: { increment: commissionDollars } },
+            }),
+          ]);
+          console.log(`✅ Referral commission applied: $${commissionDollars.toFixed(2)} to business ${referral.referrerId}`);
+        } catch (err) {
+          console.warn('⚠️  Referral commission failed:', err);
+        }
       }
     }
 

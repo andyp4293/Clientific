@@ -6,9 +6,12 @@
  */
 
 /**
- * Percentage of the referee's first month payment credited back to the referrer.
- * e.g. 0.20 = 20%.  Higher-tier subscribers generate a proportionally larger reward,
+ * Percentage of every referee invoice payment credited back to the referrer.
+ * Fires every month the referee stays subscribed — not just the first month.
+ * e.g. 0.30 = 30%.  Higher-tier subscribers generate a proportionally larger reward,
  * which naturally incentivises referrers to pitch the best-fit plan.
+ *
+ * Change this one value to adjust the commission rate everywhere automatically.
  */
 export const REFERRAL_COMMISSION_PERCENT = 0.3;
 

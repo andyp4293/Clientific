@@ -580,17 +580,29 @@ model DealPurchaseItem {
 }
 
 model Referral {
-  id           String    @id @default(cuid())
-  createdAt    DateTime  @default(now())
+  id           String               @id @default(cuid())
+  createdAt    DateTime             @default(now())
   creditedAt   DateTime?
   referrerId   String
-  refereeId    String    @unique
-  status       String    @default("pending")
-  creditAmount Float     @default(0)
-  referrer     Business  @relation("ReferrerOf", fields: [referrerId], references: [id])
-  referee      Business  @relation("RefereeOf", fields: [refereeId], references: [id])
+  refereeId    String               @unique
+  status       String               @default("pending")
+  creditAmount Float                @default(0)
+  referrer     Business             @relation("ReferrerOf", fields: [referrerId], references: [id])
+  referee      Business             @relation("RefereeOf", fields: [refereeId], references: [id])
+  commissions  ReferralCommission[]
 
   @@index([referrerId])
+}
+
+model ReferralCommission {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+  referralId      String
+  stripeInvoiceId String   @unique
+  amountDollars   Float
+  referral        Referral @relation(fields: [referralId], references: [id])
+
+  @@index([referralId])
 }
 
 model Affiliate {
