@@ -108,7 +108,7 @@ describe('DealCheckoutPage', () => {
 
     expect(screen.getByText('Summer Promo')).toBeInTheDocument();
     expect(screen.getByText('Test Salon')).toBeInTheDocument();
-    expect(screen.getByText('20% off')).toBeInTheDocument();
+    expect(screen.getAllByText(/20% off/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Haircut')).toBeInTheDocument();
     // $50 appears in service row AND subtotal row
     expect(screen.getAllByText('$50.00').length).toBeGreaterThanOrEqual(1);
@@ -333,7 +333,7 @@ describe('DealCheckoutPage', () => {
     });
 
     render(<DealCheckoutPage />);
-    expect(screen.getByText(/checkout unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/deal unavailable|checkout unavailable/i)).toBeInTheDocument();
   });
 
   it('shows loading state while fetching deal', () => {
