@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
           fullName,
           email: email || null,
           phone: phone || null,
-          role: role || null,
+          role: role || undefined,
           active: true,
           workDays: Array.isArray(workDays) ? workDays : [0, 1, 2, 3, 4, 5, 6],
         },

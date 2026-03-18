@@ -137,8 +137,13 @@ export async function DELETE(
       );
     }
 
-    // StaffService rows cascade-delete automatically via schema onDelete: Cascade
-    await prisma.staff.delete({ where: { id } });
+    // Null out staffId on past appointments/checkins so the FK constraint doesn't block deletion.
+    // (Only scheduled/confirmed appointments were blocked above — all others are safe to disassociate.)
+    await prisma.$transaction([
+      prisma.appointment.updateMany({ where: { staffId: id }, data: { staffId: null } }),
+      prisma.checkIn.updateMany({ where: { staffId: id }, data: { staffId: null } }),
+      prisma.staff.delete({ where: { id } }),
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
