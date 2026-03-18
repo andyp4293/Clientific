@@ -155,7 +155,7 @@ function PaymentForm({ dealId, selectedServiceIds, customerName, customerEmail, 
     <div className="space-y-4">
       <PaymentElement
         options={{
-          layout: 'tabs',
+          layout: { type: 'accordion', defaultCollapsed: false, radios: true, spacedAccordionItems: false },
           wallets: { applePay: 'auto', googlePay: 'auto' },
           fields: {
             billingDetails: {
