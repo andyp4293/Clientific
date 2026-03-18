@@ -65,14 +65,19 @@ function daysUntil(iso: string): number {
   return Math.max(0, Math.ceil(diff / 86_400_000));
 }
 
-// ─── Payment form (inside Elements) ─────────────────────────────────────────
+// ─── Payment form (inside Elements — deferred intent) ─────────────────────────
 
 interface PaymentFormProps {
-  purchaseToken: string;
+  dealId: string;
+  selectedServiceIds: string[];
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  canPay: boolean;
   totalAmount: number;
 }
 
-function PaymentForm({ purchaseToken, totalAmount }: PaymentFormProps) {
+function PaymentForm({ dealId, selectedServiceIds, customerName, customerEmail, customerPhone, canPay, totalAmount }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
@@ -80,14 +85,59 @@ function PaymentForm({ purchaseToken, totalAmount }: PaymentFormProps) {
   const [error, setError] = useState<string | null>(null);
 
   async function handlePay() {
-    if (!stripe || !elements) return;
+    if (!stripe || !elements || !canPay) return;
     setIsSubmitting(true);
     setError(null);
 
+    // Step 1: validate the Stripe element
+    const { error: submitError } = await elements.submit();
+    if (submitError) {
+      setError(submitError.message ?? 'Please check your payment details.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Step 2: create payment intent on server
+    let clientSecret: string;
+    let purchaseToken: string;
+    try {
+      const res = await fetch(`/api/public/deals/${dealId}/payment-intent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: customerName.trim(),
+          customerEmail: customerEmail.trim(),
+          customerPhone,
+          selectedServiceIds,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Could not start checkout');
+      if (body.immediate) {
+        router.push(body.url);
+        return;
+      }
+      clientSecret = body.clientSecret;
+      purchaseToken = body.purchaseToken;
+    } catch (err: any) {
+      setError(err?.message || 'Could not start checkout. Please try again.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Step 3: confirm payment
     const result = await stripe.confirmPayment({
       elements,
+      clientSecret,
       confirmParams: {
         return_url: `${window.location.origin}/deal-purchases/${purchaseToken}`,
+        payment_method_data: {
+          billing_details: {
+            name: customerName.trim(),
+            email: customerEmail.trim(),
+            phone: customerPhone,
+          },
+        },
       },
       redirect: 'if_required',
     });
@@ -107,6 +157,14 @@ function PaymentForm({ purchaseToken, totalAmount }: PaymentFormProps) {
         options={{
           layout: 'tabs',
           wallets: { applePay: 'auto', googlePay: 'auto' },
+          fields: {
+            billingDetails: {
+              name: 'never',
+              email: 'never',
+              phone: 'never',
+              address: 'auto',
+            },
+          },
         }}
       />
 
@@ -122,7 +180,7 @@ function PaymentForm({ purchaseToken, totalAmount }: PaymentFormProps) {
       <button
         type="button"
         onClick={handlePay}
-        disabled={!stripe || isSubmitting}
+        disabled={!stripe || !canPay || isSubmitting}
         className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 text-base font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:shadow-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isSubmitting ? (
@@ -143,7 +201,6 @@ function PaymentForm({ purchaseToken, totalAmount }: PaymentFormProps) {
         )}
       </button>
 
-      {/* Card brand logos */}
       <div className="flex items-center justify-center gap-3 opacity-60">
         <span className="text-xs text-gray-400 dark:text-gray-500">Accepted:</span>
         {['VISA', 'MC', 'AMEX', 'DISC'].map((brand) => (
@@ -173,14 +230,9 @@ export default function DealCheckoutPage() {
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [contactLocked, setContactLocked] = useState(false);
+  const [isClaimingFree, setIsClaimingFree] = useState(false);
+  const [freeClaimError, setFreeClaimError] = useState<string | null>(null);
 
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [purchaseToken, setPurchaseToken] = useState<string | null>(null);
-  const [isLoadingPayment, setIsLoadingPayment] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  // Detect dark mode to set appropriate Stripe appearance
   const [isDark, setIsDark] = useState(false);
   useEffect(() => {
     const check = () => setIsDark(document.documentElement.classList.contains('dark'));
@@ -210,30 +262,18 @@ export default function DealCheckoutPage() {
     [deal?.discountType, deal?.discountValue, selectedServices]
   );
   const expiresInDays = deal ? daysUntil(deal.expiresAt) : 0;
+  const isFree = totals.total === 0 && selectedServices.length > 0;
+  const amountInCents = Math.round(totals.total * 100);
 
   const nameReady = customerName.trim().length > 0;
   const emailReady = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail.trim());
   const phoneReady = customerPhone.replace(/\D/g, '').length >= 10;
-  const contactReady = nameReady && emailReady && phoneReady;
+  const canPay = nameReady && emailReady && phoneReady;
 
-  // Auto-load payment intent as soon as all contact fields are valid
-  useEffect(() => {
-    if (!contactReady || contactLocked || clientSecret || isLoadingPayment) return;
-    handleLoadPayment();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contactReady, contactLocked, clientSecret, isLoadingPayment]);
-
-  function handleEditContact() {
-    setContactLocked(false);
-    setClientSecret(null);
-    setPurchaseToken(null);
-    setLoadError(null);
-  }
-
-  async function handleLoadPayment() {
-    setIsLoadingPayment(true);
-    setLoadError(null);
-
+  async function handleFreeClaim() {
+    if (!canPay || isClaimingFree) return;
+    setIsClaimingFree(true);
+    setFreeClaimError(null);
     try {
       const res = await fetch(`/api/public/deals/${dealId}/payment-intent`, {
         method: 'POST',
@@ -245,22 +285,13 @@ export default function DealCheckoutPage() {
           selectedServiceIds,
         }),
       });
-
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error || 'Could not start checkout');
-
-      if (body.immediate) {
-        router.push(body.url);
-        return;
-      }
-
-      setClientSecret(body.clientSecret);
-      setPurchaseToken(body.purchaseToken);
-      setContactLocked(true);
+      if (!res.ok) throw new Error(body.error || 'Could not claim deal');
+      router.push(body.url ?? `/deal-purchases/${body.purchaseToken}`);
     } catch (err: any) {
-      setLoadError(err?.message || 'Could not start checkout');
+      setFreeClaimError(err?.message || 'Could not claim deal. Please try again.');
     } finally {
-      setIsLoadingPayment(false);
+      setIsClaimingFree(false);
     }
   }
 
@@ -356,84 +387,63 @@ export default function DealCheckoutPage() {
 
               {/* ── Contact information ── */}
               <div className="p-6">
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">1</span>
-                    <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">Contact information</h2>
-                  </div>
-                  {contactLocked && (
-                    <button
-                      type="button"
-                      onClick={handleEditContact}
-                      className="text-xs font-semibold text-primary hover:underline"
-                    >
-                      Edit
-                    </button>
-                  )}
+                <div className="mb-4 flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">1</span>
+                  <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">Contact information</h2>
                 </div>
+                <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+                  We'll send your redemption code and receipt here.
+                </p>
 
-                {contactLocked ? (
-                  <div className="flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/60">
-                    <svg className="mt-0.5 h-4 w-4 shrink-0 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <div className="text-sm">
-                      <p className="font-semibold text-gray-900 dark:text-gray-100">{customerName}</p>
-                      <p className="text-gray-500 dark:text-gray-400">{customerEmail}</p>
-                      <p className="text-gray-500 dark:text-gray-400">{customerPhone}</p>
-                    </div>
+                <div className="space-y-3">
+                  <div>
+                    <label htmlFor="checkout-name" className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Full name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="checkout-name"
+                      type="text"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="Jane Doe"
+                      autoComplete="name"
+                      className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+                    />
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div>
-                      <label htmlFor="checkout-name" className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Full name
-                      </label>
-                      <input
-                        id="checkout-name"
-                        type="text"
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                        placeholder="Jane Doe"
-                        autoComplete="name"
-                        className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
-                      />
-                    </div>
 
-                    <div>
-                      <label htmlFor="checkout-email" className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Email address
-                      </label>
-                      <input
-                        id="checkout-email"
-                        type="email"
-                        value={customerEmail}
-                        onChange={(e) => setCustomerEmail(e.target.value)}
-                        placeholder="jane@example.com"
-                        autoComplete="email"
-                        className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="checkout-phone" className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Mobile phone
-                      </label>
-                      <input
-                        id="checkout-phone"
-                        type="tel"
-                        value={customerPhone}
-                        onChange={(e) => setCustomerPhone(e.target.value)}
-                        placeholder="(555) 123-4567"
-                        autoComplete="tel"
-                        className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
-                      />
-                      <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
-                        Your redemption code will be texted here after payment.
-                      </p>
-                    </div>
+                  <div>
+                    <label htmlFor="checkout-email" className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Email address <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="checkout-email"
+                      type="email"
+                      value={customerEmail}
+                      onChange={(e) => setCustomerEmail(e.target.value)}
+                      placeholder="jane@example.com"
+                      autoComplete="email"
+                      className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+                    />
                   </div>
-                )}
+
+                  <div>
+                    <label htmlFor="checkout-phone" className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Mobile phone <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="checkout-phone"
+                      type="tel"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      placeholder="(555) 123-4567"
+                      autoComplete="tel"
+                      className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+                    />
+                    <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
+                      We'll text your redemption code after payment.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* ── Divider ── */}
@@ -446,49 +456,55 @@ export default function DealCheckoutPage() {
                   <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">Payment</h2>
                 </div>
 
-                {clientSecret && purchaseToken ? (
-                  <Elements
-                    stripe={stripePromise}
-                    options={{ clientSecret, appearance: stripeAppearance }}
-                  >
-                    <PaymentForm purchaseToken={purchaseToken} totalAmount={totals.total} />
-                  </Elements>
-                ) : isLoadingPayment ? (
-                  <div className="flex flex-col items-center gap-3 py-8">
-                    <svg className="h-6 w-6 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    <p className="text-sm text-gray-400 dark:text-gray-500">Setting up payment...</p>
-                  </div>
-                ) : (
+                {isFree ? (
                   <div className="space-y-4">
-                    {loadError ? (
+                    <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 dark:border-green-800/40 dark:bg-green-900/20">
+                      <p className="text-sm font-semibold text-green-700 dark:text-green-300">This deal is completely free!</p>
+                      <p className="mt-0.5 text-xs text-green-600 dark:text-green-400">No payment required — just claim it below.</p>
+                    </div>
+                    {freeClaimError && (
                       <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900/40 dark:bg-red-900/20">
                         <svg className="mt-0.5 h-4 w-4 shrink-0 text-red-500" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                         </svg>
-                        <div className="flex-1">
-                          <p className="text-sm text-red-700 dark:text-red-300">{loadError}</p>
-                          <button
-                            type="button"
-                            onClick={handleLoadPayment}
-                            className="mt-1.5 text-xs font-semibold text-red-600 underline dark:text-red-400"
-                          >
-                            Try again
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-gray-200 bg-gray-50 py-8 dark:border-gray-700 dark:bg-gray-800/40">
-                        <svg className="h-6 w-6 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                        </svg>
-                        <p className="text-sm text-gray-400 dark:text-gray-500">
-                          Payment form loads automatically
-                        </p>
+                        <p className="text-sm text-red-700 dark:text-red-300">{freeClaimError}</p>
                       </div>
                     )}
+                    <button
+                      type="button"
+                      onClick={handleFreeClaim}
+                      disabled={!canPay || isClaimingFree}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 text-base font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isClaimingFree ? 'Claiming...' : 'Claim for free'}
+                    </button>
+                    {!canPay && (
+                      <p className="text-center text-xs text-gray-400 dark:text-gray-500">
+                        Fill in your contact info above to continue.
+                      </p>
+                    )}
+                  </div>
+                ) : amountInCents > 0 ? (
+                  <Elements
+                    stripe={stripePromise}
+                    options={{ mode: 'payment', amount: amountInCents, currency: 'usd', appearance: stripeAppearance }}
+                  >
+                    <PaymentForm
+                      dealId={dealId}
+                      selectedServiceIds={selectedServiceIds}
+                      customerName={customerName}
+                      customerEmail={customerEmail}
+                      customerPhone={customerPhone}
+                      canPay={canPay}
+                      totalAmount={totals.total}
+                    />
+                  </Elements>
+                ) : (
+                  <div className="flex items-center justify-center py-8">
+                    <svg className="h-5 w-5 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
                   </div>
                 )}
               </div>
@@ -507,14 +523,14 @@ export default function DealCheckoutPage() {
                 <svg className="h-3.5 w-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
-                Powered by Stripe
+                Secure payment powered by Stripe
               </span>
               <span className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
                 <svg className="h-3.5 w-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                   <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                 </svg>
-                Receipt emailed
+                Receipt emailed after purchase
               </span>
             </div>
           </div>
@@ -594,19 +610,6 @@ export default function DealCheckoutPage() {
                   Deal expires{' '}
                   {new Date(deal.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </p>
-
-                {/* Guarantee */}
-                <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-3">
-                  <svg className="mt-0.5 h-4 w-4 shrink-0 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <div>
-                    <p className="text-xs font-semibold text-primary">Satisfaction guaranteed</p>
-                    <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                      If something goes wrong, contact us and we'll make it right.
-                    </p>
-                  </div>
-                </div>
               </div>
             </div>
           </aside>

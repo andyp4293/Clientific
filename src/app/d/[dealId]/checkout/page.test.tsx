@@ -9,6 +9,7 @@ import DealCheckoutPage from './page';
 const mockUseQuery = vi.fn();
 const mockRouterPush = vi.fn();
 const mockConfirmPayment = vi.fn();
+const mockElementsSubmit = vi.fn();
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
@@ -34,7 +35,7 @@ vi.mock('@stripe/react-stripe-js', () => ({
   Elements: ({ children }: any) => <div data-testid="stripe-elements">{children}</div>,
   PaymentElement: () => <div data-testid="payment-element" />,
   useStripe: () => ({ confirmPayment: mockConfirmPayment }),
-  useElements: () => ({}),
+  useElements: () => ({ submit: mockElementsSubmit }),
 }));
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -84,6 +85,7 @@ describe('DealCheckoutPage', () => {
 
     // Payment always succeeds by default
     mockConfirmPayment.mockResolvedValue({ error: undefined });
+    mockElementsSubmit.mockResolvedValue({ error: undefined });
 
     // PI creation always succeeds by default
     global.fetch = vi.fn().mockResolvedValue({
@@ -94,13 +96,16 @@ describe('DealCheckoutPage', () => {
 
   // ── Rendering ──────────────────────────────────────────────────────────────
 
-  it('renders contact fields and payment section on the same page', () => {
+  it('renders contact fields, payment element, and order summary together', () => {
     render(<DealCheckoutPage />);
 
     expect(screen.getByLabelText(/full name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/mobile phone/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /^payment$/i })).toBeInTheDocument();
+    // Stripe element is visible immediately — no contact required first
+    expect(screen.getByTestId('stripe-elements')).toBeInTheDocument();
+    expect(screen.getByTestId('payment-element')).toBeInTheDocument();
   });
 
   it('renders the order summary with selected service', () => {
@@ -110,47 +115,68 @@ describe('DealCheckoutPage', () => {
     expect(screen.getByText('Test Salon')).toBeInTheDocument();
     expect(screen.getAllByText(/20% off/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Haircut')).toBeInTheDocument();
-    // $50 appears in service row AND subtotal row
     expect(screen.getAllByText('$50.00').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('shows secure checkout header with logo and lock icon text', () => {
+  it('shows secure checkout header', () => {
     render(<DealCheckoutPage />);
     expect(screen.getByText('Clientific')).toBeInTheDocument();
     expect(screen.getByText(/secure checkout/i)).toBeInTheDocument();
   });
 
-  // ── Auto-trigger: does NOT fire for incomplete contact info ────────────────
-
-  it('does not call payment-intent API when contact form is incomplete', async () => {
+  it('marks name, email, and phone as required fields', () => {
     render(<DealCheckoutPage />);
-    fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'Jane' } });
-    // Flush any micro-tasks without adding more time
-    await Promise.resolve();
-    expect(global.fetch).not.toHaveBeenCalled();
+    // All three required indicators present
+    const labels = screen.getAllByText('*');
+    expect(labels.length).toBeGreaterThanOrEqual(3);
   });
 
-  it('does not call payment-intent API for an invalid email', async () => {
+  // ── Pay button gating ──────────────────────────────────────────────────────
+
+  it('Pay button is disabled until all contact fields are valid', () => {
+    render(<DealCheckoutPage />);
+    const btn = screen.getByRole('button', { name: /pay/i });
+    expect(btn).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'Jane' } });
+    expect(btn).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'jane@example.com' } });
+    expect(btn).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText(/mobile phone/i), { target: { value: '(555) 123-4567' } });
+    expect(btn).not.toBeDisabled();
+  });
+
+  it('Pay button is disabled for invalid email', () => {
     render(<DealCheckoutPage />);
     fillContactForm('Jane', 'not-an-email', '5551234567');
-    await Promise.resolve();
-    expect(global.fetch).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /pay/i })).toBeDisabled();
   });
 
-  it('does not call payment-intent API for phone with fewer than 10 digits', async () => {
+  it('Pay button is disabled for phone with fewer than 10 digits', () => {
     render(<DealCheckoutPage />);
     fillContactForm('Jane', 'jane@example.com', '555');
+    expect(screen.getByRole('button', { name: /pay/i })).toBeDisabled();
+  });
+
+  it('does not call payment-intent API before Pay is clicked', async () => {
+    render(<DealCheckoutPage />);
+    fillContactForm();
+    // Even after form is complete, fetch is not called until Pay is clicked
     await Promise.resolve();
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
-  // ── Loading payment ────────────────────────────────────────────────────────
+  // ── Payment flow ───────────────────────────────────────────────────────────
 
-  it('calls payment-intent API with all contact fields once form is complete', async () => {
+  it('calls elements.submit then payment-intent API when Pay is clicked', async () => {
     render(<DealCheckoutPage />);
     fillContactForm();
+    fireEvent.click(screen.getByRole('button', { name: /pay/i }));
 
     await waitFor(() => {
+      expect(mockElementsSubmit).toHaveBeenCalledOnce();
       expect(global.fetch).toHaveBeenCalledWith(
         '/api/public/deals/deal-1/payment-intent',
         expect.objectContaining({
@@ -166,54 +192,9 @@ describe('DealCheckoutPage', () => {
     });
   });
 
-  it('shows Stripe payment element AND contact info summary after form is complete', async () => {
-    render(<DealCheckoutPage />);
-    fillContactForm();
-
-    await screen.findByTestId('stripe-elements');
-
-    // Payment element is visible
-    expect(screen.getByTestId('payment-element')).toBeInTheDocument();
-
-    // Contact info is still visible as a read-only summary
-    expect(screen.getByText('Jane Doe')).toBeInTheDocument();
-    expect(screen.getByText('jane@example.com')).toBeInTheDocument();
-    expect(screen.getByText('(555) 123-4567')).toBeInTheDocument();
-  });
-
-  it('shows contact fields and Pay button on the same page simultaneously', async () => {
-    render(<DealCheckoutPage />);
-    fillContactForm();
-
-    await screen.findByTestId('stripe-elements');
-
-    // Both are visible at the same time
-    expect(screen.getByText('Contact information')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /pay/i })).toBeInTheDocument();
-  });
-
-  it('Edit button returns contact form to editable state and clears payment element', async () => {
-    render(<DealCheckoutPage />);
-    fillContactForm();
-
-    await screen.findByTestId('stripe-elements');
-
-    fireEvent.click(screen.getByRole('button', { name: /edit/i }));
-
-    expect(screen.queryByTestId('stripe-elements')).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/full name/i)).toBeInTheDocument();
-  });
-
-  // ── Payment success ────────────────────────────────────────────────────────
-
   it('redirects to receipt page after successful payment', async () => {
-    // Payment always succeeds
-    mockConfirmPayment.mockResolvedValue({ error: undefined });
-
     render(<DealCheckoutPage />);
     fillContactForm();
-
-    await screen.findByTestId('stripe-elements');
     fireEvent.click(screen.getByRole('button', { name: /pay/i }));
 
     await waitFor(() => {
@@ -222,16 +203,15 @@ describe('DealCheckoutPage', () => {
     });
   });
 
-  it('confirmPayment is called with the correct return_url', async () => {
+  it('confirmPayment is called with clientSecret and correct return_url', async () => {
     render(<DealCheckoutPage />);
     fillContactForm();
-
-    await screen.findByTestId('stripe-elements');
     fireEvent.click(screen.getByRole('button', { name: /pay/i }));
 
     await waitFor(() => {
       expect(mockConfirmPayment).toHaveBeenCalledWith(
         expect.objectContaining({
+          clientSecret: 'pi_test_secret',
           confirmParams: expect.objectContaining({
             return_url: expect.stringContaining('/deal-purchases/tok_abc'),
           }),
@@ -241,21 +221,29 @@ describe('DealCheckoutPage', () => {
     });
   });
 
-  // ── Payment error ──────────────────────────────────────────────────────────
+  // ── Payment errors ─────────────────────────────────────────────────────────
 
-  it('shows payment error inline and stays on checkout page when payment fails', async () => {
+  it('shows payment error inline when card is declined', async () => {
     mockConfirmPayment.mockResolvedValue({ error: { message: 'Your card was declined.' } });
 
     render(<DealCheckoutPage />);
     fillContactForm();
-
-    await screen.findByTestId('stripe-elements');
     fireEvent.click(screen.getByRole('button', { name: /pay/i }));
 
     expect(await screen.findByText(/your card was declined/i)).toBeInTheDocument();
     expect(mockRouterPush).not.toHaveBeenCalled();
-    // Payment element stays visible after failure
     expect(screen.getByTestId('payment-element')).toBeInTheDocument();
+  });
+
+  it('shows error when elements.submit validation fails', async () => {
+    mockElementsSubmit.mockResolvedValue({ error: { message: 'Card number is incomplete.' } });
+
+    render(<DealCheckoutPage />);
+    fillContactForm();
+    fireEvent.click(screen.getByRole('button', { name: /pay/i }));
+
+    expect(await screen.findByText(/card number is incomplete/i)).toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it('shows load error inline when payment-intent endpoint fails', async () => {
@@ -266,14 +254,15 @@ describe('DealCheckoutPage', () => {
 
     render(<DealCheckoutPage />);
     fillContactForm();
+    fireEvent.click(screen.getByRole('button', { name: /pay/i }));
 
     expect(await screen.findByText(/deal is sold out/i)).toBeInTheDocument();
-    expect(screen.queryByTestId('stripe-elements')).not.toBeInTheDocument();
+    expect(mockConfirmPayment).not.toHaveBeenCalled();
   });
 
   // ── Free deal ─────────────────────────────────────────────────────────────
 
-  it('redirects immediately for a free deal without showing Stripe elements', async () => {
+  it('redirects immediately for a free deal without calling confirmPayment', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ immediate: true, url: '/deal-purchases/tok_free' }),
@@ -281,25 +270,22 @@ describe('DealCheckoutPage', () => {
 
     render(<DealCheckoutPage />);
     fillContactForm();
+    fireEvent.click(screen.getByRole('button', { name: /pay/i }));
 
     await waitFor(() => {
       expect(mockRouterPush).toHaveBeenCalledWith('/deal-purchases/tok_free');
     });
-    expect(screen.queryByTestId('stripe-elements')).not.toBeInTheDocument();
+    expect(mockConfirmPayment).not.toHaveBeenCalled();
   });
 
-  // ── SMS / message confirmation ─────────────────────────────────────────────
+  // ── SMS idempotency ────────────────────────────────────────────────────────
 
-  it('payment-intent is called once per checkout (SMS will fire exactly once on success)', async () => {
+  it('payment-intent API is called exactly once per checkout', async () => {
     render(<DealCheckoutPage />);
     fillContactForm();
-
-    await screen.findByTestId('stripe-elements');
     fireEvent.click(screen.getByRole('button', { name: /pay/i }));
 
     await waitFor(() => expect(mockRouterPush).toHaveBeenCalled());
-
-    // API was called exactly once — no duplicate PI creation that would cause duplicate SMS
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 
