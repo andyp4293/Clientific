@@ -60,15 +60,14 @@ function calculateTotals(discountType: string, discountValue: number, services: 
   return { subtotal, discount, total: subtotal - discount };
 }
 
-// ─── Payment step ─────────────────────────────────────────────────────────────
+// ─── Stripe payment form (rendered inside Elements context) ───────────────────
 
-interface PaymentStepProps {
+interface PaymentFormProps {
   purchaseToken: string;
   totalAmount: number;
-  onBack: () => void;
 }
 
-function PaymentStep({ purchaseToken, totalAmount, onBack }: PaymentStepProps) {
+function PaymentForm({ purchaseToken, totalAmount }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
@@ -98,7 +97,7 @@ function PaymentStep({ purchaseToken, totalAmount, onBack }: PaymentStepProps) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <PaymentElement
         options={{
           layout: 'tabs',
@@ -119,15 +118,6 @@ function PaymentStep({ purchaseToken, totalAmount, onBack }: PaymentStepProps) {
         className="w-full rounded-xl bg-primary py-4 text-base font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isSubmitting ? 'Processing...' : `Pay ${formatMoney(totalAmount)}`}
-      </button>
-
-      <button
-        type="button"
-        onClick={onBack}
-        disabled={isSubmitting}
-        className="w-full text-sm font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-      >
-        &larr; Edit contact info
       </button>
     </div>
   );
@@ -150,12 +140,12 @@ export default function DealCheckoutPage() {
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [contactLocked, setContactLocked] = useState(false);
 
-  const [phase, setPhase] = useState<'contact' | 'payment'>('contact');
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [purchaseToken, setPurchaseToken] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isLoadingPayment, setIsLoadingPayment] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const { data, isLoading, isError } = useQuery<DealResponse>({
     queryKey: ['public-deal', dealId],
@@ -180,11 +170,18 @@ export default function DealCheckoutPage() {
   const nameReady = customerName.trim().length > 0;
   const emailReady = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail.trim());
   const phoneReady = customerPhone.replace(/\D/g, '').length >= 10;
-  const contactReady = nameReady && emailReady && phoneReady && !isSubmitting;
+  const contactReady = nameReady && emailReady && phoneReady;
 
-  async function handleContinueToPayment() {
-    setIsSubmitting(true);
-    setSubmitError(null);
+  function handleEditContact() {
+    setContactLocked(false);
+    setClientSecret(null);
+    setPurchaseToken(null);
+    setLoadError(null);
+  }
+
+  async function handleLoadPayment() {
+    setIsLoadingPayment(true);
+    setLoadError(null);
 
     try {
       const res = await fetch(`/api/public/deals/${dealId}/payment-intent`, {
@@ -208,11 +205,11 @@ export default function DealCheckoutPage() {
 
       setClientSecret(body.clientSecret);
       setPurchaseToken(body.purchaseToken);
-      setPhase('payment');
+      setContactLocked(true);
     } catch (err: any) {
-      setSubmitError(err?.message || 'Could not start checkout');
+      setLoadError(err?.message || 'Could not start checkout');
     } finally {
-      setIsSubmitting(false);
+      setIsLoadingPayment(false);
     }
   }
 
@@ -254,26 +251,47 @@ export default function DealCheckoutPage() {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-8 pb-20 lg:pb-8">
-        <div className="grid gap-6 lg:grid-cols-[1fr,420px]">
+        <div className="grid gap-6 lg:grid-cols-[1fr,400px]">
 
-          {/* ── Left: Contact form / Payment ─────────────────────────────── */}
-          <div className="order-2 lg:order-1">
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-              {phase === 'contact' ? (
-                <div className="space-y-5">
+          {/* ── Left: Contact + Payment (always together) ─────────────────── */}
+          <div className="order-2 space-y-0 lg:order-1">
+            <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+
+              {/* Contact information section */}
+              <div className="p-6">
+                <div className="mb-5 flex items-center justify-between">
                   <div>
-                    <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Contact information</h1>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">Contact information</h2>
+                    <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
                       We'll send your redemption code and receipt here.
                     </p>
                   </div>
+                  {contactLocked && (
+                    <button
+                      type="button"
+                      onClick={handleEditContact}
+                      className="text-sm font-medium text-primary hover:underline"
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
 
+                {contactLocked ? (
+                  // Read-only summary when payment is loaded
+                  <div className="space-y-1 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-900/50">
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{customerName}</p>
+                    <p className="text-gray-500 dark:text-gray-400">{customerEmail}</p>
+                    <p className="text-gray-500 dark:text-gray-400">{customerPhone}</p>
+                  </div>
+                ) : (
                   <div className="space-y-4">
                     <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <label htmlFor="checkout-name" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Full name
                       </label>
                       <input
+                        id="checkout-name"
                         type="text"
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
@@ -284,10 +302,11 @@ export default function DealCheckoutPage() {
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <label htmlFor="checkout-email" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Email address
                       </label>
                       <input
+                        id="checkout-email"
                         type="email"
                         value={customerEmail}
                         onChange={(e) => setCustomerEmail(e.target.value)}
@@ -298,10 +317,11 @@ export default function DealCheckoutPage() {
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <label htmlFor="checkout-phone" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Mobile phone
                       </label>
                       <input
+                        id="checkout-phone"
                         type="tel"
                         value={customerPhone}
                         onChange={(e) => setCustomerPhone(e.target.value)}
@@ -314,62 +334,60 @@ export default function DealCheckoutPage() {
                       </p>
                     </div>
                   </div>
+                )}
+              </div>
 
-                  {submitError && (
-                    <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
-                      {submitError}
-                    </p>
-                  )}
+              {/* Divider */}
+              <div className="border-t border-gray-100 dark:border-gray-700" />
 
-                  <button
-                    type="button"
-                    onClick={handleContinueToPayment}
-                    disabled={!contactReady}
-                    className="w-full rounded-xl bg-primary py-4 text-base font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isSubmitting ? 'Setting up payment...' : 'Continue to Payment'}
-                  </button>
+              {/* Payment section — always below contact */}
+              <div className="p-6">
+                <h2 className="mb-5 text-base font-bold text-gray-900 dark:text-gray-100">Payment</h2>
 
-                  <p className="text-center text-xs text-gray-400 dark:text-gray-500">
-                    Apple Pay, Google Pay, and all major cards accepted.
-                  </p>
-                </div>
-              ) : (
-                clientSecret && purchaseToken && (
-                  <div className="space-y-5">
-                    <div>
-                      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Payment</h1>
-                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        Pay securely with Apple Pay, Google Pay, or a card.
-                      </p>
-                    </div>
-                    <Elements
-                      stripe={stripePromise}
-                      options={{
-                        clientSecret,
-                        appearance: {
-                          theme: 'stripe',
-                          variables: {
-                            colorPrimary: '#7B22D4',
-                            borderRadius: '12px',
-                            fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-                          },
+                {clientSecret && purchaseToken ? (
+                  <Elements
+                    stripe={stripePromise}
+                    options={{
+                      clientSecret,
+                      appearance: {
+                        theme: 'stripe',
+                        variables: {
+                          colorPrimary: '#7B22D4',
+                          borderRadius: '12px',
+                          fontFamily: 'ui-sans-serif, system-ui, sans-serif',
                         },
-                      }}
+                      },
+                    }}
+                  >
+                    <PaymentForm
+                      purchaseToken={purchaseToken}
+                      totalAmount={totals.total}
+                    />
+                  </Elements>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Apple Pay, Google Pay, and all major cards accepted.
+                    </p>
+
+                    {loadError && (
+                      <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
+                        {loadError}
+                      </p>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handleLoadPayment}
+                      disabled={!contactReady || isLoadingPayment}
+                      className="w-full rounded-xl bg-primary py-4 text-base font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <PaymentStep
-                        purchaseToken={purchaseToken}
-                        totalAmount={totals.total}
-                        onBack={() => {
-                          setPhase('contact');
-                          setClientSecret(null);
-                          setPurchaseToken(null);
-                        }}
-                      />
-                    </Elements>
+                      {isLoadingPayment ? 'Setting up payment...' : `Continue to Payment — ${formatMoney(totals.total)}`}
+                    </button>
                   </div>
-                )
-              )}
+                )}
+              </div>
+
             </div>
           </div>
 
