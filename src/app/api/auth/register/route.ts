@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hashPassword, generateSlug, generatePublicBusinessId } from '@/lib/utils';
 import { generateReferralCode } from '@/lib/referral';
-import { REFERRAL_BONUS_TRIAL_DAYS, STANDARD_TRIAL_DAYS } from '@/lib/referral-config';
+import { STANDARD_TRIAL_DAYS } from '@/lib/referral-config';
 import { addDays } from 'date-fns';
 import {
   createEmailVerificationCode,
@@ -145,7 +145,7 @@ export async function POST(request: Request) {
       ? await prisma.affiliate.findFirst({ where: { code: affiliateCode, active: true } })
       : null;
 
-    const trialDays = referrerBusiness || affiliate ? REFERRAL_BONUS_TRIAL_DAYS : STANDARD_TRIAL_DAYS;
+    const trialDays = STANDARD_TRIAL_DAYS;
     const trialEndsAt = addDays(new Date(), trialDays);
 
     const newReferralCode = await generateReferralCode();

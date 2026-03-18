@@ -171,19 +171,19 @@ describe('POST /api/auth/register — affiliate code handling', () => {
     vi.mocked(prisma.affiliateSignup.create).mockResolvedValue({} as any);
   });
 
-  it('valid affiliate code: sets affiliateCodeUsed, creates AffiliateSignup, 44-day trial', async () => {
+  it('valid affiliate code: sets affiliateCodeUsed, creates AffiliateSignup, standard 14-day trial', async () => {
     const affiliate = { id: 'aff-1', code: 'AFFCODE1', active: true };
     vi.mocked(prisma.affiliate.findFirst).mockResolvedValue(affiliate as any);
 
     const res = await registerPOST(req('POST', { ...VALID_REGISTER_BODY, affiliateCode: 'AFFCODE1' }));
     expect(res.status).toBe(200);
 
-    // Trial should be ~44 days
+    // Trial should be ~14 days (standard)
     const createCall = vi.mocked(prisma.business.create).mock.calls[0][0];
     const trialEndsAt = new Date(createCall.data.trialEndsAt as string | number | Date);
     const daysDiff = Math.round((trialEndsAt.getTime() - Date.now()) / 86400000);
-    expect(daysDiff).toBeGreaterThanOrEqual(43);
-    expect(daysDiff).toBeLessThanOrEqual(44);
+    expect(daysDiff).toBeGreaterThanOrEqual(13);
+    expect(daysDiff).toBeLessThanOrEqual(14);
 
     expect(createCall.data.affiliateCodeUsed).toBe('AFFCODE1');
 

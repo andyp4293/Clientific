@@ -120,7 +120,7 @@ describe('POST /api/auth/register — referral code handling', () => {
     expect(prisma.referral.create).not.toHaveBeenCalled();
   });
 
-  it('valid referral code — creates 44-day trial and referral record', async () => {
+  it('valid referral code — creates standard 14-day trial and referral record', async () => {
     const referrer = {
       id: 'biz-referrer',
       referralCode: 'ABCD1234',
@@ -135,12 +135,12 @@ describe('POST /api/auth/register — referral code handling', () => {
     const res = await registerPOST(req('POST', { ...VALID_REGISTER_BODY, referralCode: 'ABCD1234' }));
     expect(res.status).toBe(200);
 
-    // Trial should be ~44 days
+    // Trial should be ~14 days (same as standard)
     const createCall = vi.mocked(prisma.business.create).mock.calls[0][0];
     const trialEndsAt = new Date(createCall.data.trialEndsAt as string | number | Date);
     const daysDiff = Math.round((trialEndsAt.getTime() - Date.now()) / 86400000);
-    expect(daysDiff).toBeGreaterThanOrEqual(43);
-    expect(daysDiff).toBeLessThanOrEqual(44);
+    expect(daysDiff).toBeGreaterThanOrEqual(13);
+    expect(daysDiff).toBeLessThanOrEqual(14);
 
     // referredById set on new business
     expect(createCall.data.referredById).toBe('biz-referrer');
