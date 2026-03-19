@@ -585,6 +585,7 @@ export async function finalizeDealPurchaseFromPaymentIntent(
             vapiPhoneNumber: true,
           },
         },
+        items: true,
       },
     });
 
@@ -619,6 +620,23 @@ export async function finalizeDealPurchaseFromPaymentIntent(
       smsConfirmationError: smsResult.success ? null : smsResult.error ?? 'Failed to send SMS',
     },
   });
+
+  if (purchase.customerEmail) {
+    sendDealPurchaseReceiptEmail({
+      to: purchase.customerEmail,
+      customerName: purchase.customerName,
+      businessName: purchase.business.name,
+      dealTitle: purchase.deal.title,
+      redemptionCode: purchase.redemptionCode!,
+      receiptUrl,
+      totalAmount: purchase.totalAmount,
+      items: purchase.items.map((item) => ({
+        name: item.serviceName,
+        originalAmount: item.originalUnitAmount,
+        discountedAmount: item.discountedUnitAmount,
+      })),
+    }).catch((err) => console.error('Failed to send deal receipt email:', err));
+  }
 
   return purchase;
 }
