@@ -21,8 +21,10 @@ function getResendFromEmail(): string {
   return raw.trim();
 }
 
+const getResendApiKey = () => (process.env.RESEND_API_KEY || '').trim();
+
 export async function sendNewBookingEmail(businessEmail: string, details: NewBookingDetails): Promise<void> {
-  const resend = new Resend(process.env.RESEND_API_KEY);
+  const resend = new Resend(getResendApiKey());
   const FROM = getResendFromEmail();
 
   const dateStr = details.dateTime.toLocaleDateString('en-US', {
@@ -82,7 +84,7 @@ export async function sendNewBookingEmail(businessEmail: string, details: NewBoo
 }
 
 export async function sendPasswordResetEmail(email: string, token: string) {
-  const resend = new Resend(process.env.RESEND_API_KEY);
+  const resend = new Resend(getResendApiKey());
   const FROM = getResendFromEmail();
   const APP_URL = getConfiguredAppBaseUrl();
   const resetUrl = `${APP_URL}/reset-password?token=${token}`;
@@ -131,7 +133,7 @@ interface DealPurchaseReceiptDetails {
 }
 
 export async function sendDealPurchaseReceiptEmail(details: DealPurchaseReceiptDetails): Promise<void> {
-  const resend = new Resend(process.env.RESEND_API_KEY);
+  const resend = new Resend(getResendApiKey());
   const FROM = getResendFromEmail();
 
   function formatCents(amount: number) {
@@ -209,7 +211,7 @@ export async function sendDealPurchaseReceiptEmail(details: DealPurchaseReceiptD
 }
 
 export async function sendEmailVerificationEmail(email: string, code: string) {
-  const resend = new Resend(process.env.RESEND_API_KEY);
+  const resend = new Resend(getResendApiKey());
   const FROM = getResendFromEmail();
   const APP_URL = getConfiguredAppBaseUrl();
   const verifyUrl = `${APP_URL}/verify-email?email=${encodeURIComponent(email)}`;
