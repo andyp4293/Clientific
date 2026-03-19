@@ -78,6 +78,18 @@ describe('sendSMS', () => {
     expect(result.error).toContain('carrier reject');
   });
 
+  it('trims TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN before authenticating', async () => {
+    // Simulates the Vercel paste-artifact: credentials stored with trailing \n.
+    // Without .trim() the Twilio factory would receive the dirty values.
+    process.env.TWILIO_ACCOUNT_SID = 'AC_test\n';
+    process.env.TWILIO_AUTH_TOKEN = 'token_test\n';
+    hoisted.createMessage.mockResolvedValueOnce({ sid: 'SM_trim_test' });
+
+    await sendSMS({ to: '+15551234567', message: 'Test message' });
+
+    expect(hoisted.twilioFactory).toHaveBeenCalledWith('AC_test', 'token_test');
+  });
+
   it('always uses the platform sender number regardless of from param', async () => {
     hoisted.createMessage.mockResolvedValueOnce({ sid: 'SM456' });
 

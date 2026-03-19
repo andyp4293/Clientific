@@ -20,6 +20,7 @@ describe('email sender configuration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.RESEND_API_KEY = 're_test_key';
+    process.env.RESEND_FROM_EMAIL = 'noreply@clientific.app';
     process.env.NEXT_PUBLIC_APP_URL = 'https://clientific.app';
   });
 
@@ -38,5 +39,15 @@ describe('email sender configuration', () => {
         html: expect.stringContaining('123456'),
       })
     );
+  });
+
+  it('trims RESEND_API_KEY before passing to Resend constructor', async () => {
+    // Simulates the Vercel paste-artifact: key stored with trailing \n.
+    // Without .trim() the Resend client would authenticate with the wrong key.
+    process.env.RESEND_API_KEY = 're_test_key\n';
+
+    await sendEmailVerificationEmail('owner@example.com', '123456');
+
+    expect(mockResendCtor).toHaveBeenCalledWith('re_test_key');
   });
 });
