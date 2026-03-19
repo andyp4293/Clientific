@@ -42,10 +42,15 @@ const business = {
 
 const createdAccount = {
   id: 'acct_new',
-  type: 'custom',
+  type: 'none',
   charges_enabled: false,
   payouts_enabled: false,
   details_submitted: false,
+  controller: {
+    losses: { payments: 'stripe' },
+    requirement_collection: 'stripe',
+    stripe_dashboard: { type: 'none' },
+  },
 };
 
 beforeEach(() => {
@@ -74,11 +79,63 @@ describe('ensureBusinessConnectAccount', () => {
     expect(mockBankDeleteMany).toHaveBeenCalledWith({ where: { businessId: 'biz-1' } });
     expect(mockAccountCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: 'custom',
+        controller: expect.objectContaining({
+          stripe_dashboard: { type: 'none' },
+        }),
         email: 'owner@example.com',
         metadata: expect.objectContaining({ businessId: 'biz-1' }),
       })
     );
     expect(mockBusinessUpdate).toHaveBeenCalledTimes(2);
+  });
+
+  it('recreates unfinished legacy custom accounts so embedded onboarding can use the current Stripe setup', async () => {
+    mockAccountRetrieve.mockResolvedValue({
+      id: 'acct_old',
+      type: 'custom',
+      charges_enabled: false,
+      payouts_enabled: false,
+      details_submitted: false,
+      controller: {
+        losses: { payments: 'application' },
+        requirement_collection: 'application',
+        stripe_dashboard: { type: 'none' },
+      },
+    });
+
+    const account = await ensureBusinessConnectAccount(business, 'https://clientific.app');
+
+    expect(account).toEqual(createdAccount);
+    expect(mockBankDeleteMany).toHaveBeenCalledWith({ where: { businessId: 'biz-1' } });
+    expect(mockAccountCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        controller: expect.objectContaining({
+          stripe_dashboard: { type: 'none' },
+        }),
+      })
+    );
+  });
+
+  it('keeps the existing embedded no-dashboard account when it already matches the current Stripe setup', async () => {
+    const existingAccount = {
+      id: 'acct_current',
+      type: 'none',
+      charges_enabled: false,
+      payouts_enabled: false,
+      details_submitted: false,
+      controller: {
+        losses: { payments: 'stripe' },
+        requirement_collection: 'stripe',
+        stripe_dashboard: { type: 'none' },
+      },
+    };
+    mockAccountRetrieve.mockResolvedValue(existingAccount);
+
+    const account = await ensureBusinessConnectAccount(business, 'https://clientific.app');
+
+    expect(account).toEqual(existingAccount);
+    expect(mockAccountCreate).not.toHaveBeenCalled();
+    expect(mockBankDeleteMany).not.toHaveBeenCalled();
+    expect(mockBusinessUpdate).toHaveBeenCalledTimes(1);
   });
 });

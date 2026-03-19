@@ -54,6 +54,23 @@ function isConnectAccountReady(account: Pick<Stripe.Account, 'charges_enabled' |
   return Boolean(account.charges_enabled && account.payouts_enabled && account.details_submitted);
 }
 
+function isLegacyApplicationManagedAccount(account: Stripe.Account) {
+  return Boolean(
+    account.type === 'custom' ||
+    account.controller?.losses?.payments === 'application' ||
+    account.controller?.requirement_collection === 'application'
+  );
+}
+
+function shouldRecreateLegacyEmbeddedAccount(account: Stripe.Account) {
+  return Boolean(
+    isLegacyApplicationManagedAccount(account) &&
+    !account.details_submitted &&
+    !account.charges_enabled &&
+    !account.payouts_enabled
+  );
+}
+
 export function isRecoverableConnectAccountError(error: unknown) {
   const code = typeof error === 'object' && error !== null && 'code' in error
     ? String((error as { code?: unknown }).code ?? '')
@@ -227,9 +244,9 @@ export async function syncBusinessConnectState(
 }
 
 /**
- * Ensures a Custom Connect account exists for the business.
- * We keep account creation minimal so Stripe's onboarding flow can collect the
- * correct legal business type, bank details, identity, and terms acceptance.
+ * Ensures an embedded no-dashboard Connect account exists for the business.
+ * Stripe handles hosted onboarding, compliance, and negative-balance liability,
+ * while the business still experiences payouts inside Clientific.
  */
 export async function ensureBusinessConnectAccount(
   business: BusinessConnectSeed,
@@ -240,6 +257,8 @@ export async function ensureBusinessConnectAccount(
       const existing = await stripe.accounts.retrieve(business.stripeConnectAccountId);
 
       if ((existing as Stripe.Account).type === 'express') {
+        await resetBusinessConnectState(business.id);
+      } else if (shouldRecreateLegacyEmbeddedAccount(existing)) {
         await resetBusinessConnectState(business.id);
       } else {
         await syncBusinessConnectAccount(business.id, existing);
@@ -255,9 +274,13 @@ export async function ensureBusinessConnectAccount(
   }
 
   const created = await stripe.accounts.create({
-    type: 'custom',
     country: 'US',
     email: business.email,
+    controller: {
+      stripe_dashboard: {
+        type: 'none',
+      },
+    },
     capabilities: {
       card_payments: { requested: true },
       transfers: { requested: true },
