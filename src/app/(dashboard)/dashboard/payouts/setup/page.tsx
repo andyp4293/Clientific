@@ -49,55 +49,121 @@ export default function PayoutsSetupPage() {
   const needsSetup = !connectData?.readyForPaidDeals;
 
   return (
-    <div className="max-w-6xl space-y-6 pb-20">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-3">
-          <Link href="/dashboard/payouts" className="inline-flex items-center text-sm text-primary hover:underline">
-            Back to payouts
-          </Link>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-              Secure setup
+    <div className="space-y-6 pb-20">
+      <section className="overflow-hidden rounded-[32px] brand-hero p-6 text-white shadow-[0_36px_90px_-44px_rgba(6,17,24,0.7)] sm:p-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-3">
+            <Link
+              href="/dashboard/payouts"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-white/80 transition hover:text-white"
+            >
+              <span aria-hidden="true">&larr;</span>
+              Back to payouts
+            </Link>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">
+                Secure setup
+              </p>
+              <h1 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight sm:text-4xl">
+                Finish payout onboarding in one focused workspace
+              </h1>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-white/75 sm:text-base">
+                Bank setup, identity verification, payout scheduling, and payout requests all
+                happen in the secure Stripe workspace below. We moved it to the main stage so
+                the critical action is always front and center.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void refreshConnect()}
+            className="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/15"
+          >
+            Refresh status
+          </button>
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+              Setup status
             </p>
-            <h1 className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Manage payout setup and payout preferences
-            </h1>
-            <p className="mt-2 max-w-3xl text-sm text-gray-500 dark:text-gray-400">
-              This secure Stripe-powered screen handles identity verification, bank setup,
-              compliance updates, payout schedule changes, and payout requests in one place.
+            <p className="mt-2 text-lg font-semibold">
+              {connectLoading
+                ? 'Checking requirements...'
+                : needsSetup
+                  ? 'More setup is still required'
+                  : 'Paid deal payouts are live'}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+              Available balance
+            </p>
+            <p className="mt-2 text-lg font-semibold">
+              {connectLoading ? '...' : cents(availableBalance)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+              Payout schedule
+            </p>
+            <p className="mt-2 text-lg font-semibold">
+              {formatSchedule(connectData?.payoutSchedule ?? null)}
             </p>
           </div>
         </div>
+      </section>
 
-        <button type="button" onClick={() => void refreshConnect()} className="btn-outline text-sm">
-          Refresh status
-        </button>
-      </div>
-
-      <section className="grid gap-4 xl:grid-cols-[0.8fr,1.2fr]">
+      <section className="grid gap-6 xl:grid-cols-[1.22fr,0.78fr]">
         <div className="space-y-4">
-          <div className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+          <div className="brand-panel rounded-[32px] p-5 sm:p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+              Stripe workspace
+            </p>
+            <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
+              <div className="max-w-2xl">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                  Complete onboarding and manage payouts here
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                  This secure area is now the primary focus of the page so setup, verification,
+                  and payout controls are immediately visible instead of feeling tucked away.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-gray-700 dark:border-primary/20 dark:bg-primary/10 dark:text-gray-100">
+                Powered by Stripe
+              </div>
+            </div>
+          </div>
+
+          <div className="brand-panel rounded-[32px] p-3 sm:p-4">
+            <EmbeddedPayoutWorkspace
+              visible
+              onboardingComplete={Boolean(connectData?.onboardingComplete)}
+              onRefresh={refreshConnect}
+            />
+          </div>
+        </div>
+
+        <aside className="space-y-4 xl:sticky xl:top-6">
+          <div className="brand-panel rounded-[28px] p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-              Setup status
+              Next step
             </p>
             <p className="mt-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
-              {connectLoading
-                ? 'Checking Stripe requirements...'
-                : needsSetup
-                  ? 'More setup is still required'
-                  : 'Paid deal payouts are fully live'}
+              {needsSetup ? 'Complete setup, then publish paid deals' : 'Your payout controls are ready'}
             </p>
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              {connectLoading
-                ? 'Loading your current payout readiness.'
-                : needsSetup
-                  ? 'Complete the items below so purchase-link deals can go live without payout issues.'
-                  : 'Your bank connection and payout controls are ready to manage here.'}
+            <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+              {needsSetup
+                ? 'Finish the remaining setup items here before purchase-link deals go live.'
+                : 'You can review balance activity, request payouts, and adjust payout timing from this workspace.'}
             </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-            <div className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+            <div className="brand-panel rounded-[28px] p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
                 Bank account
               </p>
@@ -106,47 +172,21 @@ export default function PayoutsSetupPage() {
                   ? `${connectData.externalAccount.bankName ?? 'Bank account'} ending in ${connectData.externalAccount.last4}`
                   : 'Not connected yet'}
               </p>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
                 {connectData?.externalAccount?.accountHolderName ||
-                  'Stripe collects and stores bank details securely.'}
+                  'Stripe securely stores bank details for payouts.'}
               </p>
             </div>
 
-            <div className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                Payout schedule
-              </p>
-              <p className="mt-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                {formatSchedule(connectData?.payoutSchedule ?? null)}
-              </p>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Manual payouts can be changed to automatic weekly or monthly payouts in Stripe.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-            <div className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                Available balance
-              </p>
-              <p className="mt-3 text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {connectLoading ? '...' : cents(availableBalance)}
-              </p>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Ready for payout in Stripe
-              </p>
-            </div>
-
-            <div className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+            <div className="brand-panel rounded-[28px] p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
                 Pending balance
               </p>
               <p className="mt-3 text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {connectLoading ? '...' : cents(pendingBalance)}
               </p>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Sales still clearing through Stripe
+              <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                Sales still clearing through Stripe before they move into the available balance.
               </p>
             </div>
           </div>
@@ -168,39 +208,18 @@ export default function PayoutsSetupPage() {
                   ))}
                 </div>
               ) : null}
-              <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
-                The secure Stripe form on this page will guide the business through the exact
-                details that still need attention.
+              <p className="mt-3 text-xs leading-5 text-amber-700 dark:text-amber-300">
+                The secure Stripe form walks the business through the exact details that still
+                need attention.
               </p>
               {requirementStatus ? (
-                <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                <p className="mt-2 text-xs leading-5 text-amber-700 dark:text-amber-300">
                   {requirementStatus}
                 </p>
               ) : null}
             </div>
           )}
-        </div>
-
-        <section className="space-y-4">
-          <div className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-              Stripe workspace
-            </p>
-            <h2 className="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Complete onboarding and manage payouts here
-            </h2>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              The Stripe workspace opens immediately on this page so the secure setup flow is
-              always in view instead of appearing farther down the payouts dashboard.
-            </p>
-          </div>
-
-          <EmbeddedPayoutWorkspace
-            visible
-            onboardingComplete={Boolean(connectData?.onboardingComplete)}
-            onRefresh={refreshConnect}
-          />
-        </section>
+        </aside>
       </section>
     </div>
   );

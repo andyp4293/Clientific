@@ -71,8 +71,6 @@ export default function PublicDealClaimPage() {
   const dealId = params.dealId as string;
 
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
-
-  // Code-claim flow state
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [claimCode, setClaimCode] = useState<string | null>(null);
@@ -96,7 +94,6 @@ export default function PublicDealClaimPage() {
   const deal = data?.deal;
   const isPurchaseFlow = deal?.deliveryType === 'purchase_link';
 
-  // Auto-select the only service when there's exactly one option
   useEffect(() => {
     if (deal?.selectableServices.length === 1) {
       setSelectedServiceIds([deal.selectableServices[0].id]);
@@ -104,11 +101,16 @@ export default function PublicDealClaimPage() {
   }, [deal]);
 
   const selectedServices = useMemo(
-    () => (deal?.selectableServices ?? []).filter((s) => selectedServiceIds.includes(s.id)),
+    () => (deal?.selectableServices ?? []).filter((service) => selectedServiceIds.includes(service.id)),
     [deal?.selectableServices, selectedServiceIds]
   );
   const totals = useMemo(
-    () => calculatePreviewTotals(deal?.discountType ?? 'percent_off', deal?.discountValue ?? 0, selectedServices),
+    () =>
+      calculatePreviewTotals(
+        deal?.discountType ?? 'percent_off',
+        deal?.discountValue ?? 0,
+        selectedServices
+      ),
     [deal?.discountType, deal?.discountValue, selectedServices]
   );
 
@@ -117,11 +119,13 @@ export default function PublicDealClaimPage() {
   function toggleService(serviceId: string) {
     if (!deal) return;
     if (deal.discountType === 'free_service') {
-      setSelectedServiceIds((cur) => (cur[0] === serviceId ? [] : [serviceId]));
+      setSelectedServiceIds((current) => (current[0] === serviceId ? [] : [serviceId]));
       return;
     }
-    setSelectedServiceIds((cur) =>
-      cur.includes(serviceId) ? cur.filter((id) => id !== serviceId) : [...cur, serviceId]
+    setSelectedServiceIds((current) =>
+      current.includes(serviceId)
+        ? current.filter((id) => id !== serviceId)
+        : [...current, serviceId]
     );
   }
 
@@ -158,10 +162,12 @@ export default function PublicDealClaimPage() {
 
   if (isLoading) {
     return (
-      <div className="page-shell min-h-screen">
+      <div className="brand-shell min-h-screen">
         <PublicSiteHeader active="deal" showLogin={false} showCta={false} />
         <div className="flex items-center justify-center px-4 py-20">
-          <p className="text-sm text-gray-600 dark:text-gray-300">Loading deal...</p>
+          <div className="brand-panel w-full max-w-md rounded-[28px] p-8 text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-300">Loading deal...</p>
+          </div>
         </div>
       </div>
     );
@@ -169,13 +175,19 @@ export default function PublicDealClaimPage() {
 
   if (isError || !deal) {
     return (
-      <div className="page-shell min-h-screen">
+      <div className="brand-shell min-h-screen">
         <PublicSiteHeader active="deal" showLogin={false} showCta={false} />
         <div className="flex items-center justify-center px-4 py-20">
-          <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 text-center dark:border-gray-700 dark:bg-gray-800">
-            <h1 className="mb-2 text-lg font-semibold text-gray-900 dark:text-gray-100">Deal unavailable</h1>
-            <p className="mb-4 text-sm text-gray-600 dark:text-gray-300">This promotion is no longer active.</p>
-            <Link href="/explore" className="text-sm font-medium text-primary hover:underline">Browse active deals</Link>
+          <div className="brand-panel w-full max-w-md rounded-[28px] p-8 text-center">
+            <h1 className="mb-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Deal unavailable
+            </h1>
+            <p className="mb-4 text-sm text-gray-600 dark:text-gray-300">
+              This promotion is no longer active.
+            </p>
+            <Link href="/explore" className="text-sm font-medium text-primary hover:underline">
+              Browse active deals
+            </Link>
           </div>
         </div>
       </div>
@@ -183,69 +195,182 @@ export default function PublicDealClaimPage() {
   }
 
   return (
-    <div className="page-shell min-h-screen">
+    <div className="brand-shell min-h-screen">
       <PublicSiteHeader active="deal" showLogin={false} showCta={false} />
-      <div className="px-4 py-8">
-        <div className="mx-auto max-w-3xl space-y-4">
+      <div className="px-4 py-8 sm:py-10">
+        <div className="mx-auto max-w-6xl space-y-6">
           {deal.viewerCanManage && (
-            <Link href="/dashboard/campaigns" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
-              <span aria-hidden="true">&larr;</span> Back to deals
+            <Link
+              href="/dashboard/campaigns"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
+            >
+              <span aria-hidden="true">&larr;</span>
+              Back to deals
             </Link>
           )}
 
-          <div className="space-y-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-            {/* Deal header */}
-            <div>
-              <p className="mb-2 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{deal.business.name}</p>
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{deal.title}</h1>
-                <span className="rounded bg-amber-100 px-2.5 py-1 text-sm font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
-                  {discountLabel(deal.discountType, deal.discountValue)}
-                </span>
+          <section className="grid gap-5 xl:grid-cols-[1.2fr,0.8fr]">
+            <div className="relative overflow-hidden rounded-[32px] brand-hero p-6 text-white shadow-[0_36px_90px_-44px_rgba(6,17,24,0.7)] sm:p-8">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_28%)]" />
+              <div className="relative space-y-5">
+                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
+                  <span>{deal.business.name}</span>
+                  <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] text-white">
+                    {discountLabel(deal.discountType, deal.discountValue)}
+                  </span>
+                  {deal.business.city && (
+                    <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] text-white/85">
+                      {deal.business.city}
+                      {deal.business.state ? `, ${deal.business.state}` : ''}
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <h1 className="max-w-3xl text-3xl font-bold tracking-tight sm:text-4xl">
+                    {deal.title}
+                  </h1>
+                  {deal.description && (
+                    <p className="mt-3 max-w-2xl text-sm leading-6 text-white/78 sm:text-base">
+                      {deal.description}
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+                      Expires
+                    </p>
+                    <p className="mt-2 text-lg font-semibold">
+                      {new Date(deal.expiresAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+                      Discount
+                    </p>
+                    <p className="mt-2 text-lg font-semibold">
+                      {discountLabel(deal.discountType, deal.discountValue)}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+                      Delivery
+                    </p>
+                    <p className="mt-2 text-lg font-semibold">
+                      {isPurchaseFlow ? 'Online checkout' : 'Claim code'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-white/85">
+                  <Link
+                    href={`/business/${deal.business.publicId}`}
+                    className="transition hover:text-white"
+                  >
+                    View business profile
+                  </Link>
+                  <Link
+                    href={
+                      deal.business.city
+                        ? `/explore?location=${encodeURIComponent(deal.business.city)}`
+                        : '/explore'
+                    }
+                    className="transition hover:text-white"
+                  >
+                    Find more deals nearby
+                  </Link>
+                </div>
               </div>
-              {deal.description && <p className="mt-3 text-sm text-gray-700 dark:text-gray-300">{deal.description}</p>}
-              <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                Expires{' '}
-                {new Date(deal.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </div>
+
+            <aside className="brand-panel rounded-[32px] p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                Before checkout
               </p>
-            </div>
+              <h2 className="mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                Choose the services you want and review the total before paying.
+              </h2>
+              <div className="mt-5 space-y-3">
+                <div className="rounded-2xl border border-gray-200 bg-white/75 px-4 py-4 dark:border-gray-700 dark:bg-gray-900/70">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                    Selected today
+                  </p>
+                  <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    {selectedServices.length === 0
+                      ? 'No services selected yet'
+                      : `${selectedServices.length} service${selectedServices.length !== 1 ? 's' : ''}`}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-primary/15 bg-primary/5 px-4 py-4 dark:border-primary/20 dark:bg-primary/10">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                    Estimated total
+                  </p>
+                  <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-100">
+                    {formatMoney(totals.total)}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Discount applied automatically at checkout.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-gray-200 bg-white/75 px-4 py-4 dark:border-gray-700 dark:bg-gray-900/70">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Why this feels safer
+                  </p>
+                  <div className="mt-3 space-y-2 text-sm text-gray-500 dark:text-gray-400">
+                    <p>Clear pricing before payment.</p>
+                    <p>Secure checkout powered by Stripe.</p>
+                    <p>Receipt and redemption details sent right after purchase.</p>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </section>
 
-            <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-medium">
-              <Link href={`/business/${deal.business.publicId}`} className="text-primary hover:underline">View business profile</Link>
-              <Link href={deal.business.city ? `/explore?location=${encodeURIComponent(deal.business.city)}` : '/explore'} className="text-primary hover:underline">Find more deals nearby</Link>
-            </div>
-
-            {/* Purchase link flow: service selection + order summary */}
+          <div className="space-y-6 rounded-[32px] brand-panel p-6 shadow-[0_30px_80px_-50px_rgba(6,17,24,0.55)]">
             {isPurchaseFlow ? (
-              <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
+              <div className="grid gap-6 xl:grid-cols-[1.12fr,0.88fr]">
                 <div className="space-y-4">
                   {deal.selectableServices.length === 1 ? (
-                    // Single service: show as read-only, no picker needed
                     <div>
-                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Service included</h2>
-                      <div className="mt-3 rounded-2xl border border-primary bg-primary/5 p-4">
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        Service included
+                      </h2>
+                      <div className="mt-4 rounded-[24px] border border-primary/15 bg-primary/5 p-5 shadow-sm dark:border-primary/20 dark:bg-primary/10">
                         <div className="flex items-center justify-between gap-4">
                           <div>
-                            <p className="font-semibold text-gray-900 dark:text-gray-100">{deal.selectableServices[0].name}</p>
-                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{deal.selectableServices[0].duration} min</p>
+                            <p className="font-semibold text-gray-900 dark:text-gray-100">
+                              {deal.selectableServices[0].name}
+                            </p>
+                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                              {deal.selectableServices[0].duration} min
+                            </p>
                           </div>
                           <div className="text-right">
-                            <p className="font-semibold text-gray-900 dark:text-gray-100">{formatMoney(deal.selectableServices[0].price)}</p>
+                            <p className="font-semibold text-gray-900 dark:text-gray-100">
+                              {formatMoney(deal.selectableServices[0].price)}
+                            </p>
                             <p className="mt-1 text-xs text-primary">Included</p>
                           </div>
                         </div>
                       </div>
                     </div>
                   ) : (
-                    // Multiple services: show picker
                     <div>
-                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Choose your services</h2>
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        Choose your services
+                      </h2>
                       <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
                         {deal.serviceScope === 'all_services'
                           ? 'This deal applies to any of the services below.'
                           : 'This deal only applies to these eligible services.'}
                       </p>
-                      <div className="mt-3 space-y-3">
+                      <div className="mt-4 space-y-3">
                         {deal.selectableServices.map((service) => {
                           const selected = selectedServiceIds.includes(service.id);
                           return (
@@ -253,21 +378,31 @@ export default function PublicDealClaimPage() {
                               key={service.id}
                               type="button"
                               onClick={() => toggleService(service.id)}
-                              className={`w-full rounded-2xl border p-4 text-left transition-colors ${
+                              className={`w-full rounded-[24px] border px-5 py-4 text-left transition-all duration-200 ${
                                 selected
-                                  ? 'border-primary bg-primary/5'
-                                  : 'border-gray-200 bg-white hover:border-primary/40 dark:border-gray-700 dark:bg-gray-900'
+                                  ? 'border-primary/25 bg-primary/8 shadow-[0_24px_60px_-36px_rgba(15,138,99,0.55)]'
+                                  : 'border-gray-200 bg-white/80 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_20px_50px_-36px_rgba(6,17,24,0.4)] dark:border-gray-700 dark:bg-gray-900/75'
                               }`}
                             >
                               <div className="flex items-center justify-between gap-4">
                                 <div>
-                                  <p className="font-semibold text-gray-900 dark:text-gray-100">{service.name}</p>
-                                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{service.duration} min</p>
+                                  <p className="font-semibold text-gray-900 dark:text-gray-100">
+                                    {service.name}
+                                  </p>
+                                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                    {service.duration} min
+                                  </p>
                                 </div>
                                 <div className="text-right">
-                                  <p className="font-semibold text-gray-900 dark:text-gray-100">{formatMoney(service.price)}</p>
+                                  <p className="font-semibold text-gray-900 dark:text-gray-100">
+                                    {formatMoney(service.price)}
+                                  </p>
                                   <p className="mt-1 text-xs text-primary">
-                                    {selected ? 'Selected' : deal.discountType === 'free_service' ? 'Choose one' : 'Tap to add'}
+                                    {selected
+                                      ? 'Selected'
+                                      : deal.discountType === 'free_service'
+                                        ? 'Choose one'
+                                        : 'Tap to add'}
                                   </p>
                                 </div>
                               </div>
@@ -279,18 +414,32 @@ export default function PublicDealClaimPage() {
                   )}
                 </div>
 
-                <aside className="rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-900/70">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Order summary</h2>
+                <aside className="rounded-[28px] border border-gray-200 bg-white/80 p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900/70">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      Order summary
+                    </h2>
+                    <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                      Premium offer
+                    </span>
+                  </div>
                   <div className="mt-4 space-y-3">
                     {selectedServices.length === 0 ? (
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {deal.selectableServices.length === 1 ? 'Loading...' : 'Select at least one service to continue.'}
+                        {deal.selectableServices.length === 1
+                          ? 'Loading...'
+                          : 'Select at least one service to continue.'}
                       </p>
                     ) : (
                       selectedServices.map((service) => (
-                        <div key={service.id} className="flex items-start justify-between gap-4 text-sm">
+                        <div
+                          key={service.id}
+                          className="flex items-start justify-between gap-4 text-sm"
+                        >
                           <span className="text-gray-700 dark:text-gray-200">{service.name}</span>
-                          <span className="font-medium text-gray-900 dark:text-gray-100">{formatMoney(service.price)}</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {formatMoney(service.price)}
+                          </span>
                         </div>
                       ))
                     )}
@@ -298,13 +447,16 @@ export default function PublicDealClaimPage() {
 
                   <div className="mt-5 space-y-2 border-t border-gray-200 pt-4 dark:border-gray-700">
                     <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-300">
-                      <span>Subtotal</span><span>{formatMoney(totals.subtotal)}</span>
+                      <span>Subtotal</span>
+                      <span>{formatMoney(totals.subtotal)}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm text-primary">
-                      <span>Deal discount</span><span>-{formatMoney(totals.discount)}</span>
+                      <span>Deal discount</span>
+                      <span>-{formatMoney(totals.discount)}</span>
                     </div>
                     <div className="flex items-center justify-between text-base font-semibold text-gray-900 dark:text-gray-100">
-                      <span>Total due</span><span>{formatMoney(totals.total)}</span>
+                      <span>Total due</span>
+                      <span>{formatMoney(totals.total)}</span>
                     </div>
                   </div>
 
@@ -312,7 +464,7 @@ export default function PublicDealClaimPage() {
                     type="button"
                     onClick={handleContinueToCheckout}
                     disabled={selectedServiceIds.length === 0}
-                    className="mt-5 w-full rounded-xl bg-primary py-3.5 text-base font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mt-5 w-full rounded-2xl bg-primary py-3.5 text-base font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Continue to Checkout
                   </button>
@@ -323,54 +475,77 @@ export default function PublicDealClaimPage() {
                 </aside>
               </div>
             ) : (
-              // ── Code-claim flow (inline, unchanged) ─────────────────────
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
-                  <label htmlFor="deal-claim-name" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Your Name</label>
+                  <label
+                    htmlFor="deal-claim-name"
+                    className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    Your Name
+                  </label>
                   <input
                     id="deal-claim-name"
                     type="text"
                     value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
+                    onChange={(event) => setCustomerName(event.target.value)}
                     placeholder="Jane Doe"
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                    className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                   />
                 </div>
                 <div>
-                  <label htmlFor="deal-claim-phone" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Mobile Phone</label>
+                  <label
+                    htmlFor="deal-claim-phone"
+                    className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    Mobile Phone
+                  </label>
                   <input
                     id="deal-claim-phone"
                     type="tel"
                     value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    onChange={(event) => setCustomerPhone(event.target.value)}
                     placeholder="(555) 123-4567"
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                    className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                   />
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  By claiming, you consent to receive your redemption code by text. Reply STOP to opt out, HELP for help.
+                  By claiming, you consent to receive your redemption code by text. Reply STOP to
+                  opt out, HELP for help.
                 </p>
                 <button
                   type="button"
                   onClick={claimDeal}
                   disabled={!customerName.trim() || !phoneReady || isSubmitting}
-                  className="w-full rounded-xl bg-primary py-3 font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full rounded-2xl bg-primary py-3 font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isSubmitting ? 'Claiming...' : 'Claim Deal Code'}
                 </button>
-                {submitError && <p className="text-sm text-red-600 dark:text-red-400">{submitError}</p>}
+                {submitError && (
+                  <p className="text-sm text-red-600 dark:text-red-400">{submitError}</p>
+                )}
               </div>
             )}
 
             {claimCode && (
-              <div className="rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20">
-                <p className="mb-1 text-sm text-green-800 dark:text-green-300">Your code is ready:</p>
-                <p className="font-mono text-lg font-bold text-green-900 dark:text-green-200">{claimCode}</p>
-                <p className="mt-2 text-xs text-green-800 dark:text-green-300">Show this code at checkout for redemption.</p>
+              <div className="rounded-[24px] border border-green-200 bg-green-50 p-5 dark:border-green-800 dark:bg-green-900/20">
+                <p className="mb-1 text-sm text-green-800 dark:text-green-300">
+                  Your code is ready:
+                </p>
+                <p className="font-mono text-lg font-bold text-green-900 dark:text-green-200">
+                  {claimCode}
+                </p>
+                <p className="mt-2 text-xs text-green-800 dark:text-green-300">
+                  Show this code at checkout for redemption.
+                </p>
                 {claimConfirmationSent && (
-                  <p className="mt-2 text-xs text-green-800 dark:text-green-300">We also texted this code to your phone.</p>
+                  <p className="mt-2 text-xs text-green-800 dark:text-green-300">
+                    We also texted this code to your phone.
+                  </p>
                 )}
-                <Link href={`/book/${deal.business.publicId}`} className="mt-4 inline-block text-sm font-medium text-primary hover:underline">
+                <Link
+                  href={`/book/${deal.business.publicId}`}
+                  className="mt-4 inline-block text-sm font-medium text-primary hover:underline"
+                >
                   Optional: Book now
                 </Link>
               </div>

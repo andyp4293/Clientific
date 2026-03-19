@@ -111,8 +111,8 @@ describe('DealCheckoutPage', () => {
   it('renders the order summary with selected service', () => {
     render(<DealCheckoutPage />);
 
-    expect(screen.getByText('Summer Promo')).toBeInTheDocument();
-    expect(screen.getByText('Test Salon')).toBeInTheDocument();
+    expect(screen.getAllByText('Summer Promo').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Test Salon').length).toBeGreaterThan(0);
     expect(screen.getAllByText(/20% off/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Haircut')).toBeInTheDocument();
     expect(screen.getAllByText('$50.00').length).toBeGreaterThanOrEqual(1);

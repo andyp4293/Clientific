@@ -161,7 +161,7 @@ describe('PublicDealClaimPage — purchase_link flow', () => {
 
     // Haircut $50, 20% off = $40
     expect(screen.getAllByText('$50.00').length).toBeGreaterThan(0);
-    expect(screen.getByText('$40.00')).toBeInTheDocument();
+    expect(screen.getAllByText('$40.00').length).toBeGreaterThan(0);
   });
 
   it('toggles service selection on repeated clicks', () => {
