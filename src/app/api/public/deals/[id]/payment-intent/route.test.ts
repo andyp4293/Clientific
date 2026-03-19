@@ -225,6 +225,20 @@ describe('POST /api/public/deals/[id]/payment-intent', () => {
     expect((await res.json()).error).toMatch(/failed to start checkout/i);
   });
 
+  it('returns 500 for StripeConnectionError (network layer failure, not user error)', async () => {
+    const err = Object.assign(
+      new Error('An error occurred with our connection to Stripe. Request was retried 2 times.'),
+      { type: 'StripeConnectionError' }
+    );
+    mockPaymentIntentCreate.mockRejectedValue(err);
+    const res = await POST(makeRequest({ customerName: 'Jane Doe', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] }), { params: Promise.resolve({ id: 'deal-1' }) });
+    // StripeConnectionError is not user-facing — should not expose internal Stripe message
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toBe('Failed to start checkout');
+    expect(body._debug).toBeUndefined();
+  });
+
   it('returns 400 (not 500) when Stripe throws StripeAuthenticationError (bad live key)', async () => {
     const err = Object.assign(new Error('No API key provided'), {
       type: 'StripeAuthenticationError',
