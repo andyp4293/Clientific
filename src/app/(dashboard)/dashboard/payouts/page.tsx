@@ -1,18 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import type { StripeConnectInstance } from '@stripe/connect-js';
-import { loadConnectAndInitialize } from '@stripe/connect-js/pure';
+import { useQuery } from '@tanstack/react-query';
 import {
-  ConnectAccountManagement,
-  ConnectAccountOnboarding,
-  ConnectBalances,
-  ConnectComponentsProvider,
-  ConnectNotificationBanner,
-  ConnectPayouts,
-} from '@stripe/react-connect-js';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+  type ConnectData,
+  formatRequirementLabel,
+  formatSchedule,
+  sumBalanceAmounts,
+} from '@/components/payouts/EmbeddedPayoutWorkspace';
 
 type Transaction = {
   id: string;
@@ -36,61 +31,6 @@ type EarningsData = {
     totalNet: number;
     transactionCount: number;
   };
-};
-
-type BalanceAmount = {
-  amount: number;
-  currency: string;
-};
-
-type ConnectData = {
-  notConnected: boolean;
-  accountId: string | null;
-  chargesEnabled: boolean;
-  payoutsEnabled: boolean;
-  detailsSubmitted: boolean;
-  onboardingComplete: boolean;
-  readyForPaidDeals: boolean;
-  bankAccountConnected: boolean;
-  externalAccount: {
-    id: string;
-    bankName: string | null;
-    last4: string;
-    routingNumberLast4: string | null;
-    accountHolderName: string | null;
-    status: string | null;
-  } | null;
-  payoutSchedule: {
-    interval: 'daily' | 'manual' | 'monthly' | 'weekly';
-    monthlyPayoutDays: number[];
-    weeklyPayoutDays: string[];
-    statementDescriptor: string | null;
-  } | null;
-  requirements: {
-    currentlyDue: string[];
-    eventuallyDue: string[];
-    pastDue: string[];
-    pendingVerification: string[];
-    disabledReason: string | null;
-  };
-  balances: {
-    available: BalanceAmount[];
-    pending: BalanceAmount[];
-  } | null;
-  payouts: Array<{
-    id: string;
-    amount: number;
-    currency: string;
-    arrivalDate: number;
-    status: string;
-    bankLast4: string | null;
-    bankName: string | null;
-  }>;
-};
-
-type WorkspaceErrorState = {
-  message: string;
-  retryable: boolean;
 };
 
 const cents = (value: number) =>
@@ -125,231 +65,7 @@ const statusBadgeClass = (status: string) => {
   }
 };
 
-function sumBalanceAmounts(amounts: BalanceAmount[] | undefined) {
-  return (amounts ?? []).reduce((sum, amount) => sum + amount.amount, 0);
-}
-
-function formatSchedule(schedule: ConnectData['payoutSchedule']) {
-  if (!schedule) {
-    return 'Not configured yet';
-  }
-
-  if (schedule.interval === 'manual') {
-    return 'Manual payouts whenever you request them';
-  }
-
-  if (schedule.interval === 'weekly') {
-    const days = schedule.weeklyPayoutDays.length
-      ? schedule.weeklyPayoutDays.map((day) => day[0].toUpperCase() + day.slice(1)).join(', ')
-      : 'your selected payout day';
-    return `Weekly payouts on ${days}`;
-  }
-
-  if (schedule.interval === 'monthly') {
-    const days = schedule.monthlyPayoutDays.length
-      ? schedule.monthlyPayoutDays.join(', ')
-      : 'your selected payout date';
-    return `Monthly payouts on day ${days}`;
-  }
-
-  return 'Daily automatic payouts';
-}
-
-function formatRequirementLabel(value: string) {
-  return value
-    .split(/[._]/g)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
-
-function EmbeddedPayoutWorkspace({
-  visible,
-  onboardingComplete,
-  onRefresh,
-}: {
-  visible: boolean;
-  onboardingComplete: boolean;
-  onRefresh: () => void;
-}) {
-  const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
-  const [connectInstance, setConnectInstance] = useState<StripeConnectInstance | null>(null);
-  const [workspaceError, setWorkspaceError] = useState<WorkspaceErrorState | null>(null);
-  const [isInitializing, setIsInitializing] = useState(false);
-  const [refreshSeed, setRefreshSeed] = useState(0);
-
-  useEffect(() => {
-    if (!visible) {
-      setConnectInstance(null);
-      setWorkspaceError(null);
-      setIsInitializing(false);
-      return;
-    }
-
-    if (!publishableKey) {
-      setWorkspaceError({
-        message: 'Stripe publishable key is missing.',
-        retryable: false,
-      });
-      setConnectInstance(null);
-      setIsInitializing(false);
-      return;
-    }
-
-    let cancelled = false;
-    setWorkspaceError(null);
-    setConnectInstance(null);
-    setIsInitializing(true);
-
-    const initializeWorkspace = async () => {
-      try {
-        const res = await fetch('/api/stripe/connect/account-session', {
-          method: 'POST',
-        });
-        const body = await res.json().catch(() => ({}));
-
-        if (!res.ok) {
-          const message = body.error || 'Failed to open secure Stripe setup.';
-          throw Object.assign(new Error(message), {
-            retryable: body.retryable !== false,
-          });
-        }
-
-        if (cancelled) {
-          return;
-        }
-
-        const clientSecret = body.clientSecret as string;
-        const instance = loadConnectAndInitialize({
-          publishableKey,
-          appearance: {
-            overlays: 'dialog',
-            variables: {
-              colorPrimary: '#7B22D4',
-              colorBackground: '#FFFFFF',
-              colorText: '#111827',
-              colorDanger: '#DC2626',
-              colorBorder: '#E5E7EB',
-              borderRadius: '18px',
-              spacingUnit: '12px',
-              fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
-            },
-          },
-          fetchClientSecret: async () => clientSecret,
-        });
-
-        setWorkspaceError(null);
-        setConnectInstance(instance);
-      } catch (error: any) {
-        if (cancelled) {
-          return;
-        }
-
-        setConnectInstance(null);
-        setWorkspaceError({
-          message: error?.message || 'Failed to open secure Stripe setup.',
-          retryable: error?.retryable !== false,
-        });
-      } finally {
-        if (!cancelled) {
-          setIsInitializing(false);
-        }
-      }
-    };
-
-    void initializeWorkspace();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [publishableKey, refreshSeed, visible]);
-
-  if (!visible) {
-    return null;
-  }
-
-  if (!publishableKey) {
-    return (
-      <div className="rounded-3xl border border-red-200 bg-red-50 p-5 text-sm text-red-700 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-300">
-        Stripe publishable key is missing. Add `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` before using payouts.
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {workspaceError && (
-        <div className="rounded-3xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-300">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span>{workspaceError.message}</span>
-            {workspaceError.retryable ? (
-              <button
-                type="button"
-                onClick={() => setRefreshSeed((value) => value + 1)}
-                className="btn-outline text-xs"
-              >
-                Try again
-              </button>
-            ) : null}
-          </div>
-        </div>
-      )}
-
-      {isInitializing ? (
-        <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-700 dark:bg-gray-900">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
-          <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-            Opening secure Stripe setup...
-          </p>
-        </div>
-      ) : connectInstance ? (
-        <ConnectComponentsProvider connectInstance={connectInstance}>
-          <div className="space-y-4">
-            <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-              <ConnectNotificationBanner
-                collectionOptions={{ fields: 'currently_due', futureRequirements: 'include' }}
-              />
-            </div>
-
-            {!onboardingComplete ? (
-              <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-                <ConnectAccountOnboarding
-                  collectionOptions={{ fields: 'eventually_due', futureRequirements: 'include' }}
-                  onExit={onRefresh}
-                />
-              </div>
-            ) : (
-              <>
-                <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-                  <ConnectBalances />
-                </div>
-                <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-                  <ConnectPayouts />
-                </div>
-                <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-                  <ConnectAccountManagement
-                    collectionOptions={{ fields: 'currently_due', futureRequirements: 'include' }}
-                  />
-                </div>
-              </>
-            )}
-          </div>
-        </ConnectComponentsProvider>
-      ) : (
-        <div className="rounded-3xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400">
-          {workspaceError?.retryable === false
-            ? 'Secure Stripe setup is temporarily unavailable while live payout access is being finalized.'
-            : 'Secure Stripe setup could not be opened yet. Try again to create a fresh setup session.'}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function PayoutsPage() {
-  const queryClient = useQueryClient();
-  const [showWorkspace, setShowWorkspace] = useState(false);
-
   const { data: earningsData, isLoading: earningsLoading } = useQuery<EarningsData>({
     queryKey: ['deal-earnings'],
     queryFn: async () => {
@@ -362,7 +78,6 @@ export default function PayoutsPage() {
   const {
     data: connectData,
     isLoading: connectLoading,
-    refetch: refetchConnect,
   } = useQuery<ConnectData>({
     queryKey: ['connect-payouts'],
     queryFn: async () => {
@@ -371,16 +86,6 @@ export default function PayoutsPage() {
       return res.json();
     },
   });
-
-  useEffect(() => {
-    if (!connectData) {
-      return;
-    }
-
-    if (!connectData.notConnected) {
-      setShowWorkspace(true);
-    }
-  }, [connectData]);
 
   const totals = earningsData?.totals;
   const transactions = earningsData?.transactions ?? [];
@@ -394,11 +99,6 @@ export default function PayoutsPage() {
       ...(connectData?.requirements.pendingVerification ?? []),
     ]),
   ];
-
-  const refreshConnect = async () => {
-    await refetchConnect();
-    await queryClient.invalidateQueries({ queryKey: ['connect-payouts'] });
-  };
 
   return (
     <div className="max-w-7xl space-y-6 pb-28 md:pb-8">
@@ -440,13 +140,9 @@ export default function PayoutsPage() {
             </div>
 
             {!connectLoading && (
-              <button
-                type="button"
-                onClick={() => setShowWorkspace(true)}
-                className="btn-primary text-sm"
-              >
+              <Link href="/dashboard/payouts/setup" className="btn-primary text-sm">
                 {connectData?.notConnected ? 'Set up payouts' : 'Manage payout setup'}
-              </button>
+              </Link>
             )}
           </div>
 
@@ -475,7 +171,7 @@ export default function PayoutsPage() {
                   {formatSchedule(connectData.payoutSchedule)}
                 </p>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  You can switch between manual and automatic payouts in the Stripe controls below.
+                  Open the secure setup screen to switch between manual and automatic payouts.
                 </p>
               </div>
 
@@ -554,13 +250,9 @@ export default function PayoutsPage() {
                 : 'Use the payout controls below or create your next deal.'}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setShowWorkspace(true)}
-                className="btn-primary text-sm"
-              >
+              <Link href="/dashboard/payouts/setup" className="btn-primary text-sm">
                 {needsSetup ? 'Open setup' : 'Open payout controls'}
-              </button>
+              </Link>
               <Link href="/dashboard/campaigns" className="btn-outline text-sm">
                 Go to deals
               </Link>
@@ -568,30 +260,6 @@ export default function PayoutsPage() {
           </div>
         </div>
       </section>
-
-      {showWorkspace && (
-        <section className="space-y-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-              Secure setup
-            </p>
-            <h2 className="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Manage payout setup and payout preferences
-            </h2>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              This embedded flow is powered by Stripe and handles email verification, bank
-              setup, compliance updates, payout schedule changes, and payout requests
-              without requiring a separate Stripe dashboard.
-            </p>
-          </div>
-
-          <EmbeddedPayoutWorkspace
-            visible={showWorkspace}
-            onboardingComplete={Boolean(connectData?.onboardingComplete)}
-            onRefresh={refreshConnect}
-          />
-        </section>
-      )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
