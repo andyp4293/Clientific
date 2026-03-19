@@ -170,38 +170,31 @@ function EmbeddedPayoutWorkspace({
   const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
   const [connectInstance, setConnectInstance] = useState<StripeConnectInstance | null>(null);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(false);
   const [refreshSeed, setRefreshSeed] = useState(0);
 
   useEffect(() => {
     if (!visible) {
       setConnectInstance(null);
+      setWorkspaceError(null);
+      setIsInitializing(false);
       return;
     }
 
     if (!publishableKey) {
       setWorkspaceError('Stripe publishable key is missing.');
       setConnectInstance(null);
+      setIsInitializing(false);
       return;
     }
 
+    let cancelled = false;
     setWorkspaceError(null);
+    setConnectInstance(null);
+    setIsInitializing(true);
 
-    const instance = loadConnectAndInitialize({
-      publishableKey,
-      appearance: {
-        overlays: 'dialog',
-        variables: {
-          colorPrimary: '#7B22D4',
-          colorBackground: '#FFFFFF',
-          colorText: '#111827',
-          colorDanger: '#DC2626',
-          colorBorder: '#E5E7EB',
-          borderRadius: '18px',
-          spacingUnit: '12px',
-          fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
-        },
-      },
-      fetchClientSecret: async () => {
+    const initializeWorkspace = async () => {
+      try {
         const res = await fetch('/api/stripe/connect/account-session', {
           method: 'POST',
         });
@@ -209,16 +202,53 @@ function EmbeddedPayoutWorkspace({
 
         if (!res.ok) {
           const message = body.error || 'Failed to open secure Stripe setup.';
-          setWorkspaceError(message);
           throw new Error(message);
         }
 
-        setWorkspaceError(null);
-        return body.clientSecret;
-      },
-    });
+        if (cancelled) {
+          return;
+        }
 
-    setConnectInstance(instance);
+        const clientSecret = body.clientSecret as string;
+        const instance = loadConnectAndInitialize({
+          publishableKey,
+          appearance: {
+            overlays: 'dialog',
+            variables: {
+              colorPrimary: '#7B22D4',
+              colorBackground: '#FFFFFF',
+              colorText: '#111827',
+              colorDanger: '#DC2626',
+              colorBorder: '#E5E7EB',
+              borderRadius: '18px',
+              spacingUnit: '12px',
+              fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
+            },
+          },
+          fetchClientSecret: async () => clientSecret,
+        });
+
+        setWorkspaceError(null);
+        setConnectInstance(instance);
+      } catch (error: any) {
+        if (cancelled) {
+          return;
+        }
+
+        setConnectInstance(null);
+        setWorkspaceError(error?.message || 'Failed to open secure Stripe setup.');
+      } finally {
+        if (!cancelled) {
+          setIsInitializing(false);
+        }
+      }
+    };
+
+    void initializeWorkspace();
+
+    return () => {
+      cancelled = true;
+    };
   }, [publishableKey, refreshSeed, visible]);
 
   if (!visible) {
@@ -250,14 +280,14 @@ function EmbeddedPayoutWorkspace({
         </div>
       )}
 
-      {!connectInstance ? (
+      {isInitializing ? (
         <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-700 dark:bg-gray-900">
           <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
           <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
             Opening secure Stripe setup...
           </p>
         </div>
-      ) : (
+      ) : connectInstance ? (
         <ConnectComponentsProvider connectInstance={connectInstance}>
           <div className="space-y-4">
             <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
@@ -290,6 +320,10 @@ function EmbeddedPayoutWorkspace({
             )}
           </div>
         </ConnectComponentsProvider>
+      ) : (
+        <div className="rounded-3xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400">
+          Secure Stripe setup could not be opened yet. Try again to create a fresh setup session.
+        </div>
       )}
     </div>
   );

@@ -8,10 +8,12 @@ vi.mock('@/lib/app-url', () => ({ getAppBaseUrlFromRequest: vi.fn(() => 'https:/
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: { findUnique: vi.fn(), update: vi.fn() },
+    businessBankAccount: { deleteMany: vi.fn() },
   },
 }));
 vi.mock('@/lib/stripe-connect', () => ({
   ensureBusinessConnectAccount: vi.fn(),
+  isRecoverableConnectAccountError: vi.fn(),
   syncBusinessConnectState: vi.fn(),
 }));
 
@@ -20,6 +22,7 @@ import { getSessionBusinessId } from '@/lib/session-business';
 import { prisma } from '@/lib/prisma';
 import {
   ensureBusinessConnectAccount,
+  isRecoverableConnectAccountError,
   syncBusinessConnectState,
 } from '@/lib/stripe-connect';
 import { GET, POST } from './route';
@@ -28,7 +31,9 @@ const mockGetSession = getServerSession as ReturnType<typeof vi.fn>;
 const mockGetBusinessId = getSessionBusinessId as ReturnType<typeof vi.fn>;
 const mockFindUnique = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockUpdate = prisma.business.update as ReturnType<typeof vi.fn>;
+const mockDeleteMany = prisma.businessBankAccount.deleteMany as ReturnType<typeof vi.fn>;
 const mockEnsureConnect = ensureBusinessConnectAccount as ReturnType<typeof vi.fn>;
+const mockIsRecoverable = isRecoverableConnectAccountError as ReturnType<typeof vi.fn>;
 const mockSyncState = syncBusinessConnectState as ReturnType<typeof vi.fn>;
 
 function makeRequest(method: 'GET' | 'POST' = 'GET') {
@@ -83,6 +88,8 @@ beforeEach(() => {
   mockEnsureConnect.mockResolvedValue({ id: 'acct_123' });
   mockSyncState.mockResolvedValue(status);
   mockUpdate.mockResolvedValue({});
+  mockDeleteMany.mockResolvedValue({});
+  mockIsRecoverable.mockReturnValue(false);
 });
 
 describe('GET /api/stripe/connect/account', () => {
@@ -109,13 +116,19 @@ describe('GET /api/stripe/connect/account', () => {
     expect(mockSyncState).toHaveBeenCalledWith('biz-1', 'acct_123');
   });
 
-  it('clears stale state when Stripe account is missing', async () => {
-    mockSyncState.mockRejectedValue({ code: 'resource_missing' });
-    const res = await GET(makeRequest());
-    expect(res.status).toBe(200);
-    expect((await res.json()).notConnected).toBe(true);
-    expect(mockUpdate).toHaveBeenCalled();
-  });
+  it.each(['resource_missing', 'account_invalid'])(
+    'clears stale state when Stripe returns %s',
+    async (code) => {
+      mockSyncState.mockRejectedValue({ code });
+      mockIsRecoverable.mockReturnValue(true);
+
+      const res = await GET(makeRequest());
+      expect(res.status).toBe(200);
+      expect((await res.json()).notConnected).toBe(true);
+      expect(mockUpdate).toHaveBeenCalled();
+      expect(mockDeleteMany).toHaveBeenCalled();
+    }
+  );
 });
 
 describe('POST /api/stripe/connect/account', () => {

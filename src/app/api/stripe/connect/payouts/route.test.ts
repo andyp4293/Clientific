@@ -7,11 +7,13 @@ vi.mock('@/lib/session-business', () => ({ getSessionBusinessId: vi.fn() }));
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: { findUnique: vi.fn(), update: vi.fn() },
+    businessBankAccount: { deleteMany: vi.fn() },
   },
 }));
 vi.mock('@/lib/stripe-connect', () => ({
   syncBusinessConnectState: vi.fn(),
   fetchConnectPayoutsOverview: vi.fn(),
+  isRecoverableConnectAccountError: vi.fn(),
 }));
 
 import { getServerSession } from 'next-auth';
@@ -19,6 +21,7 @@ import { getSessionBusinessId } from '@/lib/session-business';
 import { prisma } from '@/lib/prisma';
 import {
   fetchConnectPayoutsOverview,
+  isRecoverableConnectAccountError,
   syncBusinessConnectState,
 } from '@/lib/stripe-connect';
 import { GET } from './route';
@@ -27,8 +30,10 @@ const mockGetSession = getServerSession as ReturnType<typeof vi.fn>;
 const mockGetBusinessId = getSessionBusinessId as ReturnType<typeof vi.fn>;
 const mockFindUnique = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockUpdate = prisma.business.update as ReturnType<typeof vi.fn>;
+const mockDeleteMany = prisma.businessBankAccount.deleteMany as ReturnType<typeof vi.fn>;
 const mockSyncStatus = syncBusinessConnectState as ReturnType<typeof vi.fn>;
 const mockFetchOverview = fetchConnectPayoutsOverview as ReturnType<typeof vi.fn>;
+const mockIsRecoverable = isRecoverableConnectAccountError as ReturnType<typeof vi.fn>;
 
 function makeRequest() {
   return new NextRequest('http://localhost/api/stripe/connect/payouts');
@@ -92,6 +97,8 @@ beforeEach(() => {
   mockGetSession.mockResolvedValue({});
   mockGetBusinessId.mockReturnValue('biz-1');
   mockUpdate.mockResolvedValue({});
+  mockDeleteMany.mockResolvedValue({});
+  mockIsRecoverable.mockReturnValue(false);
 });
 
 describe('GET /api/stripe/connect/payouts', () => {
@@ -156,16 +163,21 @@ describe('GET /api/stripe/connect/payouts', () => {
     expect(mockFetchOverview).not.toHaveBeenCalled();
   });
 
-  it('clears stale connect state when Stripe account is missing', async () => {
-    mockFindUnique.mockResolvedValue(connectedBusiness);
-    mockSyncStatus.mockRejectedValue({ code: 'resource_missing' });
+  it.each(['resource_missing', 'account_invalid'])(
+    'clears stale connect state when Stripe returns %s',
+    async (code) => {
+      mockFindUnique.mockResolvedValue(connectedBusiness);
+      mockSyncStatus.mockRejectedValue({ code });
+      mockIsRecoverable.mockReturnValue(true);
 
-    const res = await GET(makeRequest());
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.notConnected).toBe(true);
-    expect(mockUpdate).toHaveBeenCalled();
-  });
+      const res = await GET(makeRequest());
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.notConnected).toBe(true);
+      expect(mockUpdate).toHaveBeenCalled();
+      expect(mockDeleteMany).toHaveBeenCalled();
+    }
+  );
 
   it('returns 500 when syncBusinessConnectState throws a non-recoverable error', async () => {
     mockFindUnique.mockResolvedValue(connectedBusiness);

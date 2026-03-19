@@ -7,6 +7,7 @@ import { getAppBaseUrlFromRequest } from '@/lib/app-url';
 import {
   addBankAccountToConnect,
   ensureBusinessConnectAccount,
+  isRecoverableConnectAccountError,
   removeBankAccountFromConnect,
   syncBusinessConnectState,
 } from '@/lib/stripe-connect';
@@ -53,12 +54,33 @@ function serializeBankAccount(bankAccount: {
   };
 }
 
+async function clearStaleConnectState(businessId: string) {
+  await Promise.all([
+    prisma.business.update({
+      where: { id: businessId },
+      data: {
+        stripeConnectAccountId: null,
+        stripeConnectChargesEnabled: false,
+        stripeConnectPayoutsEnabled: false,
+        stripeConnectDetailsSubmitted: false,
+        stripeConnectOnboardedAt: null,
+        stripeConnectLastSyncedAt: new Date(),
+      },
+    }),
+    prisma.businessBankAccount.deleteMany({
+      where: { businessId },
+    }),
+  ]);
+}
+
 export async function GET() {
+  let businessId: string | null = null;
   try {
     const { business, error } = await getAuthenticatedBusiness();
     if (error) {
       return error;
     }
+    businessId = business.id;
 
     if (!business?.stripeConnectAccountId) {
       return NextResponse.json({ bankAccount: null });
@@ -92,6 +114,10 @@ export async function GET() {
 
     return NextResponse.json({ bankAccount: serializeBankAccount(bankAccount) });
   } catch (error: any) {
+    if (businessId && isRecoverableConnectAccountError(error)) {
+      await clearStaleConnectState(businessId);
+      return NextResponse.json({ bankAccount: null });
+    }
     console.error('GET /api/stripe/bank-account error:', error);
     return NextResponse.json({ error: 'Failed to load bank account' }, { status: 500 });
   }
@@ -180,11 +206,13 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE() {
+  let businessId: string | null = null;
   try {
     const { business, error } = await getAuthenticatedBusiness();
     if (error) {
       return error;
     }
+    businessId = business.id;
 
     const existing = await prisma.businessBankAccount.findUnique({
       where: { businessId: business!.id },
@@ -203,6 +231,10 @@ export async function DELETE() {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
+    if (businessId && isRecoverableConnectAccountError(error)) {
+      await clearStaleConnectState(businessId);
+      return NextResponse.json({ success: true });
+    }
     console.error('DELETE /api/stripe/bank-account error:', error);
     return NextResponse.json({ error: 'Failed to remove bank account' }, { status: 500 });
   }

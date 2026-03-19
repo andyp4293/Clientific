@@ -9,6 +9,11 @@ type BusinessConnectSeed = {
   stripeConnectAccountId: string | null;
 };
 
+const RECOVERABLE_CONNECT_ACCOUNT_ERROR_CODES = new Set([
+  'resource_missing',
+  'account_invalid',
+]);
+
 export type ConnectExternalBankAccountSummary = {
   id: string;
   bankName: string | null;
@@ -49,18 +54,31 @@ function isConnectAccountReady(account: Pick<Stripe.Account, 'charges_enabled' |
   return Boolean(account.charges_enabled && account.payouts_enabled && account.details_submitted);
 }
 
+export function isRecoverableConnectAccountError(error: unknown) {
+  const code = typeof error === 'object' && error !== null && 'code' in error
+    ? String((error as { code?: unknown }).code ?? '')
+    : '';
+
+  return RECOVERABLE_CONNECT_ACCOUNT_ERROR_CODES.has(code);
+}
+
 async function resetBusinessConnectState(businessId: string) {
-  await prisma.business.update({
-    where: { id: businessId },
-    data: {
-      stripeConnectAccountId: null,
-      stripeConnectChargesEnabled: false,
-      stripeConnectPayoutsEnabled: false,
-      stripeConnectDetailsSubmitted: false,
-      stripeConnectOnboardedAt: null,
-      stripeConnectLastSyncedAt: new Date(),
-    },
-  });
+  await Promise.all([
+    prisma.business.update({
+      where: { id: businessId },
+      data: {
+        stripeConnectAccountId: null,
+        stripeConnectChargesEnabled: false,
+        stripeConnectPayoutsEnabled: false,
+        stripeConnectDetailsSubmitted: false,
+        stripeConnectOnboardedAt: null,
+        stripeConnectLastSyncedAt: new Date(),
+      },
+    }),
+    prisma.businessBankAccount.deleteMany({
+      where: { businessId },
+    }),
+  ]);
 }
 
 function normalizeExternalBankAccount(
@@ -228,7 +246,7 @@ export async function ensureBusinessConnectAccount(
         return existing;
       }
     } catch (error: any) {
-      if (error?.code !== 'resource_missing') {
+      if (!isRecoverableConnectAccountError(error)) {
         throw error;
       }
 

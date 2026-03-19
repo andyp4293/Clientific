@@ -6,6 +6,7 @@ import { getSessionBusinessId } from '@/lib/session-business';
 import { getAppBaseUrlFromRequest } from '@/lib/app-url';
 import {
   ensureBusinessConnectAccount,
+  isRecoverableConnectAccountError,
   syncBusinessConnectState,
 } from '@/lib/stripe-connect';
 
@@ -58,6 +59,25 @@ function notConnectedPayload() {
   };
 }
 
+async function clearStaleConnectState(businessId: string) {
+  await Promise.all([
+    prisma.business.update({
+      where: { id: businessId },
+      data: {
+        stripeConnectAccountId: null,
+        stripeConnectChargesEnabled: false,
+        stripeConnectPayoutsEnabled: false,
+        stripeConnectDetailsSubmitted: false,
+        stripeConnectOnboardedAt: null,
+        stripeConnectLastSyncedAt: new Date(),
+      },
+    }),
+    prisma.businessBankAccount.deleteMany({
+      where: { businessId },
+    }),
+  ]);
+}
+
 export async function GET(_req: NextRequest) {
   try {
     const { business, error } = await getAuthenticatedBusiness();
@@ -89,19 +109,8 @@ export async function GET(_req: NextRequest) {
         requirements: status.requirements,
       });
     } catch (error: any) {
-      if (error?.code === 'resource_missing') {
-        await prisma.business.update({
-          where: { id: business.id },
-          data: {
-            stripeConnectAccountId: null,
-            stripeConnectChargesEnabled: false,
-            stripeConnectPayoutsEnabled: false,
-            stripeConnectDetailsSubmitted: false,
-            stripeConnectOnboardedAt: null,
-            stripeConnectLastSyncedAt: new Date(),
-          },
-        });
-
+      if (isRecoverableConnectAccountError(error)) {
+        await clearStaleConnectState(business.id);
         return NextResponse.json(notConnectedPayload());
       }
 
