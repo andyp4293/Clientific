@@ -44,6 +44,10 @@ beforeEach(() => {
     id: 'biz-1',
     email: 'owner@example.com',
     name: 'Test Salon',
+    phone: '(555) 111-2222',
+    businessEmail: 'hello@testsalon.com',
+    publicId: 'CF-66W551',
+    slug: 'test-salon',
     stripeConnectAccountId: 'acct_123',
   });
   mockEnsureConnect.mockResolvedValue({

@@ -406,8 +406,9 @@ export default function PayoutsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Payouts</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Payouts powered by Stripe. Set up your bank once, then choose manual,
-            weekly, or monthly payouts for paid deals.
+            Payouts powered by Stripe. Businesses may be asked to verify identity and
+            confirm an email during secure setup, then they manage bank connection and
+            payout timing inside Clientific.
           </p>
         </div>
         <div className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
@@ -444,7 +445,7 @@ export default function PayoutsPage() {
                 onClick={() => setShowWorkspace(true)}
                 className="btn-primary text-sm"
               >
-                {connectData?.notConnected ? 'Begin secure setup' : 'Manage payout setup'}
+                {connectData?.notConnected ? 'Set up payouts' : 'Manage payout setup'}
               </button>
             )}
           </div>
@@ -578,8 +579,9 @@ export default function PayoutsPage() {
               Manage payout setup and payout preferences
             </h2>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              This embedded flow is powered by Stripe and handles bank setup, verification updates,
-              payout schedule changes, and payout requests without sending the business to a separate dashboard.
+              This embedded flow is powered by Stripe and handles email verification, bank
+              setup, compliance updates, payout schedule changes, and payout requests
+              without requiring a separate Stripe dashboard.
             </p>
           </div>
 

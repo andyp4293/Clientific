@@ -53,6 +53,9 @@ export async function POST(
             id: true,
             name: true,
             email: true,
+            phone: true,
+            businessEmail: true,
+            publicId: true,
             slug: true,
             stripeConnectAccountId: true,
             services: {
@@ -130,6 +133,10 @@ export async function POST(
           id: deal.business.id,
           email: deal.business.email,
           name: deal.business.name,
+          phone: deal.business.phone,
+          businessEmail: deal.business.businessEmail,
+          publicId: deal.business.publicId,
+          slug: deal.business.slug,
           stripeConnectAccountId: deal.business.stripeConnectAccountId,
         },
         appUrl

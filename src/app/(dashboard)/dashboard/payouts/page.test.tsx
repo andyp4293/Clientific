@@ -96,7 +96,7 @@ describe('PayoutsPage', () => {
   it('shows a clean retryable error when Stripe setup session creation fails', async () => {
     render(<PayoutsPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: /begin secure setup/i }));
+    fireEvent.click(screen.getByRole('button', { name: /set up payouts/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/failed to create stripe connect session/i)).toBeInTheDocument();
@@ -126,7 +126,7 @@ describe('PayoutsPage', () => {
 
     render(<PayoutsPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: /begin secure setup/i }));
+    fireEvent.click(screen.getByRole('button', { name: /set up payouts/i }));
 
     await waitFor(() => {
       expect(

@@ -42,6 +42,10 @@ const business = {
   id: 'biz-1',
   email: 'owner@example.com',
   name: 'Test Salon',
+  phone: '(555) 111-2222',
+  businessEmail: 'hello@testsalon.com',
+  publicId: 'CF-66W551',
+  slug: 'test-salon',
   stripeConnectAccountId: 'acct_old',
 };
 
@@ -85,6 +89,12 @@ describe('ensureBusinessConnectAccount', () => {
     expect(mockBankDeleteMany).toHaveBeenCalledWith({ where: { businessId: 'biz-1' } });
     expect(mockAccountCreate).toHaveBeenCalledWith(
       expect.objectContaining({
+        business_profile: expect.objectContaining({
+          name: 'Test Salon',
+          support_email: 'hello@testsalon.com',
+          support_phone: '+15551112222',
+          url: 'https://clientific.app/business/CF-66W551',
+        }),
         controller: expect.objectContaining({
           stripe_dashboard: { type: 'none' },
         }),
@@ -115,6 +125,12 @@ describe('ensureBusinessConnectAccount', () => {
     expect(mockBankDeleteMany).toHaveBeenCalledWith({ where: { businessId: 'biz-1' } });
     expect(mockAccountCreate).toHaveBeenCalledWith(
       expect.objectContaining({
+        business_profile: expect.objectContaining({
+          name: 'Test Salon',
+          support_email: 'hello@testsalon.com',
+          support_phone: '+15551112222',
+          url: 'https://clientific.app/business/CF-66W551',
+        }),
         controller: expect.objectContaining({
           stripe_dashboard: { type: 'none' },
         }),

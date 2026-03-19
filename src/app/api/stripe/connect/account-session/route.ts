@@ -53,6 +53,10 @@ export async function POST(req: NextRequest) {
         id: true,
         email: true,
         name: true,
+        phone: true,
+        businessEmail: true,
+        publicId: true,
+        slug: true,
         stripeConnectAccountId: true,
       },
     });

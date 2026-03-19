@@ -1,11 +1,17 @@
 import type Stripe from 'stripe';
+import { APP_NAME } from '@/lib/brand';
 import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
+import { formatPhoneNumber, isValidPhoneNumber } from '@/lib/twilio';
 
 type BusinessConnectSeed = {
   id: string;
   email: string;
   name: string;
+  phone?: string | null;
+  businessEmail?: string | null;
+  publicId?: string | null;
+  slug?: string | null;
   stripeConnectAccountId: string | null;
 };
 
@@ -81,6 +87,30 @@ function canDisableStripeUserAuthentication(
     account?.type === 'custom' ||
     account?.controller?.requirement_collection === 'application'
   );
+}
+
+function buildConnectBusinessProfile(
+  business: BusinessConnectSeed,
+  appUrl: string
+): Stripe.AccountCreateParams.BusinessProfile {
+  const supportEmail = business.businessEmail?.trim() || business.email;
+  const supportPhone =
+    business.phone && isValidPhoneNumber(business.phone)
+      ? formatPhoneNumber(business.phone)
+      : undefined;
+  const publicUrl = business.publicId
+    ? `${appUrl}/business/${business.publicId}`
+    : business.slug
+      ? `${appUrl}/book/${business.slug}`
+      : appUrl;
+
+  return {
+    name: business.name,
+    product_description: `${business.name} uses ${APP_NAME} for bookings, payments, and customer follow-up.`,
+    support_email: supportEmail,
+    ...(supportPhone ? { support_phone: supportPhone } : {}),
+    url: publicUrl,
+  };
 }
 
 export function isRecoverableConnectAccountError(error: unknown) {
@@ -262,7 +292,7 @@ export async function syncBusinessConnectState(
  */
 export async function ensureBusinessConnectAccount(
   business: BusinessConnectSeed,
-  _appUrl: string
+  appUrl: string
 ) {
   if (business.stripeConnectAccountId) {
     try {
@@ -288,6 +318,7 @@ export async function ensureBusinessConnectAccount(
   const created = await stripe.accounts.create({
     country: 'US',
     email: business.email,
+    business_profile: buildConnectBusinessProfile(business, appUrl),
     controller: {
       stripe_dashboard: {
         type: 'none',
