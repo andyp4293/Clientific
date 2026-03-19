@@ -218,11 +218,47 @@ describe('POST /api/public/deals/[id]/payment-intent', () => {
     expect(mockCreatePending).not.toHaveBeenCalled();
   });
 
-  it('returns 500 when stripe.paymentIntents.create throws', async () => {
-    mockPaymentIntentCreate.mockRejectedValue(new Error('Stripe error'));
+  it('returns 500 when stripe.paymentIntents.create throws a generic error', async () => {
+    mockPaymentIntentCreate.mockRejectedValue(new Error('Network error'));
     const res = await POST(makeRequest({ customerName: 'Jane Doe', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] }), { params: Promise.resolve({ id: 'deal-1' }) });
     expect(res.status).toBe(500);
     expect((await res.json()).error).toMatch(/failed to start checkout/i);
+  });
+
+  it('returns 400 (not 500) when Stripe throws StripeAuthenticationError (bad live key)', async () => {
+    const err = Object.assign(new Error('No API key provided'), {
+      type: 'StripeAuthenticationError',
+      code: 'api_key_expired',
+      statusCode: 401,
+    });
+    mockPaymentIntentCreate.mockRejectedValue(err);
+    const res = await POST(makeRequest({ customerName: 'Jane Doe', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] }), { params: Promise.resolve({ id: 'deal-1' }) });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/No API key/i);
+  });
+
+  it('returns 400 (not 500) when Stripe throws StripeInvalidRequestError (e.g. amount too small)', async () => {
+    const err = Object.assign(new Error('Amount must be at least 50 cents'), {
+      type: 'StripeInvalidRequestError',
+      code: 'amount_too_small',
+      statusCode: 400,
+    });
+    mockPaymentIntentCreate.mockRejectedValue(err);
+    const res = await POST(makeRequest({ customerName: 'Jane Doe', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] }), { params: Promise.resolve({ id: 'deal-1' }) });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/50 cents/i);
+  });
+
+  it('returns 400 (not 500) when Stripe throws StripeCardError', async () => {
+    const err = Object.assign(new Error('Your card was declined'), {
+      type: 'StripeCardError',
+      code: 'card_declined',
+      statusCode: 402,
+    });
+    mockPaymentIntentCreate.mockRejectedValue(err);
+    const res = await POST(makeRequest({ customerName: 'Jane Doe', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] }), { params: Promise.resolve({ id: 'deal-1' }) });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/declined/i);
   });
 
   it('finalizes free deal immediately without creating a PaymentIntent', async () => {
