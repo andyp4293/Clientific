@@ -162,13 +162,12 @@ export async function POST(
     const stripeType: string | undefined = error?.type;
     const stripeCode: string | undefined = error?.code;
     const stripeStatus: number | undefined = error?.statusCode;
-    console.error('[payment-intent] error:', {
-      message: error?.message,
-      type: stripeType,
-      code: stripeCode,
-      statusCode: stripeStatus,
-      stack: error?.stack?.slice(0, 300),
-    });
+    // Log each field on its own line so Vercel's truncation doesn't hide the error
+    console.error('[PI:type]', stripeType ?? '(none)');
+    console.error('[PI:code]', stripeCode ?? '(none)');
+    console.error('[PI:status]', stripeStatus ?? '(none)');
+    console.error('[PI:msg]', error?.message?.slice(0, 120) ?? '(none)');
+    console.error('[PI:stack]', error?.stack?.slice(0, 200) ?? '(none)');
 
     // User-facing Stripe errors (invalid request, authentication) → 400
     if (stripeType && ['StripeInvalidRequestError', 'StripeAuthenticationError', 'StripeCardError'].includes(stripeType)) {

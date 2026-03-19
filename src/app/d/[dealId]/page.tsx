@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
 
 interface DealService {
@@ -95,6 +95,13 @@ export default function PublicDealClaimPage() {
 
   const deal = data?.deal;
   const isPurchaseFlow = deal?.deliveryType === 'purchase_link';
+
+  // Auto-select the only service when there's exactly one option
+  useEffect(() => {
+    if (deal?.selectableServices.length === 1) {
+      setSelectedServiceIds([deal.selectableServices[0].id]);
+    }
+  }, [deal]);
 
   const selectedServices = useMemo(
     () => (deal?.selectableServices ?? []).filter((s) => selectedServiceIds.includes(s.id)),
@@ -212,52 +219,73 @@ export default function PublicDealClaimPage() {
             {isPurchaseFlow ? (
               <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
                 <div className="space-y-4">
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Choose your services</h2>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                      {deal.serviceScope === 'all_services'
-                        ? 'This deal applies to any of the services below.'
-                        : 'This deal only applies to these eligible services.'}
-                    </p>
-                  </div>
-
-                  <div className="space-y-3">
-                    {deal.selectableServices.map((service) => {
-                      const selected = selectedServiceIds.includes(service.id);
-                      return (
-                        <button
-                          key={service.id}
-                          type="button"
-                          onClick={() => toggleService(service.id)}
-                          className={`w-full rounded-2xl border p-4 text-left transition-colors ${
-                            selected
-                              ? 'border-primary bg-primary/5'
-                              : 'border-gray-200 bg-white hover:border-primary/40 dark:border-gray-700 dark:bg-gray-900'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-4">
-                            <div>
-                              <p className="font-semibold text-gray-900 dark:text-gray-100">{service.name}</p>
-                              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{service.duration} min</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-semibold text-gray-900 dark:text-gray-100">{formatMoney(service.price)}</p>
-                              <p className="mt-1 text-xs text-primary">
-                                {selected ? 'Selected' : deal.discountType === 'free_service' ? 'Choose one' : 'Tap to add'}
-                              </p>
-                            </div>
+                  {deal.selectableServices.length === 1 ? (
+                    // Single service: show as read-only, no picker needed
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Service included</h2>
+                      <div className="mt-3 rounded-2xl border border-primary bg-primary/5 p-4">
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <p className="font-semibold text-gray-900 dark:text-gray-100">{deal.selectableServices[0].name}</p>
+                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{deal.selectableServices[0].duration} min</p>
                           </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-gray-900 dark:text-gray-100">{formatMoney(deal.selectableServices[0].price)}</p>
+                            <p className="mt-1 text-xs text-primary">Included</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    // Multiple services: show picker
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Choose your services</h2>
+                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                        {deal.serviceScope === 'all_services'
+                          ? 'This deal applies to any of the services below.'
+                          : 'This deal only applies to these eligible services.'}
+                      </p>
+                      <div className="mt-3 space-y-3">
+                        {deal.selectableServices.map((service) => {
+                          const selected = selectedServiceIds.includes(service.id);
+                          return (
+                            <button
+                              key={service.id}
+                              type="button"
+                              onClick={() => toggleService(service.id)}
+                              className={`w-full rounded-2xl border p-4 text-left transition-colors ${
+                                selected
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-gray-200 bg-white hover:border-primary/40 dark:border-gray-700 dark:bg-gray-900'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-4">
+                                <div>
+                                  <p className="font-semibold text-gray-900 dark:text-gray-100">{service.name}</p>
+                                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{service.duration} min</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-semibold text-gray-900 dark:text-gray-100">{formatMoney(service.price)}</p>
+                                  <p className="mt-1 text-xs text-primary">
+                                    {selected ? 'Selected' : deal.discountType === 'free_service' ? 'Choose one' : 'Tap to add'}
+                                  </p>
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <aside className="rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-900/70">
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Order summary</h2>
                   <div className="mt-4 space-y-3">
                     {selectedServices.length === 0 ? (
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Select at least one service to continue.</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {deal.selectableServices.length === 1 ? 'Loading...' : 'Select at least one service to continue.'}
+                      </p>
                     ) : (
                       selectedServices.map((service) => (
                         <div key={service.id} className="flex items-start justify-between gap-4 text-sm">
