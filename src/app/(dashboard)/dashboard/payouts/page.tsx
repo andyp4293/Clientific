@@ -88,6 +88,11 @@ type ConnectData = {
   }>;
 };
 
+type WorkspaceErrorState = {
+  message: string;
+  retryable: boolean;
+};
+
 const cents = (value: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value / 100);
 
@@ -169,7 +174,7 @@ function EmbeddedPayoutWorkspace({
 }) {
   const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
   const [connectInstance, setConnectInstance] = useState<StripeConnectInstance | null>(null);
-  const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+  const [workspaceError, setWorkspaceError] = useState<WorkspaceErrorState | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
   const [refreshSeed, setRefreshSeed] = useState(0);
 
@@ -182,7 +187,10 @@ function EmbeddedPayoutWorkspace({
     }
 
     if (!publishableKey) {
-      setWorkspaceError('Stripe publishable key is missing.');
+      setWorkspaceError({
+        message: 'Stripe publishable key is missing.',
+        retryable: false,
+      });
       setConnectInstance(null);
       setIsInitializing(false);
       return;
@@ -202,7 +210,9 @@ function EmbeddedPayoutWorkspace({
 
         if (!res.ok) {
           const message = body.error || 'Failed to open secure Stripe setup.';
-          throw new Error(message);
+          throw Object.assign(new Error(message), {
+            retryable: body.retryable !== false,
+          });
         }
 
         if (cancelled) {
@@ -236,7 +246,10 @@ function EmbeddedPayoutWorkspace({
         }
 
         setConnectInstance(null);
-        setWorkspaceError(error?.message || 'Failed to open secure Stripe setup.');
+        setWorkspaceError({
+          message: error?.message || 'Failed to open secure Stripe setup.',
+          retryable: error?.retryable !== false,
+        });
       } finally {
         if (!cancelled) {
           setIsInitializing(false);
@@ -268,14 +281,16 @@ function EmbeddedPayoutWorkspace({
       {workspaceError && (
         <div className="rounded-3xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-300">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <span>{workspaceError}</span>
-            <button
-              type="button"
-              onClick={() => setRefreshSeed((value) => value + 1)}
-              className="btn-outline text-xs"
-            >
-              Try again
-            </button>
+            <span>{workspaceError.message}</span>
+            {workspaceError.retryable ? (
+              <button
+                type="button"
+                onClick={() => setRefreshSeed((value) => value + 1)}
+                className="btn-outline text-xs"
+              >
+                Try again
+              </button>
+            ) : null}
           </div>
         </div>
       )}
@@ -322,7 +337,9 @@ function EmbeddedPayoutWorkspace({
         </ConnectComponentsProvider>
       ) : (
         <div className="rounded-3xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400">
-          Secure Stripe setup could not be opened yet. Try again to create a fresh setup session.
+          {workspaceError?.retryable === false
+            ? 'Secure Stripe setup is temporarily unavailable while live payout access is being finalized.'
+            : 'Secure Stripe setup could not be opened yet. Try again to create a fresh setup session.'}
         </div>
       )}
     </div>

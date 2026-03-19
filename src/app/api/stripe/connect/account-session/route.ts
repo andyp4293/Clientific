@@ -6,6 +6,39 @@ import { getSessionBusinessId } from '@/lib/session-business';
 import { getAppBaseUrlFromRequest } from '@/lib/app-url';
 import { createConnectAccountSession, ensureBusinessConnectAccount } from '@/lib/stripe-connect';
 
+function normalizeAccountSessionError(error: unknown) {
+  const message =
+    typeof error === 'object' && error !== null && 'message' in error
+      ? String((error as { message?: unknown }).message ?? '')
+      : '';
+
+  if (message.includes('/settings/connect/platform-profile')) {
+    return {
+      status: 503,
+      body: {
+        code: 'platform_profile_incomplete',
+        retryable: false,
+        error:
+          'Secure payout setup is temporarily unavailable while we finish a required Stripe review for live payouts.',
+      },
+    };
+  }
+
+  if (message.includes('/settings/connect/site-links')) {
+    return {
+      status: 503,
+      body: {
+        code: 'site_links_incomplete',
+        retryable: false,
+        error:
+          'Secure payout setup is temporarily unavailable while we finish the Stripe payout link configuration for live payouts.',
+      },
+    };
+  }
+
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -40,6 +73,12 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error('POST /api/stripe/connect/account-session error:', error);
+
+    const normalized = normalizeAccountSessionError(error);
+    if (normalized) {
+      return NextResponse.json(normalized.body, { status: normalized.status });
+    }
+
     return NextResponse.json({ error: 'Failed to create Stripe Connect session' }, { status: 500 });
   }
 }

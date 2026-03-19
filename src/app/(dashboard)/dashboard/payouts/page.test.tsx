@@ -109,4 +109,36 @@ describe('PayoutsPage', () => {
     expect(screen.queryByTestId('connect-account-onboarding')).not.toBeInTheDocument();
     expect(mockLoadConnectAndInitialize).not.toHaveBeenCalled();
   });
+
+  it('shows a non-retryable live-mode blocker when Stripe rejects embedded onboarding setup', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({
+          error:
+            'Secure payout setup is temporarily unavailable while we finish a required Stripe review for live payouts.',
+          retryable: false,
+          code: 'platform_profile_incomplete',
+        }),
+      })
+    );
+
+    render(<PayoutsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /begin secure setup/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/finish a required stripe review for live payouts/i)
+      ).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByText(/live payout access is being finalized/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /try again/i })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('connect-provider')).not.toBeInTheDocument();
+    expect(mockLoadConnectAndInitialize).not.toHaveBeenCalled();
+  });
 });

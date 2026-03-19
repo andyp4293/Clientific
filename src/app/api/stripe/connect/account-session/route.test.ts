@@ -72,4 +72,19 @@ describe('POST /api/stripe/connect/account-session', () => {
     expect(mockEnsureConnect).toHaveBeenCalled();
     expect(mockCreateSession).toHaveBeenCalledWith('acct_123');
   });
+
+  it('returns a non-retryable platform profile error when Stripe blocks live Custom onboarding', async () => {
+    mockCreateSession.mockRejectedValue(
+      new Error(
+        'Please review the responsibilities of managing losses and collecting requirements for connected accounts at https://dashboard.stripe.com/settings/connect/platform-profile.'
+      )
+    );
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(503);
+    await expect(res.json()).resolves.toMatchObject({
+      code: 'platform_profile_incomplete',
+      retryable: false,
+    });
+  });
 });
