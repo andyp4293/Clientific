@@ -302,16 +302,20 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 }
 
 async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent) {
+  console.log('[deal-webhook] payment_intent.succeeded', paymentIntent.id, 'kind:', paymentIntent.metadata?.kind);
   if (paymentIntent.metadata?.kind !== 'deal_purchase') return;
 
   // Current flow: purchase row was created upfront (pending), finalize it now
   if (paymentIntent.metadata?.dealPurchaseId) {
+    console.log('[deal-webhook] finalizing purchase', paymentIntent.metadata.dealPurchaseId);
     await finalizeDealPurchaseFromPaymentIntent(paymentIntent, getConfiguredAppBaseUrl());
+    console.log('[deal-webhook] finalized purchase', paymentIntent.metadata.dealPurchaseId);
     return;
   }
 
   // Legacy flow (pre-2026-03): metadata carries purchaseToken — create the row for the first time
   if (paymentIntent.metadata?.purchaseToken) {
+    console.log('[deal-webhook] legacy create for purchaseToken', paymentIntent.metadata.purchaseToken);
     await createDealPurchaseFromPaymentIntent(paymentIntent, getConfiguredAppBaseUrl());
   }
 }
