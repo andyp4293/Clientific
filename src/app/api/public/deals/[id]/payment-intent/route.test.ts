@@ -220,6 +220,16 @@ describe('POST /api/public/deals/[id]/payment-intent', () => {
     expect(callArg).not.toHaveProperty('payment_method_types');
   });
 
+  it('returns 500 and does not call delete when createPendingDealPurchase itself throws', async () => {
+    mockCreatePending.mockRejectedValue(new Error('DB connection lost'));
+    const res = await POST(makeRequest({ customerName: 'Jane Doe', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] }), { params: Promise.resolve({ id: 'deal-1' }) });
+    expect(res.status).toBe(500);
+    // Nothing was written so nothing to clean up
+    expect(mockDealPurchaseDelete).not.toHaveBeenCalled();
+    // PaymentIntent must not be created either
+    expect(mockPaymentIntentCreate).not.toHaveBeenCalled();
+  });
+
   it('creates the pending purchase row before creating the PaymentIntent', async () => {
     const callOrder: string[] = [];
     mockCreatePending.mockImplementation(async () => {
