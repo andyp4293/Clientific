@@ -3,9 +3,13 @@ import Stripe from 'stripe';
 // Use placeholder key if not set (for build purposes)
 const STRIPE_KEY = process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder_key_for_build';
 
+// Use the Node.js HTTP client instead of the default fetch-based client.
+// Next.js wraps the global fetch with its caching layer, which causes
+// StripeConnectionError on outbound API calls in Route Handlers.
 export const stripe = new Stripe(STRIPE_KEY, {
   apiVersion: '2024-12-18.acacia' as any,
   typescript: true,
+  httpClient: Stripe.createNodeHttpClient(),
 });
 
 // Pricing Plans Configuration
