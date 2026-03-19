@@ -304,15 +304,15 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent) {
   if (paymentIntent.metadata?.kind !== 'deal_purchase') return;
 
-  // New flow: metadata carries purchaseToken — create the purchase row for the first time
-  if (paymentIntent.metadata?.purchaseToken) {
-    await createDealPurchaseFromPaymentIntent(paymentIntent, getConfiguredAppBaseUrl());
+  // Current flow: purchase row was created upfront (pending), finalize it now
+  if (paymentIntent.metadata?.dealPurchaseId) {
+    await finalizeDealPurchaseFromPaymentIntent(paymentIntent, getConfiguredAppBaseUrl());
     return;
   }
 
-  // Legacy flow: purchase row was created upfront, just finalize it
-  if (paymentIntent.metadata?.dealPurchaseId) {
-    await finalizeDealPurchaseFromPaymentIntent(paymentIntent, getConfiguredAppBaseUrl());
+  // Legacy flow (pre-2026-03): metadata carries purchaseToken — create the row for the first time
+  if (paymentIntent.metadata?.purchaseToken) {
+    await createDealPurchaseFromPaymentIntent(paymentIntent, getConfiguredAppBaseUrl());
   }
 }
 

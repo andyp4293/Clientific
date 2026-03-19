@@ -1,4 +1,3 @@
-import { randomBytes } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
@@ -120,13 +119,16 @@ export async function POST(
       });
     }
 
-    // Paid deal: charge Clientific's account — no Connect sub-account needed.
-    // Platform fee (applicationFeeAmount) is tracked in metadata for DB recording;
-    // payouts to businesses are handled separately by Clientific on a weekly schedule.
-    const purchaseToken = randomBytes(18).toString('base64url');
-    const applicationFeeAmount = Math.round(
-      totals.totalAmount * (deal.platformFeePercent / 100)
-    );
+    // Paid deal: create a pending purchase row first so the receipt page can
+    // find it immediately after payment. The webhook (payment_intent.succeeded)
+    // will finalize it (set status=paid, assign redemptionCode, send SMS).
+    const purchase = await createPendingDealPurchase({
+      deal,
+      customerName,
+      customerEmail: customerEmail || null,
+      customerPhone: formatPhoneNumber(customerPhone),
+      totals,
+    });
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: totals.totalAmount,
@@ -134,7 +136,7 @@ export async function POST(
       automatic_payment_methods: { enabled: true },
       metadata: {
         kind: 'deal_purchase',
-        purchaseToken,
+        dealPurchaseId: purchase.id,
         dealId: deal.id,
         businessId: deal.business.id,
         customerName,
@@ -144,14 +146,13 @@ export async function POST(
         subtotalAmount: String(totals.subtotalAmount),
         discountAmount: String(totals.discountAmount),
         totalAmount: String(totals.totalAmount),
-        applicationFeeAmount: String(applicationFeeAmount),
         expiresAt: deal.expiresAt.toISOString(),
       },
     });
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
-      purchaseToken,
+      purchaseToken: purchase.token,
     });
   } catch (error: any) {
     if (error instanceof DealPurchasePricingError) {

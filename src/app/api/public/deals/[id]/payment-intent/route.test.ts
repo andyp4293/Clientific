@@ -176,15 +176,18 @@ describe('POST /api/public/deals/[id]/payment-intent', () => {
     expect((await res.json()).error).toMatch(/eligible/i);
   });
 
-  it('creates a PaymentIntent on Clientific account (no Connect transfer) and returns clientSecret + purchaseToken', async () => {
+  it('creates a pending purchase row then a PaymentIntent, returns clientSecret + purchaseToken', async () => {
     const res = await POST(makeRequest({ customerName: 'Jane Doe', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] }), { params: Promise.resolve({ id: 'deal-1' }) });
 
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.clientSecret).toBe('pi_test_123_secret_abc');
-    expect(typeof body.purchaseToken).toBe('string');
-    expect(body.purchaseToken.length).toBeGreaterThan(10);
+    // purchaseToken comes from the pending purchase record
+    expect(body.purchaseToken).toBe('tok_abc');
     expect(body.purchaseId).toBeUndefined();
+
+    // Pending purchase row is created before the PaymentIntent
+    expect(mockCreatePending).toHaveBeenCalledTimes(1);
 
     expect(mockPaymentIntentCreate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -192,6 +195,7 @@ describe('POST /api/public/deals/[id]/payment-intent', () => {
         currency: 'usd',
         metadata: expect.objectContaining({
           kind: 'deal_purchase',
+          dealPurchaseId: 'purchase-1',
           dealId: 'deal-1',
           customerName: 'Jane Doe',
           selectedServiceIds: JSON.stringify(['svc-1']),
@@ -203,6 +207,8 @@ describe('POST /api/public/deals/[id]/payment-intent', () => {
     const callArg = mockPaymentIntentCreate.mock.calls[0][0];
     expect(callArg).not.toHaveProperty('transfer_data');
     expect(callArg).not.toHaveProperty('application_fee_amount');
+    // purchaseToken is no longer passed in metadata (record exists in DB now)
+    expect(callArg.metadata).not.toHaveProperty('purchaseToken');
   });
 
   it('uses automatic_payment_methods so Apple Pay and Google Pay are enabled', async () => {
@@ -212,10 +218,19 @@ describe('POST /api/public/deals/[id]/payment-intent', () => {
     expect(callArg).not.toHaveProperty('payment_method_types');
   });
 
-  it('does not write to the database before payment succeeds', async () => {
+  it('creates the pending purchase row before creating the PaymentIntent', async () => {
+    const callOrder: string[] = [];
+    mockCreatePending.mockImplementation(async () => {
+      callOrder.push('createPending');
+      return basePurchase;
+    });
+    mockPaymentIntentCreate.mockImplementation(async () => {
+      callOrder.push('paymentIntentCreate');
+      return { id: 'pi_test_123', client_secret: 'pi_test_123_secret_abc' };
+    });
+
     await POST(makeRequest({ customerName: 'Jane Doe', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] }), { params: Promise.resolve({ id: 'deal-1' }) });
-    expect(mockDealPurchaseUpdate).not.toHaveBeenCalled();
-    expect(mockCreatePending).not.toHaveBeenCalled();
+    expect(callOrder).toEqual(['createPending', 'paymentIntentCreate']);
   });
 
   it('returns 500 when stripe.paymentIntents.create throws a generic error', async () => {
