@@ -105,6 +105,79 @@ export function formatRequirementLabel(value: string) {
     .join(' ');
 }
 
+export function summarizeRequirementTasks(requirements: string[]) {
+  const tasks = new Map<string, string>();
+
+  for (const requirement of requirements) {
+    const normalized = requirement.toLowerCase();
+
+    if (normalized.startsWith('external_account')) {
+      tasks.set('bank_account', 'Connect a bank account for payouts');
+      continue;
+    }
+
+    if (normalized.startsWith('business_profile.support_')) {
+      tasks.set('support_contact', 'Add customer support contact details');
+      continue;
+    }
+
+    if (
+      normalized.startsWith('representative.') ||
+      normalized.startsWith('owners.') ||
+      normalized.startsWith('owner.') ||
+      normalized.startsWith('person.') ||
+      normalized.startsWith('individual.')
+    ) {
+      tasks.set('identity', 'Verify the account owner identity');
+      continue;
+    }
+
+    if (normalized.includes('tax') || normalized.includes('ein')) {
+      tasks.set('tax', 'Provide business tax information');
+      continue;
+    }
+
+    if (normalized.startsWith('documents.') || normalized.includes('document')) {
+      tasks.set('documents', 'Upload verification documents');
+      continue;
+    }
+
+    if (normalized.startsWith('tos_acceptance.')) {
+      tasks.set('terms', 'Accept Stripe payout terms');
+      continue;
+    }
+
+    if (normalized.startsWith('business_profile.') || normalized === 'business_type') {
+      tasks.set('business_details', 'Complete business details');
+      continue;
+    }
+
+    tasks.set('fallback', 'Finish the remaining Stripe verification');
+  }
+
+  return Array.from(tasks.values());
+}
+
+export function formatRequirementStatus(reason: string | null | undefined) {
+  if (!reason) {
+    return null;
+  }
+
+  if (reason === 'requirements.past_due') {
+    return 'Stripe has paused paid payouts until the remaining setup items are completed.';
+  }
+
+  if (reason === 'requirements.pending_verification') {
+    return 'Stripe is reviewing the submitted payout details before payouts can go live.';
+  }
+
+  if (reason.startsWith('requirements.')) {
+    return 'Stripe still needs a few details before paid payouts can go live.';
+  }
+
+  return 'Stripe still has an additional payout review in progress.';
+}
+
 export function EmbeddedPayoutWorkspace({
   visible,
   onboardingComplete,

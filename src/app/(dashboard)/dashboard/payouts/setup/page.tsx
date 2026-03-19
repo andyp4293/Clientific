@@ -5,8 +5,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   EmbeddedPayoutWorkspace,
   type ConnectData,
-  formatRequirementLabel,
+  formatRequirementStatus,
   formatSchedule,
+  summarizeRequirementTasks,
   sumBalanceAmounts,
 } from '@/components/payouts/EmbeddedPayoutWorkspace';
 
@@ -36,13 +37,15 @@ export default function PayoutsSetupPage() {
 
   const availableBalance = sumBalanceAmounts(connectData?.balances?.available);
   const pendingBalance = sumBalanceAmounts(connectData?.balances?.pending);
-  const requirementList = [
+  const rawRequirementList = [
     ...new Set([
       ...(connectData?.requirements.currentlyDue ?? []),
       ...(connectData?.requirements.pastDue ?? []),
       ...(connectData?.requirements.pendingVerification ?? []),
     ]),
   ];
+  const requirementTasks = summarizeRequirementTasks(rawRequirementList);
+  const requirementStatus = formatRequirementStatus(connectData?.requirements.disabledReason);
   const needsSetup = !connectData?.readyForPaidDeals;
 
   return (
@@ -148,26 +151,32 @@ export default function PayoutsSetupPage() {
             </div>
           </div>
 
-          {requirementList.length > 0 && (
+          {(requirementTasks.length > 0 || requirementStatus) && (
             <div className="rounded-[28px] border border-amber-200 bg-amber-50 p-5 shadow-sm dark:border-amber-900/30 dark:bg-amber-900/20">
               <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-                Stripe still needs a few items
+                Finish these setup steps before paid deals go live
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {requirementList.slice(0, 10).map((item) => (
-                  <span
-                    key={item}
-                    className="rounded-full bg-white px-3 py-1 text-xs font-medium text-amber-800 shadow-sm dark:bg-amber-950/30 dark:text-amber-200"
-                  >
-                    {formatRequirementLabel(item)}
-                  </span>
-                ))}
-              </div>
-              {connectData?.requirements.disabledReason && (
-                <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
-                  Status from Stripe: {connectData.requirements.disabledReason}
+              {requirementTasks.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {requirementTasks.map((item) => (
+                    <span
+                      key={item}
+                      className="rounded-full bg-white px-3 py-1 text-xs font-medium text-amber-800 shadow-sm dark:bg-amber-950/30 dark:text-amber-200"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
+                The secure Stripe form on this page will guide the business through the exact
+                details that still need attention.
+              </p>
+              {requirementStatus ? (
+                <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                  {requirementStatus}
                 </p>
-              )}
+              ) : null}
             </div>
           )}
         </div>

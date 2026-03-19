@@ -4,8 +4,9 @@ import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import {
   type ConnectData,
-  formatRequirementLabel,
+  formatRequirementStatus,
   formatSchedule,
+  summarizeRequirementTasks,
   sumBalanceAmounts,
 } from '@/components/payouts/EmbeddedPayoutWorkspace';
 
@@ -92,13 +93,15 @@ export default function PayoutsPage() {
   const availableBalance = sumBalanceAmounts(connectData?.balances?.available);
   const pendingBalance = sumBalanceAmounts(connectData?.balances?.pending);
   const needsSetup = !connectData?.readyForPaidDeals;
-  const requirementList = [
+  const rawRequirementList = [
     ...new Set([
       ...(connectData?.requirements.currentlyDue ?? []),
       ...(connectData?.requirements.pastDue ?? []),
       ...(connectData?.requirements.pendingVerification ?? []),
     ]),
   ];
+  const requirementTasks = summarizeRequirementTasks(rawRequirementList);
+  const requirementStatus = formatRequirementStatus(connectData?.requirements.disabledReason);
 
   return (
     <div className="max-w-7xl space-y-6 pb-28 md:pb-8">
@@ -154,7 +157,7 @@ export default function PayoutsPage() {
                 </p>
                 <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
                   {connectData.externalAccount
-                    ? `${connectData.externalAccount.bankName ?? 'Bank account'} •••• ${connectData.externalAccount.last4}`
+                    ? `${connectData.externalAccount.bankName ?? 'Bank account'} ending in ${connectData.externalAccount.last4}`
                     : 'Not connected yet'}
                 </p>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -191,26 +194,32 @@ export default function PayoutsPage() {
             </div>
           )}
 
-          {!connectLoading && connectData && requirementList.length > 0 && (
+          {!connectLoading && connectData && (requirementTasks.length > 0 || requirementStatus) && (
             <div className="mt-5 rounded-3xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/30 dark:bg-amber-900/20">
               <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-                Stripe still needs a few items before paid deals can go live
+                Finish these setup steps before paid deals go live
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {requirementList.slice(0, 8).map((item) => (
-                  <span
-                    key={item}
-                    className="rounded-full bg-white px-3 py-1 text-xs font-medium text-amber-800 shadow-sm dark:bg-amber-950/30 dark:text-amber-200"
-                  >
-                    {formatRequirementLabel(item)}
-                  </span>
-                ))}
-              </div>
-              {connectData.requirements.disabledReason && (
-                <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
-                  Status from Stripe: {connectData.requirements.disabledReason}
+              {requirementTasks.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {requirementTasks.map((item) => (
+                    <span
+                      key={item}
+                      className="rounded-full bg-white px-3 py-1 text-xs font-medium text-amber-800 shadow-sm dark:bg-amber-950/30 dark:text-amber-200"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
+                Open the secure setup screen and Stripe will guide you through the exact
+                details that still need attention.
+              </p>
+              {requirementStatus ? (
+                <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                  {requirementStatus}
                 </p>
-              )}
+              ) : null}
             </div>
           )}
         </div>
@@ -304,7 +313,7 @@ export default function PayoutsPage() {
           {totals && totals.transactionCount > 0 && (
             <p className="text-xs text-gray-400">
               {totals.transactionCount} sale{totals.transactionCount !== 1 ? 's' : ''}
-              {' · '}
+              {' - '}
               {cents(totals.totalGross)} gross
             </p>
           )}
@@ -413,8 +422,8 @@ export default function PayoutsPage() {
                   </p>
                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                     {payout.bankName ?? 'Bank account'}
-                    {payout.bankLast4 ? ` •••• ${payout.bankLast4}` : ''}
-                    {' · '}
+                    {payout.bankLast4 ? ` ending in ${payout.bankLast4}` : ''}
+                    {' - '}
                     Expected {shortDate(new Date(payout.arrivalDate * 1000).toISOString())}
                   </p>
                 </div>
