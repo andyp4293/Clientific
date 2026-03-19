@@ -174,6 +174,9 @@ export async function POST(
       return NextResponse.json({ error: error.message || 'Payment setup failed' }, { status: 400 });
     }
 
-    return NextResponse.json({ error: 'Failed to start checkout' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to start checkout', _debug: `${stripeType}|${stripeCode}|${error?.message?.slice(0, 200)}` },
+      { status: 500 }
+    );
   }
 }
