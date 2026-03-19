@@ -18,6 +18,9 @@ vi.mock('@/lib/stripe', () => ({
       retrieve: vi.fn(),
       create: vi.fn(),
     },
+    accountLinks: {
+      create: vi.fn(),
+    },
     accountSessions: {
       create: vi.fn(),
     },
@@ -27,6 +30,7 @@ vi.mock('@/lib/stripe', () => ({
 import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
 import {
+  createConnectOnboardingLink,
   createConnectAccountSession,
   ensureBusinessConnectAccount,
   isRecoverableConnectAccountError,
@@ -36,6 +40,7 @@ const mockBusinessUpdate = prisma.business.update as ReturnType<typeof vi.fn>;
 const mockBankDeleteMany = prisma.businessBankAccount.deleteMany as ReturnType<typeof vi.fn>;
 const mockAccountRetrieve = stripe.accounts.retrieve as ReturnType<typeof vi.fn>;
 const mockAccountCreate = stripe.accounts.create as ReturnType<typeof vi.fn>;
+const mockAccountLinkCreate = stripe.accountLinks.create as ReturnType<typeof vi.fn>;
 const mockAccountSessionCreate = stripe.accountSessions.create as ReturnType<typeof vi.fn>;
 
 const business = {
@@ -67,6 +72,7 @@ beforeEach(() => {
   mockBusinessUpdate.mockResolvedValue({});
   mockBankDeleteMany.mockResolvedValue({ count: 1 });
   mockAccountCreate.mockResolvedValue(createdAccount);
+  mockAccountLinkCreate.mockResolvedValue({ url: 'https://connect.stripe.test/onboarding' });
   mockAccountSessionCreate.mockResolvedValue({ client_secret: 'cas_test_secret' });
 });
 
@@ -247,5 +253,25 @@ describe('createConnectAccountSession', () => {
         }),
       })
     );
+  });
+});
+
+describe('createConnectOnboardingLink', () => {
+  it('creates a hosted onboarding link that collects eventually due requirements', async () => {
+    await createConnectOnboardingLink({
+      accountId: 'acct_hosted',
+      refreshUrl: 'https://clientific.app/api/stripe/connect/onboarding-link/refresh',
+      returnUrl: 'https://clientific.app/dashboard/payouts/setup?stripe_onboarding=return',
+    });
+
+    expect(mockAccountLinkCreate).toHaveBeenCalledWith({
+      account: 'acct_hosted',
+      refresh_url: 'https://clientific.app/api/stripe/connect/onboarding-link/refresh',
+      return_url: 'https://clientific.app/dashboard/payouts/setup?stripe_onboarding=return',
+      type: 'account_onboarding',
+      collection_options: {
+        fields: 'eventually_due',
+      },
+    });
   });
 });

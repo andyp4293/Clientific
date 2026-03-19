@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
 const mockUseQuery = vi.fn();
@@ -26,6 +26,10 @@ vi.mock('@stripe/react-connect-js', () => ({
   ),
   ConnectNotificationBanner: () => <div data-testid="connect-notification-banner" />,
   ConnectPayouts: () => <div data-testid="connect-payouts" />,
+}));
+
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 import PayoutsSetupPage from './page';
@@ -81,48 +85,72 @@ beforeEach(() => {
 });
 
 describe('PayoutsSetupPage', () => {
-  it('shows a clean retryable error when Stripe setup session creation fails', async () => {
+  it('shows a normal hosted setup button instead of the embedded onboarding form when setup is incomplete', async () => {
     render(<PayoutsSetupPage />);
 
-    await waitFor(() => {
-      expect(screen.getByText(/failed to create stripe connect session/i)).toBeInTheDocument();
-    });
-
     expect(
-      screen.getByText(/secure stripe setup could not be opened yet/i)
+      screen.getByRole('button', { name: /start secure setup/i })
     ).toBeInTheDocument();
     expect(screen.queryByTestId('connect-provider')).not.toBeInTheDocument();
     expect(screen.queryByTestId('connect-account-onboarding')).not.toBeInTheDocument();
     expect(mockLoadConnectAndInitialize).not.toHaveBeenCalled();
   });
 
-  it('shows a non-retryable live-mode blocker when Stripe rejects embedded onboarding setup', async () => {
+  it('shows a clean error if the hosted setup link cannot be created', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
         ok: false,
         json: async () => ({
-          error:
-            'Secure payout setup is temporarily unavailable while we finish a required Stripe review for live payouts.',
-          retryable: false,
-          code: 'platform_profile_incomplete',
+          error: 'Failed to create Stripe onboarding link',
         }),
+      })
+    );
+
+    render(<PayoutsSetupPage />);
+    fireEvent.click(screen.getByRole('button', { name: /start secure setup/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/failed to create stripe onboarding link/i)).toBeInTheDocument();
+    });
+  });
+
+  it('shows embedded payout management only after onboarding is complete', async () => {
+    mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
+      const key = config?.queryKey?.[0];
+
+      if (key === 'connect-payouts') {
+        return {
+          data: buildConnectData({
+            onboardingComplete: true,
+            readyForPaidDeals: true,
+            payoutsEnabled: true,
+            chargesEnabled: true,
+            detailsSubmitted: true,
+          }),
+          isLoading: false,
+          refetch: vi.fn(),
+        };
+      }
+
+      return { data: undefined, isLoading: false };
+    });
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: 'Failed to create Stripe Connect session' }),
       })
     );
 
     render(<PayoutsSetupPage />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/finish a required stripe review for live payouts/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/failed to create stripe connect session/i)).toBeInTheDocument();
     });
 
-    expect(
-      screen.getByText(/live payout access is being finalized/i)
-    ).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /try again/i })).not.toBeInTheDocument();
-    expect(screen.queryByTestId('connect-provider')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /start secure setup/i })).not.toBeInTheDocument();
     expect(mockLoadConnectAndInitialize).not.toHaveBeenCalled();
   });
 

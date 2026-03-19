@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import {
   EmbeddedPayoutWorkspace,
   type ConnectData,
@@ -16,6 +18,9 @@ const cents = (value: number) =>
 
 export default function PayoutsSetupPage() {
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const [isStartingSetup, setIsStartingSetup] = useState(false);
+  const [setupError, setSetupError] = useState<string | null>(null);
 
   const {
     data: connectData,
@@ -47,6 +52,33 @@ export default function PayoutsSetupPage() {
   const requirementTasks = summarizeRequirementTasks(rawRequirementList);
   const requirementStatus = formatRequirementStatus(connectData?.requirements.disabledReason);
   const needsSetup = !connectData?.readyForPaidDeals;
+  const onboardingState = searchParams.get('stripe_onboarding');
+
+  const startSetupLabel =
+    onboardingState === 'return' ? 'Continue secure setup' : 'Start secure setup';
+
+  const handleStartSetup = async () => {
+    if (isStartingSetup) return;
+
+    setIsStartingSetup(true);
+    setSetupError(null);
+
+    try {
+      const res = await fetch('/api/stripe/connect/onboarding-link', {
+        method: 'POST',
+      });
+      const body = await res.json().catch(() => ({}));
+
+      if (!res.ok || !body.url) {
+        throw new Error(body.error || 'Could not start secure Stripe setup.');
+      }
+
+      window.location.assign(body.url as string);
+    } catch (error: any) {
+      setSetupError(error?.message || 'Could not start secure Stripe setup.');
+      setIsStartingSetup(false);
+    }
+  };
 
   return (
     <div className="space-y-6 pb-20">
@@ -121,17 +153,62 @@ export default function PayoutsSetupPage() {
           {requirementStatus ? (
             <p className="mt-4 text-sm text-amber-700 dark:text-amber-300">{requirementStatus}</p>
           ) : null}
+
+          {onboardingState === 'refresh_error' ? (
+            <p className="mt-4 text-sm text-red-600 dark:text-red-300">
+              Your Stripe setup link expired before it was opened. Start setup again to continue.
+            </p>
+          ) : null}
         </section>
       )}
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr),320px]">
-        <div className="brand-panel rounded-[28px] p-3 sm:p-4">
-          <EmbeddedPayoutWorkspace
-            visible
-            onboardingComplete={Boolean(connectData?.onboardingComplete)}
-            onRefresh={refreshConnect}
-          />
-        </div>
+        {needsSetup ? (
+          <div className="brand-panel rounded-[28px] p-6 sm:p-7">
+            <div className="max-w-2xl space-y-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                  Secure Stripe setup
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                  Finish setup in Stripe, then come right back here
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                  This opens Stripe&apos;s secure onboarding page in the same tab. When you finish,
+                  Stripe sends you back here and payout controls become available.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => void handleStartSetup()}
+                  disabled={isStartingSetup}
+                  className="btn-primary px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isStartingSetup ? 'Opening secure setup...' : startSetupLabel}
+                </button>
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  Hosted securely by Stripe
+                </span>
+              </div>
+
+              {setupError ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-300">
+                  {setupError}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <div className="brand-panel rounded-[28px] p-3 sm:p-4">
+            <EmbeddedPayoutWorkspace
+              visible
+              onboardingComplete={Boolean(connectData?.onboardingComplete)}
+              onRefresh={refreshConnect}
+            />
+          </div>
+        )}
 
         <aside className="space-y-4 xl:sticky xl:top-6">
           <div className="brand-panel rounded-[24px] p-5">

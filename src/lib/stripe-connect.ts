@@ -459,3 +459,23 @@ export async function createConnectAccountSession(
     },
   });
 }
+
+export async function createConnectOnboardingLink({
+  accountId,
+  refreshUrl,
+  returnUrl,
+}: {
+  accountId: string;
+  refreshUrl: string;
+  returnUrl: string;
+}) {
+  return stripe.accountLinks.create({
+    account: accountId,
+    refresh_url: refreshUrl,
+    return_url: returnUrl,
+    type: 'account_onboarding',
+    collection_options: {
+      fields: 'eventually_due',
+    },
+  });
+}
