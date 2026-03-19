@@ -46,7 +46,13 @@ beforeEach(() => {
     name: 'Test Salon',
     stripeConnectAccountId: 'acct_123',
   });
-  mockEnsureConnect.mockResolvedValue({ id: 'acct_123' });
+  mockEnsureConnect.mockResolvedValue({
+    id: 'acct_123',
+    type: 'none',
+    controller: {
+      requirement_collection: 'stripe',
+    },
+  });
   mockCreateSession.mockResolvedValue({ client_secret: 'cas_test_secret' });
 });
 
@@ -70,7 +76,11 @@ describe('POST /api/stripe/connect/account-session', () => {
     expect(body.clientSecret).toBe('cas_test_secret');
     expect(body.accountId).toBe('acct_123');
     expect(mockEnsureConnect).toHaveBeenCalled();
-    expect(mockCreateSession).toHaveBeenCalledWith('acct_123');
+    expect(mockCreateSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'acct_123',
+      })
+    );
   });
 
   it('returns a non-retryable platform profile error when Stripe blocks live Custom onboarding', async () => {

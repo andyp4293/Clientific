@@ -71,6 +71,18 @@ function shouldRecreateLegacyEmbeddedAccount(account: Stripe.Account) {
   );
 }
 
+function canDisableStripeUserAuthentication(
+  account:
+    | Pick<Stripe.Account, 'type' | 'controller'>
+    | null
+    | undefined
+) {
+  return Boolean(
+    account?.type === 'custom' ||
+    account?.controller?.requirement_collection === 'application'
+  );
+}
+
 export function isRecoverableConnectAccountError(error: unknown) {
   const code = typeof error === 'object' && error !== null && 'code' in error
     ? String((error as { code?: unknown }).code ?? '')
@@ -363,35 +375,39 @@ export async function fetchConnectPayoutsOverview(accountId: string) {
   };
 }
 
-export async function createConnectAccountSession(accountId: string) {
+export async function createConnectAccountSession(
+  account: Pick<Stripe.Account, 'id' | 'type' | 'controller'>
+) {
+  const disableStripeUserAuthentication = canDisableStripeUserAuthentication(account);
+
   return stripe.accountSessions.create({
-    account: accountId,
+    account: account.id,
     components: {
       account_onboarding: {
         enabled: true,
         features: {
-          disable_stripe_user_authentication: true,
+          disable_stripe_user_authentication: disableStripeUserAuthentication,
           external_account_collection: true,
         },
       },
       account_management: {
         enabled: true,
         features: {
-          disable_stripe_user_authentication: true,
+          disable_stripe_user_authentication: disableStripeUserAuthentication,
           external_account_collection: true,
         },
       },
       notification_banner: {
         enabled: true,
         features: {
-          disable_stripe_user_authentication: true,
+          disable_stripe_user_authentication: disableStripeUserAuthentication,
           external_account_collection: true,
         },
       },
       balances: {
         enabled: true,
         features: {
-          disable_stripe_user_authentication: true,
+          disable_stripe_user_authentication: disableStripeUserAuthentication,
           edit_payout_schedule: true,
           external_account_collection: true,
           standard_payouts: true,
@@ -400,7 +416,7 @@ export async function createConnectAccountSession(accountId: string) {
       payouts: {
         enabled: true,
         features: {
-          disable_stripe_user_authentication: true,
+          disable_stripe_user_authentication: disableStripeUserAuthentication,
           edit_payout_schedule: true,
           external_account_collection: true,
           standard_payouts: true,

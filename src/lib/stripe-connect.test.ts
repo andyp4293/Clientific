@@ -18,12 +18,16 @@ vi.mock('@/lib/stripe', () => ({
       retrieve: vi.fn(),
       create: vi.fn(),
     },
+    accountSessions: {
+      create: vi.fn(),
+    },
   },
 }));
 
 import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
 import {
+  createConnectAccountSession,
   ensureBusinessConnectAccount,
   isRecoverableConnectAccountError,
 } from './stripe-connect';
@@ -32,6 +36,7 @@ const mockBusinessUpdate = prisma.business.update as ReturnType<typeof vi.fn>;
 const mockBankDeleteMany = prisma.businessBankAccount.deleteMany as ReturnType<typeof vi.fn>;
 const mockAccountRetrieve = stripe.accounts.retrieve as ReturnType<typeof vi.fn>;
 const mockAccountCreate = stripe.accounts.create as ReturnType<typeof vi.fn>;
+const mockAccountSessionCreate = stripe.accountSessions.create as ReturnType<typeof vi.fn>;
 
 const business = {
   id: 'biz-1',
@@ -58,6 +63,7 @@ beforeEach(() => {
   mockBusinessUpdate.mockResolvedValue({});
   mockBankDeleteMany.mockResolvedValue({ count: 1 });
   mockAccountCreate.mockResolvedValue(createdAccount);
+  mockAccountSessionCreate.mockResolvedValue({ client_secret: 'cas_test_secret' });
 });
 
 describe('isRecoverableConnectAccountError', () => {
@@ -137,5 +143,93 @@ describe('ensureBusinessConnectAccount', () => {
     expect(mockAccountCreate).not.toHaveBeenCalled();
     expect(mockBankDeleteMany).not.toHaveBeenCalled();
     expect(mockBusinessUpdate).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('createConnectAccountSession', () => {
+  it('keeps Stripe authentication enabled for Stripe-managed embedded accounts', async () => {
+    await createConnectAccountSession({
+      id: 'acct_stripe_managed',
+      type: 'none',
+      controller: {
+        requirement_collection: 'stripe',
+      },
+    } as any);
+
+    expect(mockAccountSessionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account: 'acct_stripe_managed',
+        components: expect.objectContaining({
+          account_onboarding: expect.objectContaining({
+            features: expect.objectContaining({
+              disable_stripe_user_authentication: false,
+            }),
+          }),
+          account_management: expect.objectContaining({
+            features: expect.objectContaining({
+              disable_stripe_user_authentication: false,
+            }),
+          }),
+          notification_banner: expect.objectContaining({
+            features: expect.objectContaining({
+              disable_stripe_user_authentication: false,
+            }),
+          }),
+          balances: expect.objectContaining({
+            features: expect.objectContaining({
+              disable_stripe_user_authentication: false,
+            }),
+          }),
+          payouts: expect.objectContaining({
+            features: expect.objectContaining({
+              disable_stripe_user_authentication: false,
+            }),
+          }),
+        }),
+      })
+    );
+  });
+
+  it('disables Stripe authentication only for application-managed custom accounts', async () => {
+    await createConnectAccountSession({
+      id: 'acct_custom',
+      type: 'custom',
+      controller: {
+        requirement_collection: 'application',
+      },
+    } as any);
+
+    expect(mockAccountSessionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account: 'acct_custom',
+        components: expect.objectContaining({
+          account_onboarding: expect.objectContaining({
+            features: expect.objectContaining({
+              disable_stripe_user_authentication: true,
+            }),
+          }),
+          account_management: expect.objectContaining({
+            features: expect.objectContaining({
+              disable_stripe_user_authentication: true,
+            }),
+          }),
+          notification_banner: expect.objectContaining({
+            features: expect.objectContaining({
+              disable_stripe_user_authentication: true,
+            }),
+          }),
+          balances: expect.objectContaining({
+            features: expect.objectContaining({
+              disable_stripe_user_authentication: true,
+            }),
+          }),
+          payouts: expect.objectContaining({
+            features: expect.objectContaining({
+              disable_stripe_user_authentication: true,
+            }),
+          }),
+        }),
+      })
+    );
   });
 });

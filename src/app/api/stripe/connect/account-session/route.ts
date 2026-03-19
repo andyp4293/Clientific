@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       business,
       getAppBaseUrlFromRequest(req.url)
     );
-    const accountSession = await createConnectAccountSession(account.id);
+    const accountSession = await createConnectAccountSession(account);
 
     return NextResponse.json({
       clientSecret: accountSession.client_secret,
