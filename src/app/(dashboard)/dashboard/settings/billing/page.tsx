@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { PRICING_PLANS } from '@/lib/stripe';
+import { getPricingPlanKey } from '@/lib/plan-utils';
 
 interface SubscriptionInfo {
   subscriptionPlan: string;
@@ -143,8 +144,8 @@ export default function BillingPage() {
     );
   }
 
-  const plan = subscription?.subscriptionPlan?.toUpperCase() as keyof typeof PRICING_PLANS;
-  const planDetails = PRICING_PLANS[plan] || PRICING_PLANS.STARTER;
+  const planKey = getPricingPlanKey(subscription?.subscriptionPlan);
+  const planDetails = planKey ? PRICING_PLANS[planKey] : PRICING_PLANS.STARTER;
   const isTrial = subscription?.subscriptionStatus === 'trialing';
 
   return (

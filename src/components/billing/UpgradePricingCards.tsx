@@ -2,53 +2,8 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-
-const plans = [
-  {
-    key: 'starter',
-    name: 'Starter',
-    price: 29,
-    yearlyPrice: 23,
-    features: [
-      'Up to 100 customers',
-      'Basic check-in system',
-      'Email & SMS notifications',
-      'Basic analytics',
-    ],
-    popular: false,
-  },
-  {
-    key: 'pro',
-    name: 'Pro',
-    price: 79,
-    yearlyPrice: 63,
-    features: [
-      'Up to 1,000 customers',
-      'Advanced check-in & kiosk mode',
-      'Online booking page',
-      'Loyalty rewards program',
-      'Marketing campaigns',
-      'Advanced analytics',
-      'Priority support',
-    ],
-    popular: true,
-  },
-  {
-    key: 'premium',
-    name: 'Premium',
-    price: 149,
-    yearlyPrice: 119,
-    features: [
-      'Unlimited customers',
-      'Everything in Pro',
-      'Custom branding',
-      'API access',
-      'Dedicated account manager',
-      'White-label option',
-    ],
-    popular: false,
-  },
-];
+import { getPublicPlanSlug, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/plan-utils';
+import { PRICING_PLANS } from '@/lib/stripe';
 
 interface Props {
   status: string;
@@ -60,13 +15,13 @@ export function UpgradePricingCards({ status, hasStripeCustomer }: Props) {
   const [loading, setLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
 
-  async function handleUpgrade(planKey: string) {
-    setLoading(planKey);
+  async function handleUpgrade(planSlug: string) {
+    setLoading(planSlug);
     try {
       const res = await fetch('/api/checkout/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: planKey, billingPeriod: billing }),
+        body: JSON.stringify({ plan: planSlug, billingPeriod: billing }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -124,12 +79,11 @@ export function UpgradePricingCards({ status, hasStripeCustomer }: Props) {
   }
 
   return (
-    <div className="mt-8 w-full max-w-5xl mx-auto">
-      {/* Billing toggle */}
+    <div className="mt-8 w-full max-w-4xl mx-auto">
       <div className="flex items-center justify-center gap-3 mb-8">
         <span className={`text-sm font-medium ${billing === 'monthly' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'}`}>Monthly</span>
         <button
-          onClick={() => setBilling(b => b === 'monthly' ? 'yearly' : 'monthly')}
+          onClick={() => setBilling((current) => current === 'monthly' ? 'yearly' : 'monthly')}
           className={`relative w-11 h-6 rounded-full transition-colors ${billing === 'yearly' ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}`}
         >
           <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${billing === 'yearly' ? 'translate-x-5' : ''}`} />
@@ -139,14 +93,16 @@ export function UpgradePricingCards({ status, hasStripeCustomer }: Props) {
         </span>
       </div>
 
-      {/* Pricing cards */}
-      <div className="grid md:grid-cols-3 gap-6">
-        {plans.map(plan => {
+      <div className="grid md:grid-cols-2 gap-6">
+        {VISIBLE_SELF_SERVE_PLAN_KEYS.map((key) => {
+          const plan = PRICING_PLANS[key];
+          const planSlug = getPublicPlanSlug(key.toLowerCase());
           const price = billing === 'yearly' ? plan.yearlyPrice : plan.price;
-          const isLoading = loading === plan.key;
+          const isLoading = loading === planSlug;
+
           return (
             <div
-              key={plan.key}
+              key={key}
               className={`relative rounded-2xl border p-6 flex flex-col ${
                 plan.popular
                   ? 'border-primary bg-primary/5 dark:bg-primary/10 shadow-lg'
@@ -166,17 +122,17 @@ export function UpgradePricingCards({ status, hasStripeCustomer }: Props) {
                 </div>
               </div>
               <ul className="space-y-2 flex-1 mb-6">
-                {plan.features.map(f => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
                     <svg className="w-4 h-4 text-primary shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
-                    {f}
+                    {feature}
                   </li>
                 ))}
               </ul>
               <button
-                onClick={() => handleUpgrade(plan.key)}
+                onClick={() => void handleUpgrade(planSlug)}
                 disabled={isLoading}
                 className={plan.popular ? 'btn-primary w-full' : 'btn-outline w-full'}
               >

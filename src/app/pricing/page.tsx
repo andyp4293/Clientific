@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect, Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { PRICING_PLANS } from '@/lib/stripe';
 import { APP_SUPPORT_EMAIL } from '@/lib/brand';
+import { getPublicPlanSlug, getPricingPlanKey, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/plan-utils';
+import { PRICING_PLANS } from '@/lib/stripe';
 import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
 
 function PricingContent() {
@@ -16,31 +17,29 @@ function PricingContent() {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
-  // Auto-trigger checkout when coming from registration with a selected plan
   useEffect(() => {
     const autostart = searchParams.get('autostart');
     if (!autostart || status !== 'authenticated') return;
 
-    const planKey = autostart.toUpperCase() as keyof typeof PRICING_PLANS;
-    const plan = PRICING_PLANS[planKey];
-    if (plan) {
-      handleSubscribe(planKey);
+    const planKey = getPricingPlanKey(autostart);
+    if (planKey) {
+      void handleSubscribe(getPublicPlanSlug(planKey.toLowerCase()));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, searchParams]);
 
-  const handleSubscribe = async (planKey: string) => {
+  async function handleSubscribe(planSlug: string) {
     if (!isAuthenticated) {
-      router.push(`/register?plan=${planKey.toLowerCase()}`);
+      router.push(`/register?plan=${planSlug}`);
       return;
     }
 
-    setLoadingPlan(planKey);
+    setLoadingPlan(planSlug);
     try {
       const res = await fetch('/api/checkout/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: planKey.toLowerCase(), billingPeriod }),
+        body: JSON.stringify({ plan: planSlug, billingPeriod }),
       });
 
       const data = await res.json();
@@ -55,7 +54,7 @@ function PricingContent() {
       alert('Something went wrong. Please try again.');
       setLoadingPlan(null);
     }
-  };
+  }
 
   return (
     <div className="page-shell min-h-screen">
@@ -66,7 +65,6 @@ function PricingContent() {
         showLogin={!isAuthenticated}
       />
 
-      {/* Pricing Section */}
       <div className="max-w-7xl mx-auto px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
         <div className="text-center mb-8 sm:mb-12">
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">
@@ -76,7 +74,6 @@ function PricingContent() {
             Choose the plan that&apos;s right for your business. Start with a 14-day free trial.
           </p>
 
-          {/* Billing Toggle */}
           <div className="flex items-center justify-center space-x-4">
             <span className={`text-sm font-medium ${billingPeriod === 'monthly' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
               Monthly
@@ -100,10 +97,11 @@ function PricingContent() {
           </div>
         </div>
 
-        {/* Pricing Cards */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto">
-          {Object.entries(PRICING_PLANS).map(([key, plan]) => {
-            const isLoading = loadingPlan === key;
+        <div className="grid max-w-5xl mx-auto gap-6 sm:grid-cols-2 sm:gap-8">
+          {VISIBLE_SELF_SERVE_PLAN_KEYS.map((key) => {
+            const plan = PRICING_PLANS[key];
+            const publicSlug = getPublicPlanSlug(key.toLowerCase());
+            const isLoading = loadingPlan === publicSlug;
             const displayPrice = billingPeriod === 'yearly' ? plan.yearlyPrice : plan.price;
 
             return (
@@ -137,11 +135,7 @@ function PricingContent() {
                 <ul className="space-y-3 mb-8 flex-1">
                   {plan.features.map((feature, index) => (
                     <li key={index} className="flex items-start">
-                      <svg
-                        className="w-5 h-5 text-success mr-2 mt-0.5 flex-shrink-0"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
+                      <svg className="w-5 h-5 text-success mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path
                           fillRule="evenodd"
                           d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -154,7 +148,7 @@ function PricingContent() {
                 </ul>
 
                 <button
-                  onClick={() => handleSubscribe(key)}
+                  onClick={() => void handleSubscribe(publicSlug)}
                   disabled={isLoading}
                   className={`block w-full text-center py-3 px-4 rounded-lg font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
                     plan.popular
@@ -165,23 +159,22 @@ function PricingContent() {
                   {isLoading
                     ? 'Redirecting...'
                     : isAuthenticated
-                    ? 'Subscribe — 14-day free trial'
-                    : 'Start Free Trial'}
+                      ? 'Subscribe - 14-day free trial'
+                      : 'Start Free Trial'}
                 </button>
               </div>
             );
           })}
         </div>
 
-        {/* Footer note */}
         <div className="mt-16 text-center">
           <p className="text-gray-600 dark:text-gray-300 mb-2">
             All plans include a 14-day free trial. No credit card required to start.
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Need a custom plan?{' '}
+            Questions about which plan fits best?{' '}
             <a href={`mailto:${APP_SUPPORT_EMAIL}`} className="text-primary hover:underline">
-              Contact sales
+              Contact support
             </a>
           </p>
         </div>
@@ -197,4 +190,3 @@ export default function PricingPage() {
     </Suspense>
   );
 }
-

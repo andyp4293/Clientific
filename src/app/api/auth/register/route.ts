@@ -12,6 +12,7 @@ import {
 } from '@/lib/auth-verification';
 import { sendEmailVerificationEmail } from '@/lib/email';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
+import { normalizeSubscriptionPlan } from '@/lib/plan-utils';
 
 export async function POST(request: Request) {
   try {
@@ -145,6 +146,7 @@ export async function POST(request: Request) {
       ? await prisma.affiliate.findFirst({ where: { code: affiliateCode, active: true } })
       : null;
 
+    const normalizedPlan = normalizeSubscriptionPlan(plan);
     const trialDays = STANDARD_TRIAL_DAYS;
     const trialEndsAt = addDays(new Date(), trialDays);
 
@@ -171,7 +173,7 @@ export async function POST(request: Request) {
         zipCode: normalizedZipCode,
         country: normalizedCountry,
         timezone: timezone || 'America/New_York',
-        subscriptionPlan: plan || 'trial',
+        subscriptionPlan: normalizedPlan,
         subscriptionStatus: 'trialing',
         trialEndsAt,
         referralCode: newReferralCode,

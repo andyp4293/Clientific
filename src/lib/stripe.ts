@@ -15,7 +15,7 @@ export const stripe = new Stripe(STRIPE_KEY, {
 // Pricing Plans Configuration
 export const PRICING_PLANS = {
   STARTER: {
-    name: 'Starter',
+    name: 'Base',
     price: 29,
     yearlyPrice: 23, // per month when billed annually ($276/year)
     priceId: process.env.STRIPE_STARTER_PRICE_ID || 'price_starter',

@@ -4,6 +4,7 @@ import { authOptions } from '../../auth/[...nextauth]/route';
 import { stripe, PRICING_PLANS } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
 import { getAppBaseUrlFromRequest } from '@/lib/app-url';
+import { getPricingPlanKey, normalizeSubscriptionPlan } from '@/lib/plan-utils';
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,8 +23,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const planKey = plan.toUpperCase() as keyof typeof PRICING_PLANS;
-    const planConfig = PRICING_PLANS[planKey];
+    const planKey = getPricingPlanKey(plan);
+    const normalizedPlan = normalizeSubscriptionPlan(plan);
+    const planConfig = planKey ? PRICING_PLANS[planKey] : null;
 
     if (!planConfig) {
       return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
@@ -82,14 +84,14 @@ export async function POST(req: NextRequest) {
         ...(isFirstTime && { trial_period_days: 14 }),
         metadata: {
           businessId: business.id,
-          plan,
+          plan: normalizedPlan,
         },
       },
       success_url: `${appUrl}/dashboard?checkout=success`,
       cancel_url: `${appUrl}/pricing?checkout=canceled`,
       metadata: {
         businessId: business.id,
-        plan,
+        plan: normalizedPlan,
       },
     });
 

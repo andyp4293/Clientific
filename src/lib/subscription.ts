@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from './prisma';
 import { PRICING_PLANS } from './stripe';
 import { unstable_cache } from 'next/cache';
+import { getPricingPlanKey, normalizeSubscriptionPlan } from './plan-utils';
 
 export type SubscriptionStatus = 
   | 'trialing'
@@ -12,7 +13,7 @@ export type SubscriptionStatus =
   | 'incomplete_expired'
   | 'unpaid';
 
-export type SubscriptionPlan = 'trial' | 'starter' | 'pro' | 'premium';
+export type SubscriptionPlan = 'trial' | 'base' | 'pro' | 'premium';
 
 // Cached subscription status — avoids a DB hit on every dashboard page nav.
 // TTL is 60s; busted immediately via revalidateTag when Stripe webhook fires.
@@ -87,8 +88,8 @@ export async function checkPlanLimit(
     return { allowed: false, current: 0, limit: 0 };
   }
 
-  const plan = business.subscriptionPlan.toUpperCase() as keyof typeof PRICING_PLANS;
-  const planConfig = PRICING_PLANS[plan] || PRICING_PLANS.STARTER;
+  const planKey = getPricingPlanKey(business.subscriptionPlan);
+  const planConfig = planKey ? PRICING_PLANS[planKey] : PRICING_PLANS.STARTER;
   const limit = planConfig.limits[limitType];
   const current = business._count[limitType] || 0;
 
@@ -155,11 +156,11 @@ export async function getSubscriptionInfo(businessId: string) {
  */
 export function requiresPlanUpgrade(
   currentPlan: SubscriptionPlan,
-  requiredPlan: 'starter' | 'pro' | 'premium'
+  requiredPlan: 'base' | 'pro' | 'premium'
 ): boolean {
-  const planHierarchy = ['trial', 'starter', 'pro', 'premium'];
-  const currentIndex = planHierarchy.indexOf(currentPlan);
-  const requiredIndex = planHierarchy.indexOf(requiredPlan);
+  const planHierarchy: SubscriptionPlan[] = ['trial', 'base', 'pro', 'premium'];
+  const currentIndex = planHierarchy.indexOf(normalizeSubscriptionPlan(currentPlan) as SubscriptionPlan);
+  const requiredIndex = planHierarchy.indexOf(normalizeSubscriptionPlan(requiredPlan) as SubscriptionPlan);
   
   return currentIndex < requiredIndex;
 }

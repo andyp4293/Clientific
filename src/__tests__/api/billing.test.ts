@@ -435,6 +435,25 @@ describe('POST /api/checkout/create', () => {
     expect(body.url).toBe('https://checkout.stripe.com/session_new');
   });
 
+  it('accepts the public base slug and maps it to the starter Stripe price IDs', async () => {
+    mockSession.mockResolvedValue({ user: { email: 'test@example.com' } });
+    mockFindUnique.mockResolvedValue(makeBusiness({ stripeSubscriptionId: null }));
+    mockCheckoutCreate.mockResolvedValue({ url: 'https://checkout.stripe.com/session_base' });
+
+    const res = await checkoutPost(makeReq('http://localhost:3000/api/checkout/create', 'POST', { plan: 'base', billingPeriod: 'monthly' }));
+    expect(res.status).toBe(200);
+
+    expect(mockCheckoutCreate).toHaveBeenCalledWith(expect.objectContaining({
+      line_items: expect.arrayContaining([
+        expect.objectContaining({ price: 'price_starter_monthly', quantity: 1 }),
+      ]),
+      subscription_data: expect.objectContaining({
+        metadata: expect.objectContaining({ plan: 'base' }),
+      }),
+      metadata: expect.objectContaining({ plan: 'base' }),
+    }));
+  });
+
   it('creates checkout session without trial for a returning subscriber', async () => {
     mockSession.mockResolvedValue({ user: { email: 'test@example.com' } });
     mockFindUnique.mockResolvedValue(makeBusiness({ stripeSubscriptionId: 'sub_existing' }));

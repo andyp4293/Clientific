@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useState } from 'react';
 import { APP_DOMAIN, APP_NAME } from '@/lib/brand';
+import { getPublicPlanSlug, SELF_SERVE_PLAN_SUMMARIES, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/plan-utils';
+import { PRICING_PLANS } from '@/lib/stripe';
 import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
 
 const faqs = [
@@ -102,12 +104,6 @@ const todaySchedule = [
   { name: 'Sarah K.', time: '10:30 AM', service: 'Highlights', source: 'Online' },
   { name: 'James R.', time: '12:00 PM', service: 'Trim and style', source: 'AI' },
 ];
-const pricingFeatures = {
-  starter: ['Up to 100 customers', '2 staff members', 'Online booking page', 'AI phone receptionist', 'SMS reminders', 'Walk-in check-in'],
-  pro: ['Up to 1,000 customers', '10 staff members', 'Everything in Starter', 'Analytics dashboard', 'Walk-in check-in', 'Priority support'],
-  premium: ['Unlimited customers', 'Unlimited staff', 'Everything in Pro', 'Advanced analytics', 'Custom integrations', 'Dedicated support'],
-};
-
 const trustBadges = [
   {
     icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
@@ -418,81 +414,57 @@ export default function HomePage() {
             <p className="text-lg text-gray-700 dark:text-gray-300">Start free for 14 days. No credit card required.</p>
           </div>
 
-          <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
-            <div className="flex flex-col rounded-2xl border border-gray-200 bg-white/85 p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900/80">
-              <h3 className="mb-1 text-xl font-bold text-gray-950 dark:text-gray-100">Starter</h3>
-              <p className="mb-5 text-sm text-gray-700 dark:text-gray-300">Great for solo operators</p>
-              <div className="mb-7">
-                <span className="text-4xl font-bold text-gray-950 dark:text-gray-100">$29</span>
-                <span className="text-base font-normal text-gray-700 dark:text-gray-300">/mo</span>
-              </div>
-              <ul className="mb-8 flex-1 space-y-3">
-                {pricingFeatures.starter.map((feature) => (
-                  <li key={feature} className="flex items-center gap-2.5 text-sm text-gray-800 dark:text-gray-200">
-                    <CheckIcon />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              {isAuthenticated ? (
-                <Link href="/pricing" className="btn-outline w-full text-center">View Plans</Link>
-              ) : (
-                <Link href="/register?plan=starter" className="btn-outline w-full text-center">Start Free Trial</Link>
-              )}
-            </div>
+          <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-2 sm:gap-8">
+            {VISIBLE_SELF_SERVE_PLAN_KEYS.map((key) => {
+              const plan = PRICING_PLANS[key];
+              const planSlug = getPublicPlanSlug(key.toLowerCase());
+              const cardClassName = plan.popular
+                ? 'relative flex flex-col rounded-2xl border border-primary/30 bg-gradient-to-br from-primary-50 via-white to-gray-100 p-8 shadow-lg shadow-primary/10 dark:border-primary/40 dark:from-gray-950 dark:via-gray-950 dark:to-primary-950'
+                : 'flex flex-col rounded-2xl border border-gray-200 bg-white/85 p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900/80';
 
-            <div data-testid="homepage-featured-plan" className="relative flex flex-col rounded-2xl border border-primary/30 bg-gradient-to-br from-primary-50 via-white to-gray-100 p-8 shadow-lg shadow-primary/10 dark:border-primary/40 dark:from-gray-950 dark:via-gray-950 dark:to-primary-950">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                <span className="rounded-full bg-primary px-4 py-1 text-xs font-semibold text-white shadow-lg" style={{ boxShadow: '0 2px 12px rgb(var(--color-primary-600) / 0.45)' }}>
-                  Most Popular
-                </span>
-              </div>
-              <h3 className="mb-1 text-xl font-bold text-gray-950 dark:text-white">Pro</h3>
-              <p className="mb-5 text-sm text-gray-700 dark:text-gray-300">For growing businesses</p>
-              <div className="mb-7">
-                <span className="text-4xl font-bold text-gray-950 dark:text-white">$79</span>
-                <span className="text-base font-normal text-gray-700 dark:text-gray-300">/mo</span>
-              </div>
-              <ul className="mb-8 flex-1 space-y-3">
-                {pricingFeatures.pro.map((feature) => (
-                  <li key={feature} className="flex items-center gap-2.5 text-sm text-gray-800 dark:text-gray-200">
-                    <CheckIcon />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              {isAuthenticated ? (
-                <Link href="/pricing" className="w-full rounded-xl bg-primary py-3 text-center font-semibold text-white transition-colors hover:bg-primary-600" style={{ boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' }}>
-                  View Plans
-                </Link>
-              ) : (
-                <Link href="/register?plan=pro" className="w-full rounded-xl bg-primary py-3 text-center font-semibold text-white transition-colors hover:bg-primary-600" style={{ boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' }}>
-                  Start Free Trial
-                </Link>
-              )}
-            </div>
-
-            <div className="flex flex-col rounded-2xl border border-gray-200 bg-white/85 p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900/80">
-              <h3 className="mb-1 text-xl font-bold text-gray-950 dark:text-gray-100">Premium</h3>
-              <p className="mb-5 text-sm text-gray-700 dark:text-gray-300">For multi-location businesses</p>
-              <div className="mb-7">
-                <span className="text-4xl font-bold text-gray-950 dark:text-gray-100">$149</span>
-                <span className="text-base font-normal text-gray-700 dark:text-gray-300">/mo</span>
-              </div>
-              <ul className="mb-8 flex-1 space-y-3">
-                {pricingFeatures.premium.map((feature) => (
-                  <li key={feature} className="flex items-center gap-2.5 text-sm text-gray-800 dark:text-gray-200">
-                    <CheckIcon />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              {isAuthenticated ? (
-                <Link href="/pricing" className="btn-outline w-full text-center">View Plans</Link>
-              ) : (
-                <Link href="/register?plan=premium" className="btn-outline w-full text-center">Start Free Trial</Link>
-              )}
-            </div>
+              return (
+                <div key={key} data-testid={plan.popular ? 'homepage-featured-plan' : undefined} className={cardClassName}>
+                  {plan.popular && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                      <span className="rounded-full bg-primary px-4 py-1 text-xs font-semibold text-white shadow-lg" style={{ boxShadow: '0 2px 12px rgb(var(--color-primary-600) / 0.45)' }}>
+                        Most Popular
+                      </span>
+                    </div>
+                  )}
+                  <h3 className="mb-1 text-xl font-bold text-gray-950 dark:text-white">{plan.name}</h3>
+                  <p className="mb-5 text-sm text-gray-700 dark:text-gray-300">{SELF_SERVE_PLAN_SUMMARIES[key]}</p>
+                  <div className="mb-7">
+                    <span className="text-4xl font-bold text-gray-950 dark:text-white">${plan.price}</span>
+                    <span className="text-base font-normal text-gray-700 dark:text-gray-300">/mo</span>
+                  </div>
+                  <ul className="mb-8 flex-1 space-y-3">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-center gap-2.5 text-sm text-gray-800 dark:text-gray-200">
+                        <CheckIcon />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                  {isAuthenticated ? (
+                    <Link
+                      href="/pricing"
+                      className={plan.popular ? 'w-full rounded-xl bg-primary py-3 text-center font-semibold text-white transition-colors hover:bg-primary-600' : 'btn-outline w-full text-center'}
+                      style={plan.popular ? { boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' } : undefined}
+                    >
+                      View Plans
+                    </Link>
+                  ) : (
+                    <Link
+                      href={`/register?plan=${planSlug}`}
+                      className={plan.popular ? 'w-full rounded-xl bg-primary py-3 text-center font-semibold text-white transition-colors hover:bg-primary-600' : 'btn-outline w-full text-center'}
+                      style={plan.popular ? { boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' } : undefined}
+                    >
+                      Start Free Trial
+                    </Link>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

@@ -203,6 +203,20 @@ describe('POST /api/auth/register', () => {
     expect(createCall.trialEndsAt).toBeInstanceOf(Date);
   });
 
+  it('normalizes the public base plan slug before saving', async () => {
+    mockFindUnique.mockResolvedValue(null);
+    mockCreate.mockResolvedValue(MOCK_BUSINESS);
+    mockHoursCreate.mockResolvedValue({});
+
+    await registerPOST(req('/api/auth/register', { ...validBody, plan: 'base' }));
+
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ subscriptionPlan: 'base' }),
+      }),
+    );
+  });
+
   it('retries slug generation when first slug is taken', async () => {
     mockGenerateSlug.mockReturnValue('my-business');
     mockFindUnique

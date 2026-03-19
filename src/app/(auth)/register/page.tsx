@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { APP_NAME } from '@/lib/brand';
 import { CustomSelect } from '@/components/ui/CustomSelect';
+import { getPublicPlanLabel, getPublicPlanSlug } from '@/lib/plan-utils';
 
 type Step = 1 | 2 | 3;
 
@@ -22,19 +23,12 @@ interface FormData {
   affiliateCode: string;
 }
 
-const PLAN_LABELS: Record<string, string> = {
-  starter: 'Starter',
-  pro: 'Pro',
-  premium: 'Premium',
-  trial: 'Trial',
-};
-
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
 
-  const defaultPlan = searchParams.get('plan') || 'pro';
+  const defaultPlan = getPublicPlanSlug(searchParams.get('plan') || 'pro');
   const defaultEmail = searchParams.get('email') || '';
   const refCode = searchParams.get('ref') || '';
   const affCode = searchParams.get('aff') || '';
@@ -122,7 +116,7 @@ function RegisterForm() {
     'Other',
   ];
 
-  const selectedPlanLabel = PLAN_LABELS[formData.plan.toLowerCase()] || 'Pro';
+  const selectedPlanLabel = getPublicPlanLabel(formData.plan);
 
   const updateFormData = (updates: Partial<FormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));

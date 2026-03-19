@@ -6,12 +6,13 @@ import { revalidateTag } from 'next/cache';
 import { createDealPurchaseFromPaymentIntent, finalizeDealPurchaseFromCheckoutSession, finalizeDealPurchaseFromPaymentIntent } from '@/lib/deal-purchases';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { REFERRAL_COMMISSION_PERCENT } from '@/lib/referral-config';
+import { getPublicPlanLabel, getPublicPlanSlug, normalizeSubscriptionPlan } from '@/lib/plan-utils';
 
 function getPlanFromPriceId(priceId: string): string | null {
   const entry = Object.entries(PRICING_PLANS).find(
     ([, plan]) => plan.priceId === priceId || plan.yearlyPriceId === priceId
   );
-  return entry ? entry[0].toLowerCase() : null;
+  return entry ? getPublicPlanSlug(entry[0].toLowerCase()) : null;
 }
 
 export async function POST(req: NextRequest) {
@@ -97,7 +98,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   }
 
   const businessId = session.metadata?.businessId;
-  const plan = session.metadata?.plan;
+  const plan = normalizeSubscriptionPlan(session.metadata?.plan);
 
   if (!businessId) return;
 
@@ -110,7 +111,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       stripeCustomerId: session.customer as string,
       stripeSubscriptionId: subscription.id,
       stripePriceId: subscription.items.data[0].price.id,
-      subscriptionPlan: plan || 'starter',
+      subscriptionPlan: plan,
       subscriptionStatus: subscription.status,
       stripeCurrentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
     },
@@ -128,7 +129,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       businessId,
       type: 'payment_success',
       title: 'Subscription Active',
-      message: `Your ${plan} plan is now active.${trialEndMessage}`,
+      message: `Your ${getPublicPlanLabel(plan)} plan is now active.${trialEndMessage}`,
       link: '/dashboard/settings/billing',
     },
   });
