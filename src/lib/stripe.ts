@@ -1,7 +1,7 @@
 import Stripe from 'stripe';
 
-// Use placeholder key if not set (for build purposes)
-const STRIPE_KEY = process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder_key_for_build';
+// Trim to strip any accidental newline/whitespace from the env var (common paste issue)
+const STRIPE_KEY = (process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder_key_for_build').trim();
 
 // Use the Node.js HTTP client instead of the default fetch-based client.
 // Next.js wraps the global fetch with its caching layer, which causes
