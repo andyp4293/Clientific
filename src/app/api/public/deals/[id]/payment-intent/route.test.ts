@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     deal: { findUnique: vi.fn() },
-    dealPurchase: { update: vi.fn() },
+    dealPurchase: { update: vi.fn(), delete: vi.fn() },
   },
 }));
 
@@ -54,6 +54,7 @@ import { POST } from './route';
 
 const mockDealFindUnique = prisma.deal.findUnique as ReturnType<typeof vi.fn>;
 const mockDealPurchaseUpdate = prisma.dealPurchase.update as ReturnType<typeof vi.fn>;
+const mockDealPurchaseDelete = prisma.dealPurchase.delete as ReturnType<typeof vi.fn>;
 const mockPaymentIntentCreate = stripe.paymentIntents.create as ReturnType<typeof vi.fn>;
 const mockCreatePending = createPendingDealPurchase as ReturnType<typeof vi.fn>;
 const mockFinalize = finalizeDealPurchaseFromPaymentIntent as ReturnType<typeof vi.fn>;
@@ -112,6 +113,7 @@ beforeEach(() => {
   mockCreatePending.mockResolvedValue(basePurchase);
   mockPaymentIntentCreate.mockResolvedValue({ id: 'pi_test_123', client_secret: 'pi_test_123_secret_abc' });
   mockDealPurchaseUpdate.mockResolvedValue({});
+  mockDealPurchaseDelete.mockResolvedValue({});
 });
 
 describe('POST /api/public/deals/[id]/payment-intent', () => {
@@ -238,6 +240,8 @@ describe('POST /api/public/deals/[id]/payment-intent', () => {
     const res = await POST(makeRequest({ customerName: 'Jane Doe', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] }), { params: Promise.resolve({ id: 'deal-1' }) });
     expect(res.status).toBe(500);
     expect((await res.json()).error).toMatch(/failed to start checkout/i);
+    // Pending purchase created before Stripe call must be cleaned up on failure
+    expect(mockDealPurchaseDelete).toHaveBeenCalledWith({ where: { id: 'purchase-1' } });
   });
 
   it('returns 500 for StripeConnectionError (network layer failure, not user error)', async () => {
@@ -252,6 +256,7 @@ describe('POST /api/public/deals/[id]/payment-intent', () => {
     const body = await res.json();
     expect(body.error).toBe('Failed to start checkout');
     expect(body._debug).toBeUndefined();
+    expect(mockDealPurchaseDelete).toHaveBeenCalledWith({ where: { id: 'purchase-1' } });
   });
 
   it('returns 400 (not 500) when Stripe throws StripeAuthenticationError (bad live key)', async () => {
@@ -264,6 +269,7 @@ describe('POST /api/public/deals/[id]/payment-intent', () => {
     const res = await POST(makeRequest({ customerName: 'Jane Doe', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] }), { params: Promise.resolve({ id: 'deal-1' }) });
     expect(res.status).toBe(400);
     expect((await res.json()).error).toMatch(/No API key/i);
+    expect(mockDealPurchaseDelete).toHaveBeenCalledWith({ where: { id: 'purchase-1' } });
   });
 
   it('returns 400 (not 500) when Stripe throws StripeInvalidRequestError (e.g. amount too small)', async () => {
@@ -276,6 +282,7 @@ describe('POST /api/public/deals/[id]/payment-intent', () => {
     const res = await POST(makeRequest({ customerName: 'Jane Doe', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] }), { params: Promise.resolve({ id: 'deal-1' }) });
     expect(res.status).toBe(400);
     expect((await res.json()).error).toMatch(/50 cents/i);
+    expect(mockDealPurchaseDelete).toHaveBeenCalledWith({ where: { id: 'purchase-1' } });
   });
 
   it('returns 400 (not 500) when Stripe throws StripeCardError', async () => {
@@ -288,6 +295,7 @@ describe('POST /api/public/deals/[id]/payment-intent', () => {
     const res = await POST(makeRequest({ customerName: 'Jane Doe', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] }), { params: Promise.resolve({ id: 'deal-1' }) });
     expect(res.status).toBe(400);
     expect((await res.json()).error).toMatch(/declined/i);
+    expect(mockDealPurchaseDelete).toHaveBeenCalledWith({ where: { id: 'purchase-1' } });
   });
 
   it('finalizes free deal immediately without creating a PaymentIntent', async () => {

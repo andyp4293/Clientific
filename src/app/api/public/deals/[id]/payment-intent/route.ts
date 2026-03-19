@@ -130,25 +130,32 @@ export async function POST(
       totals,
     });
 
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: totals.totalAmount,
-      currency: 'usd',
-      automatic_payment_methods: { enabled: true },
-      metadata: {
-        kind: 'deal_purchase',
-        dealPurchaseId: purchase.id,
-        dealId: deal.id,
-        businessId: deal.business.id,
-        customerName,
-        customerEmail: customerEmail || '',
-        customerPhone: formatPhoneNumber(customerPhone),
-        selectedServiceIds: JSON.stringify(selectedServiceIds),
-        subtotalAmount: String(totals.subtotalAmount),
-        discountAmount: String(totals.discountAmount),
-        totalAmount: String(totals.totalAmount),
-        expiresAt: deal.expiresAt.toISOString(),
-      },
-    });
+    let paymentIntent;
+    try {
+      paymentIntent = await stripe.paymentIntents.create({
+        amount: totals.totalAmount,
+        currency: 'usd',
+        automatic_payment_methods: { enabled: true },
+        metadata: {
+          kind: 'deal_purchase',
+          dealPurchaseId: purchase.id,
+          dealId: deal.id,
+          businessId: deal.business.id,
+          customerName,
+          customerEmail: customerEmail || '',
+          customerPhone: formatPhoneNumber(customerPhone),
+          selectedServiceIds: JSON.stringify(selectedServiceIds),
+          subtotalAmount: String(totals.subtotalAmount),
+          discountAmount: String(totals.discountAmount),
+          totalAmount: String(totals.totalAmount),
+          expiresAt: deal.expiresAt.toISOString(),
+        },
+      });
+    } catch (stripeError) {
+      // Clean up the pending record so it doesn't linger in the DB
+      await prisma.dealPurchase.delete({ where: { id: purchase.id } }).catch(() => {});
+      throw stripeError;
+    }
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
