@@ -158,7 +158,23 @@ export async function POST(
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    console.error('POST /api/public/deals/[id]/payment-intent error:', error);
+    // Stripe errors have type/code/statusCode properties — surface them clearly
+    const stripeType: string | undefined = error?.type;
+    const stripeCode: string | undefined = error?.code;
+    const stripeStatus: number | undefined = error?.statusCode;
+    console.error('[payment-intent] error:', {
+      message: error?.message,
+      type: stripeType,
+      code: stripeCode,
+      statusCode: stripeStatus,
+      stack: error?.stack?.slice(0, 300),
+    });
+
+    // User-facing Stripe errors (invalid request, authentication) → 400
+    if (stripeType && ['StripeInvalidRequestError', 'StripeAuthenticationError', 'StripeCardError'].includes(stripeType)) {
+      return NextResponse.json({ error: error.message || 'Payment setup failed' }, { status: 400 });
+    }
+
     return NextResponse.json({ error: 'Failed to start checkout' }, { status: 500 });
   }
 }

@@ -6,9 +6,10 @@ describe('services page cache sync contract', () => {
     const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
     const servicesInvalidations = source.match(/invalidateQueries\(\{ queryKey: \['services'\] \}\)/g) ?? [];
 
-    expect(source).toContain('upsertServicesQueryData');
-    expect(source).toContain('removeServiceFromQueryData');
-    expect(source).toContain("queryClient.setQueryData(\n        ['services']");
+    const normalized = source.replace(/\r\n/g, '\n');
+    expect(normalized).toContain('upsertServicesQueryData');
+    expect(normalized).toContain('removeServiceFromQueryData');
+    expect(normalized).toContain("queryClient.setQueryData(\n        ['services']");
     expect(servicesInvalidations).toHaveLength(2);
   });
 });
