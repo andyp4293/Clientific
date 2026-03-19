@@ -1,7 +1,12 @@
 import Stripe from 'stripe';
+import { sanitizeStripeEnvValue } from './stripe-env';
+
+function readStripeEnv(name: string, fallback: string) {
+  return sanitizeStripeEnvValue(process.env[name], fallback);
+}
 
 // Trim to strip any accidental newline/whitespace from the env var (common paste issue)
-const STRIPE_KEY = (process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder_key_for_build').trim();
+const STRIPE_KEY = readStripeEnv('STRIPE_SECRET_KEY', 'sk_test_placeholder_key_for_build');
 
 // Use the Node.js HTTP client instead of the default fetch-based client.
 // Next.js wraps the global fetch with its caching layer, which causes
@@ -12,34 +17,44 @@ export const stripe = new Stripe(STRIPE_KEY, {
   httpClient: Stripe.createNodeHttpClient(),
 });
 
+export type PricingPlan = 'STARTER' | 'PRO' | 'PREMIUM';
+
 // Pricing Plans Configuration
 export const PRICING_PLANS = {
   STARTER: {
-    name: 'Base',
-    price: 29,
-    yearlyPrice: 23, // per month when billed annually ($276/year)
-    priceId: process.env.STRIPE_STARTER_PRICE_ID || 'price_starter',
-    yearlyPriceId: process.env.STRIPE_STARTER_YEARLY_PRICE_ID || 'price_starter_yearly',
+    name: 'Clientific',
+    summary: 'One simple plan for booking, CRM, reminders, deals, and payouts.',
+    price: 49,
+    yearlyPrice: 39, // Reserved for future annual billing if re-enabled
+    priceId: readStripeEnv('STRIPE_STARTER_PRICE_ID', 'price_starter'),
+    yearlyPriceId: readStripeEnv('STRIPE_STARTER_YEARLY_PRICE_ID', 'price_starter_yearly'),
     features: [
-      'Up to 100 customers',
-      'Basic check-in system',
-      'Email & SMS notifications',
-      'Basic analytics',
+      'Online booking and calendar management',
+      'Customer CRM and visit history',
+      'Email and SMS reminders',
+      'Walk-in check-in',
+      'Business analytics and reporting',
+      'Paid deals and secure payouts',
+      'AI receptionist tools',
       '14-day free trial',
     ],
     limits: {
-      customers: 100,
-      staff: 2,
-      services: 10,
+      customers: 5000,
+      staff: 15,
+      services: 100,
     },
-    popular: false,
+    popular: true,
+    selfServe: true,
+    supportsYearly: false,
+    legacy: false,
   },
   PRO: {
     name: 'Pro',
+    summary: 'Legacy plan',
     price: 79,
     yearlyPrice: 63, // per month when billed annually ($756/year)
-    priceId: process.env.STRIPE_PRO_PRICE_ID || 'price_pro',
-    yearlyPriceId: process.env.STRIPE_PRO_YEARLY_PRICE_ID || 'price_pro_yearly',
+    priceId: readStripeEnv('STRIPE_PRO_PRICE_ID', 'price_pro'),
+    yearlyPriceId: readStripeEnv('STRIPE_PRO_YEARLY_PRICE_ID', 'price_pro_yearly'),
     features: [
       'Up to 1,000 customers',
       'Advanced check-in & kiosk mode',
@@ -55,14 +70,18 @@ export const PRICING_PLANS = {
       staff: 10,
       services: 50,
     },
-    popular: true,
+    popular: false,
+    selfServe: false,
+    supportsYearly: true,
+    legacy: true,
   },
   PREMIUM: {
     name: 'Premium',
+    summary: 'Legacy plan',
     price: 149,
     yearlyPrice: 119, // per month when billed annually ($1,428/year)
-    priceId: process.env.STRIPE_PREMIUM_PRICE_ID || 'price_premium',
-    yearlyPriceId: process.env.STRIPE_PREMIUM_YEARLY_PRICE_ID || 'price_premium_yearly',
+    priceId: readStripeEnv('STRIPE_PREMIUM_PRICE_ID', 'price_premium'),
+    yearlyPriceId: readStripeEnv('STRIPE_PREMIUM_YEARLY_PRICE_ID', 'price_premium_yearly'),
     features: [
       'Unlimited customers',
       'Everything in Pro',
@@ -79,7 +98,12 @@ export const PRICING_PLANS = {
       services: Infinity,
     },
     popular: false,
+    selfServe: false,
+    supportsYearly: true,
+    legacy: true,
   },
 } as const;
 
-export type PricingPlan = keyof typeof PRICING_PLANS;
+export const VISIBLE_SELF_SERVE_PLAN_KEYS = (Object.entries(PRICING_PLANS)
+  .filter(([, plan]) => plan.selfServe)
+  .map(([key]) => key)) as PricingPlan[];

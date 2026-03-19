@@ -146,7 +146,7 @@ export async function POST(request: Request) {
       ? await prisma.affiliate.findFirst({ where: { code: affiliateCode, active: true } })
       : null;
 
-    const normalizedPlan = normalizeSubscriptionPlan(plan);
+    const normalizedPlan = normalizeSubscriptionPlan(plan ?? 'base');
     const trialDays = STANDARD_TRIAL_DAYS;
     const trialEndsAt = addDays(new Date(), trialDays);
 

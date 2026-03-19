@@ -42,25 +42,34 @@ vi.mock('@/lib/stripe', () => ({
   // Inline — vi.mock factories are hoisted; no external variables allowed
   PRICING_PLANS: {
     STARTER: {
-      name: 'Starter', price: 29, yearlyPrice: 23,
+      name: 'Clientific', summary: 'One simple plan', price: 49, yearlyPrice: 39,
       priceId: 'price_starter_monthly', yearlyPriceId: 'price_starter_yearly',
       features: ['Up to 100 customers'],
       limits: { customers: 100, staff: 2, services: 10 },
-      popular: false,
+      popular: true,
+      selfServe: true,
+      supportsYearly: false,
+      legacy: false,
     },
     PRO: {
-      name: 'Pro', price: 79, yearlyPrice: 63,
+      name: 'Pro', summary: 'Legacy plan', price: 79, yearlyPrice: 63,
       priceId: 'price_pro_monthly', yearlyPriceId: 'price_pro_yearly',
       features: ['Up to 1,000 customers'],
       limits: { customers: 1000, staff: 10, services: 50 },
-      popular: true,
+      popular: false,
+      selfServe: false,
+      supportsYearly: true,
+      legacy: true,
     },
     PREMIUM: {
-      name: 'Premium', price: 149, yearlyPrice: 119,
+      name: 'Premium', summary: 'Legacy plan', price: 149, yearlyPrice: 119,
       priceId: 'price_premium_monthly', yearlyPriceId: 'price_premium_yearly',
       features: ['Unlimited customers'],
       limits: { customers: Infinity, staff: Infinity, services: Infinity },
       popular: false,
+      selfServe: false,
+      supportsYearly: true,
+      legacy: true,
     },
   },
 }));
@@ -522,5 +531,19 @@ describe('POST /api/checkout/create', () => {
     expect(res.status).toBe(500);
     const body = await res.json();
     expect(body.error).toBe('Stripe network error');
+  });
+
+  it('returns a safe checkout error when Stripe rejects the configured price ID', async () => {
+    mockSession.mockResolvedValue({ user: { email: 'test@example.com' } });
+    mockFindUnique.mockResolvedValue(makeBusiness({ stripeSubscriptionId: null }));
+    mockCheckoutCreate.mockRejectedValue(
+      new Error("No such price: 'price_1TCTdH0hFQoOoQppM7SXMmDN\\n'")
+    );
+
+    const res = await checkoutPost(makeReq('http://localhost:3000/api/checkout/create', 'POST', { plan: 'base' }));
+    expect(res.status).toBe(500);
+
+    const body = await res.json();
+    expect(body.error).toBe('Checkout is temporarily unavailable. Please try again in a moment.');
   });
 });

@@ -158,7 +158,7 @@ export default async function DashboardLayout({
     const title = isOnboardingPage ? 'Finish setup' : 'Complete subscription';
     const subtitle = isOnboardingPage
       ? 'Add your business phone and location before the dashboard unlocks.'
-      : 'Choose a plan to continue using Clientific.';
+      : 'Start your $49/month subscription to continue using Clientific.';
 
     return (
       <div className="min-h-screen brand-shell">

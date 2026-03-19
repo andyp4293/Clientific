@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { getPublicPlanSlug, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/plan-utils';
-import { PRICING_PLANS } from '@/lib/stripe';
+import { getPublicPlanSlug } from '@/lib/plan-utils';
+import { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/stripe';
 
 interface Props {
   status: string;
@@ -11,7 +11,6 @@ interface Props {
 }
 
 export function UpgradePricingCards({ status, hasStripeCustomer }: Props) {
-  const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [loading, setLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
 
@@ -21,7 +20,7 @@ export function UpgradePricingCards({ status, hasStripeCustomer }: Props) {
       const res = await fetch('/api/checkout/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: planSlug, billingPeriod: billing }),
+        body: JSON.stringify({ plan: planSlug, billingPeriod: 'monthly' }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -79,46 +78,25 @@ export function UpgradePricingCards({ status, hasStripeCustomer }: Props) {
   }
 
   return (
-    <div className="mt-8 w-full max-w-4xl mx-auto">
-      <div className="flex items-center justify-center gap-3 mb-8">
-        <span className={`text-sm font-medium ${billing === 'monthly' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'}`}>Monthly</span>
-        <button
-          onClick={() => setBilling((current) => current === 'monthly' ? 'yearly' : 'monthly')}
-          className={`relative w-11 h-6 rounded-full transition-colors ${billing === 'yearly' ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}`}
-        >
-          <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${billing === 'yearly' ? 'translate-x-5' : ''}`} />
-        </button>
-        <span className={`text-sm font-medium ${billing === 'yearly' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'}`}>
-          Yearly <span className="text-primary text-xs font-semibold ml-1">Save 20%</span>
-        </span>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-6">
+    <div className="mt-8 w-full max-w-3xl mx-auto">
+      <div className="grid gap-6">
         {VISIBLE_SELF_SERVE_PLAN_KEYS.map((key) => {
           const plan = PRICING_PLANS[key];
           const planSlug = getPublicPlanSlug(key.toLowerCase());
-          const price = billing === 'yearly' ? plan.yearlyPrice : plan.price;
+          const price = plan.price;
           const isLoading = loading === planSlug;
 
           return (
             <div
               key={key}
-              className={`relative rounded-2xl border p-6 flex flex-col ${
-                plan.popular
-                  ? 'border-primary bg-primary/5 dark:bg-primary/10 shadow-lg'
-                  : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
-              }`}
+              className="relative rounded-2xl border border-primary bg-primary/5 dark:bg-primary/10 shadow-lg p-6 flex flex-col"
             >
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="bg-primary text-white text-xs font-bold px-3 py-1 rounded-full">Most Popular</span>
-                </div>
-              )}
               <div className="mb-4">
                 <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{plan.name}</h3>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{plan.summary}</p>
                 <div className="mt-2 flex items-end gap-1">
                   <span className="text-3xl font-bold text-gray-900 dark:text-gray-100">${price}</span>
-                  <span className="text-gray-400 text-sm mb-1">/mo{billing === 'yearly' ? ', billed yearly' : ''}</span>
+                  <span className="text-gray-400 text-sm mb-1">/month</span>
                 </div>
               </div>
               <ul className="space-y-2 flex-1 mb-6">
@@ -134,9 +112,9 @@ export function UpgradePricingCards({ status, hasStripeCustomer }: Props) {
               <button
                 onClick={() => void handleUpgrade(planSlug)}
                 disabled={isLoading}
-                className={plan.popular ? 'btn-primary w-full' : 'btn-outline w-full'}
+                className="btn-primary w-full"
               >
-                {isLoading ? 'Redirecting...' : 'Get Started'}
+                {isLoading ? 'Redirecting...' : status === 'trialing' ? 'Start 14-day free trial' : 'Continue with $49/month'}
               </button>
             </div>
           );

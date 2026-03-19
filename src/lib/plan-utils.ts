@@ -2,14 +2,6 @@ export type CanonicalSubscriptionPlan = 'trial' | 'base' | 'pro' | 'premium';
 export type PricingPlanKey = 'STARTER' | 'PRO' | 'PREMIUM';
 export type PublicPlanSlug = 'trial' | 'base' | 'pro' | 'premium';
 
-export const VISIBLE_SELF_SERVE_PLAN_KEYS: PricingPlanKey[] = ['STARTER', 'PRO'];
-
-export const SELF_SERVE_PLAN_SUMMARIES: Record<PricingPlanKey, string> = {
-  STARTER: 'Great for solo operators',
-  PRO: 'For growing businesses',
-  PREMIUM: 'Legacy plan',
-};
-
 export function normalizeSubscriptionPlan(plan: string | null | undefined): CanonicalSubscriptionPlan {
   const normalized = typeof plan === 'string' ? plan.trim().toLowerCase() : '';
 
@@ -63,7 +55,7 @@ export function getPublicPlanLabel(plan: string | null | undefined): string {
 
   switch (normalized) {
     case 'base':
-      return 'Base';
+      return 'Clientific';
     case 'pro':
       return 'Pro';
     case 'premium':

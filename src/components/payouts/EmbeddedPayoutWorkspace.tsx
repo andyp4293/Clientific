@@ -11,6 +11,7 @@ import {
   ConnectNotificationBanner,
   ConnectPayouts,
 } from '@stripe/react-connect-js';
+import { sanitizeStripeEnvValue } from '@/lib/stripe-env';
 
 export type BalanceAmount = {
   amount: number;
@@ -187,7 +188,7 @@ export function EmbeddedPayoutWorkspace({
   onboardingComplete: boolean;
   onRefresh: () => void;
 }) {
-  const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
+  const publishableKey = sanitizeStripeEnvValue(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
   const [connectInstance, setConnectInstance] = useState<StripeConnectInstance | null>(null);
   const [workspaceError, setWorkspaceError] = useState<WorkspaceErrorState | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);

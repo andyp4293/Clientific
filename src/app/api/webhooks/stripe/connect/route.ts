@@ -3,9 +3,12 @@ import Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
 import { syncBusinessConnectAccount } from '@/lib/stripe-connect';
+import { sanitizeStripeEnvValue } from '@/lib/stripe-env';
 
 function getWebhookSecret() {
-  return process.env.STRIPE_CONNECT_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET || '';
+  return sanitizeStripeEnvValue(
+    process.env.STRIPE_CONNECT_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET || ''
+  );
 }
 
 export async function POST(req: NextRequest) {

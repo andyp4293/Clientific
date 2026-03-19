@@ -15,11 +15,11 @@ export default async function SubscribePage() {
   const hasStripeCustomer = !!info?.stripeCustomerId;
 
   let headline = 'Subscription required';
-  let subtext = `Choose a plan to continue using ${APP_NAME}.`;
+  let subtext = `Start your $49/month subscription to continue using ${APP_NAME}.`;
 
   if (status === 'trialing' || status === 'trial') {
     headline = 'Your free trial has ended';
-    subtext = 'Your 14-day trial is over. Choose a plan to keep your business running on ' + APP_NAME + '.';
+    subtext = 'Your 14-day trial is over. Start your $49/month subscription to keep your business running on ' + APP_NAME + '.';
   } else if (status === 'past_due') {
     headline = 'Payment failed';
     subtext = 'We couldn\'t process your last payment. Update your card to restore access.';

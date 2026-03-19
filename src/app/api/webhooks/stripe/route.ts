@@ -7,6 +7,7 @@ import { createDealPurchaseFromPaymentIntent, finalizeDealPurchaseFromCheckoutSe
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { REFERRAL_COMMISSION_PERCENT } from '@/lib/referral-config';
 import { getPublicPlanLabel, getPublicPlanSlug, normalizeSubscriptionPlan } from '@/lib/plan-utils';
+import { sanitizeStripeEnvValue } from '@/lib/stripe-env';
 
 function getPlanFromPriceId(priceId: string): string | null {
   const entry = Object.entries(PRICING_PLANS).find(
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
     event = stripe.webhooks.constructEvent(
       body,
       signature,
-      (process.env.STRIPE_WEBHOOK_SECRET || '').trim()
+      sanitizeStripeEnvValue(process.env.STRIPE_WEBHOOK_SECRET)
     );
   } catch (err: any) {
     console.error('Webhook signature verification failed:', err.message);

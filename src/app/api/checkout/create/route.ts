@@ -31,7 +31,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
     }
 
-    const priceId = billingPeriod === 'yearly' ? planConfig.yearlyPriceId : planConfig.priceId;
+    const useYearlyPrice =
+      billingPeriod === 'yearly' &&
+      planConfig.supportsYearly &&
+      Boolean(planConfig.yearlyPriceId);
+    const priceId = useYearlyPrice ? planConfig.yearlyPriceId : planConfig.priceId;
 
     // Get business
     const business = await prisma.business.findUnique({
@@ -98,6 +102,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url: checkoutSession.url });
   } catch (error: any) {
     console.error('Checkout error:', error);
+
+    const message = typeof error?.message === 'string' ? error.message : '';
+    if (message.includes('No such price')) {
+      return NextResponse.json(
+        { error: 'Checkout is temporarily unavailable. Please try again in a moment.' },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
       { error: error.message || 'Failed to create checkout session' },
       { status: 500 }

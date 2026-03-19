@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useState } from 'react';
 import { APP_DOMAIN, APP_NAME } from '@/lib/brand';
-import { getPublicPlanSlug, SELF_SERVE_PLAN_SUMMARIES, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/plan-utils';
-import { PRICING_PLANS } from '@/lib/stripe';
+import { getPublicPlanSlug } from '@/lib/plan-utils';
+import { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/stripe';
 import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
 
 const faqs = [
@@ -410,29 +410,20 @@ export default function HomePage() {
             <div className="mb-4 inline-block rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-primary dark:bg-primary/10">
               Pricing
             </div>
-            <h2 className="mb-4 text-3xl font-bold text-gray-950 dark:text-gray-100 sm:text-4xl">Simple, transparent pricing</h2>
-            <p className="text-lg text-gray-700 dark:text-gray-300">Start free for 14 days. No credit card required.</p>
+            <h2 className="mb-4 text-3xl font-bold text-gray-950 dark:text-gray-100 sm:text-4xl">One clear subscription</h2>
+            <p className="text-lg text-gray-700 dark:text-gray-300">Everything you need for one location, with a 14-day free trial.</p>
           </div>
 
-          <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-2 sm:gap-8">
+          <div className="mx-auto grid max-w-3xl gap-6">
             {VISIBLE_SELF_SERVE_PLAN_KEYS.map((key) => {
               const plan = PRICING_PLANS[key];
               const planSlug = getPublicPlanSlug(key.toLowerCase());
-              const cardClassName = plan.popular
-                ? 'relative flex flex-col rounded-2xl border border-primary/30 bg-gradient-to-br from-primary-50 via-white to-gray-100 p-8 shadow-lg shadow-primary/10 dark:border-primary/40 dark:from-gray-950 dark:via-gray-950 dark:to-primary-950'
-                : 'flex flex-col rounded-2xl border border-gray-200 bg-white/85 p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900/80';
+              const cardClassName = 'relative flex flex-col rounded-2xl border border-primary/30 bg-gradient-to-br from-primary-50 via-white to-gray-100 p-8 shadow-lg shadow-primary/10 dark:border-primary/40 dark:from-gray-950 dark:via-gray-950 dark:to-primary-950';
 
               return (
-                <div key={key} data-testid={plan.popular ? 'homepage-featured-plan' : undefined} className={cardClassName}>
-                  {plan.popular && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                      <span className="rounded-full bg-primary px-4 py-1 text-xs font-semibold text-white shadow-lg" style={{ boxShadow: '0 2px 12px rgb(var(--color-primary-600) / 0.45)' }}>
-                        Most Popular
-                      </span>
-                    </div>
-                  )}
+                <div key={key} data-testid="homepage-featured-plan" className={cardClassName}>
                   <h3 className="mb-1 text-xl font-bold text-gray-950 dark:text-white">{plan.name}</h3>
-                  <p className="mb-5 text-sm text-gray-700 dark:text-gray-300">{SELF_SERVE_PLAN_SUMMARIES[key]}</p>
+                  <p className="mb-5 text-sm text-gray-700 dark:text-gray-300">{plan.summary}</p>
                   <div className="mb-7">
                     <span className="text-4xl font-bold text-gray-950 dark:text-white">${plan.price}</span>
                     <span className="text-base font-normal text-gray-700 dark:text-gray-300">/mo</span>
@@ -448,16 +439,16 @@ export default function HomePage() {
                   {isAuthenticated ? (
                     <Link
                       href="/pricing"
-                      className={plan.popular ? 'w-full rounded-xl bg-primary py-3 text-center font-semibold text-white transition-colors hover:bg-primary-600' : 'btn-outline w-full text-center'}
-                      style={plan.popular ? { boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' } : undefined}
+                      className="w-full rounded-xl bg-primary py-3 text-center font-semibold text-white transition-colors hover:bg-primary-600"
+                      style={{ boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' }}
                     >
-                      View Plans
+                      View Subscription
                     </Link>
                   ) : (
                     <Link
                       href={`/register?plan=${planSlug}`}
-                      className={plan.popular ? 'w-full rounded-xl bg-primary py-3 text-center font-semibold text-white transition-colors hover:bg-primary-600' : 'btn-outline w-full text-center'}
-                      style={plan.popular ? { boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' } : undefined}
+                      className="w-full rounded-xl bg-primary py-3 text-center font-semibold text-white transition-colors hover:bg-primary-600"
+                      style={{ boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' }}
                     >
                       Start Free Trial
                     </Link>
