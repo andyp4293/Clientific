@@ -13,6 +13,70 @@ import { SubscriptionBanner } from '@/components/billing/SubscriptionBanner';
 import { NotificationBell } from '@/components/layout/NotificationBell';
 import { Toaster } from 'sonner';
 
+function DashboardUnavailable({
+  retryHref,
+}: {
+  retryHref: string;
+}) {
+  return (
+    <div className="min-h-screen brand-shell">
+      <header className="fixed top-0 left-0 right-0 h-14 z-50 brand-panel border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6">
+        <Link href="/" className="flex items-center space-x-2">
+          <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-base">C</span>
+          </div>
+          <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{APP_NAME}</span>
+        </Link>
+        <Link
+          href="/signout"
+          className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+        >
+          Sign out
+        </Link>
+      </header>
+
+      <main className="pt-24 px-4 pb-8">
+        <div className="mx-auto max-w-xl rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-700 dark:bg-gray-900">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+            <svg
+              className="h-8 w-8"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M4.93 19h14.14c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.2 16c-.77 1.33.19 3 1.73 3z"
+              />
+            </svg>
+          </div>
+
+          <h1 className="mt-5 text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Dashboard temporarily unavailable
+          </h1>
+          <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+            We couldn&apos;t reach your business data just now. This usually clears up quickly, so
+            try again in a moment.
+          </p>
+
+          <div className="mt-6 space-y-3">
+            <Link href={retryHref} className="btn-primary block w-full">
+              Try again
+            </Link>
+            <Link href="/" className="btn-outline block w-full">
+              Go to homepage
+            </Link>
+          </div>
+        </div>
+      </main>
+
+      <Toaster richColors position="top-right" />
+    </div>
+  );
+}
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -34,19 +98,35 @@ export default async function DashboardLayout({
     redirect('/signout');
   }
 
-  const business = await prisma.business.findUnique({
-    where: { id: businessId },
-    select: {
-      phone: true,
-      street: true,
-      city: true,
-      state: true,
-      zipCode: true,
-      country: true,
-      subscriptionStatus: true,
-      trialEndsAt: true,
-    },
-  });
+  let business: {
+    phone: string | null;
+    street: string | null;
+    city: string | null;
+    state: string | null;
+    zipCode: string | null;
+    country: string | null;
+    subscriptionStatus: string | null;
+    trialEndsAt: Date | null;
+  } | null = null;
+
+  try {
+    business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: {
+        phone: true,
+        street: true,
+        city: true,
+        state: true,
+        zipCode: true,
+        country: true,
+        subscriptionStatus: true,
+        trialEndsAt: true,
+      },
+    });
+  } catch (error) {
+    console.error('Dashboard layout failed to load business:', error);
+    return <DashboardUnavailable retryHref={pathname || '/dashboard'} />;
+  }
 
   if (!business) {
     redirect('/signout');

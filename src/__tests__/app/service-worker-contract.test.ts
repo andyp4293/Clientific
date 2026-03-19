@@ -11,5 +11,6 @@ describe('service worker navigation contract', () => {
     expect(source).not.toContain("'/dashboard'");
     expect(source).not.toContain("'/login'");
     expect(source).not.toContain("caches.match('/dashboard') || caches.match('/login')");
+    expect(source).toContain("return new Response('Offline'");
   });
 });

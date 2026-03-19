@@ -135,4 +135,26 @@ describe('Dashboard layout onboarding gate', () => {
 
     expect(mockRedirect).toHaveBeenCalledWith('/dashboard');
   });
+
+  it('renders a retryable unavailable state when the business query cannot reach the database', async () => {
+    mockHeaders.mockReturnValue({
+      get: () => '/dashboard/payouts',
+    });
+    mockFindUnique.mockRejectedValue(
+      new Error('Can\'t reach database server at `example.neon.tech:5432`')
+    );
+
+    render(await DashboardLayout({ children: <div>Payouts content</div> }));
+
+    expect(screen.getByText(/dashboard temporarily unavailable/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/couldn\'t reach your business data just now/i)
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /try again/i })).toHaveAttribute(
+      'href',
+      '/dashboard/payouts'
+    );
+    expect(screen.queryByText('Payouts content')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('dashboard-nav')).not.toBeInTheDocument();
+  });
 });

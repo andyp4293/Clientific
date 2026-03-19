@@ -65,6 +65,23 @@ self.addEventListener('fetch', (event) => {
 
   // For static assets: cache first, fall back to network
   event.respondWith(
-    caches.match(request).then((cached) => cached || fetch(request))
+    (async () => {
+      const cached = await caches.match(request);
+      if (cached) {
+        return cached;
+      }
+
+      try {
+        return await fetch(request);
+      } catch {
+        return new Response('Offline', {
+          status: 503,
+          headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Cache-Control': 'no-store',
+          },
+        });
+      }
+    })()
   );
 });
