@@ -322,12 +322,6 @@ export function EmbeddedPayoutWorkspace({
       ) : connectInstance ? (
         <ConnectComponentsProvider connectInstance={connectInstance}>
           <div className="space-y-4">
-            <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-              <ConnectNotificationBanner
-                collectionOptions={{ fields: 'currently_due', futureRequirements: 'include' }}
-              />
-            </div>
-
             {!onboardingComplete ? (
               <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
                 <ConnectAccountOnboarding
@@ -337,6 +331,11 @@ export function EmbeddedPayoutWorkspace({
               </div>
             ) : (
               <>
+                <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                  <ConnectNotificationBanner
+                    collectionOptions={{ fields: 'currently_due', futureRequirements: 'include' }}
+                  />
+                </div>
                 <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
                   <ConnectBalances />
                 </div>
