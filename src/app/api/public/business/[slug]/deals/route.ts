@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { dealRequiresPayoutSetup, isBusinessReadyForPaidDeals } from '@/lib/paid-deal-payouts';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(
@@ -12,7 +13,13 @@ export async function GET(
     const isPublicId = /^[A-Z]{2}-[A-Z0-9]{6}$/.test(slug);
     const business = await prisma.business.findFirst({
       where: isPublicId ? { publicId: slug } : { slug },
-      select: { id: true },
+      select: {
+        id: true,
+        stripeConnectAccountId: true,
+        stripeConnectChargesEnabled: true,
+        stripeConnectPayoutsEnabled: true,
+        stripeConnectDetailsSubmitted: true,
+      },
     });
 
     if (!business) {
@@ -32,9 +39,14 @@ export async function GET(
     });
 
     // Filter out deals that hit max redemptions
-    const available = deals.filter(
-      d => d.maxRedemptions === null || d.redemptionCount < d.maxRedemptions
-    );
+    const available = deals.filter((deal) => {
+      const withinRedemptionLimit =
+        deal.maxRedemptions === null || deal.redemptionCount < deal.maxRedemptions;
+      const payoutReady =
+        !dealRequiresPayoutSetup(deal) || isBusinessReadyForPaidDeals(business);
+
+      return withinRedemptionLimit && payoutReady;
+    });
 
     return NextResponse.json({ deals: available });
   } catch (error: any) {

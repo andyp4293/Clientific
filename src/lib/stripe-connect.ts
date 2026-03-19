@@ -9,6 +9,148 @@ type BusinessConnectSeed = {
   stripeConnectAccountId: string | null;
 };
 
+export type ConnectExternalBankAccountSummary = {
+  id: string;
+  bankName: string | null;
+  last4: string;
+  routingNumberLast4: string | null;
+  accountHolderName: string | null;
+  status: string | null;
+};
+
+export type ConnectPayoutScheduleSummary = {
+  interval: 'daily' | 'manual' | 'monthly' | 'weekly';
+  monthlyPayoutDays: number[];
+  weeklyPayoutDays: Stripe.BalanceSettings.Payments.Payouts.Schedule.WeeklyPayoutDay[];
+  statementDescriptor: string | null;
+};
+
+export type ConnectRequirementsSummary = {
+  currentlyDue: string[];
+  eventuallyDue: string[];
+  pastDue: string[];
+  pendingVerification: string[];
+  disabledReason: string | null;
+};
+
+export type ConnectAccountStatusSummary = {
+  accountId: string;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  detailsSubmitted: boolean;
+  onboardingComplete: boolean;
+  bankAccountConnected: boolean;
+  externalAccount: ConnectExternalBankAccountSummary | null;
+  payoutSchedule: ConnectPayoutScheduleSummary;
+  requirements: ConnectRequirementsSummary;
+};
+
+function isConnectAccountReady(account: Pick<Stripe.Account, 'charges_enabled' | 'payouts_enabled' | 'details_submitted'>) {
+  return Boolean(account.charges_enabled && account.payouts_enabled && account.details_submitted);
+}
+
+async function resetBusinessConnectState(businessId: string) {
+  await prisma.business.update({
+    where: { id: businessId },
+    data: {
+      stripeConnectAccountId: null,
+      stripeConnectChargesEnabled: false,
+      stripeConnectPayoutsEnabled: false,
+      stripeConnectDetailsSubmitted: false,
+      stripeConnectOnboardedAt: null,
+      stripeConnectLastSyncedAt: new Date(),
+    },
+  });
+}
+
+function normalizeExternalBankAccount(
+  account: Stripe.Account
+): ConnectExternalBankAccountSummary | null {
+  const externalAccounts = account.external_accounts;
+  if (!externalAccounts || typeof externalAccounts === 'string') {
+    return null;
+  }
+
+  const bankAccounts = externalAccounts.data.filter(
+    (externalAccount): externalAccount is Stripe.BankAccount =>
+      externalAccount.object === 'bank_account'
+  );
+  const selectedBank =
+    bankAccounts.find((externalAccount) => externalAccount.default_for_currency) ??
+    bankAccounts[0] ??
+    null;
+
+  if (!selectedBank) {
+    return null;
+  }
+
+  return {
+    id: selectedBank.id,
+    bankName: selectedBank.bank_name ?? null,
+    last4: selectedBank.last4,
+    routingNumberLast4: selectedBank.routing_number?.slice(-4) ?? null,
+    accountHolderName: selectedBank.account_holder_name ?? null,
+    status: selectedBank.status ?? null,
+  };
+}
+
+function normalizePayoutSchedule(
+  balanceSettings: Stripe.BalanceSettings
+): ConnectPayoutScheduleSummary {
+  const payouts = balanceSettings.payments?.payouts;
+  const schedule = payouts?.schedule;
+
+  return {
+    interval: schedule?.interval ?? 'manual',
+    monthlyPayoutDays: schedule?.monthly_payout_days ?? [],
+    weeklyPayoutDays: schedule?.weekly_payout_days ?? [],
+    statementDescriptor: payouts?.statement_descriptor ?? null,
+  };
+}
+
+function normalizeRequirements(
+  account: Stripe.Account
+): ConnectRequirementsSummary {
+  return {
+    currentlyDue: account.requirements?.currently_due ?? [],
+    eventuallyDue: account.requirements?.eventually_due ?? [],
+    pastDue: account.requirements?.past_due ?? [],
+    pendingVerification: account.requirements?.pending_verification ?? [],
+    disabledReason: account.requirements?.disabled_reason ?? null,
+  };
+}
+
+async function syncBusinessBankAccount(
+  businessId: string,
+  externalAccount: ConnectExternalBankAccountSummary | null
+) {
+  if (!externalAccount) {
+    await prisma.businessBankAccount.deleteMany({
+      where: { businessId },
+    });
+    return;
+  }
+
+  await prisma.businessBankAccount.upsert({
+    where: { businessId },
+    create: {
+      businessId,
+      stripeExternalAccountId: externalAccount.id,
+      bankName: externalAccount.bankName,
+      last4: externalAccount.last4,
+      routingNumberLast4: externalAccount.routingNumberLast4 ?? 'unknown',
+      accountHolderName: externalAccount.accountHolderName,
+    },
+    update: {
+      stripeExternalAccountId: externalAccount.id,
+      bankName: externalAccount.bankName,
+      last4: externalAccount.last4,
+      routingNumberLast4: externalAccount.routingNumberLast4 ?? 'unknown',
+      accountHolderName: externalAccount.accountHolderName,
+    },
+  });
+}
+
 export async function syncBusinessConnectAccount(
   businessId: string,
   account: Stripe.Account
@@ -20,17 +162,56 @@ export async function syncBusinessConnectAccount(
       stripeConnectChargesEnabled: account.charges_enabled,
       stripeConnectPayoutsEnabled: account.payouts_enabled,
       stripeConnectDetailsSubmitted: account.details_submitted,
-      stripeConnectOnboardedAt: account.charges_enabled ? new Date() : null,
+      stripeConnectOnboardedAt: isConnectAccountReady(account) ? new Date() : null,
       stripeConnectLastSyncedAt: new Date(),
     },
   });
 }
 
+export async function fetchConnectAccountStatus(
+  accountId: string
+): Promise<ConnectAccountStatusSummary> {
+  const [account, balanceSettings] = await Promise.all([
+    stripe.accounts.retrieve(accountId, { expand: ['external_accounts'] }),
+    stripe.balanceSettings.retrieve({}, { stripeAccount: accountId }),
+  ]);
+
+  const externalAccount = normalizeExternalBankAccount(account);
+
+  return {
+    accountId: account.id,
+    chargesEnabled: account.charges_enabled,
+    payoutsEnabled: account.payouts_enabled,
+    detailsSubmitted: account.details_submitted,
+    onboardingComplete: isConnectAccountReady(account),
+    bankAccountConnected: Boolean(externalAccount),
+    externalAccount,
+    payoutSchedule: normalizePayoutSchedule(balanceSettings),
+    requirements: normalizeRequirements(account),
+  };
+}
+
+export async function syncBusinessConnectState(
+  businessId: string,
+  accountId: string
+): Promise<ConnectAccountStatusSummary> {
+  const [account, status] = await Promise.all([
+    stripe.accounts.retrieve(accountId),
+    fetchConnectAccountStatus(accountId),
+  ]);
+
+  await Promise.all([
+    syncBusinessConnectAccount(businessId, account),
+    syncBusinessBankAccount(businessId, status.externalAccount),
+  ]);
+
+  return status;
+}
+
 /**
  * Ensures a Custom Connect account exists for the business.
- * Custom accounts are created and managed entirely by Clientific —
- * businesses never see a Stripe onboarding page or Stripe dashboard.
- * charges_enabled becomes true immediately after creation in test mode.
+ * We keep account creation minimal so Stripe's onboarding flow can collect the
+ * correct legal business type, bank details, identity, and terms acceptance.
  */
 export async function ensureBusinessConnectAccount(
   business: BusinessConnectSeed,
@@ -40,39 +221,21 @@ export async function ensureBusinessConnectAccount(
     try {
       const existing = await stripe.accounts.retrieve(business.stripeConnectAccountId);
 
-      // If an old Express account is stored, clear it and create a Custom one instead
-      if ((existing as any).type === 'express') {
-        await prisma.business.update({
-          where: { id: business.id },
-          data: {
-            stripeConnectAccountId: null,
-            stripeConnectChargesEnabled: false,
-            stripeConnectPayoutsEnabled: false,
-            stripeConnectDetailsSubmitted: false,
-            stripeConnectOnboardedAt: null,
-          },
-        });
+      if ((existing as Stripe.Account).type === 'express') {
+        await resetBusinessConnectState(business.id);
       } else {
         await syncBusinessConnectAccount(business.id, existing);
         return existing;
       }
-    } catch (err: any) {
-      // Account was deleted (common in test mode) — fall through to create a new one
-      if (err?.code !== 'resource_missing') throw err;
-      await prisma.business.update({
-        where: { id: business.id },
-        data: {
-          stripeConnectAccountId: null,
-          stripeConnectChargesEnabled: false,
-          stripeConnectPayoutsEnabled: false,
-          stripeConnectDetailsSubmitted: false,
-          stripeConnectOnboardedAt: null,
-        },
-      });
+    } catch (error: any) {
+      if (error?.code !== 'resource_missing') {
+        throw error;
+      }
+
+      await resetBusinessConnectState(business.id);
     }
   }
 
-  // Create a Custom account — no onboarding redirect, fully managed by Clientific
   const created = await stripe.accounts.create({
     type: 'custom',
     country: 'US',
@@ -81,19 +244,17 @@ export async function ensureBusinessConnectAccount(
       card_payments: { requested: true },
       transfers: { requested: true },
     },
-    business_type: 'company',
-    company: { name: business.name },
-    tos_acceptance: {
-      // Clientific's ToS covers Stripe's service agreement on the business's behalf
-      date: Math.floor(Date.now() / 1000),
-      ip: '127.0.0.1',
-    },
     settings: {
       payouts: {
-        schedule: { interval: 'weekly', weekly_anchor: 'monday' },
+        schedule: {
+          interval: 'manual',
+        },
       },
     },
-    metadata: { businessId: business.id },
+    metadata: {
+      businessId: business.id,
+      businessName: business.name,
+    },
   });
 
   await syncBusinessConnectAccount(business.id, created);
@@ -102,8 +263,7 @@ export async function ensureBusinessConnectAccount(
 
 /**
  * Attaches a bank account to the business's Custom Connect account.
- * The business just provides routing + account number — no Stripe redirect needed.
- * Returns the external account object with last4 and bank_name.
+ * Used as a fallback path when a platform admin enters bank details directly.
  */
 export async function addBankAccountToConnect(
   connectAccountId: string,
@@ -122,17 +282,12 @@ export async function addBankAccountToConnect(
     },
   });
 
-  const externalAccount = await stripe.accounts.createExternalAccount(
-    connectAccountId,
-    { external_account: token.id, default_for_currency: true }
-  ) as Stripe.BankAccount;
-
-  return externalAccount;
+  return stripe.accounts.createExternalAccount(connectAccountId, {
+    external_account: token.id,
+    default_for_currency: true,
+  }) as Promise<Stripe.BankAccount>;
 }
 
-/**
- * Removes a bank account from the Connect account and clears it from the DB.
- */
 export async function removeBankAccountFromConnect(
   connectAccountId: string,
   externalAccountId: string
@@ -153,6 +308,7 @@ export async function fetchConnectPayoutsOverview(accountId: string) {
     balance,
     payouts: payouts.data.map((payout) => {
       const destination = payout.destination as Stripe.BankAccount | null;
+
       return {
         id: payout.id,
         amount: payout.amount,
@@ -170,10 +326,48 @@ export async function createConnectAccountSession(accountId: string) {
   return stripe.accountSessions.create({
     account: accountId,
     components: {
-      account_onboarding: { enabled: true },
-      balances: { enabled: true },
-      payouts: { enabled: true },
-      notification_banner: { enabled: true },
+      account_onboarding: {
+        enabled: true,
+        features: {
+          disable_stripe_user_authentication: true,
+          external_account_collection: true,
+        },
+      },
+      account_management: {
+        enabled: true,
+        features: {
+          disable_stripe_user_authentication: true,
+          external_account_collection: true,
+        },
+      },
+      notification_banner: {
+        enabled: true,
+        features: {
+          disable_stripe_user_authentication: true,
+          external_account_collection: true,
+        },
+      },
+      balances: {
+        enabled: true,
+        features: {
+          disable_stripe_user_authentication: true,
+          edit_payout_schedule: true,
+          external_account_collection: true,
+          standard_payouts: true,
+        },
+      },
+      payouts: {
+        enabled: true,
+        features: {
+          disable_stripe_user_authentication: true,
+          edit_payout_schedule: true,
+          external_account_collection: true,
+          standard_payouts: true,
+        },
+      },
+      payouts_list: {
+        enabled: true,
+      },
     },
-  } as any);
+  });
 }

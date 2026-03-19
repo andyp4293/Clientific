@@ -6,6 +6,9 @@ vi.mock('@/app/api/auth/[...nextauth]/route', () => ({ authOptions: {} }));
 vi.mock('@/lib/subscription', () => ({ requireActiveSubscription: vi.fn() }));
 vi.mock('@/lib/prisma', () => ({
   prisma: {
+    business: {
+      findUnique: vi.fn(),
+    },
     deal: {
       findUnique: vi.fn(),
       update: vi.fn(),
@@ -21,6 +24,7 @@ import { PATCH } from './route';
 
 const mockSession = getServerSession as ReturnType<typeof vi.fn>;
 const mockRequireActiveSubscription = requireActiveSubscription as ReturnType<typeof vi.fn>;
+const mockBusinessFindUnique = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockDealFindUnique = prisma.deal.findUnique as ReturnType<typeof vi.fn>;
 const mockDealUpdate = prisma.deal.update as ReturnType<typeof vi.fn>;
 
@@ -28,6 +32,10 @@ const activeSession = { user: { id: 'biz-1' } };
 const existingDeal = {
   id: 'deal-1',
   businessId: 'biz-1',
+  active: false,
+  deliveryType: 'purchase_link',
+  discountType: 'percent_off',
+  discountValue: 20,
   startsAt: new Date('2026-03-11T00:00:00.000Z'),
   expiresAt: new Date('2026-03-31T23:59:59.999Z'),
 };
@@ -47,6 +55,12 @@ beforeEach(() => {
   mockSession.mockResolvedValue(activeSession);
   mockRequireActiveSubscription.mockResolvedValue(null);
   mockDealFindUnique.mockResolvedValue(existingDeal);
+  mockBusinessFindUnique.mockResolvedValue({
+    stripeConnectAccountId: 'acct_123',
+    stripeConnectChargesEnabled: true,
+    stripeConnectPayoutsEnabled: true,
+    stripeConnectDetailsSubmitted: true,
+  });
 });
 
 afterAll(() => {
@@ -165,5 +179,51 @@ describe('PATCH /api/deals/[id]', () => {
     expect(startsAt.getMinutes()).toBe(0);
     expect(expiresAt.getHours()).toBe(23);
     expect(expiresAt.getMinutes()).toBe(59);
+  });
+
+  it('returns 409 when publishing a paid purchase-link deal before payouts are ready', async () => {
+    mockBusinessFindUnique.mockResolvedValue({
+      stripeConnectAccountId: null,
+      stripeConnectChargesEnabled: false,
+      stripeConnectPayoutsEnabled: false,
+      stripeConnectDetailsSubmitted: false,
+    });
+
+    const res = await PATCH(
+      makePatchRequest({ active: true }),
+      { params: Promise.resolve({ id: 'deal-1' }) }
+    );
+
+    expect(res.status).toBe(409);
+    expect(mockDealUpdate).not.toHaveBeenCalled();
+  });
+
+  it('allows publishing a guaranteed-free purchase-link deal without payouts', async () => {
+    mockDealFindUnique.mockResolvedValue({
+      ...existingDeal,
+      discountType: 'free_service',
+      discountValue: 0,
+    });
+    mockBusinessFindUnique.mockResolvedValue({
+      stripeConnectAccountId: null,
+      stripeConnectChargesEnabled: false,
+      stripeConnectPayoutsEnabled: false,
+      stripeConnectDetailsSubmitted: false,
+    });
+    mockDealUpdate.mockResolvedValue({
+      ...existingDeal,
+      id: 'deal-1',
+      active: true,
+      discountType: 'free_service',
+      discountValue: 0,
+    });
+
+    const res = await PATCH(
+      makePatchRequest({ active: true }),
+      { params: Promise.resolve({ id: 'deal-1' }) }
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockDealUpdate).toHaveBeenCalled();
   });
 });

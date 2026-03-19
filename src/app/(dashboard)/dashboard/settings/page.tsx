@@ -1356,9 +1356,9 @@ export default function SettingsPage() {
         {activeTab === 'payout' && (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Payout Bank Account</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Stripe-powered payouts</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                Add your bank account to receive automatic weekly payouts from deal purchases. Your full account number is never stored.
+                Finish payout setup in the dedicated Payouts page before publishing paid purchase-link deals. Free-service and code-claim deals can still run without payout setup.
               </p>
 
               {bankAccountLoading ? (

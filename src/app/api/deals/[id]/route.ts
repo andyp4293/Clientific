@@ -7,6 +7,7 @@ import {
   isDealStartBeforeToday,
   parseDealDate,
 } from '@/lib/deal-dates';
+import { dealRequiresPayoutSetup, getPaidDealPayoutStatus } from '@/lib/paid-deal-payouts';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 
@@ -80,6 +81,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         : body.deliveryType === 'code_claim'
           ? 'code_claim'
           : 'purchase_link';
+    const nextActive = body.active === undefined ? existing.active : Boolean(body.active);
     const serviceScope =
       body.serviceScope === undefined
         ? existing.serviceScope
@@ -123,12 +125,49 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     }
 
+    const nextRequiresPayoutSetup = dealRequiresPayoutSetup({
+      deliveryType,
+      discountType: body.discountType ?? existing.discountType,
+      discountValue:
+        body.discountValue !== undefined
+          ? Number(body.discountValue)
+          : existing.discountValue,
+    });
+    const existingRequiresPayoutSetup = dealRequiresPayoutSetup(existing);
+    const isPublishingPaidPurchaseLink =
+      nextRequiresPayoutSetup &&
+      nextActive &&
+      !(existing.active && existingRequiresPayoutSetup);
+
+    if (isPublishingPaidPurchaseLink) {
+      const business = await prisma.business.findUnique({
+        where: { id: session.user.id },
+        select: {
+          stripeConnectAccountId: true,
+          stripeConnectChargesEnabled: true,
+          stripeConnectPayoutsEnabled: true,
+          stripeConnectDetailsSubmitted: true,
+        },
+      });
+
+      const payoutStatus = getPaidDealPayoutStatus({
+        stripeConnectAccountId: business?.stripeConnectAccountId ?? null,
+        stripeConnectChargesEnabled: business?.stripeConnectChargesEnabled ?? false,
+        stripeConnectPayoutsEnabled: business?.stripeConnectPayoutsEnabled ?? false,
+        stripeConnectDetailsSubmitted: business?.stripeConnectDetailsSubmitted ?? false,
+      });
+
+      if (!payoutStatus.ready) {
+        return NextResponse.json({ error: payoutStatus.message }, { status: 409 });
+      }
+    }
+
     const deal = await prisma.deal.update({
       where: { id },
       data: {
         ...(body.title !== undefined && { title: body.title }),
         ...(body.description !== undefined && { description: body.description }),
-        ...(body.active !== undefined && { active: body.active }),
+        ...(body.active !== undefined && { active: nextActive }),
         ...(body.deliveryType !== undefined && { deliveryType }),
         ...(body.serviceScope !== undefined && { serviceScope }),
         ...(body.discountType !== undefined && { discountType: body.discountType }),

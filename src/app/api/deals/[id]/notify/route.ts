@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
+import { dealRequiresPayoutSetup, getPaidDealPayoutStatus } from '@/lib/paid-deal-payouts';
 import {
   sendSMS,
   formatPhoneNumber,
@@ -44,6 +45,10 @@ export async function POST(
             slug: true,
             enableOnlineBooking: true,
             vapiPhoneNumber: true,
+            stripeConnectAccountId: true,
+            stripeConnectChargesEnabled: true,
+            stripeConnectPayoutsEnabled: true,
+            stripeConnectDetailsSubmitted: true,
           },
         },
         service: { select: { name: true } },
@@ -61,6 +66,13 @@ export async function POST(
 
     if (!deal.active) {
       return NextResponse.json({ error: 'Deal is not active' }, { status: 400 });
+    }
+
+    if (dealRequiresPayoutSetup(deal)) {
+      const payoutStatus = getPaidDealPayoutStatus(deal.business);
+      if (!payoutStatus.ready) {
+        return NextResponse.json({ error: payoutStatus.message }, { status: 409 });
+      }
     }
 
     const customers = await prisma.customer.findMany({

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { dealRequiresPayoutSetup, isBusinessReadyForPaidDeals } from '@/lib/paid-deal-payouts';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(req: NextRequest) {
@@ -45,6 +46,10 @@ export async function GET(req: NextRequest) {
             city: true,
             slug: true,
             publicId: true,
+            stripeConnectAccountId: true,
+            stripeConnectChargesEnabled: true,
+            stripeConnectPayoutsEnabled: true,
+            stripeConnectDetailsSubmitted: true,
           },
         },
       },
@@ -52,18 +57,29 @@ export async function GET(req: NextRequest) {
       take: limit,
     });
 
-    const available = deals.filter(
-      d => d.maxRedemptions === null || d.redemptionCount < d.maxRedemptions
-    );
+    const available = deals.filter((deal) => {
+      const withinRedemptionLimit =
+        deal.maxRedemptions === null || deal.redemptionCount < deal.maxRedemptions;
+      const payoutReady =
+        !dealRequiresPayoutSetup(deal) || isBusinessReadyForPaidDeals(deal.business);
+
+      return withinRedemptionLimit && payoutReady;
+    });
 
     return NextResponse.json({
-      deals: available.map(d => ({
-        id: d.id,
-        title: d.title,
-        discountType: d.discountType,
-        discountValue: d.discountValue,
-        expiresAt: d.expiresAt,
-        business: d.business,
+      deals: available.map((deal) => ({
+        id: deal.id,
+        title: deal.title,
+        discountType: deal.discountType,
+        discountValue: deal.discountValue,
+        expiresAt: deal.expiresAt,
+        business: {
+          name: deal.business.name,
+          businessType: deal.business.businessType,
+          city: deal.business.city,
+          slug: deal.business.slug,
+          publicId: deal.business.publicId,
+        },
       })),
     });
   } catch (error: any) {

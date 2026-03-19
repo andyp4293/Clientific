@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { dealRequiresPayoutSetup, isBusinessReadyForPaidDeals } from '@/lib/paid-deal-payouts';
 import { prisma } from '@/lib/prisma';
 import { getSessionBusinessId } from '@/lib/session-business';
 
@@ -32,6 +33,10 @@ export async function GET(
             publicId: true,
             city: true,
             state: true,
+            stripeConnectAccountId: true,
+            stripeConnectChargesEnabled: true,
+            stripeConnectPayoutsEnabled: true,
+            stripeConnectDetailsSubmitted: true,
             services: {
               where: { active: true },
               select: {
@@ -61,6 +66,10 @@ export async function GET(
       return NextResponse.json({ error: 'Deal is sold out' }, { status: 404 });
     }
 
+    if (dealRequiresPayoutSetup(deal) && !isBusinessReadyForPaidDeals(deal.business)) {
+      return NextResponse.json({ error: 'Deal not found' }, { status: 404 });
+    }
+
     const session = await getServerSession(authOptions);
     const sessionBusinessId = getSessionBusinessId(session);
 
@@ -88,7 +97,14 @@ export async function GET(
                 duration: service.duration,
               }))
             : [],
-        business: deal.business,
+        business: {
+          id: deal.business.id,
+          name: deal.business.name,
+          slug: deal.business.slug,
+          publicId: deal.business.publicId,
+          city: deal.business.city,
+          state: deal.business.state,
+        },
         viewerCanManage: sessionBusinessId === deal.businessId,
       },
     });

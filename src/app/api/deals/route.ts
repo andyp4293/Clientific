@@ -7,6 +7,7 @@ import {
   isDealStartBeforeToday,
   parseDealDate,
 } from '@/lib/deal-dates';
+import { dealRequiresPayoutSetup, getPaidDealPayoutStatus } from '@/lib/paid-deal-payouts';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 
@@ -110,6 +111,7 @@ export async function POST(req: NextRequest) {
       serviceScope: rawServiceScope,
       deliveryType: rawDeliveryType,
       eligibleServiceIds: rawEligibleServiceIds,
+      active: rawActive,
       startsAt,
       expiresAt,
       maxRedemptions,
@@ -153,6 +155,7 @@ export async function POST(req: NextRequest) {
 
     const deliveryType =
       rawDeliveryType === 'code_claim' ? 'code_claim' : 'purchase_link';
+    const active = rawActive === false ? false : true;
     const serviceScope =
       rawServiceScope === 'all_services'
         ? 'all_services'
@@ -206,11 +209,42 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (
+      active &&
+      dealRequiresPayoutSetup({
+        deliveryType,
+        discountType,
+        discountValue: numericDiscount,
+      })
+    ) {
+      const business = await prisma.business.findUnique({
+        where: { id: session.user.id },
+        select: {
+          stripeConnectAccountId: true,
+          stripeConnectChargesEnabled: true,
+          stripeConnectPayoutsEnabled: true,
+          stripeConnectDetailsSubmitted: true,
+        },
+      });
+
+      const payoutStatus = getPaidDealPayoutStatus({
+        stripeConnectAccountId: business?.stripeConnectAccountId ?? null,
+        stripeConnectChargesEnabled: business?.stripeConnectChargesEnabled ?? false,
+        stripeConnectPayoutsEnabled: business?.stripeConnectPayoutsEnabled ?? false,
+        stripeConnectDetailsSubmitted: business?.stripeConnectDetailsSubmitted ?? false,
+      });
+
+      if (!payoutStatus.ready) {
+        return NextResponse.json({ error: payoutStatus.message }, { status: 409 });
+      }
+    }
+
     const deal = await prisma.deal.create({
       data: {
         businessId: session.user.id,
         title: title.trim(),
         description: description?.trim() || null,
+        active,
         deliveryType,
         serviceScope,
         discountType,

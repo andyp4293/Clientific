@@ -12,6 +12,7 @@ import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { claimDealForCustomer, DealClaimError } from '@/lib/deal-claims';
 import { getAppBaseUrlFromRequest } from '@/lib/app-url';
 import { getInStoreCaptureConfig } from '@/lib/in-store-capture';
+import { dealRequiresPayoutSetup, isBusinessReadyForPaidDeals } from '@/lib/paid-deal-payouts';
 
 function getClientIpAddress(req: NextRequest): string | null {
   const forwarded = req.headers.get('x-forwarded-for');
@@ -93,6 +94,10 @@ export async function POST(
         slug: true,
         enableOnlineBooking: true,
         vapiPhoneNumber: true,
+        stripeConnectAccountId: true,
+        stripeConnectChargesEnabled: true,
+        stripeConnectPayoutsEnabled: true,
+        stripeConnectDetailsSubmitted: true,
       },
     });
 
@@ -181,6 +186,8 @@ export async function POST(
             id: true,
             title: true,
             deliveryType: true,
+            discountType: true,
+            discountValue: true,
             expiresAt: true,
             maxRedemptions: true,
             redemptionCount: true,
@@ -192,6 +199,13 @@ export async function POST(
         }
         if (selectedDeal.maxRedemptions !== null && selectedDeal.redemptionCount >= selectedDeal.maxRedemptions) {
           throw new DealClaimError('Deal is sold out', 400);
+        }
+
+        if (
+          dealRequiresPayoutSetup(selectedDeal) &&
+          !isBusinessReadyForPaidDeals(business)
+        ) {
+          throw new DealClaimError('This business is still finishing payout setup', 400);
         }
 
         if (selectedDeal.deliveryType === 'purchase_link') {

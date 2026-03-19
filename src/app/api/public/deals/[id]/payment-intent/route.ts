@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
 import { getAppBaseUrlFromRequest } from '@/lib/app-url';
+import { dealRequiresPayoutSetup } from '@/lib/paid-deal-payouts';
 import {
   calculateDealPurchaseTotals,
   DealPurchasePricingError,
@@ -12,6 +13,7 @@ import {
   createPendingDealPurchase,
   finalizeDealPurchaseFromPaymentIntent,
 } from '@/lib/deal-purchases';
+import { ensureBusinessConnectAccount } from '@/lib/stripe-connect';
 import { formatPhoneNumber, isValidPhoneNumber } from '@/lib/twilio';
 
 export async function POST(
@@ -52,6 +54,7 @@ export async function POST(
             name: true,
             email: true,
             slug: true,
+            stripeConnectAccountId: true,
             services: {
               where: { active: true },
               select: { id: true, name: true, price: true, active: true },
@@ -119,6 +122,32 @@ export async function POST(
       });
     }
 
+    let connectAccountId: string | null = null;
+
+    if (dealRequiresPayoutSetup(deal)) {
+      const connectAccount = await ensureBusinessConnectAccount(
+        {
+          id: deal.business.id,
+          email: deal.business.email,
+          name: deal.business.name,
+          stripeConnectAccountId: deal.business.stripeConnectAccountId,
+        },
+        appUrl
+      );
+
+      if (!(connectAccount.charges_enabled && connectAccount.payouts_enabled && connectAccount.details_submitted)) {
+        return NextResponse.json(
+          {
+            error:
+              'This business is still finishing Stripe-powered payout setup, so this paid deal is not available yet.',
+          },
+          { status: 409 }
+        );
+      }
+
+      connectAccountId = connectAccount.id;
+    }
+
     // Paid deal: create a pending purchase row first so the receipt page can
     // find it immediately after payment. The webhook (payment_intent.succeeded)
     // will finalize it (set status=paid, assign redemptionCode, send SMS).
@@ -135,7 +164,11 @@ export async function POST(
       paymentIntent = await stripe.paymentIntents.create({
         amount: totals.totalAmount,
         currency: 'usd',
+        application_fee_amount: purchase.applicationFeeAmount,
         automatic_payment_methods: { enabled: true },
+        transfer_data: {
+          destination: connectAccountId!,
+        },
         metadata: {
           kind: 'deal_purchase',
           dealPurchaseId: purchase.id,

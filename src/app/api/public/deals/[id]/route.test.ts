@@ -54,6 +54,10 @@ function makeDeal(overrides: Partial<Record<string, unknown>> = {}) {
       publicId: 'pub-1',
       city: 'Austin',
       state: 'TX',
+      stripeConnectAccountId: 'acct_123',
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+      stripeConnectDetailsSubmitted: true,
     },
     ...overrides,
   };
@@ -100,5 +104,29 @@ describe('GET /api/public/deals/[id]', () => {
         viewerCanManage: true,
       },
     });
+  });
+
+  it('hides a paid purchase-link deal when Stripe payouts are not ready', async () => {
+    mockGetServerSession.mockResolvedValue(null);
+    mockDealFindUnique.mockResolvedValue(
+      makeDeal({
+        deliveryType: 'purchase_link',
+        business: {
+          name: 'Test Salon',
+          slug: 'test-salon',
+          publicId: 'pub-1',
+          city: 'Austin',
+          state: 'TX',
+          stripeConnectAccountId: null,
+          stripeConnectChargesEnabled: false,
+          stripeConnectPayoutsEnabled: false,
+          stripeConnectDetailsSubmitted: false,
+        },
+      })
+    );
+
+    const res = await GET(makeRequest(), makeParams());
+
+    expect(res.status).toBe(404);
   });
 });

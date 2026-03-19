@@ -52,6 +52,14 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
   vi.setSystemTime(new Date('2026-03-10T15:00:00.000Z'));
+  mockBusiness.mockResolvedValue({
+    subscriptionStatus: 'active',
+    trialEndsAt: null,
+    stripeConnectAccountId: 'acct_123',
+    stripeConnectChargesEnabled: true,
+    stripeConnectPayoutsEnabled: true,
+    stripeConnectDetailsSubmitted: true,
+  });
 });
 
 afterAll(() => {
@@ -169,7 +177,6 @@ describe('POST /api/deals', () => {
 
   it('creates deal successfully with active subscription', async () => {
     mockSession.mockResolvedValue(activeSession);
-    mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
     const fakeDeal = { id: 'deal-1', ...validDealBody, businessId: 'biz-1', service: null };
     mockDealCreate.mockResolvedValue(fakeDeal);
     const res = await POST(makeRequest());
@@ -180,7 +187,6 @@ describe('POST /api/deals', () => {
 
   it('creates free_service deal without discountValue', async () => {
     mockSession.mockResolvedValue(activeSession);
-    mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
     const freeDeal = {
       title: 'Free Consultation',
       discountType: 'free_service',
@@ -190,6 +196,55 @@ describe('POST /api/deals', () => {
     const fakeDeal = { id: 'deal-2', ...freeDeal, discountValue: 0, businessId: 'biz-1', service: null };
     mockDealCreate.mockResolvedValue(fakeDeal);
     const res = await POST(makeRequest(freeDeal));
+    expect(res.status).toBe(201);
+  });
+
+  it('returns 409 when a paid purchase-link deal is created before payouts are ready', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValue({
+      subscriptionStatus: 'active',
+      trialEndsAt: null,
+      stripeConnectAccountId: null,
+      stripeConnectChargesEnabled: false,
+      stripeConnectPayoutsEnabled: false,
+      stripeConnectDetailsSubmitted: false,
+    });
+
+    const res = await POST(makeRequest());
+
+    expect(res.status).toBe(409);
+    expect(mockDealCreate).not.toHaveBeenCalled();
+    expect((await res.json()).error).toMatch(/payout setup/i);
+  });
+
+  it('allows a guaranteed-free purchase-link deal even before payouts are ready', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValue({
+      subscriptionStatus: 'active',
+      trialEndsAt: null,
+      stripeConnectAccountId: null,
+      stripeConnectChargesEnabled: false,
+      stripeConnectPayoutsEnabled: false,
+      stripeConnectDetailsSubmitted: false,
+    });
+    mockDealCreate.mockResolvedValue({
+      id: 'deal-free',
+      title: 'Free Consultation',
+      discountType: 'free_service',
+      discountValue: 0,
+      businessId: 'biz-1',
+      service: null,
+    });
+
+    const res = await POST(
+      makeRequest({
+        title: 'Free Consultation',
+        discountType: 'free_service',
+        startsAt: '2026-03-10',
+        expiresAt: '2026-03-11',
+      })
+    );
+
     expect(res.status).toBe(201);
   });
 
@@ -244,7 +299,6 @@ describe('POST /api/deals', () => {
 
   it('normalizes date-only inputs to full-day bounds', async () => {
     mockSession.mockResolvedValue(activeSession);
-    mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
     mockDealCreate.mockResolvedValue({
       id: 'deal-3',
       ...validDealBody,

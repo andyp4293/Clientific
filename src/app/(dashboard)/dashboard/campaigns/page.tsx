@@ -20,6 +20,10 @@ type Deal = {
   redemptionCount: number; active: boolean; notifiedAt: string | null; revenueTracked: number; platformFeesOwed: number;
   purchases: Purchase[]; redemptions: { id: string; code: string; usedAt: string | null }[]; notificationSends: { id: string; createdAt: string; customerName: string | null; customerPhone: string; code: string | null; purchaseUrl: string | null; status: string; errorMessage: string | null }[];
 };
+type ConnectStatus = {
+  readyForPaidDeals: boolean;
+  notConnected: boolean;
+};
 
 const money = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
 const cents = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value / 100);
@@ -50,6 +54,7 @@ export default function DealsPage() {
   const { data: dealsData, isLoading } = useQuery({ queryKey: ['deals'], queryFn: async () => { const res = await fetch('/api/deals'); if (!res.ok) throw new Error('Failed'); return res.json(); } });
   const { data: servicesData } = useQuery({ queryKey: ['services'], queryFn: async () => { const res = await fetch('/api/services'); if (!res.ok) throw new Error('Failed'); return res.json(); } });
   const { data: businessData } = useQuery({ queryKey: ['business'], queryFn: async () => { const res = await fetch('/api/business'); if (!res.ok) throw new Error('Failed'); return res.json(); } });
+  const { data: payoutStatusData } = useQuery<ConnectStatus>({ queryKey: ['connect-account'], queryFn: async () => { const res = await fetch('/api/stripe/connect/account'); if (!res.ok) throw new Error('Failed'); return res.json(); } });
 
   const deals: Deal[] = (dealsData?.deals ?? []).map((deal: any) => ({
     ...deal,
@@ -60,6 +65,7 @@ export default function DealsPage() {
   }));
   const services: { id: string; name: string }[] = servicesData?.services ?? [];
   const business = businessData?.business ? { name: businessData.business.name, publicId: businessData.business.publicId } : null;
+  const payoutReady = Boolean(payoutStatusData?.readyForPaidDeals);
   const purchases = useMemo(() => deals.flatMap((deal) => deal.purchases.map((purchase) => ({ ...purchase, dealTitle: deal.title }))), [deals]);
   const lookupMatches = useMemo(() => {
     const q = lookupQuery.trim().toLowerCase(); if (!q) return [];
@@ -142,6 +148,21 @@ export default function DealsPage() {
 
   return (
     <div data-testid="deals-page" className="max-w-7xl space-y-4 pb-28 sm:space-y-6 md:pb-8">
+      {payoutStatusData && !payoutReady && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900/30 dark:bg-amber-900/20">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">Set up payouts before publishing paid deals</p>
+              <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">
+                Paid purchase-link deals need Stripe-powered payout setup first. Free-service deals can still be created without it.
+              </p>
+            </div>
+            <a href="/dashboard/payouts" className="btn-primary text-sm">
+              Open Payouts
+            </a>
+          </div>
+        </div>
+      )}
       <div className="flex items-start justify-between gap-4"><div><h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Deals</h1><p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Create purchased promotions, track receipts, and redeem them in-store.</p></div><button onClick={() => setShowForm((current) => !current)} className="btn-primary shrink-0 text-sm">{showForm ? 'Close' : 'New Deal'}</button></div>
 <section className="card p-5 md:p-6"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Purchase lookup</p><h2 className="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">Search by code, phone, or customer</h2></div><input value={lookupQuery} onChange={(event) => setLookupQuery(event.target.value)} placeholder="Search receipt history" className="input min-w-[260px] text-sm" /></div>{lookupQuery.trim() && <div className="mt-4 space-y-2">{lookupMatches.length === 0 ? <p className="text-sm text-gray-500 dark:text-gray-400">No purchases matched that search yet.</p> : lookupMatches.slice(0, 8).map((purchase) => <div key={purchase.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-100 p-4 dark:border-gray-800"><div><p className="font-semibold text-gray-900 dark:text-gray-100">{purchase.customerName}</p><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{purchase.dealTitle} • {phone(purchase.customerPhone)} • {purchase.redemptionCode ?? 'No code yet'}</p></div><div className="flex items-center gap-2"><a href={`/deal-purchases/${purchase.token}`} target="_blank" rel="noreferrer" className="btn-outline text-xs">Open receipt</a><button type="button" onClick={() => { setRedeemingPurchaseId(purchase.id); redeemMutation.mutate({ purchaseId: purchase.id }); }} disabled={redeemingPurchaseId !== null || Boolean(purchase.redeemedAt)} className="btn-primary text-xs disabled:cursor-not-allowed disabled:opacity-60">{purchase.redeemedAt ? 'Already redeemed' : redeemingPurchaseId === purchase.id ? 'Redeeming...' : 'Redeem'}</button></div></div>)}</div>}</section>
       <InStoreCapturePanel business={business} deals={deals} />
@@ -165,7 +186,7 @@ export default function DealsPage() {
                 <p className="text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
                   By creating this deal, you agree to Clientific&apos;s{' '}
                   <a href="/terms" target="_blank" className="underline hover:text-gray-600 dark:hover:text-gray-300">Terms of Service</a>.
-                  {' '}Clientific charges a 15% service fee on each paid deal purchase, deducted before your weekly payout. Free and code-claim deals are not subject to this fee.
+                  {' '}Clientific charges a 15% service fee on each paid deal purchase, deducted before your Stripe-powered payout. Free and code-claim deals are not subject to this fee.
                 </p>
                 <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-4 dark:border-gray-800 sm:flex-row sm:justify-end"><button type="button" onClick={() => setShowForm(false)} className="btn-outline text-sm" disabled={createMutation.isPending}>Cancel</button><button type="submit" disabled={createMutation.isPending} className="btn-primary text-sm">{createMutation.isPending ? 'Creating...' : 'Create Deal'}</button></div>
               </form>

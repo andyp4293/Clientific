@@ -1,4 +1,5 @@
 import { getAppBaseUrlFromRequest } from '@/lib/app-url';
+import { dealRequiresPayoutSetup, isBusinessReadyForPaidDeals } from '@/lib/paid-deal-payouts';
 import { prisma } from '@/lib/prisma';
 
 export type InStoreCaptureConfig = {
@@ -51,6 +52,10 @@ export async function getInStoreCaptureConfig({
       logoUrl: true,
       publicProfileHeadline: true,
       enableOnlineBooking: true,
+      stripeConnectAccountId: true,
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+      stripeConnectDetailsSubmitted: true,
     },
   });
 
@@ -89,7 +94,8 @@ export async function getInStoreCaptureConfig({
   const appBaseUrl = getAppBaseUrlFromRequest(requestUrl);
   const selectedDeal =
     activeDeal &&
-    (activeDeal.maxRedemptions === null || activeDeal.redemptionCount < activeDeal.maxRedemptions)
+    (activeDeal.maxRedemptions === null || activeDeal.redemptionCount < activeDeal.maxRedemptions) &&
+    (!dealRequiresPayoutSetup(activeDeal) || isBusinessReadyForPaidDeals(business))
       ? activeDeal
       : null;
   const selectedDealId = selectedDeal?.id ?? null;
