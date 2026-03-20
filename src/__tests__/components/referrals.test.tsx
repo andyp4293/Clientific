@@ -165,4 +165,21 @@ describe('ReferralsPage', () => {
     expect(screen.getByText('Janes Nails')).toBeInTheDocument();
     expect(screen.getByText('Cuts by Bob')).toBeInTheDocument();
   });
+
+  it('describes referral earnings as Stripe payouts instead of direct cashout copy', () => {
+    mockUseQuery.mockReturnValue({
+      data: { referralCode: 'MYCODE12', totalCredits: 15, referrals: [makeReferral('active')] },
+      isLoading: false,
+    } as any);
+
+    render(<ReferralsPage />);
+
+    expect(
+      screen.getByText(/those earnings stack and move into your stripe payout balance/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/completed earnings move into your stripe payouts once your payout setup is ready/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/paid out directly to you/i)).not.toBeInTheDocument();
+  });
 });

@@ -30,9 +30,10 @@ export default function ReferralsPage() {
     queryFn: () => fetch('/api/referrals').then(r => r.json()),
   });
 
-  const referralUrl = typeof window !== 'undefined' && data?.referralCode
-    ? `${window.location.origin}/register?ref=${data.referralCode}`
-    : '';
+  const referralUrl =
+    typeof window !== 'undefined' && data?.referralCode
+      ? `${window.location.origin}/register?ref=${data.referralCode}`
+      : '';
 
   function copyLink() {
     navigator.clipboard.writeText(referralUrl);
@@ -49,13 +50,13 @@ export default function ReferralsPage() {
     a.click();
   }
 
-  const activeCount = data?.referrals?.filter(r => r.status === 'active' || r.status === 'credited').length ?? 0;
+  const activeCount =
+    data?.referrals?.filter(r => r.status === 'active' || r.status === 'credited').length ?? 0;
   const pendingCount = data?.referrals?.filter(r => r.status === 'pending').length ?? 0;
   const totalCredits = data?.totalCredits ?? 0;
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto pb-28 md:pb-8">
-
       {/* Hero banner */}
       <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-primary-900 p-6 mb-6 text-white shadow-lg shadow-primary/20">
         <div className="flex items-center gap-2 mb-3">
@@ -66,7 +67,9 @@ export default function ReferralsPage() {
         </div>
         <p className="text-white/80 text-sm leading-relaxed mb-5">
           Invite another business owner to Clientific. While they stay subscribed, you earn{' '}
-          <span className="text-white font-semibold">{REFERRAL_COMMISSION_DISPLAY} every month</span> paid out directly to you — no subscription required to collect.
+          <span className="text-white font-semibold">{REFERRAL_COMMISSION_DISPLAY} every month</span>.
+          Those earnings stack and move into your Stripe payout balance on the Payouts page once
+          your payout setup is ready.
         </p>
 
         {/* Stats row */}
@@ -100,7 +103,9 @@ export default function ReferralsPage() {
 
       {/* Share card */}
       <div className="card p-5 mb-4">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Your referral link</h2>
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
+          Your referral link
+        </h2>
 
         {/* Link input + copy */}
         <div className="flex items-center gap-2 mb-5">
@@ -124,15 +129,19 @@ export default function ReferralsPage() {
           </button>
         </div>
 
-        {/* QR code — always rendered, skeleton when loading */}
+        {/* QR code is always rendered, with a skeleton while loading */}
         <div className="flex flex-col items-center gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
           <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-            Customers scan to sign up. Save to print on materials, cards, or social posts.
+            Business owners can scan to sign up. Save it to print on materials, cards, or social
+            posts.
           </p>
           {isLoading || !referralUrl ? (
             <div className="w-[164px] h-[164px] bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" />
           ) : (
-            <div ref={canvasRef} className="bg-white p-3 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div
+              ref={canvasRef}
+              className="bg-white p-3 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm"
+            >
               <QRCodeCanvas value={referralUrl} size={140} level="M" />
             </div>
           )}
@@ -157,7 +166,7 @@ export default function ReferralsPage() {
           {[
             'Share your unique link with another business owner',
             `They sign up and get a free ${STANDARD_TRIAL_DAYS}-day trial`,
-            `Once they subscribe, you automatically earn ${REFERRAL_COMMISSION_DISPLAY} every month they stay subscribed — the higher their plan, the more you earn`,
+            `Once they subscribe, you automatically earn ${REFERRAL_COMMISSION_DISPLAY} of each paid subscription invoice, and those earnings stack in your payouts balance`,
           ].map((text, i) => (
             <div key={i} className="flex items-start gap-3">
               <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
@@ -182,7 +191,10 @@ export default function ReferralsPage() {
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2].map(i => (
-              <div key={i} className="flex items-center justify-between py-3 border-t border-gray-100 dark:border-gray-700">
+              <div
+                key={i}
+                className="flex items-center justify-between py-3 border-t border-gray-100 dark:border-gray-700"
+              >
                 <div className="space-y-1.5">
                   <div className="h-4 w-32 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
                   <div className="h-3 w-20 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
@@ -196,7 +208,9 @@ export default function ReferralsPage() {
             <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-3">
               <Gift className="w-7 h-7 text-gray-300 dark:text-gray-600" />
             </div>
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">No referrals yet</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              No referrals yet
+            </p>
             <p className="text-xs text-gray-400 dark:text-gray-500">
               Share your link to start earning credits.
             </p>
@@ -210,11 +224,16 @@ export default function ReferralsPage() {
                     {referral.referee.name}
                   </p>
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                    Joined {new Date(referral.referee.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    Joined{' '}
+                    {new Date(referral.referee.createdAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
                   </p>
                 </div>
                 <div className="shrink-0">
-                  {(referral.status === 'active' || referral.status === 'credited') ? (
+                  {referral.status === 'active' || referral.status === 'credited' ? (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-100 dark:border-green-800/30">
                       <CheckCircle className="w-3 h-3" />
                       ${referral.creditAmount.toFixed(2)} earned
@@ -233,7 +252,9 @@ export default function ReferralsPage() {
       </div>
 
       <p className="text-xs text-gray-400 dark:text-gray-500 mt-4 text-center leading-relaxed">
-        Payouts are processed automatically each month your referee stays subscribed. No limit on referrals — each active subscriber earns you {REFERRAL_COMMISSION_DISPLAY} every month.
+        Referral earnings are added automatically each month your referee stays subscribed. There
+        is no limit on referrals, and completed earnings move into your Stripe payouts once your
+        payout setup is ready.
       </p>
     </div>
   );
