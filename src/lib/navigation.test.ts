@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   DASHBOARD_MOBILE_MORE_NAV,
@@ -145,6 +147,21 @@ describe('getActiveDashboardRoute', () => {
 });
 
 describe('navigation config integrity', () => {
+  function dashboardHrefToPagePath(href: string) {
+    const segments = href === '/dashboard'
+      ? ['page.tsx']
+      : [...href.replace(/^\/dashboard\//, '').split('/'), 'page.tsx'];
+
+    return path.join(
+      process.cwd(),
+      'src',
+      'app',
+      '(dashboard)',
+      'dashboard',
+      ...segments
+    );
+  }
+
   it('has unique keys', () => {
     const keys = DASHBOARD_NAV_ITEMS.map((item) => item.key);
     expect(new Set(keys).size).toBe(keys.length);
@@ -176,5 +193,23 @@ describe('navigation config integrity', () => {
 
   it('orders operations before growth in grouped dashboard navigation', () => {
     expect(DASHBOARD_SECTION_ORDER).toEqual(['core', 'operations', 'growth', 'account']);
+  });
+
+  it.each(DASHBOARD_NAV_ITEMS)('keeps a real page behind the %s dashboard link', (item) => {
+    expect(existsSync(dashboardHrefToPagePath(item.href))).toBe(true);
+  });
+
+  it('keeps the legacy /dashboard/billing route available as a redirect alias', () => {
+    const legacyBillingPath = path.join(
+      process.cwd(),
+      'src',
+      'app',
+      '(dashboard)',
+      'dashboard',
+      'billing',
+      'page.tsx'
+    );
+
+    expect(existsSync(legacyBillingPath)).toBe(true);
   });
 });
