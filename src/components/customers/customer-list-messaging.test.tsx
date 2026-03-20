@@ -86,7 +86,7 @@ describe('CustomerList messaging', () => {
     });
   });
 
-  it('shows SMS status badges for opted-out and SMS-enabled customers', () => {
+  it('shows SMS status badges for opted-out, enabled, and denied customers', () => {
     render(
       <CustomerList
         customers={[
@@ -128,10 +128,30 @@ describe('CustomerList messaging', () => {
               appointments: 1,
             },
           },
+          {
+            id: 'cust-3',
+            name: 'Maria Stone',
+            email: 'maria@example.com',
+            phone: '+15559876543',
+            smsConsent: false,
+            smsOptedOut: false,
+            segment: 'NEW',
+            points: 0,
+            totalSpent: 0,
+            lastVisit: null,
+            birthday: null,
+            notes: null,
+            createdAt: new Date('2026-03-03T12:00:00.000Z'),
+            _count: {
+              checkIns: 0,
+              appointments: 0,
+            },
+          },
         ]}
         segmentCounts={[
           { segment: 'VIP', _count: 1 },
           { segment: 'REGULAR', _count: 1 },
+          { segment: 'NEW', _count: 1 },
         ]}
       />
     );
@@ -145,6 +165,8 @@ describe('CustomerList messaging', () => {
     expect(screen.getAllByText('Can receive SMS').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Opted out').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Stopped SMS').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Denies SMS').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('SMS permission has not been given').length).toBeGreaterThan(0);
   });
 
   it('renders readable customer cards on mobile with key details visible', () => {
