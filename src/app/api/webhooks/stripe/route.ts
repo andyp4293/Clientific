@@ -1,12 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { revalidateTag } from 'next/cache';
 import { stripe, PRICING_PLANS } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
-import { revalidateTag } from 'next/cache';
-import { createDealPurchaseFromPaymentIntent, finalizeDealPurchaseFromCheckoutSession, finalizeDealPurchaseFromPaymentIntent } from '@/lib/deal-purchases';
+import {
+  createDealPurchaseFromPaymentIntent,
+  finalizeDealPurchaseFromCheckoutSession,
+  finalizeDealPurchaseFromPaymentIntent,
+} from '@/lib/deal-purchases';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { REFERRAL_COMMISSION_PERCENT } from '@/lib/referral-config';
-import { getPublicPlanLabel, getPublicPlanSlug, normalizeSubscriptionPlan } from '@/lib/plan-utils';
+import {
+  canAutoTransferReferralPayouts,
+  recordReferralCommission,
+  settlePendingReferralCommissions,
+} from '@/lib/referral-payouts';
+import {
+  getPublicPlanLabel,
+  getPublicPlanSlug,
+  normalizeSubscriptionPlan,
+} from '@/lib/plan-utils';
 import { sanitizeStripeEnvValue } from '@/lib/stripe-env';
 
 function getPlanFromPriceId(priceId: string): string | null {
@@ -94,7 +107,10 @@ export async function POST(req: NextRequest) {
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   if (session.metadata?.dealPurchaseId) {
-    await finalizeDealPurchaseFromCheckoutSession(session, getConfiguredAppBaseUrl());
+    await finalizeDealPurchaseFromCheckoutSession(
+      session,
+      getConfiguredAppBaseUrl()
+    );
     return;
   }
 
@@ -106,6 +122,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const subscription = await stripe.subscriptions.retrieve(
     session.subscription as string
   );
+
   await prisma.business.update({
     where: { id: businessId },
     data: {
@@ -114,17 +131,22 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       stripePriceId: subscription.items.data[0].price.id,
       subscriptionPlan: plan,
       subscriptionStatus: subscription.status,
-      stripeCurrentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
+      stripeCurrentPeriodEnd: new Date(
+        (subscription as any).current_period_end * 1000
+      ),
     },
   });
+
   revalidateTag(`subscription-status-${businessId}`, {});
   revalidateTag(`dashboard-stats-${businessId}`, {});
   revalidateTag(`business-${businessId}`, {});
-  // Create notification
-  const trialEndMessage = subscription.trial_end 
-    ? ` Your trial will end on ${new Date(subscription.trial_end * 1000).toLocaleDateString()}.`
+
+  const trialEndMessage = subscription.trial_end
+    ? ` Your trial will end on ${new Date(
+        subscription.trial_end * 1000
+      ).toLocaleDateString()}.`
     : '';
-    
+
   await prisma.notification.create({
     data: {
       businessId,
@@ -151,13 +173,16 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     data: {
       subscriptionStatus: subscription.status,
       stripePriceId: newPriceId,
-      stripeCurrentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
+      stripeCurrentPeriodEnd: new Date(
+        (subscription as any).current_period_end * 1000
+      ),
       trialEndsAt: subscription.trial_end
         ? new Date(subscription.trial_end * 1000)
         : null,
       ...(newPlan && { subscriptionPlan: newPlan }),
     },
   });
+
   revalidateTag(`subscription-status-${business.id}`, {});
   revalidateTag(`dashboard-stats-${business.id}`, {});
   revalidateTag(`business-${business.id}`, {});
@@ -176,11 +201,11 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
       subscriptionStatus: 'canceled',
     },
   });
+
   revalidateTag(`subscription-status-${business.id}`, {});
   revalidateTag(`dashboard-stats-${business.id}`, {});
   revalidateTag(`business-${business.id}`, {});
 
-  // Create notification
   await prisma.notification.create({
     data: {
       businessId: business.id,
@@ -201,7 +226,6 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 
   const paymentIntentId = (invoice as any).payment_intent as string | null;
 
-  // Only save a payment record for non-zero invoices with a payment intent
   if (invoice.amount_paid > 0 && paymentIntentId) {
     await prisma.payment.upsert({
       where: { stripePaymentId: paymentIntentId },
@@ -219,7 +243,6 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
     });
   }
 
-  // Save invoice record (upsert to handle webhook retries)
   const paidAt = invoice.status_transitions.paid_at
     ? new Date(invoice.status_transitions.paid_at * 1000)
     : new Date();
@@ -232,8 +255,16 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
       amount: invoice.amount_paid,
       currency: invoice.currency,
       status: 'paid',
-      periodStart: new Date(invoice.lines.data[0]?.period?.start ? invoice.lines.data[0].period.start * 1000 : Date.now()),
-      periodEnd: new Date(invoice.lines.data[0]?.period?.end ? invoice.lines.data[0].period.end * 1000 : Date.now()),
+      periodStart: new Date(
+        invoice.lines.data[0]?.period?.start
+          ? invoice.lines.data[0].period.start * 1000
+          : Date.now()
+      ),
+      periodEnd: new Date(
+        invoice.lines.data[0]?.period?.end
+          ? invoice.lines.data[0].period.end * 1000
+          : Date.now()
+      ),
       invoicePdf: invoice.invoice_pdf || null,
       hostedInvoiceUrl: invoice.hosted_invoice_url || null,
       paidAt,
@@ -241,84 +272,128 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
     update: {},
   });
 
-  // Credit referrer a percentage of every referee invoice payment (recurring)
   if (invoice.amount_paid > 0) {
     const referral = await prisma.referral.findFirst({
-      where: { refereeId: business.id, status: { in: ['pending', 'active', 'credited'] } },
-      include: { referrer: { select: { id: true, stripeCustomerId: true } } },
+      where: {
+        refereeId: business.id,
+        status: { in: ['pending', 'active', 'credited'] },
+      },
+      include: {
+        referrer: {
+          select: {
+            id: true,
+            stripeConnectAccountId: true,
+            stripeConnectChargesEnabled: true,
+            stripeConnectPayoutsEnabled: true,
+            stripeConnectDetailsSubmitted: true,
+          },
+        },
+      },
     });
-    if (referral?.referrer.stripeCustomerId) {
-      // Guard against duplicate webhook delivery — skip if we already recorded this invoice
-      const existing = await prisma.referralCommission.findUnique({
-        where: { stripeInvoiceId: invoice.id },
-      });
-      if (!existing) {
-        const commissionCents = Math.round(invoice.amount_paid * REFERRAL_COMMISSION_PERCENT);
-        const commissionDollars = commissionCents / 100;
-        try {
-          await stripe.customers.createBalanceTransaction(
-            referral.referrer.stripeCustomerId,
-            {
-              amount: -commissionCents,
-              currency: 'usd',
-              description: `Referral reward: ${Math.round(REFERRAL_COMMISSION_PERCENT * 100)}% of referee monthly payment`,
-            }
+
+    if (referral) {
+      const commissionCents = Math.round(
+        invoice.amount_paid * REFERRAL_COMMISSION_PERCENT
+      );
+
+      try {
+        const result = await recordReferralCommission({
+          referralId: referral.id,
+          referrerId: referral.referrerId,
+          stripeInvoiceId: invoice.id,
+          commissionCents,
+        });
+
+        if (result.created) {
+          console.log(
+            `Referral commission recorded: $${(result.amountCents / 100).toFixed(2)} for business ${referral.referrerId}`
           );
-          await prisma.$transaction([
-            prisma.referralCommission.create({
-              data: { referralId: referral.id, stripeInvoiceId: invoice.id, amountDollars: commissionDollars },
-            }),
-            prisma.referral.update({
-              where: { id: referral.id },
-              data: { status: 'active', creditedAt: new Date(), creditAmount: { increment: commissionDollars } },
-            }),
-            prisma.business.update({
-              where: { id: referral.referrerId },
-              data: { referralCredits: { increment: commissionDollars } },
-            }),
-          ]);
-          console.log(`✅ Referral commission applied: $${commissionDollars.toFixed(2)} to business ${referral.referrerId}`);
-        } catch (err) {
-          console.warn('⚠️  Referral commission failed:', err);
         }
+
+        if (
+          canAutoTransferReferralPayouts(referral.referrer) &&
+          referral.referrer.stripeConnectAccountId
+        ) {
+          const settlement = await settlePendingReferralCommissions({
+            businessId: referral.referrerId,
+            connectAccountId: referral.referrer.stripeConnectAccountId,
+          });
+
+          if (settlement.transferredCount > 0) {
+            console.log(
+              `Referral commissions moved into Stripe payouts: $${(
+                settlement.transferredAmount / 100
+              ).toFixed(2)} for business ${referral.referrerId}`
+            );
+          }
+        }
+      } catch (error) {
+        console.warn('Referral commission handling failed:', error);
       }
     }
 
-    // Mark affiliate signup as earned and record the amount (owner is paid manually)
     const affSignup = await prisma.affiliateSignup.findFirst({
       where: { businessId: business.id, status: 'pending' },
     });
+
     if (affSignup) {
-      const affCommissionDollars = Math.round(invoice.amount_paid * REFERRAL_COMMISSION_PERCENT) / 100;
+      const affCommissionDollars =
+        Math.round(invoice.amount_paid * REFERRAL_COMMISSION_PERCENT) / 100;
+
       try {
         await prisma.affiliateSignup.update({
           where: { id: affSignup.id },
-          data: { status: 'earned', earnedAt: new Date(), earnAmount: affCommissionDollars },
+          data: {
+            status: 'earned',
+            earnedAt: new Date(),
+            earnAmount: affCommissionDollars,
+          },
         });
-        console.log(`✅ Affiliate signup earned: $${affCommissionDollars.toFixed(2)} for ${affSignup.affiliateId}`);
-      } catch (err) {
-        console.warn('⚠️  Affiliate signup update failed:', err);
+        console.log(
+          `Affiliate signup earned: $${affCommissionDollars.toFixed(2)} for ${affSignup.affiliateId}`
+        );
+      } catch (error) {
+        console.warn('Affiliate signup update failed:', error);
       }
     }
   }
 }
 
 async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent) {
-  console.log('[deal-webhook] payment_intent.succeeded', paymentIntent.id, 'kind:', paymentIntent.metadata?.kind);
+  console.log(
+    '[deal-webhook] payment_intent.succeeded',
+    paymentIntent.id,
+    'kind:',
+    paymentIntent.metadata?.kind
+  );
+
   if (paymentIntent.metadata?.kind !== 'deal_purchase') return;
 
-  // Current flow: purchase row was created upfront (pending), finalize it now
   if (paymentIntent.metadata?.dealPurchaseId) {
-    console.log('[deal-webhook] finalizing purchase', paymentIntent.metadata.dealPurchaseId);
-    await finalizeDealPurchaseFromPaymentIntent(paymentIntent, getConfiguredAppBaseUrl());
-    console.log('[deal-webhook] finalized purchase', paymentIntent.metadata.dealPurchaseId);
+    console.log(
+      '[deal-webhook] finalizing purchase',
+      paymentIntent.metadata.dealPurchaseId
+    );
+    await finalizeDealPurchaseFromPaymentIntent(
+      paymentIntent,
+      getConfiguredAppBaseUrl()
+    );
+    console.log(
+      '[deal-webhook] finalized purchase',
+      paymentIntent.metadata.dealPurchaseId
+    );
     return;
   }
 
-  // Legacy flow (pre-2026-03): metadata carries purchaseToken — create the row for the first time
   if (paymentIntent.metadata?.purchaseToken) {
-    console.log('[deal-webhook] legacy create for purchaseToken', paymentIntent.metadata.purchaseToken);
-    await createDealPurchaseFromPaymentIntent(paymentIntent, getConfiguredAppBaseUrl());
+    console.log(
+      '[deal-webhook] legacy create for purchaseToken',
+      paymentIntent.metadata.purchaseToken
+    );
+    await createDealPurchaseFromPaymentIntent(
+      paymentIntent,
+      getConfiguredAppBaseUrl()
+    );
   }
 }
 
@@ -335,15 +410,16 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
       subscriptionStatus: 'past_due',
     },
   });
+
   revalidateTag(`subscription-status-${business.id}`, {});
 
-  // Create notification
   await prisma.notification.create({
     data: {
       businessId: business.id,
       type: 'payment_failed',
       title: 'Payment Failed',
-      message: 'Your recent payment failed. Please update your payment method to continue service.',
+      message:
+        'Your recent payment failed. Please update your payment method to continue service.',
       link: '/dashboard/settings/billing',
     },
   });

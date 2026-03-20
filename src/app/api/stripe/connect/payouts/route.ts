@@ -4,12 +4,17 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { getSessionBusinessId } from '@/lib/session-business';
 import {
+  emptyReferralPayoutSummary,
+  getReferralPayoutSummary,
+  settlePendingReferralCommissions,
+} from '@/lib/referral-payouts';
+import {
   fetchConnectPayoutsOverview,
   isRecoverableConnectAccountError,
   syncBusinessConnectState,
 } from '@/lib/stripe-connect';
 
-function emptyResponse(notConnected: boolean) {
+function emptyResponse(notConnected: boolean, referralPayouts = emptyReferralPayoutSummary()) {
   return {
     notConnected,
     accountId: null,
@@ -30,6 +35,7 @@ function emptyResponse(notConnected: boolean) {
     },
     balances: null,
     payouts: [],
+    referralPayouts,
   };
 }
 
@@ -72,8 +78,10 @@ export async function GET(_req: NextRequest) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
+    const referralPayouts = await getReferralPayoutSummary(business.id);
+
     if (!business.stripeConnectAccountId) {
-      return NextResponse.json(emptyResponse(true));
+      return NextResponse.json(emptyResponse(true, referralPayouts));
     }
 
     try {
@@ -81,6 +89,14 @@ export async function GET(_req: NextRequest) {
         business.id,
         business.stripeConnectAccountId
       );
+      if (status.onboardingComplete) {
+        await settlePendingReferralCommissions({
+          businessId: business.id,
+          connectAccountId: status.accountId,
+        });
+      }
+
+      const refreshedReferralPayouts = await getReferralPayoutSummary(business.id);
       const overview = status.onboardingComplete
         ? await fetchConnectPayoutsOverview(status.accountId)
         : null;
@@ -104,11 +120,12 @@ export async function GET(_req: NextRequest) {
             }
           : null,
         payouts: overview?.payouts ?? [],
+        referralPayouts: refreshedReferralPayouts,
       });
     } catch (error: any) {
       if (isRecoverableConnectAccountError(error)) {
         await clearStaleConnectState(business.id);
-        return NextResponse.json(emptyResponse(true));
+        return NextResponse.json(emptyResponse(true, referralPayouts));
       }
 
       throw error;

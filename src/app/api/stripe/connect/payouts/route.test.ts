@@ -10,6 +10,18 @@ vi.mock('@/lib/prisma', () => ({
     businessBankAccount: { deleteMany: vi.fn() },
   },
 }));
+vi.mock('@/lib/referral-payouts', () => ({
+  emptyReferralPayoutSummary: vi.fn(() => ({
+    lifetimeEarned: 0,
+    pendingTransfer: 0,
+    transferredToConnect: 0,
+    pendingCount: 0,
+    transferredCount: 0,
+    lastTransferredAt: null,
+  })),
+  getReferralPayoutSummary: vi.fn(),
+  settlePendingReferralCommissions: vi.fn(),
+}));
 vi.mock('@/lib/stripe-connect', () => ({
   syncBusinessConnectState: vi.fn(),
   fetchConnectPayoutsOverview: vi.fn(),
@@ -19,6 +31,10 @@ vi.mock('@/lib/stripe-connect', () => ({
 import { getServerSession } from 'next-auth';
 import { getSessionBusinessId } from '@/lib/session-business';
 import { prisma } from '@/lib/prisma';
+import {
+  getReferralPayoutSummary,
+  settlePendingReferralCommissions,
+} from '@/lib/referral-payouts';
 import {
   fetchConnectPayoutsOverview,
   isRecoverableConnectAccountError,
@@ -31,9 +47,21 @@ const mockGetBusinessId = getSessionBusinessId as ReturnType<typeof vi.fn>;
 const mockFindUnique = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockUpdate = prisma.business.update as ReturnType<typeof vi.fn>;
 const mockDeleteMany = prisma.businessBankAccount.deleteMany as ReturnType<typeof vi.fn>;
+const mockGetReferralSummary = getReferralPayoutSummary as ReturnType<typeof vi.fn>;
+const mockSettleReferralCommissions =
+  settlePendingReferralCommissions as ReturnType<typeof vi.fn>;
 const mockSyncStatus = syncBusinessConnectState as ReturnType<typeof vi.fn>;
 const mockFetchOverview = fetchConnectPayoutsOverview as ReturnType<typeof vi.fn>;
 const mockIsRecoverable = isRecoverableConnectAccountError as ReturnType<typeof vi.fn>;
+
+const referralSummary = {
+  lifetimeEarned: 3240,
+  pendingTransfer: 870,
+  transferredToConnect: 2370,
+  pendingCount: 1,
+  transferredCount: 1,
+  lastTransferredAt: '2026-03-10T12:00:00.000Z',
+};
 
 function makeRequest() {
   return new NextRequest('http://localhost/api/stripe/connect/payouts');
@@ -99,6 +127,11 @@ beforeEach(() => {
   mockUpdate.mockResolvedValue({});
   mockDeleteMany.mockResolvedValue({});
   mockIsRecoverable.mockReturnValue(false);
+  mockGetReferralSummary.mockResolvedValue(referralSummary);
+  mockSettleReferralCommissions.mockResolvedValue({
+    transferredAmount: 870,
+    transferredCount: 1,
+  });
 });
 
 describe('GET /api/stripe/connect/payouts', () => {
@@ -120,6 +153,7 @@ describe('GET /api/stripe/connect/payouts', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.notConnected).toBe(true);
+    expect(body.referralPayouts).toEqual(referralSummary);
     expect(body.balances).toBeNull();
     expect(body.payouts).toHaveLength(0);
     expect(mockSyncStatus).not.toHaveBeenCalled();
@@ -140,7 +174,12 @@ describe('GET /api/stripe/connect/payouts', () => {
     expect(body.payoutSchedule.interval).toBe('manual');
     expect(body.balances.available[0].amount).toBe(50000);
     expect(body.payouts[0].id).toBe('po_1');
+    expect(body.referralPayouts).toEqual(referralSummary);
     expect(mockSyncStatus).toHaveBeenCalledWith('biz-1', 'acct_test123');
+    expect(mockSettleReferralCommissions).toHaveBeenCalledWith({
+      businessId: 'biz-1',
+      connectAccountId: 'acct_test123',
+    });
     expect(mockFetchOverview).toHaveBeenCalledWith('acct_test123');
   });
 
@@ -158,8 +197,10 @@ describe('GET /api/stripe/connect/payouts', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.onboardingComplete).toBe(false);
+    expect(body.referralPayouts).toEqual(referralSummary);
     expect(body.balances).toBeNull();
     expect(body.payouts).toHaveLength(0);
+    expect(mockSettleReferralCommissions).not.toHaveBeenCalled();
     expect(mockFetchOverview).not.toHaveBeenCalled();
   });
 

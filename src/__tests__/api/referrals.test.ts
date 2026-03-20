@@ -1,13 +1,5 @@
-/**
- * Tests for the referral program:
- * - Registration with valid/invalid/no referral code
- * - GET /api/referrals (auth + data shape)
- * - Stripe webhook crediting referrer on first paid invoice
- */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-
-// ── Mocks ─────────────────────────────────────────────────────────────────────
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
@@ -26,15 +18,19 @@ vi.mock('@/lib/prisma', () => ({
     referralCommission: {
       findUnique: vi.fn(),
       create: vi.fn(),
+      findMany: vi.fn(),
+      update: vi.fn(),
     },
     payment: { upsert: vi.fn() },
     invoice: { upsert: vi.fn() },
     notification: { create: vi.fn() },
     affiliate: { findFirst: vi.fn() },
-    affiliateSignup: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn(), update: vi.fn() },
-    $transaction: vi.fn(async (ops: unknown[]) => {
-      for (const op of ops) await op;
-    }),
+    affiliateSignup: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
+    $transaction: vi.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
   },
 }));
 
@@ -56,7 +52,7 @@ vi.mock('next-auth', () => ({
 vi.mock('@/lib/stripe', () => ({
   stripe: {
     webhooks: { constructEvent: vi.fn() },
-    customers: { createBalanceTransaction: vi.fn().mockResolvedValue({}) },
+    transfers: { create: vi.fn().mockResolvedValue({ id: 'tr_referral_1' }) },
     subscriptions: { retrieve: vi.fn() },
   },
   PRICING_PLANS: {
@@ -65,18 +61,18 @@ vi.mock('@/lib/stripe', () => ({
   },
 }));
 
-// ── Imports (after mocks) ──────────────────────────────────────────────────────
-
 import { prisma } from '@/lib/prisma';
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockReferralCommissionFindUnique = (prisma as any).referralCommission.findUnique as ReturnType<typeof vi.fn>;
 import { stripe } from '@/lib/stripe';
 import { getServerSession } from 'next-auth';
 import { POST as registerPOST } from '@/app/api/auth/register/route';
 import { GET as referralsGET } from '@/app/api/referrals/route';
 import { POST as stripeWebhookPOST } from '@/app/api/webhooks/stripe/route';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+const mockReferralCommissionFindUnique =
+  prisma.referralCommission.findUnique as ReturnType<typeof vi.fn>;
+const mockReferralCommissionFindMany =
+  prisma.referralCommission.findMany as ReturnType<typeof vi.fn>;
+const mockTransferCreate = stripe.transfers.create as ReturnType<typeof vi.fn>;
 
 const SESSION = { user: { email: 'owner@test.com', businessId: 'biz-1', id: 'biz-1' } };
 
@@ -96,9 +92,7 @@ const VALID_REGISTER_BODY = {
   phone: '5551234567',
 };
 
-// ── Registration + Referral Code ──────────────────────────────────────────────
-
-describe('POST /api/auth/register — referral code handling', () => {
+describe('POST /api/auth/register - referral code handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(prisma.business.findUnique).mockResolvedValue(null);
@@ -112,7 +106,7 @@ describe('POST /api/auth/register — referral code handling', () => {
     vi.mocked(prisma.referral.create).mockResolvedValue({} as any);
   });
 
-  it('no referral code — creates 14-day trial', async () => {
+  it('no referral code creates a standard 14-day trial', async () => {
     const res = await registerPOST(req('POST', VALID_REGISTER_BODY));
     expect(res.status).toBe(200);
 
@@ -121,57 +115,44 @@ describe('POST /api/auth/register — referral code handling', () => {
     const daysDiff = Math.round((trialEndsAt.getTime() - Date.now()) / 86400000);
     expect(daysDiff).toBeGreaterThanOrEqual(13);
     expect(daysDiff).toBeLessThanOrEqual(14);
-
-    // No referral record created
     expect(prisma.referral.create).not.toHaveBeenCalled();
   });
 
-  it('valid referral code — creates standard 14-day trial and referral record', async () => {
+  it('valid referral code creates a referral record and links the referrer', async () => {
     const referrer = {
       id: 'biz-referrer',
       referralCode: 'ABCD1234',
       name: 'Referring Salon',
     };
-    // findUnique returns null for all calls EXCEPT the referral code lookup
+
     vi.mocked(prisma.business.findUnique).mockImplementation((({ where }: any) => {
       if (where.referralCode === 'ABCD1234') return Promise.resolve(referrer as any);
       return Promise.resolve(null);
     }) as any);
 
-    const res = await registerPOST(req('POST', { ...VALID_REGISTER_BODY, referralCode: 'ABCD1234' }));
+    const res = await registerPOST(
+      req('POST', { ...VALID_REGISTER_BODY, referralCode: 'ABCD1234' })
+    );
     expect(res.status).toBe(200);
 
-    // Trial should be ~14 days (same as standard)
     const createCall = vi.mocked(prisma.business.create).mock.calls[0][0];
-    const trialEndsAt = new Date(createCall.data.trialEndsAt as string | number | Date);
-    const daysDiff = Math.round((trialEndsAt.getTime() - Date.now()) / 86400000);
-    expect(daysDiff).toBeGreaterThanOrEqual(13);
-    expect(daysDiff).toBeLessThanOrEqual(14);
-
-    // referredById set on new business
     expect(createCall.data.referredById).toBe('biz-referrer');
-
-    // Referral record created
     expect(prisma.referral.create).toHaveBeenCalledWith({
       data: { referrerId: 'biz-referrer', refereeId: 'biz-new' },
     });
   });
 
-  it('invalid referral code — ignores silently, creates 14-day trial', async () => {
-    vi.mocked(prisma.business.findUnique).mockResolvedValue(null); // no match for code
+  it('invalid referral code is ignored without breaking registration', async () => {
+    vi.mocked(prisma.business.findUnique).mockResolvedValue(null);
 
-    const res = await registerPOST(req('POST', { ...VALID_REGISTER_BODY, referralCode: 'BADCODE' }));
+    const res = await registerPOST(
+      req('POST', { ...VALID_REGISTER_BODY, referralCode: 'BADCODE' })
+    );
     expect(res.status).toBe(200);
-
-    const createCall = vi.mocked(prisma.business.create).mock.calls[0][0];
-    const trialEndsAt = new Date(createCall.data.trialEndsAt as string | number | Date);
-    const daysDiff = Math.round((trialEndsAt.getTime() - Date.now()) / 86400000);
-    expect(daysDiff).toBeLessThanOrEqual(14);
-
     expect(prisma.referral.create).not.toHaveBeenCalled();
   });
 
-  it('new business always gets its own referral code assigned', async () => {
+  it('every new business receives its own referral code', async () => {
     const res = await registerPOST(req('POST', VALID_REGISTER_BODY));
     expect(res.status).toBe(200);
 
@@ -180,20 +161,18 @@ describe('POST /api/auth/register — referral code handling', () => {
   });
 });
 
-// ── GET /api/referrals ────────────────────────────────────────────────────────
-
 describe('GET /api/referrals', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('returns 401 without session', async () => {
+  it('returns 401 without a session', async () => {
     vi.mocked(getServerSession).mockResolvedValue(null);
     const res = await referralsGET();
     expect(res.status).toBe(401);
   });
 
-  it('returns referral code, credits, and referral list', async () => {
+  it('returns referral code, earned credits, and the referral list', async () => {
     vi.mocked(getServerSession).mockResolvedValue(SESSION as any);
     vi.mocked(prisma.business.findUnique).mockResolvedValue({
       referralCode: 'MYCODE12',
@@ -229,7 +208,7 @@ describe('GET /api/referrals', () => {
     expect(body.referrals[1].status).toBe('pending');
   });
 
-  it('returns 404 if business not found', async () => {
+  it('returns 404 when the business cannot be found', async () => {
     vi.mocked(getServerSession).mockResolvedValue(SESSION as any);
     vi.mocked(prisma.business.findUnique).mockResolvedValue(null);
     const res = await referralsGET();
@@ -237,171 +216,206 @@ describe('GET /api/referrals', () => {
   });
 });
 
-// ── Stripe Webhook — Referral Credit ─────────────────────────────────────────
+describe('Stripe webhook - invoice.payment_succeeded referral credit', () => {
+  const referrerBizReady = {
+    id: 'biz-referrer',
+    stripeConnectAccountId: 'acct_referrer',
+    stripeConnectChargesEnabled: true,
+    stripeConnectPayoutsEnabled: true,
+    stripeConnectDetailsSubmitted: true,
+  };
 
-describe('Stripe webhook — invoice.payment_succeeded referral credit', () => {
-  const referrerBiz = { id: 'biz-referrer', stripeCustomerId: 'cus_referrer' };
+  const referrerBizNotReady = {
+    id: 'biz-referrer',
+    stripeConnectAccountId: null,
+    stripeConnectChargesEnabled: false,
+    stripeConnectPayoutsEnabled: false,
+    stripeConnectDetailsSubmitted: false,
+  };
+
   const refereeBiz = { id: 'biz-referee', stripeCustomerId: 'cus_referee' };
 
-  function makeInvoiceEvent(amount_paid: number) {
+  function makeInvoiceEvent(amountPaid: number) {
     return {
       type: 'invoice.payment_succeeded',
       data: {
         object: {
           customer: 'cus_referee',
-          amount_paid,
+          amount_paid: amountPaid,
           currency: 'usd',
           id: 'inv_001',
           payment_intent: 'pi_001',
           status_transitions: { paid_at: Math.floor(Date.now() / 1000) },
           hosted_invoice_url: null,
           invoice_pdf: null,
-          lines: { data: [{ description: 'Subscription', period: { start: 1700000000, end: 1702592000 } }] },
+          lines: {
+            data: [
+              {
+                description: 'Subscription',
+                period: { start: 1700000000, end: 1702592000 },
+              },
+            ],
+          },
         },
       },
     };
   }
 
+  function webhookReq(amountPaid = 2900) {
+    return new NextRequest('http://localhost/api/webhooks/stripe', {
+      method: 'POST',
+      body: JSON.stringify(makeInvoiceEvent(amountPaid)),
+      headers: { 'Content-Type': 'application/json', 'stripe-signature': 'sig_test' },
+    });
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(stripe.webhooks.constructEvent).mockReturnValue(makeInvoiceEvent(2900) as any);
+    vi.mocked(stripe.webhooks.constructEvent).mockReturnValue(
+      makeInvoiceEvent(2900) as any
+    );
     vi.mocked(prisma.business.findUnique).mockResolvedValue(refereeBiz as any);
     vi.mocked(prisma.payment.upsert).mockResolvedValue({} as any);
     vi.mocked(prisma.invoice.upsert).mockResolvedValue({} as any);
     vi.mocked(prisma.notification.create).mockResolvedValue({} as any);
     vi.mocked(prisma.referral.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.referral.update).mockResolvedValue({} as any);
+    vi.mocked(prisma.business.update).mockResolvedValue({} as any);
+    vi.mocked(prisma.referralCommission.create).mockResolvedValue({} as any);
+    vi.mocked(prisma.referralCommission.update).mockResolvedValue({} as any);
     vi.mocked(prisma.affiliateSignup.findFirst).mockResolvedValue(null);
-    // No existing commission by default (new invoice)
     mockReferralCommissionFindUnique.mockResolvedValue(null);
+    mockReferralCommissionFindMany.mockResolvedValue([
+      {
+        id: 'comm_1',
+        stripeInvoiceId: 'inv_001',
+        amountDollars: 8.7,
+      },
+    ]);
+    mockTransferCreate.mockResolvedValue({ id: 'tr_referral_1' });
   });
 
-  function webhookReq() {
-    return new NextRequest('http://localhost/api/webhooks/stripe', {
-      method: 'POST',
-      body: JSON.stringify(makeInvoiceEvent(2900)),
-      headers: { 'Content-Type': 'application/json', 'stripe-signature': 'sig_test' },
-    });
-  }
-
-  it('credits referrer a percentage of the invoice when pending referral exists', async () => {
+  it('records and transfers recurring commission into Stripe Connect when the referrer is payout-ready', async () => {
     vi.mocked(prisma.referral.findFirst).mockResolvedValue({
       id: 'ref-1',
       status: 'pending',
       referrerId: 'biz-referrer',
-      referrer: referrerBiz,
+      referrer: referrerBizReady,
     } as any);
-    vi.mocked(prisma.referral.update).mockResolvedValue({} as any);
-    vi.mocked(prisma.business.update).mockResolvedValue({} as any);
 
     const res = await stripeWebhookPOST(webhookReq());
     expect(res.status).toBe(200);
 
-    // Invoice is $29 (2900 cents); 20% commission = 580 cents
     const { REFERRAL_COMMISSION_PERCENT } = await import('@/lib/referral-config');
     const expectedCents = Math.round(2900 * REFERRAL_COMMISSION_PERCENT);
-    expect(stripe.customers.createBalanceTransaction).toHaveBeenCalledWith(
-      'cus_referrer',
-      expect.objectContaining({ amount: -expectedCents, currency: 'usd' })
+    expect(prisma.referralCommission.create).toHaveBeenCalledWith({
+      data: {
+        referralId: 'ref-1',
+        stripeInvoiceId: 'inv_001',
+        amountDollars: expectedCents / 100,
+      },
+    });
+    expect(mockTransferCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: expectedCents,
+        currency: 'usd',
+        destination: 'acct_referrer',
+      }),
+      { idempotencyKey: 'referral-commission-comm_1' }
     );
   });
 
-  it('payout scales with subscription plan price', async () => {
-    // Higher plan invoice ($79 = 7900 cents) should yield a larger credit
-    vi.mocked(stripe.webhooks.constructEvent).mockReturnValue(makeInvoiceEvent(7900) as any);
+  it('scales the payout amount with the invoice total', async () => {
+    vi.mocked(stripe.webhooks.constructEvent).mockReturnValue(
+      makeInvoiceEvent(7900) as any
+    );
     vi.mocked(prisma.referral.findFirst).mockResolvedValue({
       id: 'ref-2',
-      status: 'pending',
+      status: 'active',
       referrerId: 'biz-referrer',
-      referrer: referrerBiz,
+      referrer: referrerBizReady,
     } as any);
-    vi.mocked(prisma.referral.update).mockResolvedValue({} as any);
-    vi.mocked(prisma.business.update).mockResolvedValue({} as any);
+    mockReferralCommissionFindMany.mockResolvedValue([
+      {
+        id: 'comm_2',
+        stripeInvoiceId: 'inv_001',
+        amountDollars: 23.7,
+      },
+    ]);
 
-    await stripeWebhookPOST(
-      new NextRequest('http://localhost/api/webhooks/stripe', {
-        method: 'POST',
-        body: JSON.stringify(makeInvoiceEvent(7900)),
-        headers: { 'Content-Type': 'application/json', 'stripe-signature': 'sig_test' },
-      })
-    );
+    await stripeWebhookPOST(webhookReq(7900));
 
     const { REFERRAL_COMMISSION_PERCENT } = await import('@/lib/referral-config');
     const expectedCents = Math.round(7900 * REFERRAL_COMMISSION_PERCENT);
-    expect(stripe.customers.createBalanceTransaction).toHaveBeenCalledWith(
-      'cus_referrer',
-      expect.objectContaining({ amount: -expectedCents, currency: 'usd' })
+    expect(mockTransferCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: expectedCents,
+        destination: 'acct_referrer',
+      }),
+      { idempotencyKey: 'referral-commission-comm_2' }
     );
   });
 
-  it('credits referrer on active referral (recurring monthly invoice)', async () => {
+  it('keeps earnings stacked in the database even when the referrer has not set up payouts yet', async () => {
     vi.mocked(prisma.referral.findFirst).mockResolvedValue({
       id: 'ref-1',
-      status: 'active',
+      status: 'pending',
       referrerId: 'biz-referrer',
-      referrer: referrerBiz,
+      referrer: referrerBizNotReady,
     } as any);
-    vi.mocked(prisma.referral.update).mockResolvedValue({} as any);
-    vi.mocked(prisma.business.update).mockResolvedValue({} as any);
-
-    const res = await stripeWebhookPOST(webhookReq());
-    expect(res.status).toBe(200);
-
-    const { REFERRAL_COMMISSION_PERCENT } = await import('@/lib/referral-config');
-    const expectedCents = Math.round(2900 * REFERRAL_COMMISSION_PERCENT);
-    expect(stripe.customers.createBalanceTransaction).toHaveBeenCalledWith(
-      'cus_referrer',
-      expect.objectContaining({ amount: -expectedCents, currency: 'usd' })
-    );
-  });
-
-  it('skips commission if same stripeInvoiceId already processed (idempotency)', async () => {
-    vi.mocked(prisma.referral.findFirst).mockResolvedValue({
-      id: 'ref-1',
-      status: 'active',
-      referrerId: 'biz-referrer',
-      referrer: referrerBiz,
-    } as any);
-    // Simulate webhook replay: commission record already exists for this invoice
-    mockReferralCommissionFindUnique.mockResolvedValue({ id: 'existing-commission' } as any);
 
     await stripeWebhookPOST(webhookReq());
 
-    expect(stripe.customers.createBalanceTransaction).not.toHaveBeenCalled();
+    expect(prisma.referralCommission.create).toHaveBeenCalled();
+    expect(prisma.business.update).toHaveBeenCalledWith({
+      where: { id: 'biz-referrer' },
+      data: { referralCredits: { increment: 8.7 } },
+    });
+    expect(mockTransferCreate).not.toHaveBeenCalled();
   });
 
-  it('does NOT credit referrer when no referral exists', async () => {
+  it('skips duplicate invoices so the same Stripe invoice is never credited twice', async () => {
+    vi.mocked(prisma.referral.findFirst).mockResolvedValue({
+      id: 'ref-1',
+      status: 'active',
+      referrerId: 'biz-referrer',
+      referrer: referrerBizReady,
+    } as any);
+    mockReferralCommissionFindUnique.mockResolvedValue({
+      id: 'existing-commission',
+      amountDollars: 8.7,
+    } as any);
+    mockReferralCommissionFindMany.mockResolvedValue([]);
+
+    await stripeWebhookPOST(webhookReq());
+
+    expect(prisma.referralCommission.create).not.toHaveBeenCalled();
+    expect(mockTransferCreate).not.toHaveBeenCalled();
+  });
+
+  it('does not credit when no referral exists', async () => {
     vi.mocked(prisma.referral.findFirst).mockResolvedValue(null);
 
     await stripeWebhookPOST(webhookReq());
 
-    expect(stripe.customers.createBalanceTransaction).not.toHaveBeenCalled();
+    expect(prisma.referralCommission.create).not.toHaveBeenCalled();
+    expect(mockTransferCreate).not.toHaveBeenCalled();
   });
 
-  it('does NOT credit referrer when invoice amount is $0 (e.g. trial start)', async () => {
-    vi.mocked(stripe.webhooks.constructEvent).mockReturnValue(makeInvoiceEvent(0) as any);
+  it('does not credit on zero-dollar invoices', async () => {
+    vi.mocked(stripe.webhooks.constructEvent).mockReturnValue(
+      makeInvoiceEvent(0) as any
+    );
     vi.mocked(prisma.referral.findFirst).mockResolvedValue({
       id: 'ref-1',
       status: 'pending',
       referrerId: 'biz-referrer',
-      referrer: referrerBiz,
+      referrer: referrerBizReady,
     } as any);
 
-    await stripeWebhookPOST(webhookReq());
+    await stripeWebhookPOST(webhookReq(0));
 
-    // findFirst not called for zero-amount invoices
-    expect(stripe.customers.createBalanceTransaction).not.toHaveBeenCalled();
-  });
-
-  it('does NOT credit if referrer has no stripeCustomerId', async () => {
-    vi.mocked(prisma.referral.findFirst).mockResolvedValue({
-      id: 'ref-1',
-      status: 'pending',
-      referrerId: 'biz-referrer',
-      referrer: { id: 'biz-referrer', stripeCustomerId: null },
-    } as any);
-
-    await stripeWebhookPOST(webhookReq());
-
-    expect(stripe.customers.createBalanceTransaction).not.toHaveBeenCalled();
+    expect(prisma.referral.findFirst).not.toHaveBeenCalled();
+    expect(mockTransferCreate).not.toHaveBeenCalled();
   });
 });

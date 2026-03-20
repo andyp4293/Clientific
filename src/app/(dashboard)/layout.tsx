@@ -140,6 +140,10 @@ export default async function DashboardLayout({
   const pathname = headersList.get('x-pathname') ?? '';
   const isOnboardingPage = pathname === '/dashboard/onboarding';
   const isSubscribePage = pathname === '/dashboard/subscribe';
+  const isReferralCollectionPage =
+    pathname === '/dashboard/referrals' ||
+    pathname === '/dashboard/payouts' ||
+    pathname === '/dashboard/payouts/setup';
   const showSubscriptionBanner = pathname !== '/dashboard';
   const businessId = session.user.businessId ?? session.user.id;
 
@@ -172,7 +176,7 @@ export default async function DashboardLayout({
     const hasActiveSubscription = business.subscriptionStatus === 'active' || trialIsActive;
     const onboardingComplete = isBusinessOnboardingComplete(business);
 
-    if (!isSubscribePage && !hasActiveSubscription) {
+    if (!isSubscribePage && !hasActiveSubscription && !isReferralCollectionPage) {
       redirect('/dashboard/subscribe');
     }
 

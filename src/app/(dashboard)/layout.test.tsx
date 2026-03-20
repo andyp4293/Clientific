@@ -197,4 +197,25 @@ describe('Dashboard layout onboarding gate', () => {
     expect(screen.queryByTestId('dashboard-nav')).not.toBeInTheDocument();
     expect(mockFindUnique).toHaveBeenCalledTimes(2);
   });
+
+  it('keeps payouts accessible even when the subscription is no longer active', async () => {
+    mockHeaders.mockReturnValue({
+      get: () => '/dashboard/payouts',
+    });
+    mockFindUnique.mockResolvedValue({
+      subscriptionStatus: 'canceled',
+      trialEndsAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      phone: '(555) 123-4567',
+      street: '123 Main St',
+      city: 'Austin',
+      state: 'TX',
+      zipCode: '78701',
+      country: 'United States',
+    });
+
+    render(await DashboardLayout({ children: <div>Payouts content</div> }));
+
+    expect(screen.getByText('Payouts content')).toBeInTheDocument();
+    expect(mockRedirect).not.toHaveBeenCalledWith('/dashboard/subscribe');
+  });
 });

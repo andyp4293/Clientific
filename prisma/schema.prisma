@@ -600,9 +600,15 @@ model ReferralCommission {
   referralId      String
   stripeInvoiceId String   @unique
   amountDollars   Float
+  transferStatus  String   @default("pending")
+  stripeTransferId String?
+  transferredAt   DateTime?
+  transferFailureReason String?
   referral        Referral @relation(fields: [referralId], references: [id])
 
   @@index([referralId])
+  @@index([transferStatus])
+  @@index([stripeTransferId])
 }
 
 model Affiliate {

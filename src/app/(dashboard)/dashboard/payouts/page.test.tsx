@@ -31,6 +31,14 @@ const buildConnectData = (overrides: Record<string, unknown> = {}) => ({
   },
   balances: null,
   payouts: [],
+  referralPayouts: {
+    lifetimeEarned: 0,
+    pendingTransfer: 0,
+    transferredToConnect: 0,
+    pendingCount: 0,
+    transferredCount: 0,
+    lastTransferredAt: null,
+  },
   ...overrides,
 });
 
@@ -148,5 +156,49 @@ describe('PayoutsPage', () => {
     expect(
       screen.getByText(/keep going in secure setup until stripe confirms the payout account back to clientific/i)
     ).toBeInTheDocument();
+  });
+
+  it('explains when referral earnings are waiting on payout setup', () => {
+    mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
+      const key = config?.queryKey?.[0];
+
+      if (key === 'deal-earnings') {
+        return {
+          data: {
+            transactions: [],
+            totals: {
+              totalGross: 0,
+              totalFees: 0,
+              totalNet: 0,
+              transactionCount: 0,
+            },
+          },
+          isLoading: false,
+        };
+      }
+
+      if (key === 'connect-payouts') {
+        return {
+          data: buildConnectData({
+            referralPayouts: {
+              lifetimeEarned: 3240,
+              pendingTransfer: 870,
+              transferredToConnect: 2370,
+              pendingCount: 1,
+              transferredCount: 1,
+              lastTransferredAt: '2026-03-10T12:00:00.000Z',
+            },
+          }),
+          isLoading: false,
+        };
+      }
+
+      return { data: undefined, isLoading: false };
+    });
+
+    render(<PayoutsPage />);
+
+    expect(screen.getByText(/referral payouts/i)).toBeInTheDocument();
+    expect(screen.getByText(/\$8\.70 is waiting for you to finish stripe payout setup/i)).toBeInTheDocument();
   });
 });

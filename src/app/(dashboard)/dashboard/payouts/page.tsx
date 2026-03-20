@@ -95,6 +95,10 @@ export default function PayoutsPage() {
   const availableBalance = sumBalanceAmounts(connectData?.balances?.available);
   const pendingBalance = sumBalanceAmounts(connectData?.balances?.pending);
   const needsSetup = !connectData?.readyForPaidDeals;
+  const referralLifetime = connectData?.referralPayouts?.lifetimeEarned ?? 0;
+  const referralPending = connectData?.referralPayouts?.pendingTransfer ?? 0;
+  const referralTransferred = connectData?.referralPayouts?.transferredToConnect ?? 0;
+  const referralLastTransferredAt = connectData?.referralPayouts?.lastTransferredAt ?? null;
   const rawRequirementList = collectOutstandingRequirementKeys(connectData?.requirements);
   const requirementTasks = summarizeRequirementTasks(rawRequirementList);
   const requirementGuidance = summarizeRequirementGuidance(connectData);
@@ -275,6 +279,76 @@ export default function PayoutsPage() {
       </section>
 
       <div className="grid gap-4 sm:grid-cols-3">
+        <div className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900 sm:col-span-3">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                Referral payouts
+              </p>
+              <h2 className="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">
+                Recurring referral earnings move into your Stripe payout balance here
+              </h2>
+            </div>
+            {referralLastTransferredAt ? (
+              <p className="text-xs text-gray-400">
+                Last moved {shortDate(referralLastTransferredAt)}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                Lifetime earned
+              </p>
+              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
+                {connectLoading ? '...' : cents(referralLifetime)}
+              </p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                All recorded referral subscription commissions
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                Moved to Stripe
+              </p>
+              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
+                {connectLoading ? '...' : cents(referralTransferred)}
+              </p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Already transferred into your Stripe payout balance
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                Waiting to move
+              </p>
+              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
+                {connectLoading ? '...' : cents(referralPending)}
+              </p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {needsSetup
+                  ? 'Finish payout setup to move these earnings into Stripe'
+                  : 'Clientific retries outstanding referral transfers automatically'}
+              </p>
+            </div>
+          </div>
+
+          <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+            {connectLoading
+              ? 'Checking referral payout status...'
+              : referralPending > 0
+                ? needsSetup
+                  ? `${cents(referralPending)} is waiting for you to finish Stripe payout setup before it can be paid out.`
+                  : `${cents(referralPending)} is still waiting to move into your Stripe payout balance.`
+                : referralLifetime > 0
+                  ? 'All recorded referral earnings have already been moved into Stripe payouts.'
+                  : 'Referral commissions will appear here after a referred business pays its subscription invoice.'}
+          </p>
+        </div>
+
         <div className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
             Total earned (net)

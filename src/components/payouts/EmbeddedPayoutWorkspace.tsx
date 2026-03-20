@@ -61,6 +61,14 @@ export type ConnectData = {
     bankLast4: string | null;
     bankName: string | null;
   }>;
+  referralPayouts: {
+    lifetimeEarned: number;
+    pendingTransfer: number;
+    transferredToConnect: number;
+    pendingCount: number;
+    transferredCount: number;
+    lastTransferredAt: string | null;
+  };
 };
 
 type WorkspaceErrorState = {
