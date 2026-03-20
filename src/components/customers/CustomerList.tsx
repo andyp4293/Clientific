@@ -88,8 +88,8 @@ function getSmsStatus(customer: Pick<Customer, "phone" | "smsConsent" | "smsOpte
   }
 
   return {
-    label: "Not opted in",
-    description: "No SMS consent yet",
+    label: "Permission needed",
+    description: "SMS consent not given yet",
     className:
       "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
   };
