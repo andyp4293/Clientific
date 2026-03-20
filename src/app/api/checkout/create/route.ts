@@ -5,12 +5,16 @@ import { stripe, PRICING_PLANS } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
 import { getAppBaseUrlFromRequest } from '@/lib/app-url';
 import { getPricingPlanKey, normalizeSubscriptionPlan } from '@/lib/plan-utils';
+import { getSessionBusinessId } from '@/lib/session-business';
 
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.email) {
+
+    const businessId = getSessionBusinessId(session);
+    const sessionEmail = session?.user?.email?.trim() || null;
+
+    if (!businessId && !sessionEmail) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -37,10 +41,13 @@ export async function POST(req: NextRequest) {
       Boolean(planConfig.yearlyPriceId);
     const priceId = useYearlyPrice ? planConfig.yearlyPriceId : planConfig.priceId;
 
-    // Get business
-    const business = await prisma.business.findUnique({
-      where: { email: session.user.email },
-    });
+    const business = businessId
+      ? await prisma.business.findUnique({
+          where: { id: businessId },
+        })
+      : await prisma.business.findUnique({
+          where: { email: sessionEmail as string },
+        });
 
     if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });

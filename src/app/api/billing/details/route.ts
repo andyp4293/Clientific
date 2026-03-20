@@ -3,19 +3,27 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { stripe } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
+import { getSessionBusinessId } from '@/lib/session-business';
 
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
+    const businessId = getSessionBusinessId(session);
+    const sessionEmail = session?.user?.email?.trim() || null;
 
-    if (!session?.user?.email) {
+    if (!businessId && !sessionEmail) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const business = await prisma.business.findUnique({
-      where: { email: session.user.email },
-      select: { stripeCustomerId: true, stripeSubscriptionId: true },
-    });
+    const business = businessId
+      ? await prisma.business.findUnique({
+          where: { id: businessId },
+          select: { stripeCustomerId: true, stripeSubscriptionId: true },
+        })
+      : await prisma.business.findUnique({
+          where: { email: sessionEmail as string },
+          select: { stripeCustomerId: true, stripeSubscriptionId: true },
+        });
 
     if (!business?.stripeCustomerId) {
       return NextResponse.json({ paymentMethod: null, invoices: [], billingDetails: null });

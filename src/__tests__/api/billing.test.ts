@@ -148,7 +148,7 @@ describe('POST /api/billing/portal', () => {
   });
 
   it('returns portal URL for a business with an existing Stripe customer', async () => {
-    mockSession.mockResolvedValue({ user: { email: 'test@example.com' } });
+    mockSession.mockResolvedValue({ user: { id: 'biz-1', email: 'test@example.com' } });
     mockFindUnique.mockResolvedValue(makeBusiness());
     mockPortalCreate.mockResolvedValue({ url: 'https://billing.stripe.com/session_abc' });
 
@@ -156,6 +156,19 @@ describe('POST /api/billing/portal', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.url).toBe('https://billing.stripe.com/session_abc');
+  });
+
+  it('prefers the session business id before falling back to email', async () => {
+    mockSession.mockResolvedValue({ user: { id: 'biz-1', email: 'owner@example.com' } });
+    mockFindUnique.mockResolvedValue(makeBusiness({ email: 'frontdesk@example.com' }));
+    mockPortalCreate.mockResolvedValue({ url: 'https://billing.stripe.com/session_id_lookup' });
+
+    const res = await portalPost(makeReq('http://localhost:3000/api/billing/portal', 'POST'));
+
+    expect(res.status).toBe(200);
+    expect(mockFindUnique).toHaveBeenCalledWith({
+      where: { id: 'biz-1' },
+    });
   });
 
   it('creates a Stripe customer on-the-fly when none exists (trial user)', async () => {
@@ -248,7 +261,7 @@ describe('GET /api/billing/details', () => {
   });
 
   it('returns payment method from subscription default_payment_method', async () => {
-    mockSession.mockResolvedValue({ user: { email: 'test@example.com' } });
+    mockSession.mockResolvedValue({ user: { id: 'biz-1', email: 'test@example.com' } });
     mockFindUnique.mockResolvedValue(makeBusiness({ stripeCustomerId: 'cus_123', stripeSubscriptionId: 'sub_123' }));
 
     mockSubRetrieve.mockResolvedValue({
@@ -268,6 +281,19 @@ describe('GET /api/billing/details', () => {
       expMonth: 12,
       expYear: 2027,
       funding: 'credit',
+    });
+  });
+
+  it('prefers the session business id when loading billing details', async () => {
+    mockSession.mockResolvedValue({ user: { id: 'biz-1', email: 'owner@example.com' } });
+    mockFindUnique.mockResolvedValue({ stripeCustomerId: null, stripeSubscriptionId: null });
+
+    const res = await detailsGet(makeReq('http://localhost:3000/api/billing/details'));
+
+    expect(res.status).toBe(200);
+    expect(mockFindUnique).toHaveBeenCalledWith({
+      where: { id: 'biz-1' },
+      select: { stripeCustomerId: true, stripeSubscriptionId: true },
     });
   });
 
@@ -426,7 +452,7 @@ describe('POST /api/checkout/create', () => {
   });
 
   it('creates checkout session with 14-day trial for a first-time subscriber', async () => {
-    mockSession.mockResolvedValue({ user: { email: 'test@example.com' } });
+    mockSession.mockResolvedValue({ user: { id: 'biz-1', email: 'test@example.com' } });
     mockFindUnique.mockResolvedValue(makeBusiness({ stripeSubscriptionId: null }));
     mockCheckoutCreate.mockResolvedValue({ url: 'https://checkout.stripe.com/session_new' });
 
@@ -442,6 +468,19 @@ describe('POST /api/checkout/create', () => {
 
     const body = await res.json();
     expect(body.url).toBe('https://checkout.stripe.com/session_new');
+  });
+
+  it('prefers the session business id when creating checkout sessions', async () => {
+    mockSession.mockResolvedValue({ user: { id: 'biz-1', email: 'owner@example.com' } });
+    mockFindUnique.mockResolvedValue(makeBusiness({ email: 'frontdesk@example.com', stripeSubscriptionId: null }));
+    mockCheckoutCreate.mockResolvedValue({ url: 'https://checkout.stripe.com/session_id_lookup' });
+
+    const res = await checkoutPost(makeReq('http://localhost:3000/api/checkout/create', 'POST', { plan: 'base' }));
+
+    expect(res.status).toBe(200);
+    expect(mockFindUnique).toHaveBeenCalledWith({
+      where: { id: 'biz-1' },
+    });
   });
 
   it('accepts the public base slug and maps it to the starter Stripe price IDs', async () => {
