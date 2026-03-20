@@ -108,6 +108,24 @@ function formatLastVisit(lastVisit: Date | null) {
   return lastVisit ? format(new Date(lastVisit), "MMM d, yyyy") : "Never";
 }
 
+function renderCustomerContactInfo(customer: Pick<Customer, "email" | "phone">) {
+  const contactLines = [customer.email, customer.phone].filter(Boolean) as string[];
+
+  if (contactLines.length === 0) {
+    return <p className="text-sm text-gray-500 dark:text-gray-400">No contact info</p>;
+  }
+
+  return (
+    <div className="space-y-0.5">
+      {contactLines.map((line) => (
+        <p key={line} className="break-words text-sm text-gray-500 dark:text-gray-400">
+          {line}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 export default function CustomerList({
   customers,
   segmentCounts,
@@ -328,9 +346,9 @@ export default function CustomerList({
                             >
                               {customer.name}
                             </Link>
-                            <p className="mt-1 break-words text-sm text-gray-500 dark:text-gray-400">
-                              {customer.email || customer.phone || "No contact info"}
-                            </p>
+                            <div className="mt-1">
+                              {renderCustomerContactInfo(customer)}
+                            </div>
                           </div>
                           <span
                             className={`inline-flex flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
@@ -458,8 +476,8 @@ export default function CustomerList({
                               >
                                 {customer.name}
                               </Link>
-                              <div className="text-sm text-gray-500 dark:text-gray-400">
-                                {customer.email || customer.phone || "No contact info"}
+                              <div className="mt-1">
+                                {renderCustomerContactInfo(customer)}
                               </div>
                             </div>
                           </div>

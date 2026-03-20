@@ -178,6 +178,7 @@ describe('CustomerList messaging', () => {
     const mobileList = screen.getByTestId('customer-mobile-list');
     expect(within(mobileList).getByText('Jane Doe')).toBeInTheDocument();
     expect(within(mobileList).getByText('jane@example.com')).toBeInTheDocument();
+    expect(within(mobileList).getByText('+15551234567')).toBeInTheDocument();
     expect(within(mobileList).getAllByText('Customer type').length).toBeGreaterThan(0);
     expect(within(mobileList).getAllByText('VIP').length).toBeGreaterThan(0);
     expect(within(mobileList).getByText('Visits')).toBeInTheDocument();
