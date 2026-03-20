@@ -1,9 +1,12 @@
 import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
+import Stripe from 'stripe';
+import { REFERRAL_COMMISSION_PERCENT } from './referral-config';
 
 const TRANSFER_STATUS_PENDING = 'pending';
 const TRANSFER_STATUS_FAILED = 'failed';
 const TRANSFER_STATUS_TRANSFERRED = 'transferred';
+export const DEFAULT_REFERRAL_RECONCILIATION_LOOKBACK_DAYS = 45;
 
 export type ReferralPayoutSummary = {
   lifetimeEarned: number;
@@ -12,6 +15,24 @@ export type ReferralPayoutSummary = {
   pendingCount: number;
   transferredCount: number;
   lastTransferredAt: string | null;
+};
+
+export type ReferralReconciliationSummary = {
+  since: string;
+  scannedInvoices: number;
+  matchedReferralInvoices: number;
+  createdCommissions: number;
+  duplicateInvoices: number;
+  skippedWithoutCustomer: number;
+  skippedWithoutReferral: number;
+  skippedZeroAmount: number;
+  skippedNonSubscription: number;
+};
+
+export type ReferralTransferRetrySummary = {
+  eligibleBusinesses: number;
+  transferredAmount: number;
+  transferredCount: number;
 };
 
 function dollarsToCents(amountDollars: number) {
@@ -36,6 +57,58 @@ export function emptyReferralPayoutSummary(): ReferralPayoutSummary {
     transferredCount: 0,
     lastTransferredAt: null,
   };
+}
+
+function emptyReferralReconciliationSummary(since: Date): ReferralReconciliationSummary {
+  return {
+    since: since.toISOString(),
+    scannedInvoices: 0,
+    matchedReferralInvoices: 0,
+    createdCommissions: 0,
+    duplicateInvoices: 0,
+    skippedWithoutCustomer: 0,
+    skippedWithoutReferral: 0,
+    skippedZeroAmount: 0,
+    skippedNonSubscription: 0,
+  };
+}
+
+async function listPaidInvoicesSince(since: Date) {
+  const invoices: Stripe.Invoice[] = [];
+  let startingAfter: string | undefined;
+
+  do {
+    const page = await stripe.invoices.list({
+      status: 'paid',
+      limit: 100,
+      created: {
+        gte: Math.floor(since.getTime() / 1000),
+      },
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+
+    invoices.push(...page.data);
+
+    if (!page.has_more || page.data.length === 0) {
+      break;
+    }
+
+    startingAfter = page.data[page.data.length - 1]?.id;
+  } while (startingAfter);
+
+  return invoices;
+}
+
+function getInvoiceSubscriptionReference(invoice: Stripe.Invoice) {
+  const legacyInvoice = invoice as Stripe.Invoice & {
+    subscription?: string | Stripe.Subscription | null;
+  };
+
+  return (
+    invoice.parent?.subscription_details?.subscription ??
+    legacyInvoice.subscription ??
+    null
+  );
 }
 
 export async function recordReferralCommission(params: {
@@ -178,6 +251,158 @@ export async function settlePendingReferralCommissions(params: {
   }
 
   return {
+    transferredAmount,
+    transferredCount,
+  };
+}
+
+export async function reconcileReferralCommissions(params?: {
+  lookbackDays?: number;
+}): Promise<ReferralReconciliationSummary> {
+  const lookbackDays =
+    params?.lookbackDays ?? DEFAULT_REFERRAL_RECONCILIATION_LOOKBACK_DAYS;
+  const since = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000);
+  const summary = emptyReferralReconciliationSummary(since);
+  const invoices = await listPaidInvoicesSince(since);
+
+  if (!invoices.length) {
+    return summary;
+  }
+
+  summary.scannedInvoices = invoices.length;
+
+  const candidateInvoices = invoices.filter(invoice => {
+    if (typeof invoice.customer !== 'string') {
+      summary.skippedWithoutCustomer += 1;
+      return false;
+    }
+
+    if (invoice.amount_paid <= 0) {
+      summary.skippedZeroAmount += 1;
+      return false;
+    }
+
+    if (!getInvoiceSubscriptionReference(invoice)) {
+      summary.skippedNonSubscription += 1;
+      return false;
+    }
+
+    return true;
+  });
+
+  if (!candidateInvoices.length) {
+    return summary;
+  }
+
+  const customerIds = Array.from(
+    new Set(candidateInvoices.map(invoice => invoice.customer as string))
+  );
+
+  const referrals = await prisma.referral.findMany({
+    where: {
+      status: {
+        in: ['pending', 'active', 'credited'],
+      },
+      referee: {
+        stripeCustomerId: {
+          in: customerIds,
+        },
+      },
+    },
+    select: {
+      id: true,
+      referrerId: true,
+      referee: {
+        select: {
+          stripeCustomerId: true,
+        },
+      },
+    },
+  });
+
+  const referralByCustomerId = new Map(
+    referrals
+      .filter(referral => referral.referee.stripeCustomerId)
+      .map(referral => [referral.referee.stripeCustomerId as string, referral])
+  );
+
+  for (const invoice of candidateInvoices) {
+    const customerId = invoice.customer as string;
+    const referral = referralByCustomerId.get(customerId);
+
+    if (!referral) {
+      summary.skippedWithoutReferral += 1;
+      continue;
+    }
+
+    summary.matchedReferralInvoices += 1;
+
+    const result = await recordReferralCommission({
+      referralId: referral.id,
+      referrerId: referral.referrerId,
+      stripeInvoiceId: invoice.id,
+      commissionCents: Math.round(invoice.amount_paid * REFERRAL_COMMISSION_PERCENT),
+    });
+
+    if (result.created) {
+      summary.createdCommissions += 1;
+      continue;
+    }
+
+    if (result.duplicate) {
+      summary.duplicateInvoices += 1;
+    }
+  }
+
+  return summary;
+}
+
+export async function retryPendingReferralTransfers(): Promise<ReferralTransferRetrySummary> {
+  const eligibleBusinesses = await prisma.business.findMany({
+    where: {
+      stripeConnectAccountId: {
+        not: null,
+      },
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+      stripeConnectDetailsSubmitted: true,
+      referralsMade: {
+        some: {
+          commissions: {
+            some: {
+              transferStatus: {
+                in: [TRANSFER_STATUS_PENDING, TRANSFER_STATUS_FAILED],
+              },
+            },
+          },
+        },
+      },
+    },
+    select: {
+      id: true,
+      stripeConnectAccountId: true,
+    },
+  });
+
+  let transferredAmount = 0;
+  let transferredCount = 0;
+
+  for (const business of eligibleBusinesses) {
+    if (!business.stripeConnectAccountId) {
+      continue;
+    }
+
+    const result = await settlePendingReferralCommissions({
+      businessId: business.id,
+      connectAccountId: business.stripeConnectAccountId,
+    });
+
+    transferredAmount += result.transferredAmount;
+    transferredCount += result.transferredCount;
+  }
+
+  return {
+    eligibleBusinesses: eligibleBusinesses.length,
     transferredAmount,
     transferredCount,
   };

@@ -9,9 +9,11 @@ vi.mock('@/lib/prisma', () => ({
       update: vi.fn(),
     },
     referral: {
+      findMany: vi.fn(),
       update: vi.fn(),
     },
     business: {
+      findMany: vi.fn(),
       update: vi.fn(),
     },
     $transaction: vi.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
@@ -20,6 +22,9 @@ vi.mock('@/lib/prisma', () => ({
 
 vi.mock('@/lib/stripe', () => ({
   stripe: {
+    invoices: {
+      list: vi.fn(),
+    },
     transfers: {
       create: vi.fn(),
     },
@@ -30,9 +35,12 @@ import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
 import {
   canAutoTransferReferralPayouts,
+  DEFAULT_REFERRAL_RECONCILIATION_LOOKBACK_DAYS,
   emptyReferralPayoutSummary,
   getReferralPayoutSummary,
   recordReferralCommission,
+  reconcileReferralCommissions,
+  retryPendingReferralTransfers,
   settlePendingReferralCommissions,
 } from './referral-payouts';
 
@@ -40,9 +48,12 @@ const mockFindUnique = prisma.referralCommission.findUnique as ReturnType<typeof
 const mockCreate = prisma.referralCommission.create as ReturnType<typeof vi.fn>;
 const mockFindMany = prisma.referralCommission.findMany as ReturnType<typeof vi.fn>;
 const mockUpdateCommission = prisma.referralCommission.update as ReturnType<typeof vi.fn>;
+const mockReferralFindMany = prisma.referral.findMany as ReturnType<typeof vi.fn>;
 const mockUpdateReferral = prisma.referral.update as ReturnType<typeof vi.fn>;
+const mockBusinessFindMany = prisma.business.findMany as ReturnType<typeof vi.fn>;
 const mockUpdateBusiness = prisma.business.update as ReturnType<typeof vi.fn>;
 const mockTransaction = prisma.$transaction as ReturnType<typeof vi.fn>;
+const mockInvoiceList = stripe.invoices.list as ReturnType<typeof vi.fn>;
 const mockTransferCreate = stripe.transfers.create as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
@@ -51,6 +62,12 @@ beforeEach(() => {
   mockUpdateReferral.mockResolvedValue({});
   mockUpdateBusiness.mockResolvedValue({});
   mockUpdateCommission.mockResolvedValue({});
+  mockReferralFindMany.mockResolvedValue([]);
+  mockBusinessFindMany.mockResolvedValue([]);
+  mockInvoiceList.mockResolvedValue({
+    data: [],
+    has_more: false,
+  });
   mockTransferCreate.mockResolvedValue({ id: 'tr_123' });
   mockTransaction.mockImplementation(async (ops: Promise<unknown>[]) => Promise.all(ops));
 });
@@ -230,6 +247,175 @@ describe('getReferralPayoutSummary', () => {
       pendingCount: 2,
       transferredCount: 1,
       lastTransferredAt: '2026-03-10T12:00:00.000Z',
+    });
+  });
+});
+
+describe('reconcileReferralCommissions', () => {
+  it('backfills missing commissions from paid subscription invoices', async () => {
+    mockInvoiceList.mockResolvedValue({
+      data: [
+        {
+          id: 'inv_1',
+          customer: 'cus_referee',
+          amount_paid: 2900,
+          subscription: 'sub_123',
+        },
+      ],
+      has_more: false,
+    });
+    mockReferralFindMany.mockResolvedValue([
+      {
+        id: 'ref_1',
+        referrerId: 'biz_1',
+        referee: {
+          stripeCustomerId: 'cus_referee',
+        },
+      },
+    ]);
+    mockFindUnique.mockResolvedValue(null);
+
+    const result = await reconcileReferralCommissions({ lookbackDays: 45 });
+
+    expect(mockInvoiceList).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'paid',
+        limit: 100,
+      })
+    );
+    expect(result).toMatchObject({
+      scannedInvoices: 1,
+      matchedReferralInvoices: 1,
+      createdCommissions: 1,
+      duplicateInvoices: 0,
+      skippedWithoutReferral: 0,
+      skippedNonSubscription: 0,
+    });
+    expect(mockCreate).toHaveBeenCalledWith({
+      data: {
+        referralId: 'ref_1',
+        stripeInvoiceId: 'inv_1',
+        amountDollars: 8.7,
+      },
+    });
+  });
+
+  it('counts duplicates and ignores paid invoices without a matching referral', async () => {
+    mockInvoiceList.mockResolvedValue({
+      data: [
+        {
+          id: 'inv_duplicate',
+          customer: 'cus_referee',
+          amount_paid: 2900,
+          subscription: 'sub_123',
+        },
+        {
+          id: 'inv_other',
+          customer: 'cus_other',
+          amount_paid: 2900,
+          subscription: 'sub_456',
+        },
+        {
+          id: 'inv_non_subscription',
+          customer: 'cus_referee',
+          amount_paid: 2900,
+          subscription: null,
+        },
+      ],
+      has_more: false,
+    });
+    mockReferralFindMany.mockResolvedValue([
+      {
+        id: 'ref_1',
+        referrerId: 'biz_1',
+        referee: {
+          stripeCustomerId: 'cus_referee',
+        },
+      },
+    ]);
+    mockFindUnique.mockResolvedValueOnce({
+      id: 'existing_commission',
+      amountDollars: 8.7,
+    });
+
+    const result = await reconcileReferralCommissions();
+
+    expect(result.since).toBeTruthy();
+    expect(result).toMatchObject({
+      scannedInvoices: 3,
+      matchedReferralInvoices: 1,
+      createdCommissions: 0,
+      duplicateInvoices: 1,
+      skippedWithoutReferral: 1,
+      skippedNonSubscription: 1,
+    });
+    expect(DEFAULT_REFERRAL_RECONCILIATION_LOOKBACK_DAYS).toBe(45);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe('retryPendingReferralTransfers', () => {
+  it('retries transfers for payout-ready businesses with pending commissions', async () => {
+    mockBusinessFindMany.mockResolvedValue([
+      {
+        id: 'biz_1',
+        stripeConnectAccountId: 'acct_123',
+      },
+      {
+        id: 'biz_2',
+        stripeConnectAccountId: 'acct_456',
+      },
+    ]);
+    mockFindMany
+      .mockResolvedValueOnce([
+        {
+          id: 'comm_1',
+          stripeInvoiceId: 'inv_1',
+          amountDollars: 8.7,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'comm_2',
+          stripeInvoiceId: 'inv_2',
+          amountDollars: 23.7,
+        },
+      ]);
+    mockTransferCreate
+      .mockResolvedValueOnce({ id: 'tr_123' })
+      .mockResolvedValueOnce({ id: 'tr_456' });
+
+    const result = await retryPendingReferralTransfers();
+
+    expect(mockBusinessFindMany).toHaveBeenCalledWith({
+      where: {
+        stripeConnectAccountId: {
+          not: null,
+        },
+        stripeConnectChargesEnabled: true,
+        stripeConnectPayoutsEnabled: true,
+        stripeConnectDetailsSubmitted: true,
+        referralsMade: {
+          some: {
+            commissions: {
+              some: {
+                transferStatus: {
+                  in: ['pending', 'failed'],
+                },
+              },
+            },
+          },
+        },
+      },
+      select: {
+        id: true,
+        stripeConnectAccountId: true,
+      },
+    });
+    expect(result).toEqual({
+      eligibleBusinesses: 2,
+      transferredAmount: 3240,
+      transferredCount: 2,
     });
   });
 });

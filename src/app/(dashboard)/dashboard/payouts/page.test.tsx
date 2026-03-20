@@ -201,4 +201,14 @@ describe('PayoutsPage', () => {
     expect(screen.getByText(/referral payouts/i)).toBeInTheDocument();
     expect(screen.getByText(/\$8\.70 is waiting for you to finish stripe payout setup/i)).toBeInTheDocument();
   });
+
+  it('uses the more professional Stripe disclosure copy', () => {
+    render(<PayoutsPage />);
+
+    expect(
+      screen.getByText(/clientific uses stripe to securely handle business verification, subscription billing, and payouts/i)
+    ).toBeInTheDocument();
+    expect(screen.getByText(/secure payments and payouts/i)).toBeInTheDocument();
+    expect(screen.queryByText(/payouts powered by stripe/i)).not.toBeInTheDocument();
+  });
 });

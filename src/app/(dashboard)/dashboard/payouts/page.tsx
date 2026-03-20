@@ -110,13 +110,12 @@ export default function PayoutsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Payouts</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Payouts powered by Stripe. Businesses may be asked to verify identity and
-            confirm an email during secure setup, then they manage bank connection and
-            payout timing inside Clientific.
+            Clientific uses Stripe to securely handle business verification, subscription
+            billing, and payouts to your connected bank account.
           </p>
         </div>
         <div className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
-          Stripe-powered payouts
+          Secure payments and payouts
         </div>
       </div>
 
@@ -136,7 +135,7 @@ export default function PayoutsPage() {
               </h2>
               <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
                 {connectLoading
-                  ? 'Loading your Stripe-powered payout status.'
+                  ? 'Loading your secure payout status.'
                   : needsSetup
                     ? 'Businesses only need this setup before publishing paid purchase-link deals. Free-service deals and code-claim offers can still run without payouts.'
                     : 'Customer payments route through Stripe Connect, your platform fee is collected automatically, and the rest can be paid out to your connected bank account on your chosen schedule.'}
