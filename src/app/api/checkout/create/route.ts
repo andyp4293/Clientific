@@ -7,6 +7,35 @@ import { getAppBaseUrlFromRequest } from '@/lib/app-url';
 import { getPricingPlanKey, normalizeSubscriptionPlan } from '@/lib/plan-utils';
 import { getSessionBusinessId } from '@/lib/session-business';
 
+function getCheckoutTrialDays(business: {
+  stripeSubscriptionId: string | null;
+  subscriptionStatus: string | null;
+  trialEndsAt: Date | string | null;
+}) {
+  if (business.stripeSubscriptionId) {
+    return undefined;
+  }
+
+  const status = business.subscriptionStatus?.toLowerCase() ?? '';
+  const hasTrialStatus = status === 'trialing' || status === 'trial';
+
+  if (!hasTrialStatus) {
+    return undefined;
+  }
+
+  if (!business.trialEndsAt) {
+    return 14;
+  }
+
+  const remainingMs = new Date(business.trialEndsAt).getTime() - Date.now();
+
+  if (remainingMs <= 0) {
+    return undefined;
+  }
+
+  return Math.ceil(remainingMs / (1000 * 60 * 60 * 24));
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -73,9 +102,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Only give trial to first-time subscribers; returning customers pay immediately
-    // to prevent exploitation of multiple free trials.
-    const isFirstTime = !business.stripeSubscriptionId;
+    const checkoutTrialDays = getCheckoutTrialDays(business);
 
     // Derive base URL — prefer env var, fall back to the request origin
     const appUrl = getAppBaseUrlFromRequest(req.url);
@@ -92,7 +119,7 @@ export async function POST(req: NextRequest) {
         },
       ],
       subscription_data: {
-        ...(isFirstTime && { trial_period_days: 14 }),
+        ...(checkoutTrialDays ? { trial_period_days: checkoutTrialDays } : {}),
         metadata: {
           businessId: business.id,
           plan: normalizedPlan,

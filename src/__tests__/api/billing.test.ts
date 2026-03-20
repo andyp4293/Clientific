@@ -111,6 +111,7 @@ const makeBusiness = (overrides = {}) => ({
   stripeSubscriptionId: 'sub_123',
   subscriptionPlan: 'starter',
   subscriptionStatus: 'active',
+  trialEndsAt: null,
   ...overrides,
 });
 
@@ -451,9 +452,15 @@ describe('POST /api/checkout/create', () => {
     expect(res.status).toBe(404);
   });
 
-  it('creates checkout session with 14-day trial for a first-time subscriber', async () => {
+  it('creates checkout session with 14-day trial for a first-time subscriber still in a local trial', async () => {
     mockSession.mockResolvedValue({ user: { id: 'biz-1', email: 'test@example.com' } });
-    mockFindUnique.mockResolvedValue(makeBusiness({ stripeSubscriptionId: null }));
+    mockFindUnique.mockResolvedValue(
+      makeBusiness({
+        stripeSubscriptionId: null,
+        subscriptionStatus: 'trialing',
+        trialEndsAt: null,
+      })
+    );
     mockCheckoutCreate.mockResolvedValue({ url: 'https://checkout.stripe.com/session_new' });
 
     const res = await checkoutPost(makeReq('http://localhost:3000/api/checkout/create', 'POST', { plan: 'starter', billingPeriod: 'monthly' }));
@@ -468,6 +475,27 @@ describe('POST /api/checkout/create', () => {
 
     const body = await res.json();
     expect(body.url).toBe('https://checkout.stripe.com/session_new');
+  });
+
+  it('does not create a second trial in Checkout after the local trial has already expired', async () => {
+    mockSession.mockResolvedValue({ user: { id: 'biz-1', email: 'test@example.com' } });
+    mockFindUnique.mockResolvedValue(
+      makeBusiness({
+        stripeSubscriptionId: null,
+        subscriptionStatus: 'trialing',
+        trialEndsAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      })
+    );
+    mockCheckoutCreate.mockResolvedValue({ url: 'https://checkout.stripe.com/session_expired' });
+
+    const res = await checkoutPost(
+      makeReq('http://localhost:3000/api/checkout/create', 'POST', { plan: 'base', billingPeriod: 'monthly' })
+    );
+
+    expect(res.status).toBe(200);
+
+    const callArgs = mockCheckoutCreate.mock.calls[0][0];
+    expect(callArgs.subscription_data.trial_period_days).toBeUndefined();
   });
 
   it('prefers the session business id when creating checkout sessions', async () => {
