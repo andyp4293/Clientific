@@ -85,7 +85,7 @@ describe('CustomerList messaging', () => {
     });
   });
 
-  it('shows SMS status badges for opted-out and subscribed customers', () => {
+  it('shows SMS status badges for opted-out and SMS-enabled customers', () => {
     render(
       <CustomerList
         customers={[
@@ -136,7 +136,7 @@ describe('CustomerList messaging', () => {
     );
 
     expect(screen.getByText('SMS Status')).toBeInTheDocument();
-    expect(screen.getByText('Subscribed')).toBeInTheDocument();
+    expect(screen.getByText('SMS Enabled')).toBeInTheDocument();
     expect(screen.getByText('Can receive SMS')).toBeInTheDocument();
     expect(screen.getByText('Opted out')).toBeInTheDocument();
     expect(screen.getByText('Stopped SMS')).toBeInTheDocument();

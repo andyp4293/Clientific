@@ -77,7 +77,7 @@ function getSmsStatus(customer: Pick<Customer, "phone" | "smsConsent" | "smsOpte
 
   if (customer.smsConsent) {
     return {
-      label: "Subscribed",
+      label: "SMS Enabled",
       description: "Can receive SMS",
       className:
         "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
