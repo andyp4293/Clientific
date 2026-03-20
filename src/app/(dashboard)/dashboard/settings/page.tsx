@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
 import AddressAutocomplete, { type AddressComponents } from '@/components/ui/AddressAutocomplete';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -29,7 +28,7 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string>
   });
 }
 
-type Tab = 'profile' | 'branding' | 'integrations' | 'notifications' | 'loyalty' | 'ai-receptionist' | 'payout';
+type Tab = 'profile' | 'branding' | 'integrations' | 'notifications' | 'loyalty' | 'ai-receptionist';
 
 function BookingQRCode({ bookingUrl, businessName }: { bookingUrl: string; businessName: string }) {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -184,7 +183,6 @@ export function getAiReceptionistSetupState(
 }
 
 export default function SettingsPage() {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab | null>(null);
   const [formData, setFormData] = useState<Partial<Business>>({});
@@ -199,10 +197,6 @@ export default function SettingsPage() {
   const [showDisableModal, setShowDisableModal] = useState(false);
   const [activatingUntil, setActivatingUntil] = useState<Date | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
-
-  // Payout account form state
-  const [payoutForm, setPayoutForm] = useState({ routingNumber: '', accountNumber: '', accountHolderName: '' });
-  const [showRemoveBankModal, setShowRemoveBankModal] = useState(false);
 
   // Default to first tab on desktop
   useEffect(() => {
@@ -313,51 +307,6 @@ export default function SettingsPage() {
       }
       queryClient.invalidateQueries({ queryKey: ['business-info'] });
     },
-  });
-
-  // Bank account query + mutations
-  const { data: bankAccountData, isLoading: bankAccountLoading, refetch: refetchBankAccount } = useQuery<{ bankAccount: { bankName: string | null; last4: string; routingNumberLast4: string; accountHolderName: string | null } | null }>({
-    queryKey: ['bank-account'],
-    queryFn: async () => {
-      const res = await fetch('/api/stripe/bank-account');
-      if (!res.ok) throw new Error('Failed');
-      return res.json();
-    },
-    enabled: activeTab === 'payout',
-  });
-
-  const addBankAccountMutation = useMutation({
-    mutationFn: async (form: typeof payoutForm) => {
-      const res = await fetch('/api/stripe/bank-account', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to save bank account');
-      return data;
-    },
-    onSuccess: () => {
-      toast.success('Bank account saved!');
-      setPayoutForm({ routingNumber: '', accountNumber: '', accountHolderName: '' });
-      refetchBankAccount();
-    },
-    onError: (err: Error) => toast.error(err.message),
-  });
-
-  const removeBankAccountMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch('/api/stripe/bank-account', { method: 'DELETE' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to remove bank account');
-      return data;
-    },
-    onSuccess: () => {
-      toast.success('Bank account removed');
-      setShowRemoveBankModal(false);
-      refetchBankAccount();
-    },
-    onError: (err: Error) => { toast.error(err.message); setShowRemoveBankModal(false); },
   });
 
   const handleEnableConfirm = () => {
@@ -508,7 +457,6 @@ export default function SettingsPage() {
     { id: 'notifications', label: 'Notifications', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' },
     { id: 'ai-receptionist', label: 'AI Receptionist', icon: 'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z' },
     { id: 'loyalty', label: 'Loyalty Points', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-    { id: 'payout', label: 'Payout Account', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
   ];
   const aiSetupState = getAiReceptionistSetupState(
     formData,
@@ -1352,91 +1300,6 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Payout Account Tab */}
-        {activeTab === 'payout' && (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Stripe-powered payouts</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                Finish payout setup in the dedicated Payouts page before publishing paid purchase-link deals. Free-service and code-claim deals can still run without payout setup.
-              </p>
-
-              {bankAccountLoading ? (
-                <div className="h-20 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800" />
-              ) : bankAccountData?.bankAccount ? (
-                <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-5 mb-6">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-1">Connected account</p>
-                      <p className="font-semibold text-gray-900 dark:text-gray-100">
-                        {bankAccountData.bankAccount.bankName ?? 'Bank account'} ···· {bankAccountData.bankAccount.last4}
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Routing ···· {bankAccountData.bankAccount.routingNumberLast4}
-                        {bankAccountData.bankAccount.accountHolderName && ` · ${bankAccountData.bankAccount.accountHolderName}`}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setShowRemoveBankModal(true)}
-                      className="btn-outline text-sm text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                  {bankAccountData?.bankAccount ? 'Replace bank account' : 'Add bank account'}
-                </h4>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Account holder name</label>
-                    <input
-                      type="text"
-                      value={payoutForm.accountHolderName}
-                      onChange={(e) => setPayoutForm(p => ({ ...p, accountHolderName: e.target.value }))}
-                      className="input"
-                      placeholder="Full name or business name"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Routing number</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={9}
-                      value={payoutForm.routingNumber}
-                      onChange={(e) => setPayoutForm(p => ({ ...p, routingNumber: e.target.value.replace(/\D/g, '') }))}
-                      className="input"
-                      placeholder="9-digit routing number"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Account number</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={payoutForm.accountNumber}
-                      onChange={(e) => setPayoutForm(p => ({ ...p, accountNumber: e.target.value.replace(/\D/g, '') }))}
-                      className="input"
-                      placeholder="Account number"
-                    />
-                  </div>
-                  <button
-                    onClick={() => addBankAccountMutation.mutate(payoutForm)}
-                    disabled={addBankAccountMutation.isPending}
-                    className="btn-primary"
-                  >
-                    {addBankAccountMutation.isPending ? 'Saving...' : bankAccountData?.bankAccount ? 'Replace account' : 'Save bank account'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Notifications Tab */}
         {activeTab === 'notifications' && (
           <div className="space-y-6">
@@ -1469,8 +1332,8 @@ export default function SettingsPage() {
         )}
       </div>
 
-      {/* Action Buttons — hidden for payout tab (has its own save button) */}
-      <div className={`flex justify-end gap-3 mt-4 ${activeTab === 'payout' ? 'hidden' : ''}`}>
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-3 mt-4">
         <button
           onClick={() => {
             setFormData(business || {});
@@ -1492,28 +1355,6 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
-
-      {/* Remove Bank Account Modal */}
-      {showRemoveBankModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-sm w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Remove bank account?</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-              This will disconnect your bank account from payouts. Existing completed payouts are not affected.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setShowRemoveBankModal(false)} className="btn-outline">Cancel</button>
-              <button
-                onClick={() => removeBankAccountMutation.mutate()}
-                disabled={removeBankAccountMutation.isPending}
-                className="btn-primary bg-red-600 hover:bg-red-700 border-red-600"
-              >
-                {removeBankAccountMutation.isPending ? 'Removing...' : 'Remove'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Enable AI Receptionist Modal */}
       {showEnableModal && (
