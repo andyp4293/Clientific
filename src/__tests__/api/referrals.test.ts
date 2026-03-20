@@ -9,6 +9,9 @@ vi.mock('@/lib/prisma', () => ({
       create: vi.fn(),
       update: vi.fn(),
     },
+    businessBankAccount: {
+      deleteMany: vi.fn(),
+    },
     businessHours: { create: vi.fn() },
     referral: {
       create: vi.fn(),
@@ -32,6 +35,11 @@ vi.mock('@/lib/prisma', () => ({
     },
     $transaction: vi.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
   },
+}));
+
+vi.mock('@/lib/stripe-connect', () => ({
+  syncBusinessConnectState: vi.fn(),
+  isRecoverableConnectAccountError: vi.fn(),
 }));
 
 vi.mock('@/lib/utils', () => ({
@@ -63,6 +71,10 @@ vi.mock('@/lib/stripe', () => ({
 
 import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
+import {
+  isRecoverableConnectAccountError,
+  syncBusinessConnectState,
+} from '@/lib/stripe-connect';
 import { getServerSession } from 'next-auth';
 import { POST as registerPOST } from '@/app/api/auth/register/route';
 import { GET as referralsGET } from '@/app/api/referrals/route';
@@ -73,6 +85,10 @@ const mockReferralCommissionFindUnique =
 const mockReferralCommissionFindMany =
   prisma.referralCommission.findMany as ReturnType<typeof vi.fn>;
 const mockTransferCreate = stripe.transfers.create as ReturnType<typeof vi.fn>;
+const mockSyncBusinessConnectState =
+  syncBusinessConnectState as ReturnType<typeof vi.fn>;
+const mockIsRecoverableConnectAccountError =
+  isRecoverableConnectAccountError as ReturnType<typeof vi.fn>;
 
 const SESSION = { user: { email: 'owner@test.com', businessId: 'biz-1', id: 'biz-1' } };
 
@@ -95,6 +111,29 @@ const VALID_REGISTER_BODY = {
 describe('POST /api/auth/register - referral code handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsRecoverableConnectAccountError.mockReturnValue(false);
+    mockSyncBusinessConnectState.mockResolvedValue({
+      accountId: 'acct_referrer',
+      chargesEnabled: true,
+      payoutsEnabled: true,
+      detailsSubmitted: true,
+      onboardingComplete: true,
+      bankAccountConnected: true,
+      externalAccount: null,
+      payoutSchedule: {
+        interval: 'manual',
+        monthlyPayoutDays: [],
+        weeklyPayoutDays: [],
+        statementDescriptor: null,
+      },
+      requirements: {
+        currentlyDue: [],
+        eventuallyDue: [],
+        pastDue: [],
+        pendingVerification: [],
+        disabledReason: null,
+      },
+    });
     vi.mocked(prisma.business.findUnique).mockResolvedValue(null);
     vi.mocked(prisma.business.create).mockResolvedValue({
       id: 'biz-new',
@@ -123,6 +162,10 @@ describe('POST /api/auth/register - referral code handling', () => {
       id: 'biz-referrer',
       referralCode: 'ABCD1234',
       name: 'Referring Salon',
+      stripeConnectAccountId: 'acct_referrer',
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+      stripeConnectDetailsSubmitted: true,
     };
 
     vi.mocked(prisma.business.findUnique).mockImplementation((({ where }: any) => {
@@ -140,6 +183,32 @@ describe('POST /api/auth/register - referral code handling', () => {
     expect(prisma.referral.create).toHaveBeenCalledWith({
       data: { referrerId: 'biz-referrer', refereeId: 'biz-new' },
     });
+  });
+
+  it('ignores referral codes until the referrer has finished payout setup', async () => {
+    const referrer = {
+      id: 'biz-referrer',
+      referralCode: 'ABCD1234',
+      name: 'Referring Salon',
+      stripeConnectAccountId: null,
+      stripeConnectChargesEnabled: false,
+      stripeConnectPayoutsEnabled: false,
+      stripeConnectDetailsSubmitted: false,
+    };
+
+    vi.mocked(prisma.business.findUnique).mockImplementation((({ where }: any) => {
+      if (where.referralCode === 'ABCD1234') return Promise.resolve(referrer as any);
+      return Promise.resolve(null);
+    }) as any);
+
+    const res = await registerPOST(
+      req('POST', { ...VALID_REGISTER_BODY, referralCode: 'ABCD1234' })
+    );
+    expect(res.status).toBe(200);
+
+    const createCall = vi.mocked(prisma.business.create).mock.calls[0][0];
+    expect(createCall.data.referredById).toBeUndefined();
+    expect(prisma.referral.create).not.toHaveBeenCalled();
   });
 
   it('invalid referral code is ignored without breaking registration', async () => {
@@ -175,8 +244,13 @@ describe('GET /api/referrals', () => {
   it('returns referral code, earned credits, and the referral list', async () => {
     vi.mocked(getServerSession).mockResolvedValue(SESSION as any);
     vi.mocked(prisma.business.findUnique).mockResolvedValue({
+      id: 'biz-1',
       referralCode: 'MYCODE12',
       referralCredits: 30,
+      stripeConnectAccountId: 'acct_referrer',
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+      stripeConnectDetailsSubmitted: true,
       referralsMade: [
         {
           id: 'ref-1',
@@ -204,8 +278,42 @@ describe('GET /api/referrals', () => {
     expect(body.referralCode).toBe('MYCODE12');
     expect(body.totalCredits).toBe(30);
     expect(body.referrals).toHaveLength(2);
+    expect(body.payoutReady).toBe(true);
     expect(body.referrals[0].status).toBe('credited');
     expect(body.referrals[1].status).toBe('pending');
+  });
+
+  it('keeps referral history visible but hides sharing until payouts are ready', async () => {
+    vi.mocked(getServerSession).mockResolvedValue(SESSION as any);
+    vi.mocked(prisma.business.findUnique).mockResolvedValue({
+      id: 'biz-1',
+      referralCode: 'MYCODE12',
+      referralCredits: 30,
+      stripeConnectAccountId: null,
+      stripeConnectChargesEnabled: false,
+      stripeConnectPayoutsEnabled: false,
+      stripeConnectDetailsSubmitted: false,
+      referralsMade: [
+        {
+          id: 'ref-1',
+          createdAt: new Date('2026-03-01'),
+          status: 'credited',
+          creditAmount: 15,
+          creditedAt: new Date('2026-03-15'),
+          referee: { name: 'Janes Salon', createdAt: new Date('2026-03-01') },
+        },
+      ],
+    } as any);
+
+    const res = await referralsGET();
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    expect(body.referralCode).toBeNull();
+    expect(body.payoutReady).toBe(false);
+    expect(body.payoutStatusCode).toBe('not_connected');
+    expect(body.payoutSetupMessage).toMatch(/finish payout setup/i);
+    expect(body.referrals).toHaveLength(1);
   });
 
   it('returns 404 when the business cannot be found', async () => {

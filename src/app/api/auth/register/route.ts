@@ -13,6 +13,10 @@ import {
 import { sendEmailVerificationEmail } from '@/lib/email';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { normalizeSubscriptionPlan } from '@/lib/plan-utils';
+import {
+  getReferralSharingStatus,
+  resolveReferralSharingStatus,
+} from '@/lib/referral-sharing';
 
 export async function POST(request: Request) {
   try {
@@ -138,9 +142,35 @@ export async function POST(request: Request) {
 
     const passwordHash = await hashPassword(password);
 
-    const referrerBusiness = referralCode
+    const referrerCandidate = referralCode
       ? await prisma.business.findUnique({ where: { referralCode } })
       : null;
+
+    let referrerBusiness = referrerCandidate;
+    if (referrerCandidate) {
+      try {
+        const sharingStatus = await resolveReferralSharingStatus({
+          id: referrerCandidate.id,
+          stripeConnectAccountId: referrerCandidate.stripeConnectAccountId,
+          stripeConnectChargesEnabled: referrerCandidate.stripeConnectChargesEnabled,
+          stripeConnectPayoutsEnabled: referrerCandidate.stripeConnectPayoutsEnabled,
+          stripeConnectDetailsSubmitted: referrerCandidate.stripeConnectDetailsSubmitted,
+        });
+
+        if (!sharingStatus.ready) {
+          referrerBusiness = null;
+        }
+      } catch (error) {
+        console.warn(
+          'Registration could not refresh referral payout readiness, falling back to cached status:',
+          error
+        );
+
+        if (!getReferralSharingStatus(referrerCandidate).ready) {
+          referrerBusiness = null;
+        }
+      }
+    }
 
     const affiliate = !referrerBusiness && affiliateCode
       ? await prisma.affiliate.findFirst({ where: { code: affiliateCode, active: true } })

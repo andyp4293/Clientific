@@ -58,6 +58,19 @@ vi.mock('next-auth', () => ({
   getServerSession: vi.fn(),
 }));
 
+vi.mock('@/lib/referral-sharing', () => ({
+  getReferralSharingStatus: vi.fn(() => ({
+    ready: true,
+    code: 'ready',
+    message: 'Referral link sharing is ready.',
+  })),
+  resolveReferralSharingStatus: vi.fn().mockResolvedValue({
+    ready: true,
+    code: 'ready',
+    message: 'Referral link sharing is ready.',
+  }),
+}));
+
 // ── Imports (after mocks) ──────────────────────────────────────────────────────
 
 import { prisma } from '@/lib/prisma';

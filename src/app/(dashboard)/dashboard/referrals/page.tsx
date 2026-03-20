@@ -20,6 +20,9 @@ interface ReferralsData {
   referralCode: string | null;
   totalCredits: number;
   referrals: Referral[];
+  payoutReady: boolean;
+  payoutStatusCode: string;
+  payoutSetupMessage: string | null;
 }
 
 export default function ReferralsPage() {
@@ -34,13 +37,21 @@ export default function ReferralsPage() {
     typeof window !== 'undefined' && data?.referralCode
       ? `${window.location.origin}/register?ref=${data.referralCode}`
       : '';
+  const payoutReady = data?.payoutReady ?? false;
+  const sharingLocked = !isLoading && !payoutReady;
+  const canShareReferralLink = Boolean(payoutReady && referralUrl);
+  const payoutSetupMessage =
+    data?.payoutSetupMessage ??
+    'Finish payout setup before sharing your referral link so earnings can move into Stripe payouts automatically.';
 
   function copyLink() {
+    if (!canShareReferralLink) return;
     navigator.clipboard.writeText(referralUrl);
     toast.success('Referral link copied!');
   }
 
   function downloadQr() {
+    if (!canShareReferralLink) return;
     const canvas = canvasRef.current?.querySelector('canvas');
     if (!canvas) return;
     const url = canvas.toDataURL('image/png');
@@ -66,10 +77,10 @@ export default function ReferralsPage() {
           <h1 className="text-xl font-bold tracking-tight">Refer &amp; Earn</h1>
         </div>
         <p className="text-white/80 text-sm leading-relaxed mb-5">
-          Invite another business owner to Clientific. While they stay subscribed, you earn{' '}
+          Once your payout setup is ready, you can share your referral link with another business
+          owner. While they stay subscribed, you earn{' '}
           <span className="text-white font-semibold">{REFERRAL_COMMISSION_DISPLAY} every month</span>.
-          Those earnings stack and move into your Stripe payout balance on the Payouts page once
-          your payout setup is ready.
+          Those earnings stack and move into your Stripe payout balance on the Payouts page.
         </p>
 
         {/* Stats row */}
@@ -103,25 +114,66 @@ export default function ReferralsPage() {
 
       {/* Share card */}
       <div className="card p-5 mb-4">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
-          Your referral link
-        </h2>
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+              {sharingLocked ? 'Unlock referral sharing' : 'Your referral link'}
+            </h2>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {sharingLocked
+                ? 'Referral links stay locked until Stripe payout setup is complete.'
+                : 'Share this link or QR code once your payout setup is live.'}
+            </p>
+          </div>
+          {sharingLocked && (
+            <a href="/dashboard/payouts/setup" className="btn-primary text-sm">
+              Finish Payout Setup
+            </a>
+          )}
+        </div>
+
+        {sharingLocked && (
+          <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/30 dark:bg-amber-900/20">
+            <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+              Referral sharing is locked until payouts are ready
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+              {payoutSetupMessage}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <a href="/dashboard/payouts/setup" className="btn-primary text-sm">
+                Complete secure setup
+              </a>
+              <a href="/dashboard/payouts" className="btn-outline text-sm">
+                View payout status
+              </a>
+            </div>
+          </div>
+        )}
 
         {/* Link input + copy */}
         <div className="flex items-center gap-2 mb-5">
-          {isLoading || !referralUrl ? (
+          {isLoading ? (
             <div className="flex-1 h-10 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
-          ) : (
+          ) : canShareReferralLink ? (
             <input
               type="text"
               value={referralUrl}
               readOnly
               className="input flex-1 text-sm bg-gray-50 dark:bg-gray-800/60 truncate"
             />
+          ) : (
+            <input
+              type="text"
+              value="Referral sharing unlocks after payout setup is complete"
+              readOnly
+              disabled
+              className="input flex-1 text-sm bg-gray-50 text-gray-400 dark:bg-gray-800/60 dark:text-gray-500"
+            />
           )}
           <button
             onClick={copyLink}
-            disabled={!referralUrl}
+            disabled={!canShareReferralLink}
             className="flex items-center gap-1.5 text-sm font-medium bg-primary text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2 rounded-lg transition-colors shrink-0"
           >
             <Copy className="w-4 h-4" />
@@ -129,25 +181,29 @@ export default function ReferralsPage() {
           </button>
         </div>
 
-        {/* QR code is always rendered, with a skeleton while loading */}
         <div className="flex flex-col items-center gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
           <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-            Business owners can scan to sign up. Save it to print on materials, cards, or social
-            posts.
+            {sharingLocked
+              ? 'Finish payout setup first, then save the QR code for cards, materials, and social posts.'
+              : 'Business owners can scan to sign up. Save it to print on materials, cards, or social posts.'}
           </p>
-          {isLoading || !referralUrl ? (
+          {isLoading ? (
             <div className="w-[164px] h-[164px] bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" />
-          ) : (
+          ) : canShareReferralLink ? (
             <div
               ref={canvasRef}
               className="bg-white p-3 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm"
             >
               <QRCodeCanvas value={referralUrl} size={140} level="M" />
             </div>
+          ) : (
+            <div className="w-[164px] h-[164px] rounded-xl border border-dashed border-amber-300 bg-amber-50/80 p-4 text-center text-xs leading-relaxed text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/10 dark:text-amber-300 flex items-center justify-center">
+              Finish payout setup to unlock your printable referral QR code.
+            </div>
           )}
           <button
             onClick={downloadQr}
-            disabled={!referralUrl}
+            disabled={!canShareReferralLink}
             className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Download className="w-4 h-4" />
@@ -164,7 +220,7 @@ export default function ReferralsPage() {
         </div>
         <div className="space-y-3">
           {[
-            'Share your unique link with another business owner',
+            'Finish payout setup, then share your unique link with another business owner',
             `They sign up and get a free ${STANDARD_TRIAL_DAYS}-day trial`,
             `Once they subscribe, you automatically earn ${REFERRAL_COMMISSION_DISPLAY} of each paid subscription invoice, and those earnings stack in your payouts balance`,
           ].map((text, i) => (
@@ -212,7 +268,7 @@ export default function ReferralsPage() {
               No referrals yet
             </p>
             <p className="text-xs text-gray-400 dark:text-gray-500">
-              Share your link to start earning credits.
+              Finish payout setup, then share your link to start earning credits.
             </p>
           </div>
         ) : (
@@ -252,9 +308,9 @@ export default function ReferralsPage() {
       </div>
 
       <p className="text-xs text-gray-400 dark:text-gray-500 mt-4 text-center leading-relaxed">
-        Referral earnings are added automatically each month your referee stays subscribed. There
-        is no limit on referrals, and completed earnings move into your Stripe payouts once your
-        payout setup is ready.
+        Referral earnings are added automatically each month your referee stays subscribed. Once
+        payout setup is complete, you can share freely, and completed earnings move into your
+        Stripe payouts automatically.
       </p>
     </div>
   );

@@ -50,6 +50,27 @@ function makeReferral(status: 'active' | 'credited' | 'pending', name = 'Test Sa
   };
 }
 
+function makeData(
+  overrides: Partial<{
+    referralCode: string | null;
+    totalCredits: number;
+    referrals: ReturnType<typeof makeReferral>[] | undefined;
+    payoutReady: boolean;
+    payoutStatusCode: string;
+    payoutSetupMessage: string | null;
+  }> = {}
+) {
+  return {
+    referralCode: 'MYCODE12',
+    totalCredits: 0,
+    referrals: [] as ReturnType<typeof makeReferral>[],
+    payoutReady: true,
+    payoutStatusCode: 'ready',
+    payoutSetupMessage: null,
+    ...overrides,
+  };
+}
+
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe('ReferralsPage', () => {
@@ -68,7 +89,7 @@ describe('ReferralsPage', () => {
 
   it('renders without crash when referrals property is undefined (the bug case)', () => {
     mockUseQuery.mockReturnValue({
-      data: { referralCode: 'ABC12345', totalCredits: 0, referrals: undefined },
+      data: makeData({ referralCode: 'ABC12345', referrals: undefined }),
       isLoading: false,
     } as any);
     expect(() => render(<ReferralsPage />)).not.toThrow();
@@ -83,7 +104,7 @@ describe('ReferralsPage', () => {
 
   it('shows total credits earned', () => {
     mockUseQuery.mockReturnValue({
-      data: { referralCode: 'ABC12345', totalCredits: 30, referrals: [] },
+      data: makeData({ referralCode: 'ABC12345', totalCredits: 30 }),
       isLoading: false,
     } as any);
     render(<ReferralsPage />);
@@ -92,11 +113,11 @@ describe('ReferralsPage', () => {
 
   it('shows correct active count (includes credited for backward compat)', () => {
     mockUseQuery.mockReturnValue({
-      data: {
+      data: makeData({
         referralCode: 'ABC12345',
         totalCredits: 30,
         referrals: [makeReferral('active'), makeReferral('credited'), makeReferral('pending')],
-      },
+      }),
       isLoading: false,
     } as any);
     render(<ReferralsPage />);
@@ -107,11 +128,11 @@ describe('ReferralsPage', () => {
 
   it('shows correct pending count', () => {
     mockUseQuery.mockReturnValue({
-      data: {
+      data: makeData({
         referralCode: 'ABC12345',
         totalCredits: 15,
         referrals: [makeReferral('active'), makeReferral('pending'), makeReferral('pending')],
-      },
+      }),
       isLoading: false,
     } as any);
     render(<ReferralsPage />);
@@ -122,7 +143,7 @@ describe('ReferralsPage', () => {
 
   it('renders referral link input containing the referral code', () => {
     mockUseQuery.mockReturnValue({
-      data: { referralCode: 'MYCODE12', totalCredits: 0, referrals: [] },
+      data: makeData(),
       isLoading: false,
     } as any);
     render(<ReferralsPage />);
@@ -132,7 +153,7 @@ describe('ReferralsPage', () => {
 
   it('copy button calls clipboard.writeText with the referral link', async () => {
     mockUseQuery.mockReturnValue({
-      data: { referralCode: 'MYCODE12', totalCredits: 0, referrals: [] },
+      data: makeData(),
       isLoading: false,
     } as any);
     render(<ReferralsPage />);
@@ -145,7 +166,7 @@ describe('ReferralsPage', () => {
 
   it('shows "No referrals yet" when referrals array is empty', () => {
     mockUseQuery.mockReturnValue({
-      data: { referralCode: 'MYCODE12', totalCredits: 0, referrals: [] },
+      data: makeData(),
       isLoading: false,
     } as any);
     render(<ReferralsPage />);
@@ -154,11 +175,10 @@ describe('ReferralsPage', () => {
 
   it('shows referee names in the referral list', () => {
     mockUseQuery.mockReturnValue({
-      data: {
-        referralCode: 'MYCODE12',
+      data: makeData({
         totalCredits: 15,
         referrals: [makeReferral('active', 'Janes Nails'), makeReferral('pending', 'Cuts by Bob')],
-      },
+      }),
       isLoading: false,
     } as any);
     render(<ReferralsPage />);
@@ -168,18 +188,43 @@ describe('ReferralsPage', () => {
 
   it('describes referral earnings as Stripe payouts instead of direct cashout copy', () => {
     mockUseQuery.mockReturnValue({
-      data: { referralCode: 'MYCODE12', totalCredits: 15, referrals: [makeReferral('active')] },
+      data: makeData({ totalCredits: 15, referrals: [makeReferral('active')] }),
       isLoading: false,
     } as any);
 
     render(<ReferralsPage />);
 
     expect(
-      screen.getByText(/those earnings stack and move into your stripe payout balance/i)
+      screen.getByText(/once your payout setup is ready, you can share your referral link/i)
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/completed earnings move into your stripe payouts once your payout setup is ready/i)
+      screen.getByText(/completed earnings move into your stripe payouts automatically/i)
     ).toBeInTheDocument();
     expect(screen.queryByText(/paid out directly to you/i)).not.toBeInTheDocument();
+  });
+
+  it('locks referral sharing until payout setup is complete', () => {
+    mockUseQuery.mockReturnValue({
+      data: makeData({
+        referralCode: null,
+        payoutReady: false,
+        payoutStatusCode: 'not_connected',
+        payoutSetupMessage:
+          'Finish payout setup in Dashboard > Payouts before sharing your referral link.',
+      }),
+      isLoading: false,
+    } as any);
+
+    render(<ReferralsPage />);
+
+    expect(
+      screen.getByText(/referral sharing is locked until payouts are ready/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue(/referral sharing unlocks after payout setup is complete/i)
+    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: /copy/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /download qr code/i })).toBeDisabled();
+    expect(screen.getByRole('link', { name: /finish payout setup/i })).toBeInTheDocument();
   });
 });

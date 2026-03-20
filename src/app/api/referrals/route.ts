@@ -3,6 +3,10 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { generateReferralCode } from '@/lib/referral';
+import {
+  getReferralSharingStatus,
+  resolveReferralSharingStatus,
+} from '@/lib/referral-sharing';
 
 export async function GET() {
   try {
@@ -14,8 +18,13 @@ export async function GET() {
     let business = await prisma.business.findUnique({
       where: { id: session.user.businessId },
       select: {
+        id: true,
         referralCode: true,
         referralCredits: true,
+        stripeConnectAccountId: true,
+        stripeConnectChargesEnabled: true,
+        stripeConnectPayoutsEnabled: true,
+        stripeConnectDetailsSubmitted: true,
         referralsMade: {
           select: {
             id: true,
@@ -36,8 +45,21 @@ export async function GET() {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
-    // Lazy-generate referral code for businesses created before the feature existed
-    if (!business.referralCode) {
+    let sharingStatus = getReferralSharingStatus(business);
+    if (business.stripeConnectAccountId) {
+      try {
+        sharingStatus = await resolveReferralSharingStatus(business);
+      } catch (error) {
+        console.warn(
+          'Referrals fetch could not refresh payout readiness, falling back to cached status:',
+          error
+        );
+      }
+    }
+
+    // Lazy-generate referral code for businesses created before the feature existed,
+    // but only after payout setup is ready for live referral sharing.
+    if (sharingStatus.ready && !business.referralCode) {
       const code = await generateReferralCode();
       await prisma.business.update({
         where: { id: session.user.businessId },
@@ -47,9 +69,12 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      referralCode: business.referralCode,
+      referralCode: sharingStatus.ready ? business.referralCode : null,
       totalCredits: business.referralCredits,
       referrals: business.referralsMade,
+      payoutReady: sharingStatus.ready,
+      payoutStatusCode: sharingStatus.code,
+      payoutSetupMessage: sharingStatus.ready ? null : sharingStatus.message,
     });
   } catch (error: any) {
     console.error('Referrals fetch error:', error);
