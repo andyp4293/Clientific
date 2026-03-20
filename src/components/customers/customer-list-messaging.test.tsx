@@ -59,7 +59,6 @@ describe('CustomerList messaging', () => {
             },
           },
         ]}
-        segmentCounts={[{ segment: 'VIP', _count: 1 }]}
       />
     );
 
@@ -148,18 +147,10 @@ describe('CustomerList messaging', () => {
             },
           },
         ]}
-        segmentCounts={[
-          { segment: 'VIP', _count: 1 },
-          { segment: 'REGULAR', _count: 1 },
-          { segment: 'NEW', _count: 1 },
-        ]}
       />
     );
 
-    expect(screen.getAllByText('Customer type').length).toBeGreaterThan(0);
-    expect(
-      screen.getByText(/customer type helps you quickly spot new, loyal, at-risk, and inactive customers/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Filter customers')).toBeInTheDocument();
     expect(screen.getAllByText('SMS Status').length).toBeGreaterThan(0);
     expect(screen.getAllByText('SMS Enabled').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Can receive SMS').length).toBeGreaterThan(0);
@@ -193,7 +184,6 @@ describe('CustomerList messaging', () => {
             },
           },
         ]}
-        segmentCounts={[{ segment: 'VIP', _count: 1 }]}
       />
     );
 
@@ -201,8 +191,8 @@ describe('CustomerList messaging', () => {
     expect(within(mobileList).getByText('Jane Doe')).toBeInTheDocument();
     expect(within(mobileList).getByText('jane@example.com')).toBeInTheDocument();
     expect(within(mobileList).getByText('+15551234567')).toBeInTheDocument();
-    expect(within(mobileList).getAllByText('Customer type').length).toBeGreaterThan(0);
-    expect(within(mobileList).getAllByText('VIP').length).toBeGreaterThan(0);
+    expect(within(mobileList).getByText('Joined')).toBeInTheDocument();
+    expect(within(mobileList).getByText('Mar 1, 2026')).toBeInTheDocument();
     expect(within(mobileList).getByText('Visits')).toBeInTheDocument();
     expect(within(mobileList).getByText('Points')).toBeInTheDocument();
     expect(within(mobileList).getByText('Total spent')).toBeInTheDocument();

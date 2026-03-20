@@ -58,9 +58,7 @@ describe("CustomerList filters", () => {
     render(
       <CustomerList
         customers={[baseCustomer]}
-        segmentCounts={[{ segment: "VIP", _count: 1 }]}
         initialSearch="jane"
-        initialSegment="VIP"
         initialSmsFilter="enabled"
         initialContactFilter="both"
         initialVisitFilter="visited"
@@ -70,7 +68,6 @@ describe("CustomerList filters", () => {
     expect(screen.getByText("Filter customers")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /clear all filters/i })).toBeInTheDocument();
     expect(screen.getByText("Search: jane")).toBeInTheDocument();
-    expect(screen.getByText("Type: VIP")).toBeInTheDocument();
     expect(screen.getByText("SMS: SMS enabled")).toBeInTheDocument();
     expect(screen.getByText("Contact: Has both")).toBeInTheDocument();
     expect(screen.getByText("Visits: Visited before")).toBeInTheDocument();
@@ -84,9 +81,7 @@ describe("CustomerList filters", () => {
     render(
       <CustomerList
         customers={[baseCustomer]}
-        segmentCounts={[{ segment: "VIP", _count: 1 }]}
         initialSearch="jane"
-        initialSegment="VIP"
         initialContactFilter="both"
         initialVisitFilter="visited"
       />,
@@ -97,7 +92,7 @@ describe("CustomerList filters", () => {
     });
 
     expect(mockPush).toHaveBeenCalledWith(
-      "/dashboard/customers?search=jane&segment=VIP&contact=both&visit=visited&sms=enabled",
+      "/dashboard/customers?search=jane&contact=both&visit=visited&sms=enabled",
     );
   });
 
@@ -105,9 +100,7 @@ describe("CustomerList filters", () => {
     render(
       <CustomerList
         customers={[baseCustomer]}
-        segmentCounts={[{ segment: "VIP", _count: 1 }]}
         initialSearch="jane"
-        initialSegment="VIP"
       />,
     );
 

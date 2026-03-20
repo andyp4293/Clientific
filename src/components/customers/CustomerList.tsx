@@ -8,9 +8,7 @@ import AddCustomerModal from "./AddCustomerModal";
 import EditCustomerModal from "./EditCustomerModal";
 import SendCustomerMessageModal from "./SendCustomerMessageModal";
 import {
-  CUSTOMER_SEGMENTS,
   type CustomerContactFilter,
-  type CustomerSegmentFilter,
   type CustomerSmsFilter,
   type CustomerVisitFilter,
 } from "@/lib/customer-filter-options";
@@ -22,7 +20,6 @@ type Customer = {
   phone: string | null;
   smsConsent: boolean;
   smsOptedOut: boolean;
-  segment: string;
   points: number;
   totalSpent: number;
   lastVisit: Date | null;
@@ -35,39 +32,13 @@ type Customer = {
   };
 };
 
-type SegmentCount = {
-  segment: string;
-  _count: number;
-};
-
 interface CustomerListProps {
   customers: Customer[];
-  segmentCounts: SegmentCount[];
   initialSearch?: string;
-  initialSegment?: CustomerSegmentFilter | "";
   initialSmsFilter?: CustomerSmsFilter | "";
   initialContactFilter?: CustomerContactFilter | "";
   initialVisitFilter?: CustomerVisitFilter | "";
 }
-
-const segmentColors: Record<string, string> = {
-  NEW: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200",
-  REGULAR: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200",
-  VIP: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200",
-  AT_RISK: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200",
-  CHURNED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200",
-};
-
-const segmentLabels: Record<string, string> = {
-  NEW: "New",
-  REGULAR: "Regular",
-  VIP: "VIP",
-  AT_RISK: "At Risk",
-  CHURNED: "Churned",
-};
-
-const customerTypeHelpText =
-  "Customer type helps you quickly spot new, loyal, at-risk, and inactive customers.";
 
 const smsFilterOptions: Array<{ value: CustomerSmsFilter; label: string }> = [
   { value: "enabled", label: "SMS enabled" },
@@ -137,6 +108,10 @@ function getCustomerInitials(name: string) {
     .slice(0, 2);
 }
 
+function formatDateLabel(value: Date | null) {
+  return value ? format(new Date(value), "MMM d, yyyy") : "Never";
+}
+
 function formatLastVisit(lastVisit: Date | null) {
   return lastVisit ? format(new Date(lastVisit), "MMM d, yyyy") : "Never";
 }
@@ -161,9 +136,7 @@ function renderCustomerContactInfo(customer: Pick<Customer, "email" | "phone">) 
 
 export default function CustomerList({
   customers,
-  segmentCounts,
   initialSearch = "",
-  initialSegment = "",
   initialSmsFilter = "",
   initialContactFilter = "",
   initialVisitFilter = "",
@@ -177,6 +150,7 @@ export default function CustomerList({
 
   const updateQueryParam = (key: string, value?: string) => {
     const params = new URLSearchParams(searchParams.toString());
+    params.delete("segment");
     if (value) {
       params.set(key, value);
     } else {
@@ -190,19 +164,8 @@ export default function CustomerList({
     updateQueryParam("search", value || undefined);
   };
 
-  const handleSegmentFilter = (segment: string) => {
-    if (segment === initialSegment) {
-      updateQueryParam("segment");
-    } else {
-      updateQueryParam("segment", segment);
-    }
-  };
-
-  const getTotalForSegment = (segment: string) =>
-    segmentCounts.find((entry) => entry.segment === segment)?._count || 0;
-
   const hasActiveFilters = Boolean(
-    initialSearch || initialSegment || initialSmsFilter || initialContactFilter || initialVisitFilter,
+    initialSearch || initialSmsFilter || initialContactFilter || initialVisitFilter,
   );
 
   const clearAllFilters = () => {
@@ -315,7 +278,7 @@ export default function CustomerList({
                 Filter customers
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Narrow by customer type, texting status, contact details, and visit history.
+                Narrow by texting status, contact details, and visit history.
               </p>
             </div>
 
@@ -327,43 +290,6 @@ export default function CustomerList({
                 Clear all filters
               </button>
             )}
-          </div>
-
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Customer type
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {customerTypeHelpText}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => updateQueryParam("segment")}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                  !initialSegment
-                    ? "bg-primary/10 text-primary dark:bg-primary/20"
-                    : "bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-                }`}
-              >
-                All types ({customers.length})
-              </button>
-              {CUSTOMER_SEGMENTS.map((segment) => (
-                <button
-                  key={segment}
-                  onClick={() => handleSegmentFilter(segment)}
-                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                    initialSegment === segment
-                      ? segmentColors[segment]
-                      : "bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-                  }`}
-                >
-                  {segmentLabels[segment]} ({getTotalForSegment(segment)})
-                </button>
-              ))}
-            </div>
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">
@@ -430,11 +356,6 @@ export default function CustomerList({
               {initialSearch && (
                 <span className="inline-flex rounded-full bg-white px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
                   Search: {initialSearch}
-                </span>
-              )}
-              {initialSegment && (
-                <span className="inline-flex rounded-full bg-white px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                  Type: {segmentLabels[initialSegment]}
                 </span>
               )}
               {initialSmsFilter && (
@@ -518,13 +439,6 @@ export default function CustomerList({
                               {renderCustomerContactInfo(customer)}
                             </div>
                           </div>
-                          <span
-                            className={`inline-flex flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                              segmentColors[customer.segment]
-                            }`}
-                          >
-                            {segmentLabels[customer.segment]}
-                          </span>
                         </div>
                       </div>
                     </div>
@@ -548,10 +462,10 @@ export default function CustomerList({
                     <dl className="mt-4 grid grid-cols-2 gap-3">
                       <div className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-700 dark:bg-gray-800/80">
                         <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                          Customer type
+                          Joined
                         </dt>
                         <dd className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
-                          {segmentLabels[customer.segment]}
+                          {formatDateLabel(customer.createdAt)}
                         </dd>
                       </div>
                       <div className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-700 dark:bg-gray-800/80">
@@ -602,7 +516,7 @@ export default function CustomerList({
                       Customer
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                      Customer Type
+                      Joined
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
                       Visits
@@ -651,12 +565,8 @@ export default function CustomerList({
                           </div>
                         </td>
                         <td className="whitespace-nowrap px-6 py-4">
-                          <span
-                            className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold leading-5 ${
-                              segmentColors[customer.segment]
-                            }`}
-                          >
-                            {segmentLabels[customer.segment]}
+                          <span className="text-sm text-gray-900 dark:text-gray-100">
+                            {formatDateLabel(customer.createdAt)}
                           </span>
                         </td>
                         <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
