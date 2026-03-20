@@ -88,27 +88,113 @@ async function upsertBusiness(input: {
   });
 }
 
+async function seedCustomersForBusiness(
+  businessId: string,
+  customers: Array<{
+    name: string;
+    email: string;
+    phone: string;
+    segment: string;
+    smsConsent: boolean;
+    smsOptedOut: boolean;
+    points: number;
+    totalSpent: number;
+    lastVisit: Date | null;
+  }>
+) {
+  await prisma.customer.deleteMany({ where: { businessId } });
+
+  await prisma.customer.createMany({
+    data: customers.map((customer) => ({
+      businessId,
+      name: customer.name,
+      email: customer.email,
+      phone: customer.phone,
+      segment: customer.segment,
+      smsConsent: customer.smsConsent,
+      smsMarketingConsent: customer.smsConsent,
+      smsOptedOut: customer.smsOptedOut,
+      points: customer.points,
+      totalSpent: customer.totalSpent,
+      lastVisit: customer.lastVisit,
+    })),
+  });
+}
+
 export default async function globalSetup(_config: FullConfig) {
-  await upsertBusiness({
+  const activeBusiness = await upsertBusiness({
     ...ACTIVE_ACCOUNT,
     subscriptionPlan: 'base',
     subscriptionStatus: 'active',
     trialEndsAt: null,
   });
 
-  await upsertBusiness({
+  const expiredBusiness = await upsertBusiness({
     ...EXPIRED_ACCOUNT,
     subscriptionPlan: 'base',
     subscriptionStatus: 'trialing',
     trialEndsAt: new Date(Date.now() - 60_000),
   });
 
-  await upsertBusiness({
+  const trialBusiness = await upsertBusiness({
     ...TRIAL_ACCOUNT,
     subscriptionPlan: 'base',
     subscriptionStatus: 'trialing',
     trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   });
+
+  await seedCustomersForBusiness(activeBusiness.id, [
+    {
+      name: 'Maya Chen',
+      email: 'maya.chen@example.com',
+      phone: '+15555550101',
+      segment: 'VIP',
+      smsConsent: true,
+      smsOptedOut: false,
+      points: 320,
+      totalSpent: 1485,
+      lastVisit: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+    },
+  ]);
+
+  await seedCustomersForBusiness(expiredBusiness.id, [
+    {
+      name: 'Jordan Hill',
+      email: 'jordan.hill@example.com',
+      phone: '+15555550102',
+      segment: 'AT_RISK',
+      smsConsent: true,
+      smsOptedOut: true,
+      points: 40,
+      totalSpent: 95,
+      lastVisit: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
+    },
+  ]);
+
+  await seedCustomersForBusiness(trialBusiness.id, [
+    {
+      name: 'Ariana Perez',
+      email: 'ariana.perez@example.com',
+      phone: '+15555550103',
+      segment: 'NEW',
+      smsConsent: true,
+      smsOptedOut: false,
+      points: 15,
+      totalSpent: 85,
+      lastVisit: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+    },
+    {
+      name: 'Nina Brooks',
+      email: 'nina.brooks@example.com',
+      phone: '+15555550104',
+      segment: 'VIP',
+      smsConsent: true,
+      smsOptedOut: false,
+      points: 220,
+      totalSpent: 1240,
+      lastVisit: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+    },
+  ]);
 
   await prisma.$disconnect();
 }

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import CustomerList from './CustomerList';
 
 vi.mock('next/navigation', () => ({
@@ -63,7 +63,8 @@ describe('CustomerList messaging', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /^text$/i }));
+    const mobileList = screen.getByTestId('customer-mobile-list');
+    fireEvent.click(within(mobileList).getByRole('button', { name: /^text$/i }));
 
     expect(screen.getByRole('heading', { name: /send text to jane doe/i })).toBeInTheDocument();
 
@@ -135,10 +136,54 @@ describe('CustomerList messaging', () => {
       />
     );
 
-    expect(screen.getByText('SMS Status')).toBeInTheDocument();
-    expect(screen.getByText('SMS Enabled')).toBeInTheDocument();
-    expect(screen.getByText('Can receive SMS')).toBeInTheDocument();
-    expect(screen.getByText('Opted out')).toBeInTheDocument();
-    expect(screen.getByText('Stopped SMS')).toBeInTheDocument();
+    expect(screen.getAllByText('Customer type').length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/customer type helps you quickly spot new, loyal, at-risk, and inactive customers/i),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText('SMS Status').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('SMS Enabled').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Can receive SMS').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Opted out').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Stopped SMS').length).toBeGreaterThan(0);
+  });
+
+  it('renders readable customer cards on mobile with key details visible', () => {
+    render(
+      <CustomerList
+        customers={[
+          {
+            id: 'cust-1',
+            name: 'Jane Doe',
+            email: 'jane@example.com',
+            phone: '+15551234567',
+            smsConsent: true,
+            smsOptedOut: false,
+            segment: 'VIP',
+            points: 120,
+            totalSpent: 250,
+            lastVisit: new Date('2026-03-12T12:00:00.000Z'),
+            birthday: null,
+            notes: null,
+            createdAt: new Date('2026-03-01T12:00:00.000Z'),
+            _count: {
+              checkIns: 3,
+              appointments: 4,
+            },
+          },
+        ]}
+        segmentCounts={[{ segment: 'VIP', _count: 1 }]}
+      />
+    );
+
+    const mobileList = screen.getByTestId('customer-mobile-list');
+    expect(within(mobileList).getByText('Jane Doe')).toBeInTheDocument();
+    expect(within(mobileList).getByText('jane@example.com')).toBeInTheDocument();
+    expect(within(mobileList).getAllByText('Customer type').length).toBeGreaterThan(0);
+    expect(within(mobileList).getAllByText('VIP').length).toBeGreaterThan(0);
+    expect(within(mobileList).getByText('Visits')).toBeInTheDocument();
+    expect(within(mobileList).getByText('Points')).toBeInTheDocument();
+    expect(within(mobileList).getByText('Total spent')).toBeInTheDocument();
+    expect(within(mobileList).getByText('Last visit')).toBeInTheDocument();
+    expect(within(mobileList).getByRole('link', { name: /^view$/i })).toBeInTheDocument();
   });
 });

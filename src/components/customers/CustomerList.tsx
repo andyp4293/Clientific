@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import AddCustomerModal from "./AddCustomerModal";
 import EditCustomerModal from "./EditCustomerModal";
 import SendCustomerMessageModal from "./SendCustomerMessageModal";
-import Link from "next/link";
 
 type Customer = {
   id: string;
@@ -56,6 +56,9 @@ const segmentLabels: Record<string, string> = {
   CHURNED: "Churned",
 };
 
+const customerTypeHelpText =
+  "Customer type helps you quickly spot new, loyal, at-risk, and inactive customers.";
+
 function getSmsStatus(customer: Pick<Customer, "phone" | "smsConsent" | "smsOptedOut">) {
   if (!customer.phone) {
     return {
@@ -92,6 +95,19 @@ function getSmsStatus(customer: Pick<Customer, "phone" | "smsConsent" | "smsOpte
   };
 }
 
+function getCustomerInitials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function formatLastVisit(lastVisit: Date | null) {
+  return lastVisit ? format(new Date(lastVisit), "MMM d, yyyy") : "Never";
+}
+
 export default function CustomerList({
   customers,
   segmentCounts,
@@ -126,22 +142,97 @@ export default function CustomerList({
     router.push(`/dashboard/customers?${params.toString()}`);
   };
 
-  const getTotalForSegment = (segment: string) => {
-    return segmentCounts.find((s) => s.segment === segment)?._count || 0;
-  };
+  const getTotalForSegment = (segment: string) =>
+    segmentCounts.find((entry) => entry.segment === segment)?._count || 0;
+
+  const renderCustomerActions = (customer: Customer, compact = false) => (
+    <div
+      className={
+        compact ? "grid grid-cols-3 gap-2" : "inline-flex items-center gap-1"
+      }
+    >
+      {customer.phone && (
+        <button
+          onClick={() => setMessagingCustomer(customer)}
+          disabled={!customer.smsConsent || customer.smsOptedOut}
+          title={
+            customer.smsOptedOut
+              ? "This customer has opted out of SMS"
+              : !customer.smsConsent
+                ? "This customer has not consented to SMS"
+                : "Send a text message"
+          }
+          className={`inline-flex items-center justify-center gap-1.5 rounded-md bg-emerald-50 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 dark:disabled:bg-gray-700 dark:disabled:text-gray-500 ${
+            compact ? "px-3 py-2" : "px-2.5 py-1.5"
+          }`}
+        >
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4-.823L3 20l1.055-3.165A7.421 7.421 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+            />
+          </svg>
+          Text
+        </button>
+      )}
+
+      <button
+        onClick={() => setEditingCustomer(customer)}
+        title="Edit customer"
+        className={`inline-flex items-center justify-center gap-1.5 rounded-md bg-gray-100 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 ${
+          compact ? "px-3 py-2" : "px-2.5 py-1.5"
+        }`}
+      >
+        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+          />
+        </svg>
+        Edit
+      </button>
+
+      <Link
+        href={`/dashboard/customers/${customer.id}`}
+        title="View profile"
+        className={`inline-flex items-center justify-center gap-1.5 rounded-md bg-primary/10 text-xs font-medium text-primary transition-colors hover:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 ${
+          compact ? "px-3 py-2" : "px-2.5 py-1.5"
+        }`}
+      >
+        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+          />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+          />
+        </svg>
+        View
+      </Link>
+    </div>
+  );
 
   return (
     <>
-      {/* Search and Actions */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 space-y-4">
-        <div className="flex flex-col sm:flex-row gap-4">
+      <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-800">
+        <div className="flex flex-col gap-4 sm:flex-row">
           <div className="flex-1">
             <input
               type="text"
               placeholder="Search by name, email, or phone..."
               value={search}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+              onChange={(event) => handleSearch(event.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
             />
           </div>
           <button
@@ -152,28 +243,37 @@ export default function CustomerList({
           </button>
         </div>
 
-        {/* Segment Filters */}
-        <div className="flex flex-wrap gap-2">
-          {["NEW", "REGULAR", "VIP", "AT_RISK", "CHURNED"].map((segment) => (
-            <button
-              key={segment}
-              onClick={() => handleSegmentFilter(segment)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                initialSegment === segment
-                  ? segmentColors[segment]
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-              }`}
-            >
-              {segmentLabels[segment]} ({getTotalForSegment(segment)})
-            </button>
-          ))}
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              Customer type
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {customerTypeHelpText}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {["NEW", "REGULAR", "VIP", "AT_RISK", "CHURNED"].map((segment) => (
+              <button
+                key={segment}
+                onClick={() => handleSegmentFilter(segment)}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                  initialSegment === segment
+                    ? segmentColors[segment]
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                }`}
+              >
+                {segmentLabels[segment]} ({getTotalForSegment(segment)})
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Customer List */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+      <div className="overflow-hidden rounded-lg bg-white shadow-sm dark:bg-gray-800">
         {customers.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="py-12 text-center">
             <svg
               className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500"
               fill="none"
@@ -203,158 +303,218 @@ export default function CustomerList({
             </div>
           </div>
         ) : (
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-700">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Customer
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Segment
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Visits
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Points
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Total Spent
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Last Visit
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  SMS Status
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+          <>
+            <div className="grid gap-4 p-4 md:hidden" data-testid="customer-mobile-list">
               {customers.map((customer) => {
                 const smsStatus = getSmsStatus(customer);
 
                 return (
-                <tr key={customer.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10 bg-primary-100 dark:bg-primary/15 rounded-full flex items-center justify-center">
-                        <span className="text-primary-600 dark:text-primary-300 font-medium text-sm">
-                          {customer.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")
-                            .toUpperCase()
-                            .slice(0, 2)}
+                  <article
+                    key={customer.id}
+                    className="rounded-2xl border border-gray-200 bg-gray-50/80 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/40"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-primary-100 dark:bg-primary/15">
+                        <span className="text-sm font-semibold text-primary-600 dark:text-primary-300">
+                          {getCustomerInitials(customer.name)}
                         </span>
                       </div>
-                      <div className="ml-4">
-                        <Link
-                          href={`/dashboard/customers/${customer.id}`}
-                          className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-primary"
-                        >
-                          {customer.name}
-                        </Link>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {customer.email || customer.phone || "No contact info"}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <Link
+                              href={`/dashboard/customers/${customer.id}`}
+                              className="block truncate text-base font-semibold text-gray-900 hover:text-primary dark:text-gray-100"
+                            >
+                              {customer.name}
+                            </Link>
+                            <p className="mt-1 break-words text-sm text-gray-500 dark:text-gray-400">
+                              {customer.email || customer.phone || "No contact info"}
+                            </p>
+                          </div>
+                          <span
+                            className={`inline-flex flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                              segmentColors[customer.segment]
+                            }`}
+                          >
+                            {segmentLabels[customer.segment]}
+                          </span>
                         </div>
                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        segmentColors[customer.segment]
-                      }`}
-                    >
-                      {segmentLabels[customer.segment]}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {customer._count.checkIns}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {customer.points.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    ${customer.totalSpent.toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {customer.lastVisit
-                      ? format(new Date(customer.lastVisit), "MMM d, yyyy")
-                      : "Never"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="space-y-1">
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${smsStatus.className}`}
-                      >
-                        {smsStatus.label}
-                      </span>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {smsStatus.description}
+
+                    <div className="mt-4 rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-700 dark:bg-gray-800/80">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                        SMS status
                       </p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <div className="inline-flex items-center gap-1">
-                      {customer.phone && (
-                        <button
-                          onClick={() => setMessagingCustomer(customer)}
-                          disabled={!customer.smsConsent || customer.smsOptedOut}
-                          title={
-                            customer.smsOptedOut
-                              ? "This customer has opted out of SMS"
-                              : !customer.smsConsent
-                                ? "This customer has not consented to SMS"
-                                : "Send a text message"
-                          }
-                          className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 dark:disabled:bg-gray-700 dark:disabled:text-gray-500"
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${smsStatus.className}`}
                         >
-                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4-.823L3 20l1.055-3.165A7.421 7.421 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                          </svg>
-                          Text
-                        </button>
-                      )}
-                      <button
-                        onClick={() => setEditingCustomer(customer)}
-                        title="Edit customer"
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        Edit
-                      </button>
-                      <Link
-                        href={`/dashboard/customers/${customer.id}`}
-                        title="View profile"
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-primary bg-primary/10 hover:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 transition-colors"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                        View
-                      </Link>
+                          {smsStatus.label}
+                        </span>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {smsStatus.description}
+                        </p>
+                      </div>
                     </div>
-                  </td>
-                </tr>
+
+                    <dl className="mt-4 grid grid-cols-2 gap-3">
+                      <div className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-700 dark:bg-gray-800/80">
+                        <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                          Customer type
+                        </dt>
+                        <dd className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {segmentLabels[customer.segment]}
+                        </dd>
+                      </div>
+                      <div className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-700 dark:bg-gray-800/80">
+                        <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                          Visits
+                        </dt>
+                        <dd className="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                          {customer._count.checkIns}
+                        </dd>
+                      </div>
+                      <div className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-700 dark:bg-gray-800/80">
+                        <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                          Points
+                        </dt>
+                        <dd className="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                          {customer.points.toLocaleString()}
+                        </dd>
+                      </div>
+                      <div className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-700 dark:bg-gray-800/80">
+                        <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                          Total spent
+                        </dt>
+                        <dd className="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                          ${customer.totalSpent.toFixed(2)}
+                        </dd>
+                      </div>
+                      <div className="col-span-2 rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-700 dark:bg-gray-800/80">
+                        <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                          Last visit
+                        </dt>
+                        <dd className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {formatLastVisit(customer.lastVisit)}
+                        </dd>
+                      </div>
+                    </dl>
+
+                    <div className="mt-4">{renderCustomerActions(customer, true)}</div>
+                  </article>
                 );
               })}
-            </tbody>
-          </table>
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Customer
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Customer Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Visits
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Points
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Total Spent
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Last Visit
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      SMS Status
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
+                  {customers.map((customer) => {
+                    const smsStatus = getSmsStatus(customer);
+
+                    return (
+                      <tr key={customer.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <div className="flex items-center">
+                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary-100 dark:bg-primary/15">
+                              <span className="text-sm font-medium text-primary-600 dark:text-primary-300">
+                                {getCustomerInitials(customer.name)}
+                              </span>
+                            </div>
+                            <div className="ml-4">
+                              <Link
+                                href={`/dashboard/customers/${customer.id}`}
+                                className="text-sm font-medium text-gray-900 hover:text-primary dark:text-gray-100"
+                              >
+                                {customer.name}
+                              </Link>
+                              <div className="text-sm text-gray-500 dark:text-gray-400">
+                                {customer.email || customer.phone || "No contact info"}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <span
+                            className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold leading-5 ${
+                              segmentColors[customer.segment]
+                            }`}
+                          >
+                            {segmentLabels[customer.segment]}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                          {customer._count.checkIns}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                          {customer.points.toLocaleString()}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                          ${customer.totalSpent.toFixed(2)}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                          {formatLastVisit(customer.lastVisit)}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <div className="space-y-1">
+                            <span
+                              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${smsStatus.className}`}
+                            >
+                              {smsStatus.label}
+                            </span>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {smsStatus.description}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-right">
+                          {renderCustomerActions(customer)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
-      {/* Modals */}
       <AddCustomerModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
       />
+
       {editingCustomer && (
         <EditCustomerModal
           customer={editingCustomer}
@@ -362,6 +522,7 @@ export default function CustomerList({
           onClose={() => setEditingCustomer(null)}
         />
       )}
+
       {messagingCustomer && (
         <SendCustomerMessageModal
           customer={messagingCustomer}
