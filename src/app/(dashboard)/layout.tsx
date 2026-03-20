@@ -13,6 +13,54 @@ import { SubscriptionBanner } from '@/components/billing/SubscriptionBanner';
 import { NotificationBell } from '@/components/layout/NotificationBell';
 import { Toaster } from 'sonner';
 
+type DashboardBusinessSnapshot = {
+  phone: string | null;
+  street: string | null;
+  city: string | null;
+  state: string | null;
+  zipCode: string | null;
+  country: string | null;
+  subscriptionStatus: string | null;
+  trialEndsAt: Date | null;
+};
+
+async function loadDashboardBusiness(
+  businessId: string
+): Promise<DashboardBusinessSnapshot | null> {
+  try {
+    return await prisma.business.findUnique({
+      where: { id: businessId },
+      select: {
+        phone: true,
+        street: true,
+        city: true,
+        state: true,
+        zipCode: true,
+        country: true,
+        subscriptionStatus: true,
+        trialEndsAt: true,
+      },
+    });
+  } catch (error) {
+    // Retry once to smooth over transient Neon/Prisma connection blips.
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    return prisma.business.findUnique({
+      where: { id: businessId },
+      select: {
+        phone: true,
+        street: true,
+        city: true,
+        state: true,
+        zipCode: true,
+        country: true,
+        subscriptionStatus: true,
+        trialEndsAt: true,
+      },
+    });
+  }
+}
+
 function DashboardUnavailable({
   retryHref,
 }: {
@@ -98,58 +146,43 @@ export default async function DashboardLayout({
     redirect('/signout');
   }
 
-  let business: {
-    phone: string | null;
-    street: string | null;
-    city: string | null;
-    state: string | null;
-    zipCode: string | null;
-    country: string | null;
-    subscriptionStatus: string | null;
-    trialEndsAt: Date | null;
-  } | null = null;
+  let business: DashboardBusinessSnapshot | null = null;
+  let businessLoadFailed = false;
 
   try {
-    business = await prisma.business.findUnique({
-      where: { id: businessId },
-      select: {
-        phone: true,
-        street: true,
-        city: true,
-        state: true,
-        zipCode: true,
-        country: true,
-        subscriptionStatus: true,
-        trialEndsAt: true,
-      },
-    });
+    business = await loadDashboardBusiness(businessId);
   } catch (error) {
+    businessLoadFailed = true;
     console.error('Dashboard layout failed to load business:', error);
-    return <DashboardUnavailable retryHref={pathname || '/dashboard'} />;
+    if (!isSubscribePage) {
+      return <DashboardUnavailable retryHref={pathname || '/dashboard'} />;
+    }
   }
 
-  if (!business) {
+  if (!business && !businessLoadFailed) {
     redirect('/signout');
   }
 
-  const trialIsActive =
-    business.subscriptionStatus === 'trialing' &&
-    business.trialEndsAt !== null &&
-    new Date() < new Date(business.trialEndsAt);
-  const hasActiveSubscription = business.subscriptionStatus === 'active' || trialIsActive;
-  const onboardingComplete = isBusinessOnboardingComplete(business);
+  if (business) {
+    const trialIsActive =
+      business.subscriptionStatus === 'trialing' &&
+      business.trialEndsAt !== null &&
+      new Date() < new Date(business.trialEndsAt);
+    const hasActiveSubscription = business.subscriptionStatus === 'active' || trialIsActive;
+    const onboardingComplete = isBusinessOnboardingComplete(business);
 
-  if (!isSubscribePage && !hasActiveSubscription) {
-    redirect('/dashboard/subscribe');
-  }
-
-  if (hasActiveSubscription) {
-    if (!onboardingComplete && !isOnboardingPage) {
-      redirect('/dashboard/onboarding');
+    if (!isSubscribePage && !hasActiveSubscription) {
+      redirect('/dashboard/subscribe');
     }
 
-    if (onboardingComplete && isOnboardingPage) {
-      redirect('/dashboard');
+    if (hasActiveSubscription) {
+      if (!onboardingComplete && !isOnboardingPage) {
+        redirect('/dashboard/onboarding');
+      }
+
+      if (onboardingComplete && isOnboardingPage) {
+        redirect('/dashboard');
+      }
     }
   }
 

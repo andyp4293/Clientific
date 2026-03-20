@@ -156,5 +156,45 @@ describe('Dashboard layout onboarding gate', () => {
     );
     expect(screen.queryByText('Payouts content')).not.toBeInTheDocument();
     expect(screen.queryByTestId('dashboard-nav')).not.toBeInTheDocument();
+    expect(mockFindUnique).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries a transient database failure once before rendering the dashboard gate', async () => {
+    mockHeaders.mockReturnValue({
+      get: () => '/dashboard/subscribe',
+    });
+    mockFindUnique
+      .mockRejectedValueOnce(new Error('temporary connection reset'))
+      .mockResolvedValueOnce({
+        subscriptionStatus: 'trialing',
+        trialEndsAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        phone: '(555) 123-4567',
+        street: '123 Main St',
+        city: 'Austin',
+        state: 'TX',
+        zipCode: '78701',
+        country: 'United States',
+      });
+
+    render(await DashboardLayout({ children: <div>Subscribe content</div> }));
+
+    expect(screen.getByText('Subscribe content')).toBeInTheDocument();
+    expect(screen.queryByText(/dashboard temporarily unavailable/i)).not.toBeInTheDocument();
+    expect(mockFindUnique).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the subscribe shell available when business lookup stays down', async () => {
+    mockHeaders.mockReturnValue({
+      get: () => '/dashboard/subscribe',
+    });
+    mockFindUnique.mockRejectedValue(new Error('Can\'t reach database server'));
+
+    render(await DashboardLayout({ children: <div>Subscribe content</div> }));
+
+    expect(screen.getByText('Subscribe content')).toBeInTheDocument();
+    expect(screen.queryByText(/dashboard temporarily unavailable/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /sign out/i })).toBeInTheDocument();
+    expect(screen.queryByTestId('dashboard-nav')).not.toBeInTheDocument();
+    expect(mockFindUnique).toHaveBeenCalledTimes(2);
   });
 });

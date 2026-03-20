@@ -4,14 +4,24 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getSubscriptionInfo } from '@/lib/subscription';
 import { APP_NAME } from '@/lib/brand';
 import { UpgradePricingCards } from '@/components/billing/UpgradePricingCards';
+import { getSessionBusinessId } from '@/lib/session-business';
 
 export default async function SubscribePage() {
   const session = await getServerSession(authOptions);
   if (!session) redirect('/login');
 
-  const info = await getSubscriptionInfo(session.user.businessId);
+  const businessId = getSessionBusinessId(session);
+  if (!businessId) redirect('/signout');
 
-  const status = info?.subscriptionStatus ?? 'trialing';
+  let info: Awaited<ReturnType<typeof getSubscriptionInfo>> = null;
+
+  try {
+    info = await getSubscriptionInfo(businessId);
+  } catch (error) {
+    console.error('Subscribe page failed to load subscription info:', error);
+  }
+
+  const status = info?.subscriptionStatus ?? 'inactive';
   const hasStripeCustomer = !!info?.stripeCustomerId;
   const trialExpired = status === 'trialing' && (info?.trialDaysRemaining ?? 0) <= 0;
 
