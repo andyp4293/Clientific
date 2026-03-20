@@ -3,10 +3,12 @@
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import {
+  collectOutstandingRequirementKeys,
   type ConnectData,
   formatRequirementStatus,
   formatSchedule,
   summarizeRequirementTasks,
+  summarizeRequirementGuidance,
   sumBalanceAmounts,
 } from '@/components/payouts/EmbeddedPayoutWorkspace';
 
@@ -93,14 +95,9 @@ export default function PayoutsPage() {
   const availableBalance = sumBalanceAmounts(connectData?.balances?.available);
   const pendingBalance = sumBalanceAmounts(connectData?.balances?.pending);
   const needsSetup = !connectData?.readyForPaidDeals;
-  const rawRequirementList = [
-    ...new Set([
-      ...(connectData?.requirements.currentlyDue ?? []),
-      ...(connectData?.requirements.pastDue ?? []),
-      ...(connectData?.requirements.pendingVerification ?? []),
-    ]),
-  ];
+  const rawRequirementList = collectOutstandingRequirementKeys(connectData?.requirements);
   const requirementTasks = summarizeRequirementTasks(rawRequirementList);
+  const requirementGuidance = summarizeRequirementGuidance(connectData);
   const requirementStatus = formatRequirementStatus(connectData?.requirements.disabledReason);
 
   return (
@@ -158,11 +155,11 @@ export default function PayoutsPage() {
                 <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
                   {connectData.externalAccount
                     ? `${connectData.externalAccount.bankName ?? 'Bank account'} ending in ${connectData.externalAccount.last4}`
-                    : 'Not connected yet'}
+                    : 'Stripe has not saved a payout bank account yet'}
                 </p>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   {connectData.externalAccount?.accountHolderName ||
-                    'Stripe collects and stores bank details securely.'}
+                    'Keep going in secure setup until Stripe confirms the payout account back to Clientific.'}
                 </p>
               </div>
 
@@ -208,6 +205,13 @@ export default function PayoutsPage() {
                     >
                       {item}
                     </span>
+                  ))}
+                </div>
+              ) : null}
+              {requirementGuidance.length > 0 ? (
+                <div className="mt-3 space-y-2 text-xs text-amber-700 dark:text-amber-300">
+                  {requirementGuidance.map((item) => (
+                    <p key={item}>{item}</p>
                   ))}
                 </div>
               ) : null}

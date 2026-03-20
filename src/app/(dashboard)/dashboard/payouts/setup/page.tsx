@@ -5,11 +5,13 @@ import { useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import {
+  collectOutstandingRequirementKeys,
   EmbeddedPayoutWorkspace,
   type ConnectData,
   formatRequirementStatus,
   formatSchedule,
   summarizeRequirementTasks,
+  summarizeRequirementGuidance,
   sumBalanceAmounts,
 } from '@/components/payouts/EmbeddedPayoutWorkspace';
 
@@ -42,14 +44,9 @@ export default function PayoutsSetupPage() {
 
   const availableBalance = sumBalanceAmounts(connectData?.balances?.available);
   const pendingBalance = sumBalanceAmounts(connectData?.balances?.pending);
-  const rawRequirementList = [
-    ...new Set([
-      ...(connectData?.requirements.currentlyDue ?? []),
-      ...(connectData?.requirements.pastDue ?? []),
-      ...(connectData?.requirements.pendingVerification ?? []),
-    ]),
-  ];
+  const rawRequirementList = collectOutstandingRequirementKeys(connectData?.requirements);
   const requirementTasks = summarizeRequirementTasks(rawRequirementList);
+  const requirementGuidance = summarizeRequirementGuidance(connectData);
   const requirementStatus = formatRequirementStatus(connectData?.requirements.disabledReason);
   const needsSetup = !connectData?.readyForPaidDeals;
   const onboardingState = searchParams.get('stripe_onboarding');
@@ -150,8 +147,28 @@ export default function PayoutsSetupPage() {
             </div>
           ) : null}
 
+          {requirementGuidance.length > 0 ? (
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/30 dark:bg-amber-900/20">
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                What Stripe is still waiting on
+              </p>
+              <div className="mt-2 space-y-2 text-sm text-amber-800 dark:text-amber-300">
+                {requirementGuidance.map((item) => (
+                  <p key={item}>{item}</p>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           {requirementStatus ? (
             <p className="mt-4 text-sm text-amber-700 dark:text-amber-300">{requirementStatus}</p>
+          ) : null}
+
+          {onboardingState === 'return' && needsSetup ? (
+            <p className="mt-4 text-sm text-amber-700 dark:text-amber-300">
+              We rechecked Stripe when you came back to Clientific. If setup still looks
+              incomplete, Stripe has not saved the remaining payout steps on this account yet.
+            </p>
           ) : null}
 
           {onboardingState === 'refresh_error' ? (
@@ -177,6 +194,12 @@ export default function PayoutsSetupPage() {
                   This opens Stripe&apos;s secure onboarding page in the same tab. When you finish,
                   Stripe sends you back here and payout controls become available.
                 </p>
+                {onboardingState === 'return' && needsSetup ? (
+                  <p className="mt-3 text-sm font-medium text-amber-700 dark:text-amber-300">
+                    If you still see setup tasks after coming back, open Stripe again and finish
+                    the remaining bank-account or payout-term steps.
+                  </p>
+                ) : null}
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
@@ -231,11 +254,11 @@ export default function PayoutsSetupPage() {
             <p className="mt-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
               {connectData?.externalAccount
                 ? `${connectData.externalAccount.bankName ?? 'Bank account'} ending in ${connectData.externalAccount.last4}`
-                : 'Not connected yet'}
+                : 'Stripe has not saved a payout bank account yet'}
             </p>
             <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
               {connectData?.externalAccount?.accountHolderName ||
-                'Stripe securely stores bank details for payouts.'}
+                'Finish secure setup until Stripe confirms the payout account details back to Clientific.'}
             </p>
           </div>
 

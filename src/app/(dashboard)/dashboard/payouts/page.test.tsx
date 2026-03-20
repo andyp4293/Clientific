@@ -131,8 +131,22 @@ describe('PayoutsPage', () => {
     expect(screen.getByText(/add customer support contact details/i)).toBeInTheDocument();
     expect(screen.getByText(/connect a bank account for payouts/i)).toBeInTheDocument();
     expect(screen.getByText(/verify the account owner identity/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/stripe still does not have a payout bank account saved for this account/i)
+    ).toBeInTheDocument();
     expect(screen.getByText(/stripe has paused paid payouts/i)).toBeInTheDocument();
     expect(screen.queryByText(/business profile mcc/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/requirements\.past_due/i)).not.toBeInTheDocument();
+  });
+
+  it('shows that Stripe has not saved a bank account yet when setup is still incomplete', () => {
+    render(<PayoutsPage />);
+
+    expect(
+      screen.getByText(/stripe has not saved a payout bank account yet/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/keep going in secure setup until stripe confirms the payout account back to clientific/i)
+    ).toBeInTheDocument();
   });
 });

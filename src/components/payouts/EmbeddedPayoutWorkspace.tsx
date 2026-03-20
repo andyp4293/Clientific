@@ -106,6 +106,18 @@ export function formatRequirementLabel(value: string) {
     .join(' ');
 }
 
+export function collectOutstandingRequirementKeys(
+  requirements: ConnectData['requirements'] | null | undefined
+) {
+  return [
+    ...new Set([
+      ...(requirements?.currentlyDue ?? []),
+      ...(requirements?.pastDue ?? []),
+      ...(requirements?.pendingVerification ?? []),
+    ]),
+  ].map((requirement) => requirement.toLowerCase());
+}
+
 export function summarizeRequirementTasks(requirements: string[]) {
   const tasks = new Map<string, string>();
 
@@ -157,6 +169,47 @@ export function summarizeRequirementTasks(requirements: string[]) {
   }
 
   return Array.from(tasks.values());
+}
+
+export function summarizeRequirementGuidance(
+  connectData:
+    | Pick<ConnectData, 'externalAccount' | 'requirements'>
+    | null
+    | undefined
+) {
+  const requirements = collectOutstandingRequirementKeys(connectData?.requirements);
+  const guidance = new Map<string, string>();
+
+  if (!connectData?.externalAccount || requirements.some((item) => item.startsWith('external_account'))) {
+    guidance.set('bank_account', 'Stripe still does not have a payout bank account saved for this account.');
+  }
+
+  if (requirements.some((item) => item.startsWith('tos_acceptance.'))) {
+    guidance.set('terms', 'Stripe still needs the payout terms accepted before paid deals can go live.');
+  }
+
+  if (
+    requirements.some(
+      (item) =>
+        item.startsWith('representative.') ||
+        item.startsWith('owners.') ||
+        item.startsWith('owner.') ||
+        item.startsWith('person.') ||
+        item.startsWith('individual.')
+    )
+  ) {
+    guidance.set('identity', 'Stripe still needs to verify the account owner details on this connected account.');
+  }
+
+  if (requirements.some((item) => item.startsWith('business_profile.') || item === 'business_type')) {
+    guidance.set('business_details', 'Stripe still needs the business profile details completed before payouts can be enabled.');
+  }
+
+  if (requirements.some((item) => item.startsWith('documents.') || item.includes('document'))) {
+    guidance.set('documents', 'Stripe is still waiting on one or more verification documents for this payout account.');
+  }
+
+  return Array.from(guidance.values());
 }
 
 export function formatRequirementStatus(reason: string | null | undefined) {
