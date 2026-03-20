@@ -13,6 +13,7 @@ export default async function SubscribePage() {
 
   const status = info?.subscriptionStatus ?? 'trialing';
   const hasStripeCustomer = !!info?.stripeCustomerId;
+  const trialExpired = status === 'trialing' && (info?.trialDaysRemaining ?? 0) <= 0;
 
   let headline = 'Subscription required';
   let subtext = `Start your $49/month subscription to continue using ${APP_NAME}.`;
@@ -36,7 +37,11 @@ export default async function SubscribePage() {
       <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 text-center">{headline}</h1>
       <p className="mt-3 text-gray-500 dark:text-gray-400 text-center max-w-md">{subtext}</p>
 
-      <UpgradePricingCards status={status} hasStripeCustomer={hasStripeCustomer} />
+      <UpgradePricingCards
+        status={status}
+        hasStripeCustomer={hasStripeCustomer}
+        trialExpired={trialExpired}
+      />
     </div>
   );
 }

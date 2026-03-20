@@ -106,4 +106,22 @@ test.describe('dashboard click-through smoke', () => {
 
     tracker.dispose();
   });
+
+  test('expired-trial login lands on visible subscribe content without needing a refresh', async ({ page }) => {
+    const tracker = trackAppFailures(page);
+
+    await gotoAndAssert(page, '/login', tracker);
+    await page.getByLabel('Email Address').fill(EXPIRED_ACCOUNT.email);
+    await page.getByLabel('Password').fill(EXPIRED_ACCOUNT.password);
+    await page.getByRole('button', { name: 'Log In' }).click();
+
+    await page.waitForURL(/\/dashboard\/subscribe$/);
+    await expect(
+      page.getByRole('heading', { name: /your free trial has ended|subscription required|payment failed|your subscription was canceled/i })
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: /continue with \$49\/month/i })).toBeVisible();
+    await assertHealthyPage(page, tracker);
+
+    tracker.dispose();
+  });
 });

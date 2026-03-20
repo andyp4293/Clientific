@@ -4,10 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import LoginPage from './page';
 
-const mockPush = vi.fn();
-const mockRefresh = vi.fn();
 const mockSignIn = vi.fn();
 const mockUseSession = vi.fn();
+const mockAssign = vi.fn();
+const mockReplace = vi.fn();
 
 vi.mock('next-auth/react', () => ({
   useSession: () => mockUseSession(),
@@ -15,10 +15,6 @@ vi.mock('next-auth/react', () => ({
 }));
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-    refresh: mockRefresh,
-  }),
   useSearchParams: () => ({
     get: () => null,
   }),
@@ -29,9 +25,17 @@ describe('Login page verification actions', () => {
     vi.clearAllMocks();
     mockUseSession.mockReturnValue({ status: 'unauthenticated', data: null });
     mockSignIn.mockResolvedValue({ error: 'Invalid credentials' });
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        ...window.location,
+        assign: mockAssign,
+        replace: mockReplace,
+      },
+    });
   });
 
-  it('redirects authenticated users with incomplete onboarding to onboarding', async () => {
+  it('redirects authenticated users into the dashboard gate with a full-page redirect', async () => {
     mockUseSession.mockReturnValue({
       status: 'authenticated',
       data: {
@@ -44,27 +48,9 @@ describe('Login page verification actions', () => {
     render(<LoginPage />);
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/dashboard/onboarding');
-      expect(mockRefresh).toHaveBeenCalled();
+      expect(mockReplace).toHaveBeenCalledWith('/dashboard');
     });
-  });
-
-  it('redirects authenticated users with completed onboarding to the dashboard', async () => {
-    mockUseSession.mockReturnValue({
-      status: 'authenticated',
-      data: {
-        user: {
-          onboardingComplete: true,
-        },
-      },
-    });
-
-    render(<LoginPage />);
-
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/dashboard');
-      expect(mockRefresh).toHaveBeenCalled();
-    });
+    expect(screen.getByText(/signing you in/i)).toBeInTheDocument();
   });
 
   it('does not show resend verification button by default', () => {
@@ -98,5 +84,25 @@ describe('Login page verification actions', () => {
     expect(
       await screen.findByRole('button', { name: /resend verification code/i })
     ).toBeInTheDocument();
+  });
+
+  it('starts a full-page dashboard navigation after successful login', async () => {
+    mockSignIn.mockResolvedValueOnce({ ok: true });
+
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText(/email address/i), {
+      target: { value: 'owner@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/password/i), {
+      target: { value: 'Password123!' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /log in/i }));
+
+    await waitFor(() => {
+      expect(mockAssign).toHaveBeenCalledWith('/dashboard');
+    });
+
+    expect(screen.getByText(/signing you in/i)).toBeInTheDocument();
   });
 });

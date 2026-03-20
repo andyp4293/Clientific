@@ -2,12 +2,22 @@
 
 import { Suspense, useState, useEffect } from 'react';
 import { signIn, useSession } from 'next-auth/react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { APP_NAME } from '@/lib/brand';
 
+function AuthRedirectScreen({ message }: { message: string }) {
+  return (
+    <div className="page-shell min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+        <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">{message}</p>
+      </div>
+    </div>
+  );
+}
+
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
   const [email, setEmail] = useState('');
@@ -17,18 +27,18 @@ function LoginForm() {
   const [isResendingVerification, setIsResendingVerification] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [canResendVerification, setCanResendVerification] = useState(false);
+  const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
   const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === 'true';
   const oauthError = searchParams.get('error');
-  const postLoginPath =
-    session?.user?.onboardingComplete === false ? '/dashboard/onboarding' : '/dashboard';
 
   // Redirect if already logged in
   useEffect(() => {
-    if (status === 'authenticated') {
-      router.push(postLoginPath);
-      router.refresh();
+    if (status === 'authenticated' && !pendingRedirect) {
+      const targetPath = '/dashboard';
+      setPendingRedirect(targetPath);
+      window.location.replace(targetPath);
     }
-  }, [status, router, postLoginPath]);
+  }, [status, pendingRedirect]);
 
   useEffect(() => {
     if (!oauthError) return;
@@ -38,19 +48,11 @@ function LoginForm() {
 
   // Show loading while checking auth status
   if (status === 'loading') {
-    return (
-      <div className="page-shell min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
+    return <AuthRedirectScreen message="Loading..." />;
   }
 
-  // Don't render login form if authenticated
-  if (status === 'authenticated') {
-    return null;
+  if (status === 'authenticated' || pendingRedirect) {
+    return <AuthRedirectScreen message="Signing you in..." />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,6 +76,9 @@ function LoginForm() {
         setCanResendVerification(result.error.includes('EmailNotVerified'));
       } else {
         setNotice('Signing you in...');
+        const targetPath = '/dashboard';
+        setPendingRedirect(targetPath);
+        window.location.assign(targetPath);
       }
     } catch (err) {
       setError('Unable to connect to the server. Please try again later.');

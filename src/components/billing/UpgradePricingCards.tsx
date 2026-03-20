@@ -8,9 +8,10 @@ import { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/pricing-plans
 interface Props {
   status: string;
   hasStripeCustomer: boolean;
+  trialExpired?: boolean;
 }
 
-export function UpgradePricingCards({ status, hasStripeCustomer }: Props) {
+export function UpgradePricingCards({ status, hasStripeCustomer, trialExpired = false }: Props) {
   const [loading, setLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
 
@@ -114,7 +115,11 @@ export function UpgradePricingCards({ status, hasStripeCustomer }: Props) {
                 disabled={isLoading}
                 className="btn-primary w-full"
               >
-                {isLoading ? 'Redirecting...' : status === 'trialing' ? 'Start 14-day free trial' : 'Continue with $49/month'}
+                {isLoading
+                  ? 'Redirecting...'
+                  : status === 'trialing' && !trialExpired
+                    ? 'Start 14-day free trial'
+                    : 'Continue with $49/month'}
               </button>
             </div>
           );

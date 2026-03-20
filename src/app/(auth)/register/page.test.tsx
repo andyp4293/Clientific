@@ -4,10 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import RegisterPage from './page';
 
-const mockPush = vi.fn();
-const mockRefresh = vi.fn();
 const mockSignIn = vi.fn();
 const mockUseSession = vi.fn();
+const mockAssign = vi.fn();
+const mockReplace = vi.fn();
 
 vi.mock('next-auth/react', () => ({
   useSession: () => mockUseSession(),
@@ -15,10 +15,6 @@ vi.mock('next-auth/react', () => ({
 }));
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-    refresh: mockRefresh,
-  }),
   useSearchParams: () => ({
     get: () => null,
   }),
@@ -29,6 +25,14 @@ describe('RegisterPage', () => {
     vi.clearAllMocks();
     mockUseSession.mockReturnValue({ status: 'unauthenticated', data: null });
     mockSignIn.mockResolvedValue(undefined);
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        ...window.location,
+        assign: mockAssign,
+        replace: mockReplace,
+      },
+    });
 
     global.fetch = vi
       .fn()
@@ -147,9 +151,29 @@ describe('RegisterPage', () => {
       });
     });
 
-    expect(screen.getByText(/signing you in/i)).toBeInTheDocument();
+    expect(mockAssign).toHaveBeenCalledWith('/dashboard/onboarding');
+    expect(screen.getByText(/redirecting to your dashboard/i)).toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: /log in manually/i })
     ).not.toBeInTheDocument();
+  });
+
+  it('redirects authenticated visitors to the dashboard with a full-page navigation', async () => {
+    mockUseSession.mockReturnValue({
+      status: 'authenticated',
+      data: {
+        user: {
+          onboardingComplete: true,
+        },
+      },
+    });
+
+    render(<RegisterPage />);
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/dashboard');
+    });
+
+    expect(screen.getByText(/redirecting to your dashboard/i)).toBeInTheDocument();
   });
 });

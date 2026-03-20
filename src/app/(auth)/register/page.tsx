@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { APP_NAME } from '@/lib/brand';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import { getPublicPlanLabel, getPublicPlanSlug } from '@/lib/plan-utils';
@@ -23,8 +23,18 @@ interface FormData {
   affiliateCode: string;
 }
 
+function AuthRedirectScreen({ message }: { message: string }) {
+  return (
+    <div className="page-shell min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
+        <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">{message}</p>
+      </div>
+    </div>
+  );
+}
+
 function RegisterForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
 
@@ -44,7 +54,7 @@ function RegisterForm() {
   const [verificationCode, setVerificationCode] = useState('');
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
-  const [authenticatedRedirect, setAuthenticatedRedirect] = useState<string | null>(null);
+  const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
   const [autoSignInFailed, setAutoSignInFailed] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
@@ -61,13 +71,12 @@ function RegisterForm() {
   });
 
   useEffect(() => {
-    if (status === 'authenticated') {
-      const defaultAuthenticatedPath =
-        session?.user?.onboardingComplete === false ? '/dashboard/onboarding' : '/dashboard';
-      router.push(authenticatedRedirect || defaultAuthenticatedPath);
-      router.refresh();
+    if (status === 'authenticated' && !pendingRedirect) {
+      const targetPath = '/dashboard';
+      setPendingRedirect(targetPath);
+      window.location.replace(targetPath);
     }
-  }, [status, router, authenticatedRedirect, session?.user?.onboardingComplete]);
+  }, [status, pendingRedirect]);
 
   useEffect(() => {
     const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -90,18 +99,11 @@ function RegisterForm() {
   );
 
   if (status === 'loading') {
-    return (
-      <div className="page-shell min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
+    return <AuthRedirectScreen message="Loading..." />;
   }
 
-  if (status === 'authenticated') {
-    return null;
+  if (status === 'authenticated' || pendingRedirect) {
+    return <AuthRedirectScreen message="Redirecting to your dashboard..." />;
   }
 
   const businessTypes = [
@@ -262,8 +264,8 @@ function RegisterForm() {
 
   const signInAfterVerification = async () => {
     const onboardingPath = '/dashboard/onboarding';
-    setAuthenticatedRedirect(onboardingPath);
     setAutoSignInFailed(false);
+    setPendingRedirect(onboardingPath);
 
     const result = await signIn('credentials', {
       email: formData.email.trim().toLowerCase(),
@@ -272,11 +274,13 @@ function RegisterForm() {
     });
 
     if (result?.error) {
-      setAuthenticatedRedirect(null);
+      setPendingRedirect(null);
       setAutoSignInFailed(true);
       setNotice('Email verified successfully. Please log in to continue onboarding.');
       return;
     }
+
+    window.location.assign(onboardingPath);
   };
 
   const verifyEmailCode = async () => {
