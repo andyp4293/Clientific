@@ -34,6 +34,8 @@ export function PublicSiteHeader({
   showLogin = true,
   showCta = true,
 }: PublicSiteHeaderProps) {
+  const mobileCtaLabel = ctaLabel === 'Start Free Trial' ? 'Free Trial' : ctaLabel;
+
   return (
     <header className="sticky top-0 z-40 border-b border-gray-200/70 bg-white/80 backdrop-blur-md dark:border-gray-900 dark:bg-gray-950/90">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
@@ -76,9 +78,11 @@ export function PublicSiteHeader({
             {showCta && (
               <Link
                 href={ctaHref}
+                aria-label={ctaLabel}
                 className="shrink-0 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary-700 sm:text-sm"
               >
-                {ctaLabel}
+                <span className="sm:hidden">{mobileCtaLabel}</span>
+                <span className="hidden sm:inline">{ctaLabel}</span>
               </Link>
             )}
           </div>

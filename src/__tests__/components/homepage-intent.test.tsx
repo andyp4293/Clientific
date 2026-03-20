@@ -41,4 +41,17 @@ describe('Homepage audience intent', () => {
       '/dashboard'
     );
   });
+
+  it('renders four quick-stat cards in the responsive stats section', async () => {
+    mockUseSession.mockReturnValue({ status: 'unauthenticated', data: null });
+    render(<HomePage />);
+
+    const statsSection = await screen.findByTestId('homepage-quick-stats');
+    const statCards = await screen.findAllByTestId('homepage-quick-stat-card');
+
+    expect(statsSection).toBeInTheDocument();
+    expect(statCards).toHaveLength(4);
+    expect(screen.getByText('AI answers your calls')).toBeInTheDocument();
+    expect(screen.getByText('Platform uptime')).toBeInTheDocument();
+  });
 });

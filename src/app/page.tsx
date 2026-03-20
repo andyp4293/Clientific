@@ -324,12 +324,21 @@ export default function HomePage() {
       </section>
 
       <section className="border-b border-gray-200/70 bg-white/70 dark:border-gray-900 dark:bg-gray-950/50">
-        <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 gap-8 text-center md:grid-cols-4">
-            {quickStats.map((stat, index) => (
-              <div key={stat.label} className={index > 0 ? 'md:border-l md:border-gray-200/70 dark:md:border-gray-900' : ''}>
-                <div className="mb-1 text-3xl font-bold tabular-nums text-primary">{stat.val}</div>
-                <div className="text-sm text-gray-700 dark:text-gray-300">{stat.label}</div>
+        <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+          <div
+            data-testid="homepage-quick-stats"
+            className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 lg:grid-cols-4"
+          >
+            {quickStats.map((stat) => (
+              <div
+                key={stat.label}
+                data-testid="homepage-quick-stat-card"
+                className="rounded-2xl border border-gray-200/80 bg-white/88 px-4 py-4 text-left shadow-sm dark:border-gray-800 dark:bg-gray-900/78 min-[480px]:px-5 lg:min-h-[132px] lg:text-center"
+              >
+                <div className="text-3xl font-bold tabular-nums text-primary">{stat.val}</div>
+                <div className="mt-2 max-w-[14rem] text-sm leading-6 text-gray-700 dark:text-gray-300 lg:mx-auto">
+                  {stat.label}
+                </div>
               </div>
             ))}
           </div>
@@ -348,9 +357,9 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
             {features.map((feature) => (
-              <div key={feature.title} className="group rounded-2xl border border-gray-200 bg-white/80 p-6 shadow-sm transition-all duration-300 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 dark:border-gray-800 dark:bg-gray-900/80 dark:hover:border-primary/40 dark:hover:shadow-primary/10">
+              <div key={feature.title} className="group rounded-2xl border border-gray-200 bg-white/80 p-5 shadow-sm transition-all duration-300 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 dark:border-gray-800 dark:bg-gray-900/80 dark:hover:border-primary/40 dark:hover:shadow-primary/10 sm:p-6">
                 <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-primary-50 to-gray-100 transition-transform duration-200 group-hover:scale-110 dark:from-primary/20 dark:to-gray-800">
                   <svg className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     {feature.icon}
@@ -418,7 +427,7 @@ export default function HomePage() {
             {VISIBLE_SELF_SERVE_PLAN_KEYS.map((key) => {
               const plan = PRICING_PLANS[key];
               const planSlug = getPublicPlanSlug(key.toLowerCase());
-              const cardClassName = 'relative flex flex-col rounded-2xl border border-primary/30 bg-gradient-to-br from-primary-50 via-white to-gray-100 p-8 shadow-lg shadow-primary/10 dark:border-primary/40 dark:from-gray-950 dark:via-gray-950 dark:to-primary-950';
+              const cardClassName = 'relative flex flex-col rounded-[28px] border border-primary/30 bg-gradient-to-br from-primary-50 via-white to-gray-100 p-6 shadow-lg shadow-primary/10 dark:border-primary/40 dark:from-gray-950 dark:via-gray-950 dark:to-primary-950 sm:p-8';
 
               return (
                 <div key={key} data-testid="homepage-featured-plan" className={cardClassName}>
@@ -447,7 +456,7 @@ export default function HomePage() {
                   ) : (
                     <Link
                       href={`/register?plan=${planSlug}`}
-                      className="w-full rounded-xl bg-primary py-3 text-center font-semibold text-white transition-colors hover:bg-primary-600"
+                      className="w-full rounded-xl bg-primary py-3.5 text-center font-semibold text-white transition-colors hover:bg-primary-600"
                       style={{ boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' }}
                     >
                       Start Free Trial

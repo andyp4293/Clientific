@@ -72,6 +72,20 @@ function PricingContent() {
           <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-6 sm:mb-8">
             Everything most service businesses need in one subscription. Start with a 14-day free trial.
           </p>
+          <div className="mx-auto grid max-w-4xl grid-cols-1 gap-3 min-[520px]:grid-cols-3">
+            {[
+              '14-day free trial',
+              'Cancel anytime',
+              'Secure checkout powered by Stripe',
+            ].map((item) => (
+              <div
+                key={item}
+                className="rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm font-medium text-gray-700 shadow-sm dark:border-gray-800 dark:bg-gray-900/75 dark:text-gray-200"
+              >
+                {item}
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="grid max-w-3xl mx-auto gap-6">
@@ -84,9 +98,10 @@ function PricingContent() {
             return (
               <div
                 key={key}
+                data-testid="pricing-plan-card"
                 className={`card p-8 relative flex flex-col ${
                   plan.popular ? 'border-2 border-primary shadow-xl shadow-primary/10' : ''
-                }`}
+                } rounded-[28px] p-6 sm:p-8`}
               >
                 <div className="text-center mb-6">
                   <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{plan.name}</h3>
@@ -115,7 +130,7 @@ function PricingContent() {
                 <button
                   onClick={() => void handleSubscribe(publicSlug)}
                   disabled={isLoading}
-                  className="block w-full text-center py-3 px-4 rounded-lg font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed bg-primary text-white hover:bg-primary-700"
+                  className="block w-full text-center py-3.5 px-4 rounded-xl font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed bg-primary text-white hover:bg-primary-700"
                 >
                   {isLoading
                     ? 'Redirecting...'
