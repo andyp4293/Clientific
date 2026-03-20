@@ -3,11 +3,24 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import CustomerList from "@/components/customers/CustomerList";
+import { buildCustomerWhereClause } from "@/lib/customer-filters";
+import type {
+  CustomerContactFilter,
+  CustomerSegmentFilter,
+  CustomerSmsFilter,
+  CustomerVisitFilter,
+} from "@/lib/customer-filter-options";
 
 export default async function CustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; segment?: string }>;
+  searchParams: Promise<{
+    search?: string;
+    segment?: CustomerSegmentFilter;
+    sms?: CustomerSmsFilter;
+    contact?: CustomerContactFilter;
+    visit?: CustomerVisitFilter;
+  }>;
 }) {
   const session = await getServerSession(authOptions);
 
@@ -17,23 +30,15 @@ export default async function CustomersPage({
 
   const businessId = session.user.businessId;
   const params = await searchParams;
+  const where = buildCustomerWhereClause({
+    businessId,
+    search: params.search,
+    segment: params.segment,
+    sms: params.sms,
+    contact: params.contact,
+    visit: params.visit,
+  });
 
-  // Build where clause
-  const where: any = { businessId };
-
-  // Search filter
-  if (params.search) {
-    where.OR = [
-      { name: { contains: params.search, mode: "insensitive" } },
-      { email: { contains: params.search, mode: "insensitive" } },
-      { phone: { contains: params.search, mode: "insensitive" } },
-    ];
-  }
-
-  // Segment filter
-  if (params.segment) {
-    where.segment = params.segment;
-  }
   const [customers, segmentCounts] = await Promise.all([
     prisma.customer.findMany({
       where,
@@ -59,6 +64,9 @@ export default async function CustomersPage({
         segmentCounts={segmentCounts}
         initialSearch={params.search}
         initialSegment={params.segment}
+        initialSmsFilter={params.sms}
+        initialContactFilter={params.contact}
+        initialVisitFilter={params.visit}
       />
     </div>
   );

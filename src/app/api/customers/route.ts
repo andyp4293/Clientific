@@ -6,6 +6,7 @@ import { formatPhoneNumber } from "@/lib/utils";
 import { requireActiveSubscription, checkPlanLimit } from "@/lib/subscription";
 import { revalidateTag } from "next/cache";
 import { blockedContentError, getBlockedFieldLabel } from "@/lib/moderation";
+import { buildCustomerWhereClause } from "@/lib/customer-filters";
 
 // GET /api/customers - List all customers
 export async function GET(request: NextRequest) {
@@ -19,20 +20,20 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const segment = searchParams.get("segment");
+    const sms = searchParams.get("sms");
+    const contact = searchParams.get("contact");
+    const visit = searchParams.get("visit");
 
-    const where: any = { businessId: session.user.businessId };
+    const where = buildCustomerWhereClause({
+      businessId: session.user.businessId,
+      search: search ?? undefined,
+      segment: segment ?? undefined,
+      sms: sms ?? undefined,
+      contact: contact ?? undefined,
+      visit: visit ?? undefined,
+    });
 
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { email: { contains: search, mode: "insensitive" } },
-        { phone: { contains: search, mode: "insensitive" } },
-      ];
-    }
-
-    if (segment) {
-      where.segment = segment;
-    }    const customers = await prisma.customer.findMany({
+    const customers = await prisma.customer.findMany({
       where,
       include: {
         _count: {

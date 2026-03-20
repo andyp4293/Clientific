@@ -56,24 +56,46 @@ describe('CustomersPage', () => {
     expect(mockRedirect).toHaveBeenCalledWith('/login');
   });
 
-  it('awaits async searchParams and applies search + segment filters', async () => {
+  it('awaits async searchParams and applies the full customer filter set', async () => {
     mockGetServerSession.mockResolvedValue({
       user: { businessId: 'biz-1' },
     });
 
     await CustomersPage({
-      searchParams: Promise.resolve({ search: 'alice', segment: 'VIP' }),
+      searchParams: Promise.resolve({
+        search: 'alice',
+        segment: 'VIP',
+        sms: 'enabled',
+        contact: 'both',
+        visit: 'visited',
+      }),
     } as any);
 
     expect(mockFindMany).toHaveBeenCalledWith({
       where: {
         businessId: 'biz-1',
-        OR: [
-          { name: { contains: 'alice', mode: 'insensitive' } },
-          { email: { contains: 'alice', mode: 'insensitive' } },
-          { phone: { contains: 'alice', mode: 'insensitive' } },
+        AND: [
+          {
+            OR: [
+              { name: { contains: 'alice', mode: 'insensitive' } },
+              { email: { contains: 'alice', mode: 'insensitive' } },
+              { phone: { contains: 'alice', mode: 'insensitive' } },
+            ],
+          },
+          { segment: 'VIP' },
+          {
+            phone: { not: null },
+            smsConsent: true,
+            smsOptedOut: false,
+          },
+          {
+            email: { not: null },
+            phone: { not: null },
+          },
+          {
+            lastVisit: { not: null },
+          },
         ],
-        segment: 'VIP',
       },
       include: { _count: { select: { checkIns: true, appointments: true } } },
       orderBy: { createdAt: 'desc' },

@@ -7,6 +7,13 @@ import { format } from "date-fns";
 import AddCustomerModal from "./AddCustomerModal";
 import EditCustomerModal from "./EditCustomerModal";
 import SendCustomerMessageModal from "./SendCustomerMessageModal";
+import {
+  CUSTOMER_SEGMENTS,
+  type CustomerContactFilter,
+  type CustomerSegmentFilter,
+  type CustomerSmsFilter,
+  type CustomerVisitFilter,
+} from "@/lib/customer-filter-options";
 
 type Customer = {
   id: string;
@@ -37,7 +44,10 @@ interface CustomerListProps {
   customers: Customer[];
   segmentCounts: SegmentCount[];
   initialSearch?: string;
-  initialSegment?: string;
+  initialSegment?: CustomerSegmentFilter | "";
+  initialSmsFilter?: CustomerSmsFilter | "";
+  initialContactFilter?: CustomerContactFilter | "";
+  initialVisitFilter?: CustomerVisitFilter | "";
 }
 
 const segmentColors: Record<string, string> = {
@@ -58,6 +68,29 @@ const segmentLabels: Record<string, string> = {
 
 const customerTypeHelpText =
   "Customer type helps you quickly spot new, loyal, at-risk, and inactive customers.";
+
+const smsFilterOptions: Array<{ value: CustomerSmsFilter; label: string }> = [
+  { value: "enabled", label: "SMS enabled" },
+  { value: "opted_out", label: "Opted out" },
+  { value: "denied", label: "Denies SMS" },
+  { value: "no_phone", label: "No phone" },
+];
+
+const contactFilterOptions: Array<{ value: CustomerContactFilter; label: string }> = [
+  { value: "email", label: "Has email" },
+  { value: "phone", label: "Has phone" },
+  { value: "both", label: "Has both" },
+];
+
+const visitFilterOptions: Array<{ value: CustomerVisitFilter; label: string }> = [
+  { value: "visited", label: "Visited before" },
+  { value: "never", label: "Never visited" },
+];
+
+function buildCustomersHref(params: URLSearchParams) {
+  const query = params.toString();
+  return query ? `/dashboard/customers?${query}` : "/dashboard/customers";
+}
 
 function getSmsStatus(customer: Pick<Customer, "phone" | "smsConsent" | "smsOptedOut">) {
   if (!customer.phone) {
@@ -131,6 +164,9 @@ export default function CustomerList({
   segmentCounts,
   initialSearch = "",
   initialSegment = "",
+  initialSmsFilter = "",
+  initialContactFilter = "",
+  initialVisitFilter = "",
 }: CustomerListProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -139,29 +175,40 @@ export default function CustomerList({
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [messagingCustomer, setMessagingCustomer] = useState<Customer | null>(null);
 
-  const handleSearch = (value: string) => {
-    setSearch(value);
+  const updateQueryParam = (key: string, value?: string) => {
     const params = new URLSearchParams(searchParams.toString());
     if (value) {
-      params.set("search", value);
+      params.set(key, value);
     } else {
-      params.delete("search");
+      params.delete(key);
     }
-    router.push(`/dashboard/customers?${params.toString()}`);
+    router.push(buildCustomersHref(params));
+  };
+
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    updateQueryParam("search", value || undefined);
   };
 
   const handleSegmentFilter = (segment: string) => {
-    const params = new URLSearchParams(searchParams.toString());
     if (segment === initialSegment) {
-      params.delete("segment");
+      updateQueryParam("segment");
     } else {
-      params.set("segment", segment);
+      updateQueryParam("segment", segment);
     }
-    router.push(`/dashboard/customers?${params.toString()}`);
   };
 
   const getTotalForSegment = (segment: string) =>
     segmentCounts.find((entry) => entry.segment === segment)?._count || 0;
+
+  const hasActiveFilters = Boolean(
+    initialSearch || initialSegment || initialSmsFilter || initialContactFilter || initialVisitFilter,
+  );
+
+  const clearAllFilters = () => {
+    setSearch("");
+    router.push("/dashboard/customers");
+  };
 
   const renderCustomerActions = (customer: Customer, compact = false) => (
     <div
@@ -261,31 +308,152 @@ export default function CustomerList({
           </button>
         </div>
 
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-              Customer type
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {customerTypeHelpText}
-            </p>
+        <div className="space-y-4 rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-1">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                Filter customers
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Narrow by customer type, texting status, contact details, and visit history.
+              </p>
+            </div>
+
+            {hasActiveFilters && (
+              <button
+                onClick={clearAllFilters}
+                className="inline-flex items-center justify-center rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+              >
+                Clear all filters
+              </button>
+            )}
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {["NEW", "REGULAR", "VIP", "AT_RISK", "CHURNED"].map((segment) => (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                Customer type
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {customerTypeHelpText}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
               <button
-                key={segment}
-                onClick={() => handleSegmentFilter(segment)}
+                onClick={() => updateQueryParam("segment")}
                 className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                  initialSegment === segment
-                    ? segmentColors[segment]
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                  !initialSegment
+                    ? "bg-primary/10 text-primary dark:bg-primary/20"
+                    : "bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
                 }`}
               >
-                {segmentLabels[segment]} ({getTotalForSegment(segment)})
+                All types ({customers.length})
               </button>
-            ))}
+              {CUSTOMER_SEGMENTS.map((segment) => (
+                <button
+                  key={segment}
+                  onClick={() => handleSegmentFilter(segment)}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                    initialSegment === segment
+                      ? segmentColors[segment]
+                      : "bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  {segmentLabels[segment]} ({getTotalForSegment(segment)})
+                </button>
+              ))}
+            </div>
           </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <label className="space-y-1">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                SMS status
+              </span>
+              <select
+                aria-label="SMS status"
+                value={initialSmsFilter}
+                onChange={(event) => updateQueryParam("sms", event.target.value || undefined)}
+                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-transparent focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+              >
+                <option value="">All SMS statuses</option>
+                {smsFilterOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-1">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                Contact details
+              </span>
+              <select
+                aria-label="Contact details"
+                value={initialContactFilter}
+                onChange={(event) => updateQueryParam("contact", event.target.value || undefined)}
+                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-transparent focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+              >
+                <option value="">All contacts</option>
+                {contactFilterOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-1">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                Visit history
+              </span>
+              <select
+                aria-label="Visit history"
+                value={initialVisitFilter}
+                onChange={(event) => updateQueryParam("visit", event.target.value || undefined)}
+                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-transparent focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+              >
+                <option value="">All visits</option>
+                {visitFilterOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {hasActiveFilters && (
+            <div className="flex flex-wrap gap-2">
+              {initialSearch && (
+                <span className="inline-flex rounded-full bg-white px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                  Search: {initialSearch}
+                </span>
+              )}
+              {initialSegment && (
+                <span className="inline-flex rounded-full bg-white px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                  Type: {segmentLabels[initialSegment]}
+                </span>
+              )}
+              {initialSmsFilter && (
+                <span className="inline-flex rounded-full bg-white px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                  SMS: {smsFilterOptions.find((option) => option.value === initialSmsFilter)?.label}
+                </span>
+              )}
+              {initialContactFilter && (
+                <span className="inline-flex rounded-full bg-white px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                  Contact: {contactFilterOptions.find((option) => option.value === initialContactFilter)?.label}
+                </span>
+              )}
+              {initialVisitFilter && (
+                <span className="inline-flex rounded-full bg-white px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                  Visits: {visitFilterOptions.find((option) => option.value === initialVisitFilter)?.label}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
