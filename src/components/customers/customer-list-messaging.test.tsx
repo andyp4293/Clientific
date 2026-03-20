@@ -84,4 +84,61 @@ describe('CustomerList messaging', () => {
       message: 'We have an opening tomorrow at 2 PM.',
     });
   });
+
+  it('shows SMS status badges for opted-out and subscribed customers', () => {
+    render(
+      <CustomerList
+        customers={[
+          {
+            id: 'cust-1',
+            name: 'Jane Doe',
+            email: 'jane@example.com',
+            phone: '+15551234567',
+            smsConsent: true,
+            smsOptedOut: false,
+            segment: 'VIP',
+            points: 120,
+            totalSpent: 250,
+            lastVisit: new Date('2026-03-12T12:00:00.000Z'),
+            birthday: null,
+            notes: null,
+            createdAt: new Date('2026-03-01T12:00:00.000Z'),
+            _count: {
+              checkIns: 3,
+              appointments: 4,
+            },
+          },
+          {
+            id: 'cust-2',
+            name: 'John Smith',
+            email: 'john@example.com',
+            phone: '+15557654321',
+            smsConsent: false,
+            smsOptedOut: true,
+            segment: 'REGULAR',
+            points: 40,
+            totalSpent: 90,
+            lastVisit: null,
+            birthday: null,
+            notes: null,
+            createdAt: new Date('2026-03-02T12:00:00.000Z'),
+            _count: {
+              checkIns: 1,
+              appointments: 1,
+            },
+          },
+        ]}
+        segmentCounts={[
+          { segment: 'VIP', _count: 1 },
+          { segment: 'REGULAR', _count: 1 },
+        ]}
+      />
+    );
+
+    expect(screen.getByText('SMS Status')).toBeInTheDocument();
+    expect(screen.getByText('Subscribed')).toBeInTheDocument();
+    expect(screen.getByText('Can receive SMS')).toBeInTheDocument();
+    expect(screen.getByText('Opted out')).toBeInTheDocument();
+    expect(screen.getByText('Stopped SMS')).toBeInTheDocument();
+  });
 });

@@ -56,6 +56,42 @@ const segmentLabels: Record<string, string> = {
   CHURNED: "Churned",
 };
 
+function getSmsStatus(customer: Pick<Customer, "phone" | "smsConsent" | "smsOptedOut">) {
+  if (!customer.phone) {
+    return {
+      label: "No phone",
+      description: "No SMS number on file",
+      className:
+        "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
+    };
+  }
+
+  if (customer.smsOptedOut) {
+    return {
+      label: "Opted out",
+      description: "Stopped SMS",
+      className:
+        "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+    };
+  }
+
+  if (customer.smsConsent) {
+    return {
+      label: "Subscribed",
+      description: "Can receive SMS",
+      className:
+        "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+    };
+  }
+
+  return {
+    label: "Not opted in",
+    description: "No SMS consent yet",
+    className:
+      "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+  };
+}
+
 export default function CustomerList({
   customers,
   segmentCounts,
@@ -188,13 +224,19 @@ export default function CustomerList({
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Last Visit
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  SMS Status
+                </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {customers.map((customer) => (
+              {customers.map((customer) => {
+                const smsStatus = getSmsStatus(customer);
+
+                return (
                 <tr key={customer.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -244,6 +286,18 @@ export default function CustomerList({
                       ? format(new Date(customer.lastVisit), "MMM d, yyyy")
                       : "Never"}
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="space-y-1">
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${smsStatus.className}`}
+                      >
+                        {smsStatus.label}
+                      </span>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {smsStatus.description}
+                      </p>
+                    </div>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <div className="inline-flex items-center gap-1">
                       {customer.phone && (
@@ -289,7 +343,8 @@ export default function CustomerList({
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}
