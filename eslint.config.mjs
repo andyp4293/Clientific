@@ -8,6 +8,7 @@ export default defineConfig([
     'out/**',
     'build/**',
     'coverage/**',
+    'test-results/**',
     'next-env.d.ts',
   ]),
   {
