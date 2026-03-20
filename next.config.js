@@ -3,6 +3,18 @@ const nextConfig = {
   async headers() {
     return [
       {
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, proxy-revalidate' },
+        ],
+      },
+      {
+        source: '/manifest.json',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, proxy-revalidate' },
+        ],
+      },
+      {
         source: '/(.*)',
         headers: [
           { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -20,6 +32,11 @@ const nextConfig = {
   },
   async redirects() {
     return [
+      {
+        source: '/favicon.ico',
+        destination: '/icons/icon-192.png',
+        permanent: false,
+      },
       {
         source: '/:path*',
         has: [{ type: 'host', value: 'clientell.io' }],

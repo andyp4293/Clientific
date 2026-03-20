@@ -28,6 +28,17 @@ describe('next.config redirects', () => {
     );
   });
 
+  it('redirects favicon.ico to the app icon asset', async () => {
+    const redirects = await nextConfig.redirects();
+    expect(redirects).toContainEqual(
+      expect.objectContaining({
+        source: '/favicon.ico',
+        destination: '/icons/icon-192.png',
+        permanent: false,
+      })
+    );
+  });
+
   it('redirects www.clientell.io to clientific.app', async () => {
     const redirects = await nextConfig.redirects();
     expect(redirects).toContainEqual(
@@ -41,13 +52,30 @@ describe('next.config redirects', () => {
 
   it('sets security headers globally', async () => {
     const headers = await nextConfig.headers();
-    expect(headers[0].source).toBe('/(.*)');
-    expect(headers[0].headers).toEqual(
+    const globalHeaders = headers.find((entry: { source: string }) => entry.source === '/(.*)');
+
+    expect(globalHeaders).toBeTruthy();
+    expect(globalHeaders.headers).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ key: 'X-Content-Type-Options', value: 'nosniff' }),
         expect.objectContaining({
           key: 'Strict-Transport-Security',
           value: expect.stringContaining('max-age='),
+        }),
+      ])
+    );
+  });
+
+  it('disables caching for the service worker asset', async () => {
+    const headers = await nextConfig.headers();
+    const swHeaders = headers.find((entry: { source: string }) => entry.source === '/sw.js');
+
+    expect(swHeaders).toBeTruthy();
+    expect(swHeaders.headers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'Cache-Control',
+          value: expect.stringContaining('no-store'),
         }),
       ])
     );
