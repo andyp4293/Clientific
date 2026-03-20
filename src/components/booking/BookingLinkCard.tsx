@@ -54,14 +54,14 @@ export default function BookingLinkCard() {
   if (!business) return null;
 
   return (
-    <div className="card p-4 sm:p-6">
+    <div className="card rounded-[30px] p-5 sm:p-6">
       {/* Header row */}
-      <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-0 mb-4">
+      <div className="mb-5 flex flex-col items-start justify-between gap-3 sm:flex-row sm:gap-4">
         <div className="flex-1 min-w-0">
-          <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          <h3 className="mb-1 text-base font-semibold text-gray-900 dark:text-gray-100 sm:text-lg">
             Your Booking Page
           </h3>
-          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-xs leading-6 text-gray-600 dark:text-gray-400 sm:text-sm">
             Share this link with customers to let them book appointments online
           </p>
           {business.publicId && (
@@ -74,7 +74,7 @@ export default function BookingLinkCard() {
           href={bookingUrl || '#'}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary border border-primary/40 rounded-lg hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors flex-shrink-0"
+          className="flex w-full flex-shrink-0 items-center justify-center gap-1.5 rounded-xl border border-primary/40 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/5 dark:hover:bg-primary/10 sm:w-auto"
         >
           Preview
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -84,16 +84,16 @@ export default function BookingLinkCard() {
       </div>
 
       {/* URL + Copy row */}
-      <div className="flex flex-col sm:flex-row gap-2 mb-3">
+      <div className="mb-3 flex flex-col gap-3 sm:flex-row">
         <input
           type="text"
           value={bookingUrl}
           readOnly
-          className="flex-1 px-3 sm:px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-xs sm:text-sm text-gray-700 dark:text-gray-300 focus:outline-none truncate"
+          className="flex-1 rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-xs text-gray-700 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 sm:px-4 sm:text-sm"
         />
         <button
           onClick={handleCopy}
-          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-700 transition-colors text-xs sm:text-sm font-medium flex items-center justify-center gap-2 whitespace-nowrap"
+          className="flex items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-primary px-4 py-2.5 text-xs font-medium text-white transition-colors hover:bg-primary-700 sm:text-sm"
         >
           {copied ? (
             <>

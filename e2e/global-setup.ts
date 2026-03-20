@@ -20,6 +20,14 @@ const EXPIRED_ACCOUNT = {
   publicId: 'CF-E2E02',
 };
 
+const TRIAL_ACCOUNT = {
+  email: 'e2e-trialing@clientific.app',
+  password: 'Clientific123!',
+  name: 'Clientific E2E Active Trial',
+  slug: 'clientific-e2e-active-trial',
+  publicId: 'CF-E2E03',
+};
+
 async function upsertBusiness(input: {
   email: string;
   password: string;
@@ -95,7 +103,14 @@ export default async function globalSetup(_config: FullConfig) {
     trialEndsAt: new Date(Date.now() - 60_000),
   });
 
+  await upsertBusiness({
+    ...TRIAL_ACCOUNT,
+    subscriptionPlan: 'base',
+    subscriptionStatus: 'trialing',
+    trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  });
+
   await prisma.$disconnect();
 }
 
-export { ACTIVE_ACCOUNT, EXPIRED_ACCOUNT };
+export { ACTIVE_ACCOUNT, EXPIRED_ACCOUNT, TRIAL_ACCOUNT };

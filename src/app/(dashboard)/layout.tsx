@@ -140,6 +140,7 @@ export default async function DashboardLayout({
   const pathname = headersList.get('x-pathname') ?? '';
   const isOnboardingPage = pathname === '/dashboard/onboarding';
   const isSubscribePage = pathname === '/dashboard/subscribe';
+  const showSubscriptionBanner = pathname !== '/dashboard';
   const businessId = session.user.businessId ?? session.user.id;
 
   if (!businessId) {
@@ -246,7 +247,7 @@ export default async function DashboardLayout({
       </div>
 
       <div className="dashboard-scroll lg:pl-64 lg:pt-16">
-        <SubscriptionBanner />
+        {showSubscriptionBanner ? <SubscriptionBanner /> : null}
         <main className="py-6 px-4 sm:px-6 lg:px-8 lg:pb-6">
           {children}
         </main>
