@@ -7,7 +7,7 @@ import { UpgradePricingCards } from '@/components/billing/UpgradePricingCards';
 
 export default async function SubscribePage() {
   const session = await getServerSession(authOptions);
-  if (!session) redirect('/signin');
+  if (!session) redirect('/login');
 
   const info = await getSubscriptionInfo(session.user.businessId);
 

@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useState } from 'react';
 import { APP_DOMAIN, APP_NAME } from '@/lib/brand';
 import { getPublicPlanSlug } from '@/lib/plan-utils';
-import { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/stripe';
+import { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/pricing-plans';
 import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
 
 const faqs = [

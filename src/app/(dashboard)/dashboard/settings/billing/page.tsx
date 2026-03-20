@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { PRICING_PLANS } from '@/lib/stripe';
+import { PRICING_PLANS } from '@/lib/pricing-plans';
 import { getPricingPlanKey } from '@/lib/plan-utils';
 
 interface SubscriptionInfo {

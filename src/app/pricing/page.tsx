@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { APP_SUPPORT_EMAIL } from '@/lib/brand';
 import { getPublicPlanSlug, getPricingPlanKey } from '@/lib/plan-utils';
-import { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/stripe';
+import { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/pricing-plans';
 import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
 
 function PricingContent() {
