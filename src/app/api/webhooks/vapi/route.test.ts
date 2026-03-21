@@ -9,6 +9,7 @@ vi.mock('@/lib/prisma', () => ({
     appointment: { findMany: vi.fn(), count: vi.fn(), create: vi.fn() },
     customer: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
     notification: { create: vi.fn() },
+    aiCallSession: { upsert: vi.fn(), findUnique: vi.fn(), deleteMany: vi.fn() },
     $transaction: vi.fn(),
   },
 }));
@@ -52,7 +53,7 @@ const BASE_BUSINESS = {
     { id: 'svc-gel', name: 'Gel Manicure', price: 45, duration: 45 },
     { id: 'svc-pedi', name: 'Pedicure', price: 55, duration: 60 },
   ],
-  staff: [{ id: 'staff-1', fullName: 'Andy', role: 'Technician' }],
+  staff: [{ id: 'staff-1', fullName: 'Andy', role: 'Technician', workDays: [0, 1, 3, 4, 5, 6] }],
   businessHours: {
     hours: {
       '0': { isOpen: false, openTime: null, closeTime: null },
@@ -100,6 +101,9 @@ describe('POST /api/webhooks/vapi', () => {
       phone: '+15551234567',
     } as any);
     vi.mocked(prisma.notification.create).mockResolvedValue({ id: 'notif-1' } as any);
+    vi.mocked(prisma.aiCallSession.upsert).mockResolvedValue({ id: 'call-session-1' } as any);
+    vi.mocked(prisma.aiCallSession.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.aiCallSession.deleteMany).mockResolvedValue({ count: 0 } as any);
     vi.mocked(prisma.$transaction).mockImplementation(async (fn: any) =>
       fn({
         appointment: {
@@ -129,6 +133,42 @@ describe('POST /api/webhooks/vapi', () => {
     expect(systemPrompt).toContain('Do NOT split them into separate bookings');
     expect(systemPrompt).toContain('serviceIds for every requested service');
     expect(systemPrompt).toContain('maximum is 5 services in one appointment');
+    expect(systemPrompt).toContain('keep that same staffId on every later manage_booking call');
+    expect(systemPrompt).toContain('off Tuesday');
+    expect(systemPrompt).toContain('could not find them on the team');
+  });
+
+  it('stores a requested staff preference from conversation updates', async () => {
+    const res = await POST(
+      req({
+        message: {
+          type: 'conversation-update',
+          phoneNumber: { id: 'phone-1' },
+          call: {
+            id: 'call-1',
+            customer: { number: '+15551234567' },
+          },
+          conversation: [
+            { role: 'assistant', content: 'Hi, how can I help you?' },
+            { role: 'user', content: 'Can I book a gel manicure with Andy on Tuesday at 9 AM?' },
+          ],
+        },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(prisma.aiCallSession.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { callId: 'call-1' },
+        create: expect.objectContaining({
+          businessId: 'biz-1',
+          callId: 'call-1',
+          callerPhone: '+15551234567',
+          requestedStaffId: 'staff-1',
+          requestedStaffName: 'Andy',
+        }),
+      })
+    );
   });
 
   it('refuses availability when the requested staff member is off that day', async () => {
@@ -172,6 +212,146 @@ describe('POST /api/webhooks/vapi', () => {
     const body = await res.json();
     expect(body.results[0].result).toContain("Andy doesn't work on that day");
     expect(prisma.appointment.findMany).not.toHaveBeenCalled();
+  });
+
+  it('keeps the requested staff member attached across tool calls when Vapi omits staffId', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'));
+    vi.mocked(prisma.staff.findFirst).mockResolvedValue({
+      id: 'staff-1',
+      fullName: 'Andy',
+      workDays: [1],
+      serviceAssignments: [
+        { serviceId: 'svc-gel' },
+        { serviceId: 'svc-pedi' },
+      ],
+    } as any);
+    vi.mocked(prisma.aiCallSession.findUnique).mockResolvedValue({
+      requestedStaffId: 'staff-1',
+      requestedStaffName: 'Andy',
+    } as any);
+
+    const res = await POST(
+      req({
+        message: {
+          type: 'tool-calls',
+          phoneNumber: { id: 'phone-1' },
+          call: { id: 'call-1', customer: { number: '+15551234567' } },
+          toolCallList: [
+            {
+              id: 'tool-1',
+              function: {
+                name: 'manage_booking',
+                arguments: {
+                  action: 'checkAvailability',
+                  date: '2026-03-10',
+                  serviceIds: ['svc-gel', 'svc-pedi'],
+                },
+              },
+            },
+          ],
+        },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.results[0].result).toContain("Andy doesn't work on that day");
+    expect(prisma.aiCallSession.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { callId: 'call-1' },
+      })
+    );
+    expect(prisma.appointment.findMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects unavailable exact times for a remembered staff member with existing appointments', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'));
+    vi.mocked(prisma.aiCallSession.findUnique).mockResolvedValue({
+      requestedStaffId: 'staff-1',
+      requestedStaffName: 'Andy',
+    } as any);
+    vi.mocked(prisma.appointment.findMany).mockResolvedValue([
+      {
+        startTime: new Date('2026-03-10T14:00:00.000Z'),
+        endTime: new Date('2026-03-10T15:45:00.000Z'),
+      },
+    ] as any);
+
+    const res = await POST(
+      req({
+        message: {
+          type: 'tool-calls',
+          phoneNumber: { id: 'phone-1' },
+          call: { id: 'call-1', customer: { number: '+15551234567' } },
+          toolCallList: [
+            {
+              id: 'tool-1',
+              function: {
+                name: 'manage_booking',
+                arguments: {
+                  action: 'checkAvailability',
+                  date: '2026-03-10',
+                  requestedTime: '10 AM',
+                  serviceIds: ['svc-gel', 'svc-pedi'],
+                },
+              },
+            },
+          ],
+        },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.results[0].result).toContain("10:00 AM isn't available");
+    expect(prisma.appointment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          staffId: 'staff-1',
+        }),
+      })
+    );
+  });
+
+  it('blocks booking when the caller asks for someone who is not on staff', async () => {
+    vi.mocked(prisma.aiCallSession.findUnique).mockResolvedValue({
+      requestedStaffId: null,
+      requestedStaffName: 'Taylor',
+    } as any);
+    vi.mocked(prisma.service.findMany).mockResolvedValueOnce([
+      { id: 'svc-gel', name: 'Gel Manicure', duration: 45 },
+    ] as any);
+
+    const res = await POST(
+      req({
+        message: {
+          type: 'tool-calls',
+          phoneNumber: { id: 'phone-1' },
+          call: { id: 'call-1', customer: { number: '+15551234567' } },
+          toolCallList: [
+            {
+              id: 'tool-1',
+              function: {
+                name: 'manage_booking',
+                arguments: {
+                  action: 'createBooking',
+                  slotTime: '2026-03-10T15:00:00.000Z',
+                  customerName: 'Jane',
+                  serviceIds: ['svc-gel'],
+                },
+              },
+            },
+          ],
+        },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.results[0].result).toContain("I couldn't find Taylor on the team");
+    expect(prisma.appointment.create).not.toHaveBeenCalled();
   });
 
   it('uses the combined service duration when checking a requested staff member', async () => {

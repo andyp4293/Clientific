@@ -79,6 +79,10 @@ export function weekdayIndexInTimeZone(date: Date, timezone: string): number {
   }
 }
 
+export function weekdayIndexForLocalDate(dateStr: string, timezone: string): number {
+  return weekdayIndexInTimeZone(localToUTC(dateStr, 12, 0, timezone), timezone);
+}
+
 export function timezoneFromCoordinates(
   latitude: number,
   longitude: number

@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { normalizeOptionalPhoneNumber, sendAppointmentConfirmation } from '@/lib/twilio';
-import { localToUTC, weekdayIndexInTimeZone } from '@/lib/timezone';
+import { localToUTC, weekdayIndexForLocalDate, weekdayIndexInTimeZone } from '@/lib/timezone';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
 
@@ -90,9 +90,25 @@ type BusinessData = {
   aiReceptionistPhone: string | null;
   aiReceptionistFaq: unknown;
   services: { id: string; name: string; price: number | null; duration: number }[];
-  staff: { id: string; fullName: string; role: string }[];
+  staff: { id: string; fullName: string; role: string; workDays: number[] }[];
   businessHours: { hours: any } | null;
 };
+
+type CallConversationMessage = {
+  role?: string;
+  content?: string;
+  tool_calls?: Array<{
+    function?: {
+      name?: string;
+      arguments?: string | Record<string, unknown>;
+    };
+  }>;
+};
+
+type StaffPreferenceSignal =
+  | { kind: 'set'; staffId: string; staffName: string }
+  | { kind: 'clear' }
+  | { kind: 'unknown'; staffName: string };
 
 type ResolvedServiceSelection = {
   primaryServiceId: string;
@@ -103,9 +119,176 @@ type ResolvedServiceSelection = {
 };
 
 const MAX_VAPI_APPOINTMENT_SERVICES = 5;
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const STAFF_CLEAR_PATTERNS = [
+  /\banyone\b/i,
+  /\bno preference\b/i,
+  /\bwhoever\b/i,
+  /\bdoes(?:n't| not) matter\b/i,
+  /\beither one\b/i,
+  /\bany tech\b/i,
+  /\bany stylist\b/i,
+];
+
+const AI_ENABLED_BUSINESS_SELECT = {
+  id: true,
+  name: true,
+  businessType: true,
+  phone: true,
+  vapiPhoneNumber: true,
+  publicId: true,
+  street: true,
+  city: true,
+  state: true,
+  timezone: true,
+  aiReceptionistGreeting: true,
+  aiReceptionistPhone: true,
+  aiReceptionistFaq: true,
+  services: {
+    where: { active: true },
+    select: { id: true, name: true, price: true, duration: true },
+    take: 20,
+  },
+  staff: {
+    where: { active: true },
+    select: { id: true, fullName: true, role: true, workDays: true },
+    take: 20,
+  },
+  businessHours: { select: { hours: true } },
+} satisfies Prisma.BusinessSelect;
 
 function getTooManyServicesMessage(): string {
   return `I can help book up to ${MAX_VAPI_APPOINTMENT_SERVICES} services in one appointment. Which ${MAX_VAPI_APPOINTMENT_SERVICES} services would you like to keep together?`;
+}
+
+function parseToolArguments(rawArgs: unknown): Record<string, unknown> {
+  if (!rawArgs) return {};
+  if (typeof rawArgs === 'string') {
+    try {
+      const parsed = JSON.parse(rawArgs);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  return typeof rawArgs === 'object' ? rawArgs as Record<string, unknown> : {};
+}
+
+function formatWorkDays(workDays: number[]): string {
+  if (workDays.length === 0) return 'availability not configured';
+
+  const sorted = Array.from(new Set(workDays))
+    .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
+    .sort((a, b) => a - b);
+
+  if (sorted.length === WEEKDAY_NAMES.length) return 'works every day';
+
+  const working = sorted.map((day) => WEEKDAY_NAMES[day]);
+  const offDays = WEEKDAY_NAMES.filter((_, index) => !sorted.includes(index));
+  const offText = offDays.length > 0 ? `; off ${formatServiceList(offDays)}` : '';
+  return `works ${formatServiceList(working)}${offText}`;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeNameCandidate(rawValue: string): string {
+  return rawValue
+    .replace(/\s+/g, ' ')
+    .replace(/[^a-zA-Z' -]/g, '')
+    .trim();
+}
+
+function extractRequestedStaffName(text: string): string | null {
+  const match = text.match(/\bwith\s+([a-z][a-z' -]{0,40})/i);
+  if (!match) return null;
+
+  const candidate = normalizeNameCandidate(
+    match[1].split(/\b(?:on|for|at|this|next|today|tomorrow|morning|afternoon|evening|night|sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i)[0] ?? ''
+  );
+
+  return candidate || null;
+}
+
+function matchStaffByRequestedName(
+  requestedName: string,
+  staffList: BusinessData['staff']
+): { match: BusinessData['staff'][number] | null; ambiguous: boolean } {
+  const normalizedRequested = requestedName.toLowerCase();
+  const exact = staffList.find(
+    (staffMember) => staffMember.fullName.trim().toLowerCase() === normalizedRequested
+  );
+  if (exact) return { match: exact, ambiguous: false };
+
+  const tokenMatches = staffList.filter((staffMember) => {
+    const tokens = staffMember.fullName
+      .toLowerCase()
+      .split(/[^a-z0-9']+/)
+      .filter(Boolean);
+    return tokens.includes(normalizedRequested);
+  });
+
+  if (tokenMatches.length === 1) return { match: tokenMatches[0], ambiguous: false };
+  return { match: null, ambiguous: tokenMatches.length > 1 };
+}
+
+function inferStaffPreferenceFromText(
+  text: string,
+  staffList: BusinessData['staff']
+): StaffPreferenceSignal | undefined {
+  if (STAFF_CLEAR_PATTERNS.some((pattern) => pattern.test(text))) {
+    return { kind: 'clear' };
+  }
+
+  for (const staffMember of staffList) {
+    const fullNamePattern = new RegExp(`\\b${escapeRegExp(staffMember.fullName)}\\b`, 'i');
+    if (fullNamePattern.test(text)) {
+      return { kind: 'set', staffId: staffMember.id, staffName: staffMember.fullName };
+    }
+  }
+
+  const requestedName = extractRequestedStaffName(text);
+  if (!requestedName) return undefined;
+
+  const { match, ambiguous } = matchStaffByRequestedName(requestedName, staffList);
+  if (match) {
+    return { kind: 'set', staffId: match.id, staffName: match.fullName };
+  }
+  if (!ambiguous) {
+    return { kind: 'unknown', staffName: requestedName };
+  }
+
+  return undefined;
+}
+
+function inferStaffPreferenceFromConversation(
+  conversation: CallConversationMessage[],
+  staffList: BusinessData['staff']
+): StaffPreferenceSignal | undefined {
+  let signal: StaffPreferenceSignal | undefined;
+
+  for (const message of conversation) {
+    if (message.role === 'assistant' && Array.isArray(message.tool_calls)) {
+      for (const toolCall of message.tool_calls) {
+        const parsedArgs = parseToolArguments(toolCall?.function?.arguments);
+        const toolStaffId = typeof parsedArgs.staffId === 'string' ? parsedArgs.staffId : null;
+        if (!toolStaffId) continue;
+        const matchedStaff = staffList.find((staffMember) => staffMember.id === toolStaffId);
+        if (matchedStaff) {
+          signal = { kind: 'set', staffId: matchedStaff.id, staffName: matchedStaff.fullName };
+        }
+      }
+    }
+
+    if (message.role === 'user' && typeof message.content === 'string') {
+      const nextSignal = inferStaffPreferenceFromText(message.content, staffList);
+      if (nextSignal) signal = nextSignal;
+    }
+  }
+
+  return signal;
 }
 
 function getRequestedServiceIds(args: any): string[] {
@@ -199,7 +382,11 @@ function buildAssistantConfig(business: BusinessData) {
   const bookingUrl = `${appUrl}/book/${business.publicId}`;
 
   const staffList = business.staff.length > 0
-    ? business.staff.map(s => `- ${s.fullName} (ID: ${s.id}${s.role !== 'staff' ? `, ${s.role}` : ''})`).join('\n')
+    ? business.staff
+        .map((staffMember) =>
+          `- ${staffMember.fullName} (ID: ${staffMember.id}${staffMember.role !== 'staff' ? `, ${staffMember.role}` : ''}, ${formatWorkDays(staffMember.workDays)})`
+        )
+        .join('\n')
     : null;
 
   const faqList = (Array.isArray(business.aiReceptionistFaq) ? business.aiReceptionistFaq as { question: string; answer: string }[] : []).filter(f => f.question && f.answer);
@@ -222,6 +409,8 @@ Online booking: ${bookingUrl}${faqText}
 
 Your job:
 - If asked about hours, location, services, prices, or staff: answer directly from the information above — do NOT call any tools for these questions
+- If the caller asks whether a staff member works on a specific day, answer from the team availability above. Never say someone is available on a day that is not listed in their working days.
+- If the caller asks for a staff member who is not listed on the team, say you could not find them on the team and offer another team member.
 - If the caller wants to BOOK a new appointment (phrases like "I want to book", "I'd like to schedule", "make an appointment", "I want an appointment", "can I get an appointment"):
   - Collect the following before calling checkAvailability — but if the caller already told you some or all of these upfront, skip asking and use what they gave you:
     1. Which service or services they want in the same visit
@@ -229,10 +418,12 @@ Your job:
     3. Their preferred date and time
   - The maximum is 5 services in one appointment. If they ask for more than 5, help them narrow it down to 5 for that visit before calling any booking tool.
   - If the caller wants multiple services in one visit, you MUST keep them in one combined appointment. Do NOT split them into separate bookings unless the caller explicitly asks for separate visits.
+  - Once a caller names a specific staff member, keep that same staffId on every later manage_booking call until the caller changes staff or says anyone is fine.
   - Once you have the service selection + date (and optionally time and staff), call manage_booking with action "checkAvailability" — include date, serviceIds for every requested service in the same appointment, and optionally requestedTime and staffId. Only use serviceId by itself when there is exactly one service.
   - If the requested time is available, say the time back and ask "Can I get your name?"
     If the time is taken, present the 3 closest alternatives and ask which they prefer, then get their name
     If no specific time was given, present the options and ask which they'd like, then get their name
+    If the tool says the staff member is off that day, unavailable, or not found, do not keep offering that same staff member as available.
   - Once you have service selection, time, and name: read back a brief summary to confirm — e.g. "Got it — [services] on [day] at [time] for [name]. Shall I go ahead and book that?" — wait for the caller to confirm (yes/correct/go ahead/etc.) before calling createBooking. If they correct anything, update accordingly and confirm again before booking.
   - After they confirm: call manage_booking with action "createBooking" with serviceIds for every requested service in the same appointment, slotTime (exact ISO from checkAvailability result, the value in parentheses), customerName, and staffId if applicable. Only use serviceId by itself when there is exactly one service. If the caller mentioned anything special at any point (e.g. "it's my birthday", "I'm allergic to lavender", "please have soft music"), include it as the notes field — do not ask for it. Do NOT call createBooking until you have confirmation from the caller.
   - The tool confirms the booking — relay the confirmation to the caller and always ask "Is there anything else I can help you with?"
@@ -349,8 +540,121 @@ Your job:
 
 // ─── Tool: checkAvailability ──────────────────────────────────────────────────
 
-async function handleCheckAvailability(business: BusinessData, args: any): Promise<string> {
-  const { date, staffId } = args;
+async function findAiBusinessByPhoneNumberId(phoneNumberId: string): Promise<BusinessData | null> {
+  return prisma.business.findFirst({
+    where: { vapiPhoneNumberId: phoneNumberId, aiReceptionistEnabled: true },
+    select: AI_ENABLED_BUSINESS_SELECT,
+  });
+}
+
+async function syncCallSessionFromConversationUpdate(body: any): Promise<void> {
+  const phoneNumberId =
+    body?.message?.phoneNumber?.id ?? body?.message?.call?.phoneNumberId;
+  const callId = body?.message?.call?.id;
+
+  if (!phoneNumberId || !callId) return;
+
+  const business = await findAiBusinessByPhoneNumberId(phoneNumberId);
+  if (!business) return;
+
+  const conversation = Array.isArray(body?.message?.conversation)
+    ? body.message.conversation as CallConversationMessage[]
+    : [];
+  const staffSignal = inferStaffPreferenceFromConversation(conversation, business.staff);
+
+  if (!staffSignal) return;
+
+  const callerPhone =
+    typeof body?.message?.call?.customer?.number === 'string'
+      ? body.message.call.customer.number
+      : null;
+
+  const data =
+    staffSignal.kind === 'set'
+      ? {
+          requestedStaffId: staffSignal.staffId,
+          requestedStaffName: staffSignal.staffName,
+        }
+      : staffSignal.kind === 'unknown'
+        ? {
+            requestedStaffId: null,
+            requestedStaffName: staffSignal.staffName,
+          }
+        : {
+            requestedStaffId: null,
+            requestedStaffName: null,
+          };
+
+  await prisma.aiCallSession.upsert({
+    where: { callId },
+    update: {
+      callerPhone,
+      ...data,
+    },
+    create: {
+      businessId: business.id,
+      callId,
+      callerPhone,
+      ...data,
+    },
+  });
+}
+
+async function clearCallSession(body: any): Promise<void> {
+  const callId = body?.message?.call?.id;
+  if (!callId) return;
+
+  await prisma.aiCallSession.deleteMany({
+    where: { callId },
+  });
+}
+
+async function resolveRequestedStaffContext(
+  business: BusinessData,
+  callId: string | null,
+  rawStaffId: string | null
+): Promise<{ staffId: string | null; missingStaffName: string | null }> {
+  if (rawStaffId) {
+    return { staffId: rawStaffId, missingStaffName: null };
+  }
+
+  if (!callId) {
+    return { staffId: null, missingStaffName: null };
+  }
+
+  const session = await prisma.aiCallSession.findUnique({
+    where: { callId },
+    select: {
+      requestedStaffId: true,
+      requestedStaffName: true,
+    },
+  });
+
+  if (!session) {
+    return { staffId: null, missingStaffName: null };
+  }
+
+  if (session.requestedStaffId) {
+    const matchingStaff = business.staff.find((staffMember) => staffMember.id === session.requestedStaffId);
+    return {
+      staffId: matchingStaff?.id ?? null,
+      missingStaffName: matchingStaff ? null : session.requestedStaffName ?? null,
+    };
+  }
+
+  return {
+    staffId: null,
+    missingStaffName: session.requestedStaffName ?? null,
+  };
+}
+
+async function handleCheckAvailability(
+  business: BusinessData,
+  args: any,
+  callId: string | null
+): Promise<string> {
+  const { date } = args;
+  const rawStaffId = typeof args?.staffId === 'string' ? args.staffId : null;
   if (!date) return 'Please specify a date to check availability.';
   if (getRequestedServiceIds(args).length > MAX_VAPI_APPOINTMENT_SERVICES) {
     return getTooManyServicesMessage();
@@ -358,10 +662,17 @@ async function handleCheckAvailability(business: BusinessData, args: any): Promi
   const serviceSelection = await resolveRequestedServices(business.id, args);
   if (!serviceSelection) return 'Please specify a valid service.';
 
+  const { staffId, missingStaffName } = await resolveRequestedStaffContext(
+    business,
+    callId,
+    rawStaffId
+  );
+  if (missingStaffName) {
+    return `I couldn't find ${missingStaffName} on the team. Would you like someone else?`;
+  }
+
   const hoursData = business.businessHours?.hours as any;
-  const [year, month, day] = date.split('-').map(Number);
-  const selectedDate = new Date(year, month - 1, day);
-  const dayOfWeek = selectedDate.getDay();
+  const dayOfWeek = weekdayIndexForLocalDate(date, business.timezone);
   const hours = hoursData?.[dayOfWeek.toString()] ?? (Array.isArray(hoursData) ? hoursData[dayOfWeek] : null);
 
   if (!hours?.isOpen) return `We're closed on that day.`;
@@ -471,8 +782,14 @@ async function handleCheckAvailability(business: BusinessData, args: any): Promi
 
 // ─── Tool: createBooking ──────────────────────────────────────────────────────
 
-async function handleCreateBooking(business: BusinessData, args: any, callerPhone: string): Promise<string> {
-  const { slotTime, customerName, staffId, notes } = args;
+async function handleCreateBooking(
+  business: BusinessData,
+  args: any,
+  callerPhone: string,
+  callId: string | null
+): Promise<string> {
+  const { slotTime, customerName, notes } = args;
+  const rawStaffId = typeof args?.staffId === 'string' ? args.staffId : null;
   if (!slotTime) return 'I need the appointment time to book. Which slot works for you?';
   if (getRequestedServiceIds(args).length > MAX_VAPI_APPOINTMENT_SERVICES) {
     return getTooManyServicesMessage();
@@ -480,6 +797,15 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
   const serviceSelection = await resolveRequestedServices(business.id, args);
   if (!serviceSelection) return 'I need the service to book.';
   if (!customerName) return 'What is your name?';
+
+  const { staffId, missingStaffName } = await resolveRequestedStaffContext(
+    business,
+    callId,
+    rawStaffId
+  );
+  if (missingStaffName) {
+    return `I couldn't find ${missingStaffName} on the team. Please choose a listed team member or say anyone is fine.`;
+  }
 
   const start = new Date(slotTime);
   if (isNaN(start.getTime())) return 'Invalid time slot. Please check availability again.';
@@ -601,8 +927,8 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
     timeZone: business.timezone,
   });
 
-  const staffLine = args.staffId
-    ? await prisma.staff.findFirst({ where: { id: args.staffId, businessId: business.id }, select: { fullName: true } })
+  const staffLine = staffId
+    ? await prisma.staff.findFirst({ where: { id: staffId, businessId: business.id }, select: { fullName: true } })
     : null;
   const withWhom = staffLine ? ` with ${staffLine.fullName}` : '';
 
@@ -760,46 +1086,17 @@ async function handleToolCalls(body: any): Promise<NextResponse> {
   const toolCallList: any[] = body?.message?.toolCallList ?? [];
   const phoneNumberId =
     body?.message?.phoneNumber?.id ?? body?.message?.call?.phoneNumberId;
+  const callId: string | null = body?.message?.call?.id ?? null;
   const callerPhone: string =
     body?.message?.call?.customer?.number ?? '';
 
-  const business = phoneNumberId
-    ? await prisma.business.findFirst({
-        where: { vapiPhoneNumberId: phoneNumberId, aiReceptionistEnabled: true },
-        select: {
-          id: true,
-          name: true,
-          businessType: true,
-          phone: true,
-          vapiPhoneNumber: true,
-          publicId: true,
-          street: true,
-          city: true,
-          state: true,
-          timezone: true,
-          aiReceptionistGreeting: true,
-          aiReceptionistPhone: true,
-          aiReceptionistFaq: true,
-          services: {
-            where: { active: true },
-            select: { id: true, name: true, price: true, duration: true },
-            take: 20,
-          },
-          staff: {
-            where: { active: true },
-            select: { id: true, fullName: true, role: true },
-            take: 20,
-          },
-          businessHours: { select: { hours: true } },
-        },
-      })
-    : null;
+  const business = phoneNumberId ? await findAiBusinessByPhoneNumberId(phoneNumberId) : null;
 
   const results = await Promise.all(
     toolCallList.map(async (toolCall: any) => {
       const fnName: string = toolCall?.function?.name ?? '';
       const rawArgs = toolCall?.function?.arguments ?? {};
-      const parsedArgs = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs;
+      const parsedArgs = parseToolArguments(rawArgs);
       const toolCallId: string = toolCall?.id ?? '';
 
       let result: string;
@@ -811,9 +1108,9 @@ async function handleToolCalls(body: any): Promise<NextResponse> {
         } else if (fnName === 'manage_booking') {
           const { action } = parsedArgs;
           if (action === 'checkAvailability') {
-            result = await handleCheckAvailability(business, parsedArgs);
+            result = await handleCheckAvailability(business, parsedArgs, callId);
           } else if (action === 'createBooking') {
-            result = await handleCreateBooking(business, parsedArgs, callerPhone);
+            result = await handleCreateBooking(business, parsedArgs, callerPhone, callId);
             outcome = result.startsWith('Booking confirmed!') || result.startsWith('Done')
               ? 'booked'
               : 'conflict';
@@ -895,35 +1192,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'No phone number ID in request' }, { status: 400 });
         }
 
-        const business = await prisma.business.findFirst({
-          where: { vapiPhoneNumberId: phoneNumberId, aiReceptionistEnabled: true },
-          select: {
-            id: true,
-            name: true,
-            businessType: true,
-            phone: true,
-            vapiPhoneNumber: true,
-            publicId: true,
-            street: true,
-            city: true,
-            state: true,
-            timezone: true,
-            aiReceptionistGreeting: true,
-            aiReceptionistPhone: true,
-            aiReceptionistFaq: true,
-            services: {
-              where: { active: true },
-              select: { id: true, name: true, price: true, duration: true },
-              take: 20,
-            },
-            staff: {
-              where: { active: true },
-              select: { id: true, fullName: true, role: true },
-              take: 20,
-            },
-            businessHours: { select: { hours: true } },
-          },
-        });
+        const business = await findAiBusinessByPhoneNumberId(phoneNumberId);
 
         if (!business) {
           console.error(`[vapi] No business found for phoneNumberId=${phoneNumberId}`);
@@ -941,8 +1210,15 @@ export async function POST(req: NextRequest) {
       case 'tool-calls':
         return handleToolCalls(body);
 
+      case 'conversation-update':
+        await syncCallSessionFromConversationUpdate(body);
+        return NextResponse.json({ received: true });
+
       case 'status-update':
         console.log(`[vapi] status-update status=${body?.message?.status} endedReason=${body?.message?.endedReason ?? '-'}`);
+        if (body?.message?.status === 'ended') {
+          await clearCallSession(body);
+        }
         return NextResponse.json({ received: true });
 
       case 'end-of-call-report':
@@ -952,6 +1228,7 @@ export async function POST(req: NextRequest) {
           error: body?.message?.inboundPhoneCallDebuggingArtifacts?.error,
           assistantRequestError: body?.message?.inboundPhoneCallDebuggingArtifacts?.assistantRequestError,
         }));
+        await clearCallSession(body);
         return NextResponse.json({ received: true });
 
       default:

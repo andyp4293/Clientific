@@ -93,6 +93,7 @@ model Business {
   services                     Service[]
   smsLogs                      SmsLog[]               @relation("SmsLogs")
   smsAiSessions                SmsAiSession[]         @relation("BusinessSmsAiSessions")
+  aiCallSessions               AiCallSession[]        @relation("BusinessAiCallSessions")
   smsConsentEvents             SmsConsentEvent[]      @relation("BusinessSmsConsentEvents")
   staff                        Staff[]
   bankAccount                  BusinessBankAccount?
@@ -325,6 +326,20 @@ model SmsAiSession {
   business         Business  @relation("BusinessSmsAiSessions", fields: [businessId], references: [id], onDelete: Cascade)
 
   @@unique([businessId, phone])
+  @@index([businessId, updatedAt])
+}
+
+model AiCallSession {
+  id                 String    @id @default(cuid())
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  businessId         String
+  callId             String    @unique
+  callerPhone        String?
+  requestedStaffId   String?
+  requestedStaffName String?
+  business           Business  @relation("BusinessAiCallSessions", fields: [businessId], references: [id], onDelete: Cascade)
+
   @@index([businessId, updatedAt])
 }
 

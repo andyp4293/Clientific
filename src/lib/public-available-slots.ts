@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { localToUTC } from '@/lib/timezone';
+import { localToUTC, weekdayIndexForLocalDate } from '@/lib/timezone';
 import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
 
 const businessTimeToUTC = localToUTC;
@@ -88,9 +88,7 @@ export async function getPublicAvailableSlots({
     .map((requestedId) => servicesById.get(requestedId))
     .filter((service): service is { id: string; duration: number } => Boolean(service));
 
-  const [year, month, day] = date.split('-').map(Number);
-  const selectedDate = new Date(year, month - 1, day);
-  const dayOfWeek = selectedDate.getDay();
+  const dayOfWeek = weekdayIndexForLocalDate(date, business.timezone);
 
   if (!business.businessHours) {
     return {
