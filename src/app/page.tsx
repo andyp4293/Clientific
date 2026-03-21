@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useState } from 'react';
-import { APP_NAME, APP_SUPPORT_EMAIL } from '@/lib/brand';
+import { APP_DOMAIN, APP_NAME, APP_SUPPORT_EMAIL } from '@/lib/brand';
 import { getPublicPlanSlug } from '@/lib/plan-utils';
 import { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/pricing-plans';
 import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
@@ -228,20 +228,13 @@ export default function HomePage() {
 
       <section
         data-testid="homepage-hero"
-        className="relative overflow-hidden border-b border-gray-200/70 bg-gradient-to-br from-white via-primary-50/70 to-gray-100 dark:border-gray-900 dark:from-gray-950 dark:via-gray-950 dark:to-primary-950"
+        className="relative overflow-hidden border-b border-gray-200/70 bg-[#030712] dark:border-gray-900"
       >
         <div className="pointer-events-none absolute -top-40 left-1/2 h-[800px] w-[1100px] -translate-x-1/2 rounded-full bg-primary/12 blur-[140px]" />
         <div className="pointer-events-none absolute top-1/2 -right-40 h-[500px] w-[500px] rounded-full bg-primary/10 blur-[100px]" />
         <div className="pointer-events-none absolute top-1/2 -left-40 h-[400px] w-[400px] rounded-full bg-primary/8 blur-[100px]" />
         <div
-          className="pointer-events-none absolute inset-0 dark:hidden"
-          style={{
-            backgroundImage: 'radial-gradient(rgba(6,17,24,0.06) 1px, transparent 1px)',
-            backgroundSize: '24px 24px',
-          }}
-        />
-        <div
-          className="pointer-events-none absolute inset-0 hidden dark:block"
+          className="pointer-events-none absolute inset-0"
           style={{
             backgroundImage: 'radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)',
             backgroundSize: '24px 24px',
@@ -250,14 +243,14 @@ export default function HomePage() {
         <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-gray-50 dark:from-gray-950 to-transparent" />
 
         <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8 lg:py-36">
-          <div className="grid items-center gap-14 lg:grid-cols-[1.02fr_0.98fr] lg:gap-16">
+          <div className="items-center lg:grid lg:grid-cols-2 lg:gap-20">
             <div>
-              <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-white/80 px-4 py-1.5 text-xs font-semibold tracking-wide text-primary-700 dark:border-white/10 dark:bg-white/[0.06] dark:text-primary-300">
+              <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-1.5 text-xs font-semibold tracking-wide text-primary-300">
                 <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-primary-400" />
-                Professional operating system for service businesses
+                AI-powered platform for service businesses
               </div>
-              <h1 className="mb-7 text-5xl font-bold leading-[1.02] tracking-tight text-gray-950 dark:text-white sm:text-6xl lg:text-7xl">
-                Booking, customer follow-up,
+              <h1 className="mb-7 text-5xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">
+                Your business,
                 <br />
                 <span
                   className="bg-clip-text text-transparent"
@@ -266,32 +259,31 @@ export default function HomePage() {
                       'linear-gradient(135deg, rgb(var(--color-primary-500)) 0%, rgb(var(--color-primary-700)) 45%, rgb(var(--color-primary-400)) 100%)',
                   }}
                 >
-                  deals, and payouts
+                  on autopilot
                 </span>
-                <br />
-                in one system
               </h1>
-              <p className="mb-10 max-w-xl text-lg font-light leading-relaxed text-gray-700 dark:text-gray-300 sm:text-xl">
+              <p className="mb-10 max-w-xl text-lg font-light leading-relaxed text-gray-300 sm:text-xl">
                 {APP_NAME} helps service businesses manage appointments, customer records,
-                paid deals, recurring referrals, and secure payouts from a single dashboard.
+                AI phone coverage, paid deals, recurring referrals, and secure payouts from a
+                single dashboard.
               </p>
 
-              <div className="mb-8 rounded-[28px] border border-gray-200/80 bg-white/85 p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
-                <p className="text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+              <div className="mb-8 rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-300">
                   Choose your path
                 </p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <Link
                     href={isAuthenticated ? '/dashboard' : '/register'}
                     aria-label="I run a business"
-                    className="rounded-2xl border border-primary/30 bg-primary-50 px-4 py-3 text-sm font-semibold text-primary-800 transition-colors hover:bg-primary-100 dark:border-primary/40 dark:bg-primary/15 dark:text-primary-100 dark:hover:bg-primary/25"
+                    className="rounded-2xl border border-primary/30 bg-primary/15 px-4 py-3 text-sm font-semibold text-primary-100 transition-colors hover:bg-primary/25"
                   >
                     I run a business
                   </Link>
                   <Link
                     href="/explore"
                     aria-label="I'm looking to book"
-                    className="rounded-2xl border border-gray-200 bg-gray-100/90 px-4 py-3 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-200 dark:border-white/20 dark:bg-white/[0.03] dark:text-gray-100 dark:hover:bg-white/[0.08]"
+                    className="rounded-2xl border border-white/15 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-gray-100 transition-colors hover:bg-white/[0.08]"
                   >
                     I&apos;m looking to book
                   </Link>
@@ -302,7 +294,7 @@ export default function HomePage() {
                 {isAuthenticated ? (
                   <Link
                     href="/dashboard"
-                    className="inline-flex items-center gap-2 rounded-xl bg-gray-950 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-gray-900 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                    className="inline-flex items-center gap-2 rounded-xl bg-white px-8 py-4 text-base font-semibold text-gray-900 transition-colors hover:bg-gray-100"
                   >
                     Go to Dashboard <ArrowRight />
                   </Link>
@@ -316,12 +308,15 @@ export default function HomePage() {
                   </Link>
                 )}
 
-                <Link href="/pricing" className="btn-outline px-6 py-4 text-base">
+                <Link
+                  href="/pricing"
+                  className="inline-flex items-center justify-center rounded-xl border border-white/15 px-6 py-4 text-base font-semibold text-white transition-colors hover:bg-white/[0.06]"
+                >
                   View Pricing
                 </Link>
               </div>
 
-              <div className="mt-4 flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300">
+              <div className="mt-4 flex items-center gap-1.5 text-sm text-gray-300">
                 <CheckIcon className="text-primary" />
                 {isAuthenticated
                   ? 'Open the dashboard to manage appointments, customers, and payouts.'
@@ -332,7 +327,7 @@ export default function HomePage() {
                 {heroHighlights.map((item) => (
                   <div
                     key={item}
-                    className="inline-flex items-center gap-2 rounded-full border border-gray-200/80 bg-white/75 px-3 py-1.5 text-sm text-gray-800 shadow-sm dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-200"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm text-gray-200 shadow-sm"
                   >
                     <CheckIcon className="text-primary" />
                     {item}
@@ -341,10 +336,13 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="lg:pl-4">
-              <div className="relative">
+            <div className="mt-12 hidden lg:block lg:mt-0">
+              <div className="relative" style={{ perspective: '1000px' }}>
                 <div className="pointer-events-none absolute -inset-8 rounded-3xl bg-primary/15 blur-3xl" />
-                <div className="relative overflow-hidden rounded-[30px] border border-white/10 bg-gray-950 shadow-2xl">
+                <div
+                  className="relative overflow-hidden rounded-[30px] border border-white/10 bg-gray-950 shadow-2xl"
+                  style={{ transform: 'rotateY(-4deg) rotateX(2deg)' }}
+                >
                   <div className="flex items-center gap-2 border-b border-white/10 bg-white/[0.04] px-4 py-3">
                     <div className="h-3 w-3 rounded-full bg-red-500/70" />
                     <div className="h-3 w-3 rounded-full bg-yellow-500/70" />
@@ -352,7 +350,7 @@ export default function HomePage() {
                     <div className="mx-4 flex h-5 flex-1 items-center rounded-md bg-white/5 px-3">
                       <div className="mr-1.5 h-2 w-2 shrink-0 rounded-full bg-primary-300/80" />
                       <span className="font-mono text-[10px] text-white/55">
-                        clientific.app/dashboard
+                        {APP_DOMAIN}/dashboard
                       </span>
                     </div>
                   </div>
