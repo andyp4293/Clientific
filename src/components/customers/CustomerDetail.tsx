@@ -40,6 +40,7 @@ type Customer = {
     endTime: Date;
     status: string;
     service: { id: string; name: string } | null;
+    serviceDisplayName?: string | null;
     staff: { id: string; fullName: string } | null;
   }>;
   _count: {
@@ -326,7 +327,7 @@ export default function CustomerDetail({
                       <div className="flex items-start justify-between">
                         <div>
                           <div className="font-medium text-gray-900 dark:text-gray-100">
-                            {appointment.service?.name || "General Appointment"}
+                            {appointment.serviceDisplayName || appointment.service?.name || "General Appointment"}
                           </div>
                           <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                             {format(new Date(appointment.startTime), "MMM d, yyyy h:mm a")}

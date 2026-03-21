@@ -3,6 +3,10 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import CustomerDetail from "@/components/customers/CustomerDetail";
+import {
+  collectAppointmentServiceIds,
+  withAppointmentServiceDisplay,
+} from "@/lib/appointment-services";
 
 export default async function CustomerDetailPage({
   params,
@@ -48,6 +52,18 @@ export default async function CustomerDetailPage({
     notFound();
   }
 
+  const appointmentServiceIds = collectAppointmentServiceIds(customer.appointments);
+  const appointmentServices = appointmentServiceIds.length > 0
+    ? await prisma.service.findMany({
+        where: { id: { in: appointmentServiceIds } },
+        select: { id: true, name: true },
+      })
+    : [];
+  const customerWithServiceDisplay = {
+    ...customer,
+    appointments: withAppointmentServiceDisplay(customer.appointments, appointmentServices),
+  };
+
   const business = await prisma.business.findUnique({
     where: { id: session.user.businessId },
     select: { googleReviewUrl: true, yelpUrl: true },
@@ -55,7 +71,7 @@ export default async function CustomerDetailPage({
 
   return (
     <CustomerDetail
-      customer={customer}
+      customer={customerWithServiceDisplay}
       googleReviewUrl={business?.googleReviewUrl}
       yelpUrl={business?.yelpUrl}
     />

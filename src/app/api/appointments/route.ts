@@ -9,6 +9,10 @@ import { requireActiveSubscription } from '@/lib/subscription';
 import { revalidateTag } from 'next/cache';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
+import {
+  collectAppointmentServiceIds,
+  withAppointmentServiceDisplay,
+} from '@/lib/appointment-services';
 
 const businessMidnightUTC = businessDayStart;
 
@@ -77,7 +81,16 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ appointments, timezone: business.timezone });
+    const serviceIds = collectAppointmentServiceIds(appointments);
+    const services = serviceIds.length > 0
+      ? await prisma.service.findMany({
+          where: { id: { in: serviceIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const appointmentsWithServices = withAppointmentServiceDisplay(appointments, services);
+
+    return NextResponse.json({ appointments: appointmentsWithServices, timezone: business.timezone });
   } catch (error: any) {
     console.error('Fetch appointments error:', error);
     return NextResponse.json(

@@ -24,6 +24,11 @@ interface Appointment {
     id: string;
     name: string;
   } | null;
+  serviceDisplayName?: string | null;
+  services?: Array<{
+    id: string;
+    name: string;
+  }>;
   staff: {
     id: string;
     fullName: string;
@@ -70,6 +75,10 @@ function groupByDay(appointments: Appointment[], timezone: string): Record<strin
     groups[key].push(appt);
   }
   return groups;
+}
+
+function getAppointmentServiceLabel(appointment: Pick<Appointment, 'serviceDisplayName' | 'service'>) {
+  return appointment.serviceDisplayName || appointment.service?.name || null;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; badge: string; bar: string }> = {
@@ -457,6 +466,7 @@ function AppointmentRow({ appointment, timezone }: { appointment: Appointment; t
   const endTime = new Date(appointment.endTime);
   const config = STATUS_CONFIG[appointment.status] ?? STATUS_CONFIG.scheduled;
   const initials = appointment.customer.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  const serviceLabel = getAppointmentServiceLabel(appointment);
 
   const cancelMutation = useMutation({
     mutationFn: async () => {
@@ -510,12 +520,12 @@ function AppointmentRow({ appointment, timezone }: { appointment: Appointment; t
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{appointment.customer.name}</p>
               <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                {appointment.service && (
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{appointment.service.name}</span>
+                {serviceLabel && (
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{serviceLabel}</span>
                 )}
                 {appointment.staff && (
                   <>
-                    {appointment.service && <span className="text-gray-300 dark:text-gray-600 text-xs">·</span>}
+                    {serviceLabel && <span className="text-gray-300 dark:text-gray-600 text-xs">·</span>}
                     <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{appointment.staff.fullName}</span>
                   </>
                 )}
@@ -612,12 +622,12 @@ function AppointmentRow({ appointment, timezone }: { appointment: Appointment; t
             <div className="min-w-0">
               <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{appointment.customer.name}</p>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                {appointment.service && (
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{appointment.service.name}</span>
+                {serviceLabel && (
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{serviceLabel}</span>
                 )}
                 {appointment.staff && (
                   <>
-                    {appointment.service && <span className="text-gray-300 dark:text-gray-600 text-xs">·</span>}
+                    {serviceLabel && <span className="text-gray-300 dark:text-gray-600 text-xs">·</span>}
                     <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{appointment.staff.fullName}</span>
                   </>
                 )}
@@ -1078,6 +1088,7 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
 function EditAppointmentModal({ appointment, onClose }: { appointment: Appointment; onClose: () => void }) {
   const queryClient = useQueryClient();
   const startTime = new Date(appointment.startTime);
+  const serviceLabel = getAppointmentServiceLabel(appointment);
 
   const [formData, setFormData] = useState({
     date: startTime.toLocaleDateString('en-CA'),
@@ -1131,7 +1142,7 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
             <div>
               <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{appointment.customer.name}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {[appointment.service?.name, appointment.customer.phone].filter(Boolean).join(' · ')}
+                {[serviceLabel, appointment.customer.phone].filter(Boolean).join(' · ')}
               </p>
             </div>
           </div>

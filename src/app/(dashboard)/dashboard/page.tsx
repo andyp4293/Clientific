@@ -7,6 +7,10 @@ import { startOfMonth, startOfWeek, startOfToday } from 'date-fns';
 import BookingLinkCard from '@/components/booking/BookingLinkCard';
 import { localToUTC } from '@/lib/timezone';
 import { unstable_cache } from 'next/cache';
+import {
+  collectAppointmentServiceIds,
+  withAppointmentServiceDisplay,
+} from '@/lib/appointment-services';
 
 const bizDayBoundary = localToUTC;
 
@@ -70,6 +74,18 @@ async function getDashboardStats(businessId: string, timezone: string) {
     }),
   ]);
 
+  const appointmentServiceIds = collectAppointmentServiceIds(upcomingAppointments);
+  const appointmentServices = appointmentServiceIds.length > 0
+    ? await prisma.service.findMany({
+        where: { id: { in: appointmentServiceIds } },
+        select: { id: true, name: true },
+      })
+    : [];
+  const upcomingAppointmentsWithServices = withAppointmentServiceDisplay(
+    upcomingAppointments,
+    appointmentServices,
+  );
+
   return {
     totalCustomers,
     newCustomersThisMonth,
@@ -79,7 +95,7 @@ async function getDashboardStats(businessId: string, timezone: string) {
       acc[segment.segment] = segment._count;
       return acc;
     }, {} as Record<string, number>),
-    upcomingAppointments,
+    upcomingAppointments: upcomingAppointmentsWithServices,
   };
 }
 
@@ -652,7 +668,7 @@ export default async function DashboardPage({
                         {appointment.customer.name}
                       </p>
                       <p className="truncate text-xs text-gray-500 dark:text-gray-400">
-                        {appointment.service?.name || 'No service'}
+                        {appointment.serviceDisplayName || appointment.service?.name || 'No service'}
                       </p>
                     </div>
                     <span className="shrink-0 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-semibold text-gray-600 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300">

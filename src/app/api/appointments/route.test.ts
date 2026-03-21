@@ -5,6 +5,7 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: { findUnique: vi.fn() },
     appointment: { findMany: vi.fn(), create: vi.fn() },
+    service: { findMany: vi.fn() },
     notification: { create: vi.fn() },
   },
 }));
@@ -33,6 +34,7 @@ const mockSession = getServerSession as ReturnType<typeof vi.fn>;
 const mockBusiness = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockAppointmentFindMany = prisma.appointment.findMany as ReturnType<typeof vi.fn>;
 const mockAppointmentCreate = prisma.appointment.create as ReturnType<typeof vi.fn>;
+const mockServiceFindMany = prisma.service.findMany as ReturnType<typeof vi.fn>;
 const mockNotificationCreate = prisma.notification.create as ReturnType<typeof vi.fn>;
 
 // Appointments use session.user.email for business lookup, session.user.businessId for subscription
@@ -88,6 +90,33 @@ describe('GET /api/appointments', () => {
     const body = await res.json();
     expect(body.appointments).toHaveLength(1);
     expect(body.timezone).toBe('America/New_York');
+  });
+
+  it('returns a combined serviceDisplayName for multi-service appointments', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValue(fakeBusiness);
+    mockAppointmentFindMany.mockResolvedValue([
+      {
+        id: 'appt-1',
+        customerId: 'cust-1',
+        serviceIds: ['svc-gel', 'svc-pedi'],
+        service: { id: 'svc-gel', name: 'Gel Manicure' },
+      },
+    ]);
+    mockServiceFindMany.mockResolvedValue([
+      { id: 'svc-gel', name: 'Gel Manicure' },
+      { id: 'svc-pedi', name: 'Gel Pedicure' },
+    ]);
+
+    const res = await GET(new NextRequest('http://localhost/api/appointments'));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.appointments[0].serviceDisplayName).toBe('Gel Manicure, Gel Pedicure');
+    expect(body.appointments[0].services).toEqual([
+      { id: 'svc-gel', name: 'Gel Manicure' },
+      { id: 'svc-pedi', name: 'Gel Pedicure' },
+    ]);
   });
 });
 
