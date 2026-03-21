@@ -20,17 +20,18 @@ export interface PublicPricingPlan {
 export const PRICING_PLANS: Record<PricingPlanKey, PublicPricingPlan> = {
   STARTER: {
     name: 'Clientific',
-    summary: 'One simple plan for booking, CRM, reminders, deals, and payouts.',
+    summary: 'One simple plan for booking, CRM, deals, referrals, and secure payouts.',
     price: 49,
     yearlyPrice: 39,
     features: [
       'Online booking and calendar management',
       'Customer CRM and visit history',
-      'Email and SMS reminders',
+      'SMS confirmations and reminders',
+      'Business email booking alerts',
       'Walk-in check-in',
       'Business analytics and reporting',
       'Paid deals and secure payouts',
-      'AI receptionist tools',
+      'Optional AI receptionist setup',
       '14-day free trial',
     ],
     limits: {

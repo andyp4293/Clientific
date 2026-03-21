@@ -30,5 +30,9 @@ describe('Homepage theme contract', () => {
 
     expect(screen.queryByText(/Trusted by/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/500\+/)).not.toBeInTheDocument();
+    expect(screen.queryByText('99.9%')).not.toBeInTheDocument();
+    expect(screen.queryByText('< 3 min')).not.toBeInTheDocument();
+    expect(screen.queryByText('Good morning, Jordan')).not.toBeInTheDocument();
+    expect(screen.queryByText("Today's appointments")).not.toBeInTheDocument();
   });
 });

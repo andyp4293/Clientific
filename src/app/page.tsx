@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useState } from 'react';
-import { APP_DOMAIN, APP_NAME } from '@/lib/brand';
+import { APP_NAME, APP_SUPPORT_EMAIL } from '@/lib/brand';
 import { getPublicPlanSlug } from '@/lib/plan-utils';
 import { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/pricing-plans';
 import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
@@ -11,116 +11,154 @@ import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
 const faqs = [
   {
     q: 'How does the AI receptionist work?',
-    a: `${APP_NAME} connects an AI-powered phone assistant to your business number. When a customer calls, the AI picks up, answers questions about your services and hours, and books appointments directly - all without you lifting a finger.`,
+    a: `${APP_NAME} can provision and manage a dedicated AI receptionist number for your business. When AI calling is enabled, it can answer common questions, guide callers, and create bookings from your live availability.`,
   },
   {
     q: 'How long is the free trial?',
-    a: 'Your free trial lasts 14 days with full access to all features. No credit card required to start.',
+    a: 'Your free trial lasts 14 days with full access to the self-serve plan. No credit card is required to start.',
   },
   {
     q: 'Do my customers need an account to book?',
-    a: 'No. Customers book through your public booking link or by calling your number - no app or account needed on their end.',
+    a: 'No. Customers can book from your public booking page without creating a Clientific account.',
   },
   {
     q: `What types of businesses is ${APP_NAME} for?`,
-    a: 'Any service-based business - barbershops, salons, spas, nail studios, auto detailers, pet groomers, and more.',
+    a: 'Clientific is built for service businesses that manage appointments, customer relationships, and repeat visits.',
   },
   {
-    q: 'How do SMS reminders work?',
-    a: `After a booking is made (online or via AI call), ${APP_NAME} automatically sends a confirmation text and a reminder before the appointment. No manual follow-up needed.`,
+    q: 'How do reminders and notifications work?',
+    a: 'Clientific sends SMS confirmations and reminders to customers who opt in, and it can email the business when a new booking is created.',
+  },
+  {
+    q: 'How do payouts work?',
+    a: 'Paid deals and referral earnings move through secure Stripe payout setup. Once Stripe confirms the payout account, those funds are managed from the Payouts section.',
   },
   {
     q: 'Can I cancel anytime?',
-    a: 'Yes. No long-term contracts or cancellation fees - cancel anytime from your billing settings.',
+    a: 'Yes. There are no long-term contracts, and billing can be managed from your account settings.',
   },
 ];
 
-const features = [
+const platformFacts = [
   {
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-    ),
-    title: 'AI Phone Receptionist',
-    desc: 'An AI assistant answers your business calls 24/7, books appointments, and answers customer questions automatically in your name.',
+    eyebrow: 'Trial',
+    title: '14-day free trial',
+    body: 'Start without entering a card, then decide if the workflow fits your business.',
   },
   {
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-    ),
-    title: 'Online Booking',
-    desc: 'Customers book 24/7 through your branded page. Automated confirmations and reminders reduce no-shows.',
+    eyebrow: 'Pricing',
+    title: 'One monthly subscription',
+    body: 'The public self-serve plan keeps booking, CRM, deals, referrals, and payouts under one bill.',
   },
   {
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-    ),
-    title: 'Customer Intelligence',
-    desc: `Full client history - visits, spending, and notes. ${APP_NAME} automatically segments customers into actionable groups.`,
+    eyebrow: 'Booking',
+    title: 'No customer account required',
+    body: 'Customers can book from a public page, and AI phone coverage can handle calls when enabled.',
   },
   {
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-    ),
-    title: 'SMS Automation',
-    desc: "Booking confirmations, appointment reminders, and review requests - all sent automatically to your customers' phones.",
+    eyebrow: 'Payouts',
+    title: 'Secure Stripe money movement',
+    body: 'Paid deals and referral earnings route through Stripe-backed payout setup before going live.',
   },
-  {
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-    ),
-    title: 'Analytics and Insights',
-    desc: 'Track revenue trends, busiest days, top services, and customer segments so you can make better decisions with real data.',
-  },
-  {
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-    ),
-    title: 'Walk-In Check-In',
-    desc: 'Digital check-in for walk-in customers. Track visits and spending without paper or manual entry.',
-  },
-];
-
-const quickStats = [
-  { val: '24/7', label: 'AI answers your calls' },
-  { val: '< 3 min', label: 'Average setup time' },
-  { val: '99.9%', label: 'Platform uptime' },
-  { val: '$0', label: 'To start your trial' },
 ];
 
 const heroHighlights = [
-  'AI receptionist answers missed calls',
-  'Online booking stays open 24/7',
-  'SMS reminders go out automatically',
+  'Public booking page',
+  'Optional AI receptionist setup',
+  'Customer records and notes',
+  'Deals, referrals, and payouts',
 ];
 
-const dashboardStats = [
-  { label: "Today's appointments", val: '8', tone: 'border-primary/25 bg-primary/12 text-primary-200' },
-  { label: 'Customers', val: '247', tone: 'border-primary/20 bg-primary/10 text-primary-300' },
-  { label: 'AI calls', val: '12', tone: 'border-primary/30 bg-primary/15 text-primary-100' },
+const platformAreas = [
+  {
+    tag: 'Booking',
+    title: 'Appointments and availability',
+    points: ['Public booking page', 'Services, staff, and hours', 'Confirmations and reminders'],
+  },
+  {
+    tag: 'Customers',
+    title: 'Relationship history',
+    points: ['Profiles and visit history', 'Customer notes', 'Segments and follow-up'],
+  },
+  {
+    tag: 'Growth',
+    title: 'Deals, reviews, and referrals',
+    points: ['Paid deals and claims', 'Review requests', 'Recurring referral program'],
+  },
+  {
+    tag: 'Payouts',
+    title: 'Secure money movement',
+    points: ['Stripe payout setup', 'Paid deal payouts', 'Referral earnings in payouts'],
+  },
 ];
 
-const todaySchedule = [
-  { name: 'Alex M.', time: '9:00 AM', service: 'Haircut and beard', source: 'AI' },
-  { name: 'Sarah K.', time: '10:30 AM', service: 'Highlights', source: 'Online' },
-  { name: 'James R.', time: '12:00 PM', service: 'Trim and style', source: 'AI' },
+const featureGroups = [
+  {
+    title: 'Online booking and calendar',
+    description:
+      'Publish a branded booking page, manage availability by service and staff, and keep appointment data inside one calendar workflow.',
+    bullets: ['Public booking links', 'Service and staff selection', 'Appointment confirmations and reminders'],
+  },
+  {
+    title: 'AI phone coverage',
+    description:
+      'Enable a dedicated AI receptionist line that can answer common questions and capture bookings using your live availability.',
+    bullets: ['Dedicated AI number', 'Configurable greeting and FAQs', 'Booking flow tied to your schedule'],
+  },
+  {
+    title: 'Customer records',
+    description:
+      'Track who has visited, what they booked, what they spent, and any notes your team needs to remember next time.',
+    bullets: ['Visit history', 'Spending history', 'Customer notes and filters'],
+  },
+  {
+    title: 'Deals and checkout',
+    description:
+      'Create paid or free deals, publish them publicly, and route eligible purchases through the deal checkout flow.',
+    bullets: ['Purchase-link deals', 'Code-claim offers', 'Secure checkout and redemption'],
+  },
+  {
+    title: 'Reviews and follow-up',
+    description:
+      'Prompt customers for reviews from the dashboard and keep communication flows tied to actual activity instead of separate tools.',
+    bullets: ['Review request actions', 'Booking notifications', 'Customer communication context'],
+  },
+  {
+    title: 'Payouts and referrals',
+    description:
+      'Handle business payouts and recurring referral earnings in the same payout workspace once secure setup is complete.',
+    bullets: ['Stripe Connect onboarding', 'Paid deal payout controls', 'Recurring referral earnings'],
+  },
 ];
-const trustBadges = [
+
+const workflowSteps = [
   {
-    icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
-    label: 'SSL secured',
+    step: '01',
+    title: 'Set up your business profile',
+    body: 'Add services, staff, business hours, booking preferences, and brand details from the dashboard.',
   },
   {
-    icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z',
-    label: 'Secure payments',
+    step: '02',
+    title: 'Capture bookings from web or phone',
+    body: 'Customers can use your booking page, and AI phone coverage can take bookings when it is enabled.',
   },
   {
-    icon: 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636',
-    label: 'Cancel anytime',
+    step: '03',
+    title: 'Run the day from one dashboard',
+    body: 'Manage appointments, customer records, check-ins, reviews, and business settings without hopping between tools.',
   },
   {
-    icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
-    label: 'Reliable uptime',
+    step: '04',
+    title: 'Handle paid deals and payouts carefully',
+    body: 'Complete secure Stripe payout setup before paid deals or referral sharing go live, then track earnings inside Payouts.',
   },
+];
+
+const closingNotes = [
+  '14-day free trial',
+  'Cancel anytime from billing',
+  'No customer app required to book',
+  `Questions? ${APP_SUPPORT_EMAIL}`,
 ];
 
 const CheckIcon = ({ className = 'text-primary' }: { className?: string }) => (
@@ -142,7 +180,7 @@ const ArrowRight = () => (
 export default function HomePage() {
   const { status } = useSession();
   const isAuthenticated = status === 'authenticated';
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   return (
     <div className="page-shell min-h-screen">
@@ -155,16 +193,34 @@ export default function HomePage() {
 
       <div className="border-b border-gray-200/80 bg-white/80 dark:border-gray-900 dark:bg-gray-950/80">
         <div className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-4 py-2 sm:px-6 lg:px-8">
-          <a href="#features" className="whitespace-nowrap rounded-full border border-gray-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-white dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-200 dark:hover:bg-gray-900">
+          <a
+            href="#features"
+            className="whitespace-nowrap rounded-full border border-gray-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-white dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-200 dark:hover:bg-gray-900"
+          >
             Platform
           </a>
-          <a href="#pricing" className="whitespace-nowrap rounded-full border border-gray-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-white dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-200 dark:hover:bg-gray-900">
+          <a
+            href="#workflow"
+            className="whitespace-nowrap rounded-full border border-gray-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-white dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-200 dark:hover:bg-gray-900"
+          >
+            Workflow
+          </a>
+          <a
+            href="#pricing"
+            className="whitespace-nowrap rounded-full border border-gray-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-white dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-200 dark:hover:bg-gray-900"
+          >
             Pricing
           </a>
-          <a href="#faq" className="whitespace-nowrap rounded-full border border-gray-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-white dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-200 dark:hover:bg-gray-900">
+          <a
+            href="#faq"
+            className="whitespace-nowrap rounded-full border border-gray-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-white dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-200 dark:hover:bg-gray-900"
+          >
             FAQ
           </a>
-          <Link href="/explore" className="whitespace-nowrap rounded-full border border-gray-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-white dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-200 dark:hover:bg-gray-900">
+          <Link
+            href="/explore"
+            className="whitespace-nowrap rounded-full border border-gray-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-white dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-200 dark:hover:bg-gray-900"
+          >
             Book Services
           </Link>
         </div>
@@ -194,57 +250,90 @@ export default function HomePage() {
         <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-gray-50 dark:from-gray-950 to-transparent" />
 
         <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8 lg:py-36">
-          <div className="items-center lg:grid lg:grid-cols-2 lg:gap-20">
+          <div className="grid items-center gap-14 lg:grid-cols-[1.02fr_0.98fr] lg:gap-16">
             <div>
               <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-white/80 px-4 py-1.5 text-xs font-semibold tracking-wide text-primary-700 dark:border-white/10 dark:bg-white/[0.06] dark:text-primary-300">
                 <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-primary-400" />
-                AI-powered platform for service businesses
+                Professional operating system for service businesses
               </div>
-              <h1 className="mb-7 text-5xl font-bold leading-[1.05] tracking-tight text-gray-950 dark:text-white sm:text-6xl lg:text-7xl">
-                Your business,
+              <h1 className="mb-7 text-5xl font-bold leading-[1.02] tracking-tight text-gray-950 dark:text-white sm:text-6xl lg:text-7xl">
+                Booking, customer follow-up,
                 <br />
-                <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(135deg, rgb(var(--color-primary-500)) 0%, rgb(var(--color-primary-700)) 45%, rgb(var(--color-primary-400)) 100%)' }}>
-                  on autopilot
+                <span
+                  className="bg-clip-text text-transparent"
+                  style={{
+                    backgroundImage:
+                      'linear-gradient(135deg, rgb(var(--color-primary-500)) 0%, rgb(var(--color-primary-700)) 45%, rgb(var(--color-primary-400)) 100%)',
+                  }}
+                >
+                  deals, and payouts
                 </span>
+                <br />
+                in one system
               </h1>
-              <p className="mb-10 max-w-lg text-lg font-light leading-relaxed text-gray-700 dark:text-gray-300 sm:text-xl">
-                {APP_NAME} answers your calls, books appointments, sends reminders, and tracks every customer so you can focus on doing the work.
+              <p className="mb-10 max-w-xl text-lg font-light leading-relaxed text-gray-700 dark:text-gray-300 sm:text-xl">
+                {APP_NAME} helps service businesses manage appointments, customer records,
+                paid deals, recurring referrals, and secure payouts from a single dashboard.
               </p>
 
-              <div className="mb-8 rounded-3xl border border-gray-200/80 bg-white/85 p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
-                <p className="text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">Choose your path</p>
+              <div className="mb-8 rounded-[28px] border border-gray-200/80 bg-white/85 p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                  Choose your path
+                </p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <Link href={isAuthenticated ? '/dashboard' : '/register'} aria-label="I run a business" className="rounded-2xl border border-primary/30 bg-primary-50 px-4 py-3 text-sm font-semibold text-primary-800 transition-colors hover:bg-primary-100 dark:border-primary/40 dark:bg-primary/15 dark:text-primary-100 dark:hover:bg-primary/25">
+                  <Link
+                    href={isAuthenticated ? '/dashboard' : '/register'}
+                    aria-label="I run a business"
+                    className="rounded-2xl border border-primary/30 bg-primary-50 px-4 py-3 text-sm font-semibold text-primary-800 transition-colors hover:bg-primary-100 dark:border-primary/40 dark:bg-primary/15 dark:text-primary-100 dark:hover:bg-primary/25"
+                  >
                     I run a business
                   </Link>
-                  <Link href="/explore" aria-label="I'm looking to book" className="rounded-2xl border border-gray-200 bg-gray-100/90 px-4 py-3 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-200 dark:border-white/20 dark:bg-white/[0.03] dark:text-gray-100 dark:hover:bg-white/[0.08]">
+                  <Link
+                    href="/explore"
+                    aria-label="I'm looking to book"
+                    className="rounded-2xl border border-gray-200 bg-gray-100/90 px-4 py-3 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-200 dark:border-white/20 dark:bg-white/[0.03] dark:text-gray-100 dark:hover:bg-white/[0.08]"
+                  >
                     I&apos;m looking to book
                   </Link>
                 </div>
               </div>
-              {isAuthenticated ? (
-                <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-xl bg-gray-950 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-gray-900 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
-                  Go to Dashboard <ArrowRight />
-                </Link>
-              ) : (
-                <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                {isAuthenticated ? (
+                  <Link
+                    href="/dashboard"
+                    className="inline-flex items-center gap-2 rounded-xl bg-gray-950 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-gray-900 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                  >
+                    Go to Dashboard <ArrowRight />
+                  </Link>
+                ) : (
                   <Link
                     href="/register"
                     className="inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-primary-500"
                     style={{ boxShadow: '0 0 40px rgb(var(--color-primary-600) / 0.35)' }}
                   >
-                    Start Free - 14 Days <ArrowRight />
+                    Start Free Trial <ArrowRight />
                   </Link>
-                  <div className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300">
-                    <CheckIcon className="text-primary" />
-                    No credit card required
-                  </div>
-                </div>
-              )}
+                )}
+
+                <Link href="/pricing" className="btn-outline px-6 py-4 text-base">
+                  View Pricing
+                </Link>
+              </div>
+
+              <div className="mt-4 flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300">
+                <CheckIcon className="text-primary" />
+                {isAuthenticated
+                  ? 'Open the dashboard to manage appointments, customers, and payouts.'
+                  : 'No credit card required to start the 14-day trial.'}
+              </div>
 
               <div className="mt-10 flex flex-wrap gap-3">
                 {heroHighlights.map((item) => (
-                  <div key={item} className="inline-flex items-center gap-2 rounded-full border border-gray-200/80 bg-white/75 px-3 py-1.5 text-sm text-gray-800 shadow-sm dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-200">
+                  <div
+                    key={item}
+                    className="inline-flex items-center gap-2 rounded-full border border-gray-200/80 bg-white/75 px-3 py-1.5 text-sm text-gray-800 shadow-sm dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-200"
+                  >
                     <CheckIcon className="text-primary" />
                     {item}
                   </div>
@@ -252,68 +341,75 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="mt-12 hidden lg:block lg:mt-0">
-              <div className="relative" style={{ perspective: '1000px' }}>
+            <div className="lg:pl-4">
+              <div className="relative">
                 <div className="pointer-events-none absolute -inset-8 rounded-3xl bg-primary/15 blur-3xl" />
-                <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gray-950 shadow-2xl" style={{ transform: 'rotateY(-4deg) rotateX(2deg)' }}>
+                <div className="relative overflow-hidden rounded-[30px] border border-white/10 bg-gray-950 shadow-2xl">
                   <div className="flex items-center gap-2 border-b border-white/10 bg-white/[0.04] px-4 py-3">
                     <div className="h-3 w-3 rounded-full bg-red-500/70" />
                     <div className="h-3 w-3 rounded-full bg-yellow-500/70" />
                     <div className="h-3 w-3 rounded-full bg-primary-400/70" />
                     <div className="mx-4 flex h-5 flex-1 items-center rounded-md bg-white/5 px-3">
                       <div className="mr-1.5 h-2 w-2 shrink-0 rounded-full bg-primary-300/80" />
-                      <span className="font-mono text-[10px] text-white/55">{APP_DOMAIN}/dashboard</span>
+                      <span className="font-mono text-[10px] text-white/55">
+                        clientific.app/dashboard
+                      </span>
                     </div>
                   </div>
-                  <div className="p-5">
-                    <div className="mb-5 flex items-center justify-between">
+
+                  <div className="border-b border-white/10 px-5 py-5">
+                    <div className="flex items-center justify-between gap-4">
                       <div>
-                        <div className="mb-0.5 text-sm font-semibold text-white/90">Good morning, Jordan</div>
-                        <div className="text-[11px] text-white/55">Friday, March 7 - 3 appointments today</div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/45">
+                          Inside Clientific
+                        </p>
+                        <h2 className="mt-2 text-xl font-semibold text-white/95">
+                          The workflow stays connected
+                        </h2>
                       </div>
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-                        <span className="text-xs font-bold text-white">J</span>
+                      <div className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-primary-200">
+                        Single dashboard
                       </div>
                     </div>
+                  </div>
 
-                    <div className="mb-5 grid grid-cols-3 gap-3">
-                      {dashboardStats.map((stat) => (
-                        <div key={stat.label} className={`rounded-xl border p-3 ${stat.tone}`}>
-                          <div className="text-xl font-bold tabular-nums">{stat.val}</div>
-                          <div className="mt-0.5 text-[10px] leading-tight text-white/60">{stat.label}</div>
+                  <div className="grid gap-3 p-5 sm:grid-cols-2">
+                    {platformAreas.map((area) => (
+                      <div
+                        key={area.title}
+                        className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+                      >
+                        <div className="inline-flex rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-primary-200">
+                          {area.tag}
                         </div>
-                      ))}
-                    </div>
+                        <h3 className="mt-3 text-sm font-semibold text-white/95">{area.title}</h3>
+                        <ul className="mt-3 space-y-2">
+                          {area.points.map((point) => (
+                            <li key={point} className="flex items-start gap-2 text-xs leading-5 text-white/70">
+                              <CheckIcon className="mt-0.5 text-primary-300" />
+                              <span>{point}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
 
-                    <div className="mb-2.5 flex items-center justify-between">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-white/55">Today&apos;s schedule</p>
-                      <span className="rounded-full bg-primary/12 px-2 py-0.5 text-[9px] font-semibold text-primary-200">LIVE</span>
-                    </div>
-
-                    <div className="space-y-2">
-                      {todaySchedule.map((appointment, index) => {
-                        const featured = index === 0;
-
-                        return (
-                          <div key={appointment.name} className={`flex items-center justify-between rounded-lg border px-3 py-2 ${featured ? 'border-primary/20 bg-primary/10' : 'border-white/5 bg-white/[0.04]'}`}>
-                            <div className="flex items-center gap-2">
-                              <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${featured ? 'bg-primary/30' : 'bg-white/10'}`}>
-                                <span className={`text-[10px] font-bold ${featured ? 'text-primary-200' : 'text-white/60'}`}>{appointment.name[0]}</span>
-                              </div>
-                              <div>
-                                <div className="text-xs font-medium text-white/90">{appointment.name}</div>
-                                <div className="text-[10px] text-white/55">{appointment.service}</div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${appointment.source === 'AI' ? 'bg-primary/20 text-primary-200' : 'bg-primary/12 text-primary-300'}`}>
-                                {appointment.source}
-                              </span>
-                              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/75">{appointment.time}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
+                  <div className="border-t border-white/10 px-5 py-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/45">
+                      Main workspaces
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {['Dashboard', 'Appointments', 'Customers', 'Deals', 'Payouts', 'Referrals'].map(
+                        (item) => (
+                          <span
+                            key={item}
+                            className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[11px] font-medium text-white/75"
+                          >
+                            {item}
+                          </span>
+                        )
+                      )}
                     </div>
                   </div>
                 </div>
@@ -329,15 +425,20 @@ export default function HomePage() {
             data-testid="homepage-quick-stats"
             className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 lg:grid-cols-4"
           >
-            {quickStats.map((stat) => (
+            {platformFacts.map((fact) => (
               <div
-                key={stat.label}
+                key={fact.title}
                 data-testid="homepage-quick-stat-card"
-                className="rounded-2xl border border-gray-200/80 bg-white/88 px-4 py-4 text-left shadow-sm dark:border-gray-800 dark:bg-gray-900/78 min-[480px]:px-5 lg:min-h-[132px] lg:text-center"
+                className="rounded-2xl border border-gray-200/80 bg-white/88 px-5 py-5 text-left shadow-sm dark:border-gray-800 dark:bg-gray-900/78"
               >
-                <div className="text-3xl font-bold tabular-nums text-primary">{stat.val}</div>
-                <div className="mt-2 max-w-[14rem] text-sm leading-6 text-gray-700 dark:text-gray-300 lg:mx-auto">
-                  {stat.label}
+                <div className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                  {fact.eyebrow}
+                </div>
+                <div className="mt-3 text-xl font-semibold text-gray-950 dark:text-white">
+                  {fact.title}
+                </div>
+                <div className="mt-2 text-sm leading-6 text-gray-700 dark:text-gray-300">
+                  {fact.body}
                 </div>
               </div>
             ))}
@@ -349,64 +450,79 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-16 text-center">
             <div className="mb-4 inline-block rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-primary dark:bg-primary/10">
-              Features
+              Platform
             </div>
-            <h2 className="mb-4 text-3xl font-bold text-gray-950 dark:text-gray-100 sm:text-4xl">Everything you need, all in one place</h2>
-            <p className="mx-auto max-w-2xl text-lg text-gray-700 dark:text-gray-300">
-              Stop juggling multiple tools. {APP_NAME} brings your booking, customers, AI, and marketing together in one platform.
+            <h2 className="mb-4 text-3xl font-bold text-gray-950 dark:text-gray-100 sm:text-4xl">
+              What Clientific actually covers
+            </h2>
+            <p className="mx-auto max-w-3xl text-lg text-gray-700 dark:text-gray-300">
+              The product is designed around real service-business workflows: booking,
+              customer records, deals, reviews, referral earnings, and secure payouts.
             </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
-            {features.map((feature) => (
-              <div key={feature.title} className="group rounded-2xl border border-gray-200 bg-white/80 p-5 shadow-sm transition-all duration-300 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 dark:border-gray-800 dark:bg-gray-900/80 dark:hover:border-primary/40 dark:hover:shadow-primary/10 sm:p-6">
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-primary-50 to-gray-100 transition-transform duration-200 group-hover:scale-110 dark:from-primary/20 dark:to-gray-800">
-                  <svg className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    {feature.icon}
-                  </svg>
+            {featureGroups.map((feature) => (
+              <div
+                key={feature.title}
+                className="group rounded-[28px] border border-gray-200 bg-white/85 p-6 shadow-sm transition-all duration-300 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 dark:border-gray-800 dark:bg-gray-900/80 dark:hover:border-primary/40 dark:hover:shadow-primary/10"
+              >
+                <div className="mb-4 inline-flex rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
+                  Included
                 </div>
-                <h3 className="mb-2 text-base font-semibold text-gray-950 dark:text-gray-100">{feature.title}</h3>
-                <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">{feature.desc}</p>
+                <h3 className="text-lg font-semibold text-gray-950 dark:text-gray-100">
+                  {feature.title}
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-gray-300">
+                  {feature.description}
+                </p>
+                <ul className="mt-5 space-y-2">
+                  {feature.bullets.map((bullet) => (
+                    <li
+                      key={bullet}
+                      className="flex items-start gap-2 text-sm leading-6 text-gray-800 dark:text-gray-200"
+                    >
+                      <CheckIcon />
+                      <span>{bullet}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
         </div>
       </section>
-      <section id="how-it-works" className="bg-gray-50/80 py-20 sm:py-28 dark:bg-gray-900/50">
+
+      <section id="workflow" className="bg-gray-50/80 py-20 sm:py-28 dark:bg-gray-900/50">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-16 text-center">
             <div className="mb-4 inline-block rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-primary dark:bg-primary/10">
-              How It Works
+              Workflow
             </div>
-            <h2 className="mb-4 text-3xl font-bold text-gray-950 dark:text-gray-100 sm:text-4xl">Up and running in minutes</h2>
-            <p className="text-lg text-gray-700 dark:text-gray-300">Three simple steps to put your business on autopilot.</p>
+            <h2 className="mb-4 text-3xl font-bold text-gray-950 dark:text-gray-100 sm:text-4xl">
+              How the workflow fits together
+            </h2>
+            <p className="mx-auto max-w-3xl text-lg text-gray-700 dark:text-gray-300">
+              This is the straight version: set up the business, accept bookings, manage
+              customers, and unlock payouts where payment flows require them.
+            </p>
           </div>
 
-          <div className="relative grid gap-12 md:grid-cols-3 md:gap-8">
-            <div className="absolute left-[calc(16.67%+2.5rem)] right-[calc(16.67%+2.5rem)] top-10 hidden h-px bg-gradient-to-r from-primary/20 via-primary/50 to-primary/20 md:block" />
-            {[
-              {
-                step: '1',
-                title: 'Set up your profile',
-                desc: 'Add your services, staff, hours, and business info. Your AI receptionist and booking page are ready in minutes.',
-              },
-              {
-                step: '2',
-                title: 'Share your booking link',
-                desc: 'Drop your link on Instagram, Google, or your website. Customers can book online or call - your AI handles both.',
-              },
-              {
-                step: '3',
-                title: 'Let automation take over',
-                desc: `${APP_NAME} books appointments, sends reminders, collects reviews, tracks customers, and reports on your growth automatically.`,
-              },
-            ].map((step) => (
-              <div key={step.step} className="relative text-center">
-                <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary-700" style={{ boxShadow: '0 8px 32px rgb(var(--color-primary-600) / 0.3)' }}>
-                  <span className="text-3xl font-bold text-white">{step.step}</span>
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            {workflowSteps.map((item) => (
+              <div
+                key={item.step}
+                className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+              >
+                <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-sm font-bold text-white">
+                  {item.step}
                 </div>
-                <h3 className="mb-3 text-lg font-semibold text-gray-950 dark:text-gray-100">{step.title}</h3>
-                <p className="mx-auto max-w-xs text-sm leading-relaxed text-gray-700 dark:text-gray-300">{step.desc}</p>
+                <h3 className="mt-5 text-lg font-semibold text-gray-950 dark:text-gray-100">
+                  {item.title}
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-gray-300">
+                  {item.body}
+                </p>
               </div>
             ))}
           </div>
@@ -415,77 +531,138 @@ export default function HomePage() {
 
       <section id="pricing" className="bg-white/70 py-20 sm:py-28 dark:bg-gray-950/30">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-16 text-center">
-            <div className="mb-4 inline-block rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-primary dark:bg-primary/10">
-              Pricing
-            </div>
-            <h2 className="mb-4 text-3xl font-bold text-gray-950 dark:text-gray-100 sm:text-4xl">One clear subscription</h2>
-            <p className="text-lg text-gray-700 dark:text-gray-300">Everything you need for one location, with a 14-day free trial.</p>
-          </div>
-
-          <div className="mx-auto grid max-w-3xl gap-6">
-            {VISIBLE_SELF_SERVE_PLAN_KEYS.map((key) => {
-              const plan = PRICING_PLANS[key];
-              const planSlug = getPublicPlanSlug(key.toLowerCase());
-              const cardClassName = 'relative flex flex-col rounded-[28px] border border-primary/30 bg-gradient-to-br from-primary-50 via-white to-gray-100 p-6 shadow-lg shadow-primary/10 dark:border-primary/40 dark:from-gray-950 dark:via-gray-950 dark:to-primary-950 sm:p-8';
-
-              return (
-                <div key={key} data-testid="homepage-featured-plan" className={cardClassName}>
-                  <h3 className="mb-1 text-xl font-bold text-gray-950 dark:text-white">{plan.name}</h3>
-                  <p className="mb-5 text-sm text-gray-700 dark:text-gray-300">{plan.summary}</p>
-                  <div className="mb-7">
-                    <span className="text-4xl font-bold text-gray-950 dark:text-white">${plan.price}</span>
-                    <span className="text-base font-normal text-gray-700 dark:text-gray-300">/mo</span>
+          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+            <div className="lg:sticky lg:top-24">
+              <div className="mb-4 inline-block rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-primary dark:bg-primary/10">
+                Pricing
+              </div>
+              <h2 className="text-3xl font-bold text-gray-950 dark:text-gray-100 sm:text-4xl">
+                One clear self-serve plan
+              </h2>
+              <p className="mt-4 max-w-xl text-lg text-gray-700 dark:text-gray-300">
+                The public plan keeps booking, customer management, growth tools, and
+                payouts in one subscription for a single location.
+              </p>
+              <div className="mt-8 space-y-3">
+                {platformFacts.map((fact) => (
+                  <div
+                    key={fact.title}
+                    className="rounded-2xl border border-gray-200/80 bg-white/80 px-4 py-4 text-sm shadow-sm dark:border-gray-800 dark:bg-gray-900/70"
+                  >
+                    <p className="font-semibold text-gray-950 dark:text-white">{fact.title}</p>
+                    <p className="mt-1 leading-6 text-gray-700 dark:text-gray-300">{fact.body}</p>
                   </div>
-                  <ul className="mb-8 flex-1 space-y-3">
-                    {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-center gap-2.5 text-sm text-gray-800 dark:text-gray-200">
-                        <CheckIcon />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                  {isAuthenticated ? (
-                    <Link
-                      href="/pricing"
-                      className="w-full rounded-xl bg-primary py-3 text-center font-semibold text-white transition-colors hover:bg-primary-600"
-                      style={{ boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' }}
-                    >
-                      View Subscription
-                    </Link>
-                  ) : (
-                    <Link
-                      href={`/register?plan=${planSlug}`}
-                      className="w-full rounded-xl bg-primary py-3.5 text-center font-semibold text-white transition-colors hover:bg-primary-600"
-                      style={{ boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' }}
-                    >
-                      Start Free Trial
-                    </Link>
-                  )}
-                </div>
-              );
-            })}
+                ))}
+              </div>
+              <p className="mt-5 text-sm text-gray-700 dark:text-gray-300">
+                Questions before you start?{' '}
+                <a href={`mailto:${APP_SUPPORT_EMAIL}`} className="text-primary hover:underline">
+                  {APP_SUPPORT_EMAIL}
+                </a>
+              </p>
+            </div>
+
+            <div className="mx-auto grid max-w-3xl gap-6">
+              {VISIBLE_SELF_SERVE_PLAN_KEYS.map((key) => {
+                const plan = PRICING_PLANS[key];
+                const planSlug = getPublicPlanSlug(key.toLowerCase());
+                const cardClassName =
+                  'relative flex flex-col rounded-[28px] border border-primary/30 bg-gradient-to-br from-primary-50 via-white to-gray-100 p-6 shadow-lg shadow-primary/10 dark:border-primary/40 dark:from-gray-950 dark:via-gray-950 dark:to-primary-950 sm:p-8';
+
+                return (
+                  <div
+                    key={key}
+                    data-testid="homepage-featured-plan"
+                    className={cardClassName}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="mb-1 text-xl font-bold text-gray-950 dark:text-white">
+                          {plan.name}
+                        </h3>
+                        <p className="text-sm text-gray-700 dark:text-gray-300">{plan.summary}</p>
+                      </div>
+                      <div className="rounded-full border border-primary/20 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary dark:bg-white/[0.08]">
+                        Self-serve
+                      </div>
+                    </div>
+
+                    <div className="mb-7 mt-7">
+                      <span className="text-4xl font-bold text-gray-950 dark:text-white">
+                        ${plan.price}
+                      </span>
+                      <span className="text-base font-normal text-gray-700 dark:text-gray-300">
+                        /mo
+                      </span>
+                    </div>
+
+                    <ul className="mb-8 flex-1 space-y-3">
+                      {plan.features.map((feature) => (
+                        <li
+                          key={feature}
+                          className="flex items-start gap-2.5 text-sm leading-6 text-gray-800 dark:text-gray-200"
+                        >
+                          <CheckIcon />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {isAuthenticated ? (
+                      <Link
+                        href="/pricing"
+                        className="w-full rounded-xl bg-primary py-3 text-center font-semibold text-white transition-colors hover:bg-primary-600"
+                        style={{ boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' }}
+                      >
+                        View Subscription
+                      </Link>
+                    ) : (
+                      <Link
+                        href={`/register?plan=${planSlug}`}
+                        className="w-full rounded-xl bg-primary py-3.5 text-center font-semibold text-white transition-colors hover:bg-primary-600"
+                        style={{ boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' }}
+                      >
+                        Start 14-day Trial
+                      </Link>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </section>
+
       <section id="faq" className="bg-gray-50/80 py-20 sm:py-28 dark:bg-gray-900/50">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
           <div className="mb-14 text-center">
             <div className="mb-4 inline-block rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-primary dark:bg-primary/10">
               FAQ
             </div>
-            <h2 className="text-3xl font-bold text-gray-950 dark:text-gray-100 sm:text-4xl">Frequently asked questions</h2>
+            <h2 className="text-3xl font-bold text-gray-950 dark:text-gray-100 sm:text-4xl">
+              Frequently asked questions
+            </h2>
           </div>
 
           <div className="space-y-2">
             {faqs.map((faq, index) => (
-              <div key={faq.q} className="overflow-hidden rounded-xl border border-gray-200 bg-white/85 dark:border-gray-800 dark:bg-gray-900/80">
+              <div
+                key={faq.q}
+                className="overflow-hidden rounded-xl border border-gray-200 bg-white/85 dark:border-gray-800 dark:bg-gray-900/80"
+              >
                 <button
                   className="flex w-full items-center justify-between px-6 py-4 text-left font-medium text-gray-950 transition-colors hover:bg-gray-50 dark:text-gray-100 dark:hover:bg-gray-800/50"
                   onClick={() => setOpenFaq(openFaq === index ? null : index)}
                 >
                   <span>{faq.q}</span>
-                  <svg className={`ml-4 h-4 w-4 shrink-0 text-gray-700 transition-transform dark:text-gray-300 ${openFaq === index ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg
+                    className={`ml-4 h-4 w-4 shrink-0 text-gray-700 transition-transform dark:text-gray-300 ${
+                      openFaq === index ? 'rotate-180' : ''
+                    }`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
@@ -520,61 +697,161 @@ export default function HomePage() {
         />
         <div className="pointer-events-none absolute left-1/2 top-1/2 h-[400px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[100px]" />
         <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
-          <h2 className="mb-4 text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">Ready to put your business on autopilot?</h2>
-          <p className="mb-9 text-lg text-gray-700 dark:text-gray-300">Start your free 14-day trial. No credit card required.</p>
+          <h2 className="mb-4 text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">
+            Run the business from one place
+          </h2>
+          <p className="mx-auto mb-9 max-w-2xl text-lg text-gray-700 dark:text-gray-300">
+            Start with the booking flow, then layer in customer records, deals, review
+            requests, referrals, and secure payouts as you need them.
+          </p>
           {isAuthenticated ? (
-            <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-xl bg-gray-950 px-8 py-3.5 font-semibold text-white transition-colors hover:bg-gray-900 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 rounded-xl bg-gray-950 px-8 py-3.5 font-semibold text-white transition-colors hover:bg-gray-900 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+            >
               Go to Dashboard <ArrowRight />
             </Link>
           ) : (
-            <Link href="/register" className="inline-flex items-center gap-2 rounded-xl bg-gray-950 px-8 py-3.5 font-semibold text-white transition-colors hover:bg-gray-900 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
+            <Link
+              href="/register"
+              className="inline-flex items-center gap-2 rounded-xl bg-gray-950 px-8 py-3.5 font-semibold text-white transition-colors hover:bg-gray-900 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+            >
               Get Started Free <ArrowRight />
             </Link>
           )}
           <div className="mt-10 flex flex-wrap items-center justify-center gap-6">
-            {trustBadges.map((badge) => (
-              <div key={badge.label} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <svg className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={badge.icon} />
-                </svg>
-                {badge.label}
-              </div>
-            ))}
+            {closingNotes.map((note) =>
+              note.includes('@') ? (
+                <a
+                  key={note}
+                  href={`mailto:${APP_SUPPORT_EMAIL}`}
+                  className="flex items-center gap-2 text-sm text-gray-700 hover:text-primary dark:text-gray-300"
+                >
+                  <CheckIcon className="text-primary" />
+                  {note}
+                </a>
+              ) : (
+                <div key={note} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <CheckIcon className="text-primary" />
+                  {note}
+                </div>
+              )
+            )}
           </div>
         </div>
       </section>
 
       <footer className="border-t border-gray-200/70 bg-gray-50 dark:border-gray-900 dark:bg-gray-950">
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 gap-8 md:grid-cols-3">
+          <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
             <div className="col-span-2 md:col-span-1">
               <div className="mb-4 flex items-center space-x-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
                   <span className="text-xl font-bold text-white">C</span>
                 </div>
-                <span className="text-xl font-bold text-gray-950 dark:text-gray-100">{APP_NAME}</span>
+                <span className="text-xl font-bold text-gray-950 dark:text-gray-100">
+                  {APP_NAME}
+                </span>
               </div>
               <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-                The AI-powered platform for service businesses to manage bookings, customers, and growth.
+                Booking, customer follow-up, deals, referrals, and payouts for service
+                businesses.
               </p>
             </div>
 
             <div>
-              <h4 className="mb-4 text-sm font-semibold text-gray-950 dark:text-gray-100">Product</h4>
+              <h4 className="mb-4 text-sm font-semibold text-gray-950 dark:text-gray-100">
+                Product
+              </h4>
               <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                <li><a href="#features" className="transition-colors hover:text-gray-950 dark:hover:text-gray-100">Features</a></li>
-                <li><Link href="/explore" className="transition-colors hover:text-gray-950 dark:hover:text-gray-100">Explore Deals</Link></li>
-                <li><Link href="/partner" className="transition-colors hover:text-gray-950 dark:hover:text-gray-100">Refer and Earn</Link></li>
-                <li><a href="#pricing" className="transition-colors hover:text-gray-950 dark:hover:text-gray-100">Pricing</a></li>
-                <li><a href="#faq" className="transition-colors hover:text-gray-950 dark:hover:text-gray-100">FAQ</a></li>
+                <li>
+                  <a
+                    href="#features"
+                    className="transition-colors hover:text-gray-950 dark:hover:text-gray-100"
+                  >
+                    Platform
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#workflow"
+                    className="transition-colors hover:text-gray-950 dark:hover:text-gray-100"
+                  >
+                    Workflow
+                  </a>
+                </li>
+                <li>
+                  <Link
+                    href="/pricing"
+                    className="transition-colors hover:text-gray-950 dark:hover:text-gray-100"
+                  >
+                    Pricing
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/partner"
+                    className="transition-colors hover:text-gray-950 dark:hover:text-gray-100"
+                  >
+                    Refer and Earn
+                  </Link>
+                </li>
               </ul>
             </div>
 
             <div>
-              <h4 className="mb-4 text-sm font-semibold text-gray-950 dark:text-gray-100">Legal</h4>
+              <h4 className="mb-4 text-sm font-semibold text-gray-950 dark:text-gray-100">
+                Explore
+              </h4>
               <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                <li><Link href="/privacy" className="transition-colors hover:text-gray-950 dark:hover:text-gray-100">Privacy Policy</Link></li>
-                <li><Link href="/terms" className="transition-colors hover:text-gray-950 dark:hover:text-gray-100">Terms of Service</Link></li>
+                <li>
+                  <Link
+                    href="/explore"
+                    className="transition-colors hover:text-gray-950 dark:hover:text-gray-100"
+                  >
+                    Browse Deals
+                  </Link>
+                </li>
+                <li>
+                  <a
+                    href="#faq"
+                    className="transition-colors hover:text-gray-950 dark:hover:text-gray-100"
+                  >
+                    FAQ
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href={`mailto:${APP_SUPPORT_EMAIL}`}
+                    className="transition-colors hover:text-gray-950 dark:hover:text-gray-100"
+                  >
+                    {APP_SUPPORT_EMAIL}
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="mb-4 text-sm font-semibold text-gray-950 dark:text-gray-100">
+                Legal
+              </h4>
+              <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                <li>
+                  <Link
+                    href="/privacy"
+                    className="transition-colors hover:text-gray-950 dark:hover:text-gray-100"
+                  >
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/terms"
+                    className="transition-colors hover:text-gray-950 dark:hover:text-gray-100"
+                  >
+                    Terms of Service
+                  </Link>
+                </li>
               </ul>
             </div>
           </div>

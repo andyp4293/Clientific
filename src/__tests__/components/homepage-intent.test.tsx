@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import HomePage from '@/app/page';
 
 const mockUseSession = vi.fn();
@@ -42,6 +42,20 @@ describe('Homepage audience intent', () => {
     );
   });
 
+  it('links homepage conversion and support actions to real destinations', async () => {
+    mockUseSession.mockReturnValue({ status: 'unauthenticated', data: null });
+    render(<HomePage />);
+
+    expect(await screen.findByRole('link', { name: 'View Pricing' })).toHaveAttribute(
+      'href',
+      '/pricing'
+    );
+    expect(screen.getByRole('link', { name: 'Questions? support@clientific.app' })).toHaveAttribute(
+      'href',
+      'mailto:support@clientific.app'
+    );
+  });
+
   it('renders four quick-stat cards in the responsive stats section', async () => {
     mockUseSession.mockReturnValue({ status: 'unauthenticated', data: null });
     render(<HomePage />);
@@ -51,7 +65,9 @@ describe('Homepage audience intent', () => {
 
     expect(statsSection).toBeInTheDocument();
     expect(statCards).toHaveLength(4);
-    expect(screen.getByText('AI answers your calls')).toBeInTheDocument();
-    expect(screen.getByText('Platform uptime')).toBeInTheDocument();
+    expect(within(statsSection).getByText('14-day free trial')).toBeInTheDocument();
+    expect(within(statsSection).getByText('No customer account required')).toBeInTheDocument();
+    expect(screen.queryByText('99.9%')).not.toBeInTheDocument();
+    expect(screen.queryByText('< 3 min')).not.toBeInTheDocument();
   });
 });
