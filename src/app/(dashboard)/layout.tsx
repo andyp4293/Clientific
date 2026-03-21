@@ -252,7 +252,7 @@ export default async function DashboardLayout({
 
       <div className="dashboard-scroll lg:pl-64 lg:pt-16">
         {showSubscriptionBanner ? <SubscriptionBanner /> : null}
-        <main className="py-6 px-4 sm:px-6 lg:px-8 lg:pb-6">
+        <main className="px-4 py-6 pb-28 sm:px-6 lg:px-8 lg:pb-6">
           {children}
         </main>
       </div>

@@ -78,7 +78,7 @@ export default function SendCustomerMessageModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 px-4 py-6">
       <div className="w-full max-w-xl rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-800 sm:p-6">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>

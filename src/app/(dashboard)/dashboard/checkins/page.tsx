@@ -325,8 +325,8 @@ export default function CheckInsPage() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4">
-          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-4 dark:bg-gray-800 sm:rounded-2xl sm:p-6">
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4">
+          <div className="max-h-[calc(100dvh-1rem)] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-4 dark:bg-gray-800 sm:max-h-[90vh] sm:rounded-2xl sm:p-6">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 sm:text-xl">
                 New Check-In

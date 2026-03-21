@@ -690,7 +690,7 @@ function AppointmentRow({ appointment, timezone }: { appointment: Appointment; t
       {showEditModal && <EditAppointmentModal appointment={appointment} onClose={() => setShowEditModal(false)} />}
 
       {showNotesModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowNotesModal(false)}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setShowNotesModal(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-xl max-w-sm w-full p-5 shadow-2xl border border-gray-100 dark:border-gray-700" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Notes</h3>
@@ -706,7 +706,7 @@ function AppointmentRow({ appointment, timezone }: { appointment: Appointment; t
       )}
 
       {showCancelConfirm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl max-w-sm w-full p-6 shadow-2xl border border-gray-100 dark:border-gray-700">
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">Cancel appointment?</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
@@ -885,8 +885,8 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
   const labelClass = 'block text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5';
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl shadow-2xl border border-gray-100 dark:border-gray-700 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl shadow-2xl border border-gray-100 dark:border-gray-700 flex flex-col max-h-[calc(100dvh-1rem)] sm:max-h-[90vh]">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
@@ -1123,8 +1123,8 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
   const initials = appointment.customer.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100 dark:border-gray-700">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full max-h-[calc(100dvh-1rem)] overflow-y-auto shadow-2xl border border-gray-100 dark:border-gray-700 sm:max-h-[90vh]">
         <div className="p-6">
           <div className="flex justify-between items-center mb-5">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Edit Appointment</h2>

@@ -9,6 +9,7 @@ describe('dashboard shell theming', () => {
     const banner = readFileSync(join(process.cwd(), 'src', 'components', 'billing', 'SubscriptionBanner.tsx'), 'utf8');
     const toggle = readFileSync(join(process.cwd(), 'src', 'components', 'ui', 'ThemeToggle.tsx'), 'utf8');
     const dashboard = readFileSync(join(process.cwd(), 'src', 'app', '(dashboard)', 'dashboard', 'page.tsx'), 'utf8');
+    const layout = readFileSync(join(process.cwd(), 'src', 'app', '(dashboard)', 'layout.tsx'), 'utf8');
 
     expect(nav).toContain('brand-panel flex h-full flex-col');
     expect(nav).not.toContain('bg-white/80');
@@ -16,6 +17,9 @@ describe('dashboard shell theming', () => {
 
     expect(mobileNav).toContain('brand-panel fixed left-0 right-0');
     expect(mobileNav).toContain('sticky top-0');
+    expect(mobileNav).toContain("top: 'calc(env(safe-area-inset-top) + 8px)'");
+    expect(mobileNav).toContain('z-[60]');
+    expect(mobileNav).toContain('min-h-0 flex-1 overflow-y-auto');
     expect(mobileNav).toContain('grid-cols-5');
     expect(mobileNav).toContain('bg-[rgb(var(--color-gray-50))]');
     expect(mobileNav).toContain('dark:bg-[rgb(var(--color-gray-900))]');
@@ -32,5 +36,7 @@ describe('dashboard shell theming', () => {
 
     expect(dashboard).toContain('bg-white/90 dark:bg-gray-900/80');
     expect(dashboard).toContain('dark:text-gray-300');
+    expect(layout).toContain('py-6 pb-28');
+    expect(layout).toContain('lg:pb-6');
   });
 });

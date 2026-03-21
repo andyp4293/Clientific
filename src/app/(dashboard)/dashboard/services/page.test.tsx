@@ -12,4 +12,11 @@ describe('services page cache sync contract', () => {
     expect(normalized).toContain("queryClient.setQueryData(\n        ['services']");
     expect(servicesInvalidations).toHaveLength(2);
   });
+
+  it('keeps the service and staff dialogs above the mobile tab bar with mobile-safe height limits', () => {
+    const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4');
+    expect(source).toContain('max-h-[calc(100dvh-1rem)] overflow-y-auto sm:max-h-[90vh]');
+  });
 });

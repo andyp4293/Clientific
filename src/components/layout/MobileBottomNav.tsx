@@ -32,13 +32,16 @@ export function MobileBottomNav() {
       {/* More menu backdrop + sheet */}
       {showMoreMenu && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setShowMoreMenu(false)} />
+          <div className="fixed inset-0 z-[55] bg-black/30" onClick={() => setShowMoreMenu(false)} />
           <div
-            className="brand-panel fixed left-0 right-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-2xl rounded-b-none border-x-0 border-b-0 border-t bg-[rgb(var(--color-gray-50))] shadow-2xl backdrop-blur-2xl dark:bg-[rgb(var(--color-gray-900))]"
-            style={{ bottom: `calc(${NAV_HEIGHT}px + env(safe-area-inset-bottom) + 4px)` }}
+            className="brand-panel fixed left-0 right-0 z-[60] flex flex-col overflow-hidden rounded-t-2xl rounded-b-none border-x-0 border-b-0 border-t bg-[rgb(var(--color-gray-50))] shadow-2xl backdrop-blur-2xl dark:bg-[rgb(var(--color-gray-900))]"
+            style={{
+              top: 'calc(env(safe-area-inset-top) + 8px)',
+              bottom: `calc(${NAV_HEIGHT}px + env(safe-area-inset-bottom) + 4px)`,
+            }}
           >
             {/* Sheet header */}
-            <div className="sticky top-0 flex items-center justify-between rounded-t-2xl border-b border-gray-100 bg-[rgb(var(--color-gray-50))] px-4 py-3 backdrop-blur-2xl dark:border-gray-800 dark:bg-[rgb(var(--color-gray-900))]">
+            <div className="sticky top-0 shrink-0 flex items-center justify-between rounded-t-2xl border-b border-gray-100 bg-[rgb(var(--color-gray-50))] px-4 py-3 backdrop-blur-2xl dark:border-gray-800 dark:bg-[rgb(var(--color-gray-900))]">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Menu</h3>
               <button
                 onClick={() => setShowMoreMenu(false)}
@@ -51,7 +54,7 @@ export function MobileBottomNav() {
             </div>
 
             {/* Account row */}
-            <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-4 dark:border-gray-800">
+            <div className="shrink-0 flex items-center gap-3 border-b border-gray-100 px-4 py-4 dark:border-gray-800">
               <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary">
                 <span className="text-sm font-semibold text-white">{session?.user?.name?.charAt(0).toUpperCase() || 'U'}</span>
               </div>
@@ -62,7 +65,7 @@ export function MobileBottomNav() {
             </div>
 
             {/* Nav sections */}
-            <div className="py-2">
+            <div className="min-h-0 flex-1 overflow-y-auto py-2">
               {DASHBOARD_SECTION_ORDER.map((section) => {
                 const pages = DASHBOARD_MOBILE_MORE_NAV.filter((page) => page.section === section);
                 if (pages.length === 0) return null;
@@ -101,7 +104,7 @@ export function MobileBottomNav() {
             </div>
 
             {/* Sign out */}
-            <div className="border-t border-gray-100 p-4 dark:border-gray-800">
+            <div className="shrink-0 border-t border-gray-100 p-4 dark:border-gray-800">
               <button
                 onClick={() => signOut({ callbackUrl: '/login' })}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-50 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"

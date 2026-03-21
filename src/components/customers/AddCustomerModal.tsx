@@ -83,8 +83,8 @@ export default function AddCustomerModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
-      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-800 sm:p-6">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 px-4 py-6">
+      <div className="w-full max-w-2xl max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-800 sm:max-h-[90vh] sm:p-6">
         <div className="mb-5 flex items-center justify-between">
           <h3 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
             Add New Customer

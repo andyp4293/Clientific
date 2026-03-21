@@ -937,8 +937,8 @@ export default function ServicesPage() {
         />
       )}      {/* Service Modal */}
       {modalType === 'service' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full p-6 shadow-2xl max-h-[calc(100dvh-1rem)] overflow-y-auto sm:max-h-[90vh]">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                 {editingService ? 'Edit Service' : 'Add New Service'}
@@ -1081,8 +1081,8 @@ export default function ServicesPage() {
 
       {/* Staff Modal */}
       {modalType === 'staff' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full p-6 shadow-2xl max-h-[calc(100dvh-1rem)] overflow-y-auto sm:max-h-[90vh]">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                 {editingStaff ? 'Edit Staff Member' : 'Add New Staff Member'}
