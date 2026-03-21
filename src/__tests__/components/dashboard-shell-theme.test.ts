@@ -17,9 +17,8 @@ describe('dashboard shell theming', () => {
 
     expect(mobileNav).toContain('brand-panel fixed left-0 right-0');
     expect(mobileNav).toContain('sticky top-0');
-    expect(mobileNav).toContain("top: 'calc(env(safe-area-inset-top) + 8px)'");
     expect(mobileNav).toContain('z-[60]');
-    expect(mobileNav).toContain('min-h-0 flex-1 overflow-y-auto');
+    expect(mobileNav).toContain('maxHeight: `calc(100dvh - ${NAV_HEIGHT}px');
     expect(mobileNav).toContain('grid-cols-5');
     expect(mobileNav).toContain('bg-[rgb(var(--color-gray-50))]');
     expect(mobileNav).toContain('dark:bg-[rgb(var(--color-gray-900))]');
