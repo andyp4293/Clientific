@@ -124,6 +124,7 @@ interface DirectCustomerMessageDetails {
 }
 
 const SMS_COMPLIANCE_FOOTER = 'Reply STOP to opt out, HELP for help.';
+const E164_PHONE_REGEX = /^\+[1-9]\d{9,14}$/;
 
 export function appendSmsComplianceFooter(message: string): string {
   const trimmed = message.trim();
@@ -149,10 +150,26 @@ export function formatPhoneNumber(phone: string): string {
   return phone.startsWith('+') ? phone : `+${cleaned}`;
 }
 
+export function isE164PhoneNumber(phone: string): boolean {
+  if (!phone) return false;
+  return E164_PHONE_REGEX.test(phone.trim());
+}
+
 export function isValidPhoneNumber(phone: string): boolean {
   if (!phone) return false;
   const cleaned = phone.replace(/\D/g, '');
   return cleaned.length >= 10 && cleaned.length <= 15;
+}
+
+export function normalizeOptionalPhoneNumber(phone: unknown): string | null {
+  if (typeof phone !== 'string') return null;
+
+  const trimmed = phone.trim();
+  if (!trimmed) return null;
+  if (!isValidPhoneNumber(trimmed)) return null;
+
+  const formatted = formatPhoneNumber(trimmed);
+  return isE164PhoneNumber(formatted) ? formatted : null;
 }
 
 function formatTime(date: Date, timezone?: string): string {

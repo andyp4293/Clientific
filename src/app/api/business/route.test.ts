@@ -164,6 +164,41 @@ describe('PATCH /api/business', () => {
     expect(body.business.name).toBe('Updated Salon');
   });
 
+  it('normalizes the transfer-to phone number before saving settings', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({ ...fakeBusiness });
+    mockBusinessUpdate.mockResolvedValue({
+      ...fakeBusiness,
+      aiReceptionistPhone: '+19087272437',
+    });
+
+    const res = await PATCH(makePatchRequest({ aiReceptionistPhone: '(908) 727-2437' }));
+
+    expect(res.status).toBe(200);
+    expect(mockBusinessUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          aiReceptionistPhone: '+19087272437',
+        }),
+      })
+    );
+  });
+
+  it('rejects invalid transfer-to phone numbers instead of saving broken Vapi forwarding data', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({ ...fakeBusiness });
+
+    const res = await PATCH(makePatchRequest({ aiReceptionistPhone: 'front desk' }));
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/transfer-to phone number/i);
+    expect(mockBusinessUpdate).not.toHaveBeenCalled();
+  });
+
   it('returns 400 when profile text contains disallowed content', async () => {
     mockSession.mockResolvedValue(activeSession);
     mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });

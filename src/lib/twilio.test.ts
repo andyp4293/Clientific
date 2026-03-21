@@ -11,6 +11,8 @@ import {
   formatKioskDealClaimSMS,
   formatKioskSignupConfirmationSMS,
   formatReviewRequestSMS,
+  isE164PhoneNumber,
+  normalizeOptionalPhoneNumber,
 } from './twilio';
 
 const FOOTER = 'Reply STOP to opt out, HELP for help.';
@@ -19,6 +21,19 @@ describe('twilio sms formatting', () => {
   it('adds footer via helper', () => {
     const message = appendSmsComplianceFooter('Hello there');
     expect(message).toContain(FOOTER);
+  });
+
+  it('normalizes a local transfer number into E.164', () => {
+    expect(normalizeOptionalPhoneNumber('(908) 727-2437')).toBe('+19087272437');
+  });
+
+  it('rejects invalid transfer numbers that cannot be normalized safely', () => {
+    expect(normalizeOptionalPhoneNumber('front desk')).toBeNull();
+  });
+
+  it('detects whether a number is already in E.164 format', () => {
+    expect(isE164PhoneNumber('+19087272437')).toBe(true);
+    expect(isE164PhoneNumber('9087272437')).toBe(false);
   });
 
   it('includes footer on appointment confirmation', () => {

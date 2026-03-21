@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
+import { normalizeOptionalPhoneNumber } from '@/lib/twilio';
 import twilio from 'twilio';
 
 type TwilioProvisionedNumber = {
@@ -353,6 +354,9 @@ export async function PATCH(req: NextRequest) {
     if (publicProfileAbout !== undefined && !isNullableString(publicProfileAbout)) {
       return NextResponse.json({ error: 'Public profile about must be text' }, { status: 400 });
     }
+    if (aiReceptionistPhone !== undefined && !isNullableString(aiReceptionistPhone)) {
+      return NextResponse.json({ error: 'Transfer-to phone number must be text' }, { status: 400 });
+    }
     if (typeof publicProfileHeadline === 'string' && publicProfileHeadline.trim().length > 90) {
       return NextResponse.json({ error: 'Public profile headline must be 90 characters or less' }, { status: 400 });
     }
@@ -390,6 +394,25 @@ export async function PATCH(req: NextRequest) {
 
     if (!current) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
+    }
+
+    const normalizedAiReceptionistPhone =
+      aiReceptionistPhone === undefined
+        ? undefined
+        : normalizeOptionalPhoneNumber(aiReceptionistPhone);
+
+    if (
+      typeof aiReceptionistPhone === 'string' &&
+      aiReceptionistPhone.trim().length > 0 &&
+      !normalizedAiReceptionistPhone
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Transfer-to phone number must be a valid phone number with country code or 10-digit US format',
+        },
+        { status: 400 }
+      );
     }
 
     const finalEnabled = aiReceptionistEnabled !== undefined
@@ -683,7 +706,9 @@ export async function PATCH(req: NextRequest) {
         ...(yelpUrl !== undefined && { yelpUrl }),
         ...(instagramUrl !== undefined && { instagramUrl }),
         ...(aiReceptionistEnabled !== undefined && { aiReceptionistEnabled }),
-        ...(aiReceptionistPhone !== undefined && { aiReceptionistPhone }),
+        ...(normalizedAiReceptionistPhone !== undefined && {
+          aiReceptionistPhone: normalizedAiReceptionistPhone,
+        }),
         ...(aiReceptionistGreeting !== undefined && { aiReceptionistGreeting }),
         ...(aiReceptionistFaq !== undefined && { aiReceptionistFaq }),
         ...(smsAiEnabled !== undefined && { smsAiEnabled }),

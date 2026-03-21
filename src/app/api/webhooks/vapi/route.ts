@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { sendAppointmentConfirmation } from '@/lib/twilio';
+import { normalizeOptionalPhoneNumber, sendAppointmentConfirmation } from '@/lib/twilio';
 import { localToUTC } from '@/lib/timezone';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 
@@ -97,6 +97,11 @@ type BusinessData = {
 
 function buildAssistantConfig(business: BusinessData) {
   const appUrl = getConfiguredAppBaseUrl();
+  const forwardingPhoneNumber = normalizeOptionalPhoneNumber(business.aiReceptionistPhone);
+
+  if (business.aiReceptionistPhone && !forwardingPhoneNumber) {
+    console.warn(`[vapi] Ignoring invalid forwarding phone number for business ${business.id}`);
+  }
 
   // Give the AI the actual current date so it doesn't hallucinate past dates
   const now = new Date();
@@ -258,7 +263,7 @@ Your job:
     },
     voicemailMessage: `Hi, you've reached ${business.name}. We missed your call — please call us back during business hours or book online at ${bookingUrl}.`,
     silenceTimeoutSeconds: 60,
-    ...(business.aiReceptionistPhone && { forwardingPhoneNumber: business.aiReceptionistPhone }),
+    ...(forwardingPhoneNumber && { forwardingPhoneNumber }),
   };
 }
 
