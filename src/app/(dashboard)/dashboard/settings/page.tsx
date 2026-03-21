@@ -9,7 +9,11 @@ import { toast } from 'sonner';
 import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
-import { timezoneFromCoordinates } from '@/lib/timezone';
+import {
+  BUSINESS_ADDRESS_FIELDS,
+  resolveBusinessAddressTimezone,
+  type BusinessAddressCoordinates,
+} from '@/lib/business-location';
 
 async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -182,8 +186,11 @@ export function getAiReceptionistSetupState(
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
+  const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
   const [activeTab, setActiveTab] = useState<Tab | null>(null);
   const [formData, setFormData] = useState<Partial<Business>>({});
+  const [selectedCoordinates, setSelectedCoordinates] = useState<BusinessAddressCoordinates | null>(null);
+  const [timezoneManuallyEdited, setTimezoneManuallyEdited] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [cropModalOpen, setCropModalOpen] = useState(false);
@@ -230,6 +237,8 @@ export default function SettingsPage() {
     if (data?.business) {
       setFormData(data.business);
       setLogoPreview(data.business.logoUrl);
+      setSelectedCoordinates(null);
+      setTimezoneManuallyEdited(false);
     }
   }, [data]);
 
@@ -327,16 +336,25 @@ export default function SettingsPage() {
     aiToggleMutation.mutate(false);
   };
   const handleInputChange = (field: keyof Business, value: any) => {
+    if ((BUSINESS_ADDRESS_FIELDS as readonly string[]).includes(field)) {
+      setSelectedCoordinates(null);
+      setTimezoneManuallyEdited(false);
+    }
+
+    if (field === 'timezone') {
+      setTimezoneManuallyEdited(true);
+    }
+
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleAddressSelect = (address: AddressComponents) => {
-    const latitude = typeof address.latitude === 'number' ? address.latitude : null;
-    const longitude = typeof address.longitude === 'number' ? address.longitude : null;
-    const locationTimezone =
-      latitude !== null && longitude !== null
-        ? timezoneFromCoordinates(latitude, longitude)
-        : null;
+    setSelectedCoordinates(
+      typeof address.latitude === 'number' && typeof address.longitude === 'number'
+        ? { latitude: address.latitude, longitude: address.longitude }
+        : null
+    );
+    setTimezoneManuallyEdited(false);
 
     setFormData((prev) => ({
       ...prev,
@@ -345,9 +363,45 @@ export default function SettingsPage() {
       state: address.state,
       zipCode: address.zipCode,
       country: address.country || 'United States',
-      ...(locationTimezone ? { timezone: locationTimezone } : {}),
     }));
   };
+
+  useEffect(() => {
+    if (timezoneManuallyEdited) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void resolveBusinessAddressTimezone({
+        address: formData,
+        coordinates: selectedCoordinates,
+        fallbackTimezone:
+          formData.timezone ||
+          business?.timezone ||
+          browserTimezone,
+      }).then((resolvedTimezone) => {
+        setFormData((current) =>
+          current.timezone === resolvedTimezone
+            ? current
+            : { ...current, timezone: resolvedTimezone }
+        );
+      });
+    }, 350);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    browserTimezone,
+    business?.timezone,
+    formData.city,
+    formData.country,
+    formData.state,
+    formData.street,
+    formData.timezone,
+    formData.zipCode,
+    selectedCoordinates?.latitude,
+    selectedCoordinates?.longitude,
+    timezoneManuallyEdited,
+  ]);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -398,8 +452,25 @@ export default function SettingsPage() {
     setFormData((prev) => ({ ...prev, logoUrl: null }));
   };
 
-  const handleSave = () => {
-    updateMutation.mutate(formData);
+  const handleSave = async () => {
+    const resolvedTimezone = timezoneManuallyEdited
+      ? formData.timezone || business?.timezone || browserTimezone
+      : await resolveBusinessAddressTimezone({
+          address: formData,
+          coordinates: selectedCoordinates,
+          fallbackTimezone:
+            formData.timezone ||
+            business?.timezone ||
+            browserTimezone,
+        });
+
+    const nextFormData = {
+      ...formData,
+      timezone: resolvedTimezone,
+    };
+
+    setFormData(nextFormData);
+    updateMutation.mutate(nextFormData);
   };
 
   const businessTypes = [
@@ -582,8 +653,9 @@ export default function SettingsPage() {
                   Street Address
                 </label>
                 <AddressAutocomplete
+                  value={formData.street || ''}
+                  onInputChange={(value) => handleInputChange('street', value)}
                   onAddressSelect={handleAddressSelect}
-                  defaultValue={formData.street || ''}
                 />
               </div>
 
@@ -646,7 +718,7 @@ export default function SettingsPage() {
                   ]}
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Selecting an address auto-fills timezone. You can still override it here.
+                  Address changes auto-fill timezone. You can still override it here.
                 </p>
               </div>
 

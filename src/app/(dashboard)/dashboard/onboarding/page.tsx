@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AddressAutocomplete, { type AddressComponents } from '@/components/ui/AddressAutocomplete';
-import { timezoneFromCoordinates } from '@/lib/timezone';
+import {
+  BUSINESS_ADDRESS_FIELDS,
+  resolveBusinessAddressTimezone,
+  type BusinessAddressCoordinates,
+} from '@/lib/business-location';
 
 type OnboardingFormData = {
   name: string;
@@ -16,11 +20,6 @@ type OnboardingFormData = {
   zipCode: string;
   country: string;
   timezone: string;
-};
-
-type Coordinates = {
-  latitude: number;
-  longitude: number;
 };
 
 const EMPTY_FORM: OnboardingFormData = {
@@ -36,22 +35,6 @@ const EMPTY_FORM: OnboardingFormData = {
   timezone: '',
 };
 
-const ADDRESS_FIELDS: Array<keyof OnboardingFormData> = [
-  'street',
-  'city',
-  'state',
-  'zipCode',
-  'country',
-];
-
-function hasCoordinates(value: Coordinates | null): value is Coordinates {
-  return Boolean(
-    value &&
-      Number.isFinite(value.latitude) &&
-      Number.isFinite(value.longitude)
-  );
-}
-
 export default function DashboardOnboardingPage() {
   const router = useRouter();
   const browserTimezone = useMemo(
@@ -59,7 +42,7 @@ export default function DashboardOnboardingPage() {
     []
   );
   const [formData, setFormData] = useState<OnboardingFormData>(EMPTY_FORM);
-  const [selectedCoordinates, setSelectedCoordinates] = useState<Coordinates | null>(null);
+  const [selectedCoordinates, setSelectedCoordinates] = useState<BusinessAddressCoordinates | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -116,17 +99,12 @@ export default function DashboardOnboardingPage() {
   const updateField = (field: keyof OnboardingFormData, value: string) => {
     setFormData((current) => ({ ...current, [field]: value }));
 
-    if (ADDRESS_FIELDS.includes(field)) {
+    if ((BUSINESS_ADDRESS_FIELDS as readonly string[]).includes(field)) {
       setSelectedCoordinates(null);
     }
   };
 
   const handleAddressSelect = (address: AddressComponents) => {
-    const timezone =
-      typeof address.latitude === 'number' && typeof address.longitude === 'number'
-        ? timezoneFromCoordinates(address.latitude, address.longitude)
-        : null;
-
     setSelectedCoordinates(
       typeof address.latitude === 'number' && typeof address.longitude === 'number'
         ? { latitude: address.latitude, longitude: address.longitude }
@@ -140,53 +118,15 @@ export default function DashboardOnboardingPage() {
       state: address.state,
       zipCode: address.zipCode,
       country: address.country || current.country || 'United States',
-      timezone: timezone || current.timezone || browserTimezone,
     }));
   };
 
   const resolveTimezoneForAddress = async (): Promise<string> => {
-    if (hasCoordinates(selectedCoordinates)) {
-      return (
-        timezoneFromCoordinates(selectedCoordinates.latitude, selectedCoordinates.longitude) ||
-        formData.timezone ||
-        browserTimezone
-      );
-    }
-
-    const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
-    const addressQuery = [
-      formData.street.trim(),
-      formData.city.trim(),
-      formData.state.trim(),
-      formData.zipCode.trim(),
-      formData.country.trim(),
-    ]
-      .filter(Boolean)
-      .join(', ');
-
-    if (mapboxToken && addressQuery) {
-      try {
-        const response = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addressQuery)}.json?access_token=${mapboxToken}&types=address&limit=1&country=us,ca`
-        );
-        const payload = await response.json().catch(() => ({}));
-        const center = Array.isArray(payload?.features?.[0]?.center)
-          ? payload.features[0].center
-          : null;
-
-        if (Array.isArray(center) && center.length === 2) {
-          const [longitude, latitude] = center;
-          const timezone = timezoneFromCoordinates(latitude, longitude);
-          if (timezone) {
-            return timezone;
-          }
-        }
-      } catch {
-        // Fall through to the existing stored/browser timezone.
-      }
-    }
-
-    return formData.timezone || browserTimezone;
+    return resolveBusinessAddressTimezone({
+      address: formData,
+      coordinates: selectedCoordinates,
+      fallbackTimezone: formData.timezone || browserTimezone,
+    });
   };
 
   const completeOnboarding = async () => {
@@ -326,8 +266,8 @@ export default function DashboardOnboardingPage() {
           <div>
             <label className="label">Find Your Address</label>
             <AddressAutocomplete
-              key={`address-${formData.street}`}
-              defaultValue={formData.street}
+              value={formData.street}
+              onInputChange={(value) => updateField('street', value)}
               onAddressSelect={handleAddressSelect}
               className="input"
               placeholder="Start typing your address..."

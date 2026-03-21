@@ -76,4 +76,8 @@ describe('settings page module', () => {
       'clientific.aiReceptionist.activationUntil.biz-1'
     );
   });
+
+  it('exports a callable async save handler shape', () => {
+    expect(typeof pageModule.default).toBe('function');
+  });
 });

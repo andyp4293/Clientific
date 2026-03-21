@@ -15,6 +15,8 @@ export interface AddressComponents {
 interface AddressAutocompleteProps {
   onAddressSelect: (address: AddressComponents) => void;
   defaultValue?: string;
+  value?: string;
+  onInputChange?: (value: string) => void;
   className?: string;
   placeholder?: string;
 }
@@ -33,6 +35,8 @@ interface MapboxFeature {
 export default function AddressAutocomplete({
   onAddressSelect,
   defaultValue = '',
+  value,
+  onInputChange,
   className = '',
   placeholder = 'Start typing your address...',
 }: AddressAutocompleteProps) {
@@ -50,6 +54,16 @@ export default function AddressAutocomplete({
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (value !== undefined) {
+      setInputValue(value);
+      return;
+    }
+
+    setInputValue(defaultValue);
+  }, [defaultValue, value]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -86,6 +100,7 @@ export default function AddressAutocomplete({
 
   const handleInputChange = (value: string) => {
     setInputValue(value);
+    onInputChange?.(value);
 
     // Debounce API calls
     if (debounceRef.current) {
@@ -148,7 +163,7 @@ export default function AddressAutocomplete({
     <div ref={wrapperRef} className="relative">
       <input
         type="text"
-        value={inputValue}
+        value={value ?? inputValue}
         onChange={(e) => handleInputChange(e.target.value)}
         onFocus={() => inputValue.length >= 3 && setIsOpen(true)}
         className={className || 'input'}
