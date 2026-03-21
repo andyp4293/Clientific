@@ -13,10 +13,12 @@ describe('services page cache sync contract', () => {
     expect(servicesInvalidations).toHaveLength(2);
   });
 
-  it('keeps the service and staff dialogs above the mobile tab bar with mobile-safe height limits', () => {
+  it('renders service and staff dialogs as full-screen flows on mobile while preserving desktop dialogs', () => {
     const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
 
-    expect(source).toContain('fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4');
-    expect(source).toContain('max-h-[calc(100dvh-1rem)] overflow-y-auto sm:max-h-[90vh]');
+    expect(source).toContain('fixed inset-0 z-[70] bg-black/50 p-0 sm:flex sm:items-center sm:justify-center sm:p-4');
+    expect(source).toContain('flex h-[100dvh] w-full flex-col bg-white shadow-2xl dark:bg-gray-800 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-xl');
+    expect(source).toContain('grid grid-cols-1 gap-4 sm:grid-cols-2');
+    expect(source).toContain('flex flex-col-reverse gap-3 border-t border-gray-100 px-4 py-4 dark:border-gray-700 sm:flex-row sm:border-t-0 sm:px-6 sm:pb-6 sm:pt-2');
   });
 });

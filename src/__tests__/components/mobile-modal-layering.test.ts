@@ -22,18 +22,25 @@ describe('mobile modal layering contract', () => {
     }
   });
 
-  it('keeps the longest mobile dialogs within the viewport instead of pinning actions behind the tab bar', () => {
+  it('keeps long mobile dialogs either constrained or fully fullscreen so actions stay reachable', () => {
     const constrainedFiles = [
       ['src', 'components', 'customers', 'AddCustomerModal.tsx'],
       ['src', 'components', 'customers', 'EditCustomerModal.tsx'],
-      ['src', 'app', '(dashboard)', 'dashboard', 'appointments', 'page.tsx'],
       ['src', 'app', '(dashboard)', 'dashboard', 'checkins', 'page.tsx'],
+    ];
+    const fullscreenFiles = [
+      ['src', 'app', '(dashboard)', 'dashboard', 'appointments', 'page.tsx'],
       ['src', 'app', '(dashboard)', 'dashboard', 'services', 'page.tsx'],
     ];
 
     for (const segments of constrainedFiles) {
       const source = readFileSync(join(process.cwd(), ...segments), 'utf8');
       expect(source).toContain('max-h-[calc(100dvh-1rem)]');
+    }
+
+    for (const segments of fullscreenFiles) {
+      const source = readFileSync(join(process.cwd(), ...segments), 'utf8');
+      expect(source).toContain('h-[100dvh] w-full flex-col');
     }
   });
 });

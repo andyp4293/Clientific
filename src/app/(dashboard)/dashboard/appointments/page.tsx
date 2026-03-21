@@ -885,11 +885,11 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
   const labelClass = 'block text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5';
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl shadow-2xl border border-gray-100 dark:border-gray-700 flex flex-col max-h-[calc(100dvh-1rem)] sm:max-h-[90vh]">
+    <div className="fixed inset-0 z-[70] bg-black/50 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
+      <div className="flex h-[100dvh] w-full flex-col bg-white shadow-2xl dark:bg-gray-800 sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-2xl sm:border sm:border-gray-100 dark:border-gray-700">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 dark:border-gray-700 flex-shrink-0 sm:px-6">
           <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">New Appointment</h2>
           <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 transition-colors">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -898,10 +898,10 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
 
         {/* Body */}
         <form id="new-appt-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-          <div className="grid grid-cols-2 min-h-0">
+          <div className="grid min-h-0 grid-cols-1 md:grid-cols-2">
 
             {/* Left: Date & Time */}
-            <div className="p-5 space-y-5 border-r border-gray-100 dark:border-gray-700">
+            <div className="space-y-5 border-b border-gray-100 p-4 dark:border-gray-700 md:border-b-0 md:border-r md:p-5">
 
               {/* Date */}
               <div>
@@ -984,7 +984,7 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
             </div>
 
             {/* Right: Details */}
-            <div className="p-5 space-y-4">
+            <div className="space-y-4 p-4 md:p-5">
 
               {/* Customer */}
               <div>
@@ -1073,7 +1073,7 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
         </form>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex-shrink-0">
+        <div className="flex flex-col-reverse gap-3 border-t border-gray-100 px-4 py-4 dark:border-gray-700 flex-shrink-0 sm:flex-row sm:items-center sm:justify-end sm:px-6">
           <button type="button" onClick={onClose} className="btn-outline text-sm px-5">Cancel</button>
           <button type="submit" form="new-appt-form" disabled={submitting} className="btn-primary text-sm px-6 disabled:opacity-60">
             {submitting ? 'Creating…' : 'Create Appointment'}
@@ -1123,10 +1123,9 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
   const initials = appointment.customer.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full max-h-[calc(100dvh-1rem)] overflow-y-auto shadow-2xl border border-gray-100 dark:border-gray-700 sm:max-h-[90vh]">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-5">
+    <div className="fixed inset-0 z-[70] bg-black/40 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
+      <div className="flex h-[100dvh] w-full flex-col bg-white shadow-2xl dark:bg-gray-800 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-xl sm:border sm:border-gray-100 dark:border-gray-700">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 dark:border-gray-700 sm:border-b-0 sm:px-6 sm:pb-0 sm:pt-6">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Edit Appointment</h2>
             <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-400 transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1135,6 +1134,7 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
             </button>
           </div>
 
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:pb-6 sm:pt-5">
           <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-700 rounded-lg p-3 mb-5 border border-gray-100 dark:border-gray-700">
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
               <span className="text-sm font-bold text-primary">{initials}</span>
@@ -1147,8 +1147,8 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <form id="edit-appointment-form" onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="label">Date *</label>
                 <DatePicker
@@ -1211,7 +1211,7 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
               <label className="label">Notes</label>
               <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="input" rows={3} placeholder="Any special requests or notes…" />
             </div>
-            <div className="flex gap-3 pt-2">
+            <div className="sticky bottom-0 -mx-4 flex flex-col-reverse gap-3 border-t border-gray-100 bg-white px-4 py-4 dark:border-gray-700 dark:bg-gray-800 sm:mx-0 sm:flex-row sm:border-t-0 sm:px-0 sm:pb-0 sm:pt-2">
               <button type="button" onClick={onClose} disabled={updateMutation.isPending} className="flex-1 btn-outline">Cancel</button>
               <button type="submit" disabled={updateMutation.isPending} className="flex-1 btn-primary">
                 {updateMutation.isPending ? 'Saving…' : 'Save Changes'}
