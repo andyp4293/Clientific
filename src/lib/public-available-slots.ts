@@ -1,17 +1,20 @@
 import { prisma } from '@/lib/prisma';
 import { localToUTC } from '@/lib/timezone';
+import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
 
 const businessTimeToUTC = localToUTC;
 
 export type AvailabilityReason =
   | 'business_closed'
   | 'staff_off_day'
-  | 'staff_cant_do_service';
+  | 'staff_cant_do_service'
+  | 'staff_not_found';
 
 export type PublicAvailableSlotsInput = {
   businessLookup: { slug: string } | { publicId: string };
   date: string | null;
   serviceId: string | null;
+  serviceIds?: string[] | null;
   staffId?: string | null;
   durationOverride?: string | null;
 };
@@ -37,10 +40,20 @@ export async function getPublicAvailableSlots({
   businessLookup,
   date,
   serviceId,
+  serviceIds,
   staffId,
   durationOverride,
 }: PublicAvailableSlotsInput): Promise<PublicAvailableSlotsResult> {
-  if (!date || !serviceId) {
+  const requestedServiceIds = Array.from(
+    new Set(
+      [
+        ...(Array.isArray(serviceIds) ? serviceIds : []),
+        ...(serviceId ? [serviceId] : []),
+      ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    )
+  );
+
+  if (!date || requestedServiceIds.length === 0) {
     throw new PublicAvailableSlotsError('Date and service are required', 400);
   }
 
@@ -57,14 +70,23 @@ export async function getPublicAvailableSlots({
     throw new PublicAvailableSlotsError('Online booking is not enabled', 403);
   }
 
-  const service = await prisma.service.findUnique({
-    where: { id: serviceId },
-    select: { duration: true },
+  const services = await prisma.service.findMany({
+    where: {
+      id: { in: requestedServiceIds },
+      businessId: business.id,
+      active: true,
+    },
+    select: { id: true, duration: true },
   });
 
-  if (!service) {
+  if (services.length !== requestedServiceIds.length) {
     throw new PublicAvailableSlotsError('Service not found', 404);
   }
+
+  const servicesById = new Map(services.map((service) => [service.id, service]));
+  const orderedServices = requestedServiceIds
+    .map((requestedId) => servicesById.get(requestedId))
+    .filter((service): service is { id: string; duration: number } => Boolean(service));
 
   const [year, month, day] = date.split('-').map(Number);
   const selectedDate = new Date(year, month - 1, day);
@@ -95,41 +117,37 @@ export async function getPublicAvailableSlots({
   }
 
   if (staffId && staffId !== 'anyone') {
-    const staffMember = await prisma.staff.findUnique({
-      where: { id: staffId },
-      select: {
-        workDays: true,
-        serviceAssignments: { select: { serviceId: true } },
-      },
+    const staffValidation = await validateBookableStaffSelection({
+      staffId,
+      businessId: business.id,
+      serviceIds: requestedServiceIds,
+      dayOfWeek,
     });
 
-    if (staffMember) {
-      // Check working day
-      if (!staffMember.workDays.includes(dayOfWeek)) {
-        return {
-          slots: [],
-          unavailableSlots: [],
-          availabilityReason: 'staff_off_day',
-          message: 'Selected staff member is off on this day.',
-        };
-      }
+    if (staffValidation) {
+      const message =
+        staffValidation.reason === 'staff_off_day'
+          ? 'Selected staff member is off on this day.'
+          : staffValidation.reason === 'staff_cant_do_service'
+            ? 'Selected staff member does not perform one or more of the chosen services.'
+            : 'Selected staff member was not found.';
 
-      // Check service capability (only if the staff member has restrictions)
-      const assigned = staffMember.serviceAssignments.map((a) => a.serviceId);
-      if (assigned.length > 0 && !assigned.includes(serviceId)) {
-        return {
-          slots: [],
-          unavailableSlots: [],
-          availabilityReason: 'staff_cant_do_service',
-          message: 'Selected staff member does not perform this service.',
-        };
-      }
+      return {
+        slots: [],
+        unavailableSlots: [],
+        availabilityReason: staffValidation.reason,
+        message,
+      };
     }
   }
 
   const [openHour, openMinute] = hours.openTime.split(':').map(Number);
   const [closeHour, closeMinute] = hours.closeTime.split(':').map(Number);
-  const duration = durationOverride ? parseInt(durationOverride, 10) : service.duration;
+  const parsedDuration = durationOverride ? Number.parseInt(durationOverride, 10) : NaN;
+  const duration =
+    Number.isFinite(parsedDuration) && parsedDuration > 0
+      ? parsedDuration
+      : orderedServices.reduce((sum, service) => sum + service.duration, 0);
   const slotInterval = 30;
 
   const startOfDay = businessTimeToUTC(date, 0, 0, business.timezone);

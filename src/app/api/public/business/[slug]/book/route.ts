@@ -4,7 +4,8 @@ import { sendAppointmentConfirmation, formatPhoneNumber } from '@/lib/twilio';
 import { sendNewBookingEmail } from '@/lib/email';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
-import { validateStaffCanPerformServices } from '@/lib/staff-service-validation';
+import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
+import { weekdayIndexInTimeZone } from '@/lib/timezone';
 
 // POST - Create public booking (no auth required)
 export async function POST(
@@ -115,20 +116,24 @@ export async function POST(
       );
     }
 
-    // Verify staff belongs to this business and can perform all selected services
+    const start = new Date(startTime);
+    if (isNaN(start.getTime())) {
+      return NextResponse.json({ error: 'Invalid start time' }, { status: 400 });
+    }
+    const end = new Date(start.getTime() + duration * 60000);
+
+    // Verify staff belongs to this business, is working that day, and can perform all selected services
     if (staffId && staffId !== 'anyone') {
-      const staffError = await validateStaffCanPerformServices({
+      const staffError = await validateBookableStaffSelection({
         staffId,
         businessId: business.id,
         serviceIds,
+        dayOfWeek: weekdayIndexInTimeZone(start, business.timezone),
       });
       if (staffError) {
         return NextResponse.json({ error: staffError.error }, { status: staffError.status });
       }
     }
-
-    const start = new Date(startTime);
-    const end = new Date(start.getTime() + duration * 60000);
 
     // Check for conflicts — only when a specific staff member is requested
     if (staffId && staffId !== 'anyone') {

@@ -161,4 +161,26 @@ describe('POST /api/public/business/[slug]/book - consent split', () => {
     expect(prisma.smsConsentEvent.create).toHaveBeenCalled();
     expect(sendAppointmentConfirmation).not.toHaveBeenCalled();
   });
+
+  it('blocks booking when the requested staff member is off that business-local day', async () => {
+    vi.mocked(prisma.staff.findFirst).mockResolvedValue({
+      id: 'staff-1',
+      fullName: 'Andy',
+      workDays: [1],
+      serviceAssignments: [],
+    } as any);
+
+    const res = await POST(
+      req({
+        ...BASE_BODY,
+        staffId: 'staff-1',
+      }),
+      { params: Promise.resolve({ slug: 'test-salon' }) }
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("Andy doesn't work on that day.");
+    expect(prisma.appointment.create).not.toHaveBeenCalled();
+  });
 });

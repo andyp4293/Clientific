@@ -178,4 +178,27 @@ describe('POST /api/public/business-by-id/[publicId]/book', () => {
     );
     expect(sendAppointmentConfirmation).not.toHaveBeenCalled();
   });
+
+  it('blocks booking when the requested staff member is off that business-local day', async () => {
+    vi.mocked(prisma.staff.findFirst).mockResolvedValue({
+      id: 'staff-1',
+      fullName: 'Andy',
+      workDays: [1],
+      serviceAssignments: [],
+    } as any);
+
+    const res = await POST(
+      req({
+        ...BASE_BODY,
+        staffId: 'staff-1',
+      }),
+      { params: Promise.resolve({ publicId: 'pub_123' }) }
+    );
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({
+      error: "Andy doesn't work on that day.",
+    });
+    expect(prisma.appointment.create).not.toHaveBeenCalled();
+  });
 });

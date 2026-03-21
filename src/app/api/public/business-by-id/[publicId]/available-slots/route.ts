@@ -11,11 +11,15 @@ export async function GET(
   try {
     const { publicId } = await params;
     const { searchParams } = new URL(req.url);
+    const rawServiceIds = searchParams.get('serviceIds');
 
     const result = await getPublicAvailableSlots({
       businessLookup: { publicId },
       date: searchParams.get('date'),
       serviceId: searchParams.get('serviceId'),
+      serviceIds: rawServiceIds
+        ? rawServiceIds.split(',').map((value) => value.trim()).filter(Boolean)
+        : null,
       staffId: searchParams.get('staffId'),
       durationOverride: searchParams.get('duration'),
     });

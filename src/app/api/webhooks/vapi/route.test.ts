@@ -1,11 +1,266 @@
-import { describe, it, expect } from 'vitest';
-import * as routeModule from './route';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { NextRequest } from 'next/server';
 
-const METHOD_EXPORTS = ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'] as const;
+vi.mock('@/lib/prisma', () => ({
+  prisma: {
+    business: { findFirst: vi.fn() },
+    service: { findMany: vi.fn() },
+    staff: { findFirst: vi.fn() },
+    appointment: { findMany: vi.fn(), count: vi.fn(), create: vi.fn() },
+    customer: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
+    notification: { create: vi.fn() },
+    $transaction: vi.fn(),
+  },
+}));
 
-describe('route module smoke test', () => {
-  it('exports at least one HTTP handler function', () => {
-    const handlers = METHOD_EXPORTS.filter((method) => typeof (routeModule as Record<string, unknown>)[method] === 'function');
-    expect(handlers.length).toBeGreaterThan(0);
+vi.mock('@/lib/twilio', () => ({
+  normalizeOptionalPhoneNumber: vi.fn((value: string | null) => value),
+  sendAppointmentConfirmation: vi.fn().mockResolvedValue({ success: true }),
+}));
+
+vi.mock('@/lib/app-url', () => ({
+  getConfiguredAppBaseUrl: vi.fn(() => 'https://clientific.app'),
+}));
+
+import { prisma } from '@/lib/prisma';
+import { sendAppointmentConfirmation } from '@/lib/twilio';
+import { POST } from './route';
+
+function req(body: Record<string, unknown>) {
+  return new NextRequest('http://localhost/api/webhooks/vapi', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+const BASE_BUSINESS = {
+  id: 'biz-1',
+  name: 'Test Salon',
+  businessType: 'Salon',
+  phone: '+15551230000',
+  vapiPhoneNumber: '+15557654321',
+  publicId: 'AB-123456',
+  street: '123 Main St',
+  city: 'Howell',
+  state: 'NJ',
+  timezone: 'America/New_York',
+  aiReceptionistGreeting: null,
+  aiReceptionistPhone: null,
+  aiReceptionistFaq: [],
+  services: [
+    { id: 'svc-gel', name: 'Gel Manicure', price: 45, duration: 45 },
+    { id: 'svc-pedi', name: 'Pedicure', price: 55, duration: 60 },
+  ],
+  staff: [{ id: 'staff-1', fullName: 'Andy', role: 'Technician' }],
+  businessHours: {
+    hours: {
+      '0': { isOpen: false, openTime: null, closeTime: null },
+      '1': { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+      '2': { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+      '3': { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+      '4': { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+      '5': { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+      '6': { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+    },
+  },
+} as const;
+
+describe('POST /api/webhooks/vapi', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
+
+    vi.mocked(prisma.business.findFirst).mockResolvedValue(BASE_BUSINESS as any);
+    vi.mocked(prisma.service.findMany).mockResolvedValue([
+      { id: 'svc-gel', name: 'Gel Manicure', duration: 45 },
+      { id: 'svc-pedi', name: 'Pedicure', duration: 60 },
+    ] as any);
+    vi.mocked(prisma.staff.findFirst).mockResolvedValue({
+      id: 'staff-1',
+      fullName: 'Andy',
+      workDays: [2],
+      serviceAssignments: [
+        { serviceId: 'svc-gel' },
+        { serviceId: 'svc-pedi' },
+      ],
+    } as any);
+    vi.mocked(prisma.appointment.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.appointment.count).mockResolvedValue(0);
+    vi.mocked(prisma.appointment.create).mockResolvedValue({ id: 'appt-1' } as any);
+    vi.mocked(prisma.customer.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.customer.create).mockResolvedValue({
+      id: 'cust-1',
+      name: 'Jane',
+      phone: '+15551234567',
+    } as any);
+    vi.mocked(prisma.customer.update).mockResolvedValue({
+      id: 'cust-1',
+      name: 'Jane',
+      phone: '+15551234567',
+    } as any);
+    vi.mocked(prisma.notification.create).mockResolvedValue({ id: 'notif-1' } as any);
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: any) =>
+      fn({
+        appointment: {
+          count: prisma.appointment.count,
+          create: prisma.appointment.create,
+        },
+      })
+    );
+  });
+
+  it('teaches the assistant to keep multiple services in one booking', async () => {
+    const res = await POST(
+      req({
+        message: {
+          type: 'assistant-request',
+          phoneNumber: { id: 'phone-1' },
+        },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const toolProps = body.assistant.model.tools[0].function.parameters.properties;
+    const systemPrompt = body.assistant.model.messages[0].content as string;
+
+    expect(toolProps.serviceIds).toBeDefined();
+    expect(systemPrompt).toContain('Do NOT split them into separate bookings');
+    expect(systemPrompt).toContain('serviceIds for every requested service');
+  });
+
+  it('refuses availability when the requested staff member is off that day', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'));
+    vi.mocked(prisma.staff.findFirst).mockResolvedValue({
+      id: 'staff-1',
+      fullName: 'Andy',
+      workDays: [1],
+      serviceAssignments: [
+        { serviceId: 'svc-gel' },
+        { serviceId: 'svc-pedi' },
+      ],
+    } as any);
+
+    const res = await POST(
+      req({
+        message: {
+          type: 'tool-calls',
+          phoneNumber: { id: 'phone-1' },
+          call: { customer: { number: '+15551234567' } },
+          toolCallList: [
+            {
+              id: 'tool-1',
+              function: {
+                name: 'manage_booking',
+                arguments: {
+                  action: 'checkAvailability',
+                  date: '2026-03-10',
+                  serviceIds: ['svc-gel', 'svc-pedi'],
+                  staffId: 'staff-1',
+                },
+              },
+            },
+          ],
+        },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.results[0].result).toContain("Andy doesn't work on that day");
+    expect(prisma.appointment.findMany).not.toHaveBeenCalled();
+  });
+
+  it('uses the combined service duration when checking a requested staff member', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'));
+    vi.mocked(prisma.appointment.findMany).mockResolvedValue([
+      {
+        startTime: new Date('2026-03-10T16:00:00.000Z'),
+        endTime: new Date('2026-03-10T16:30:00.000Z'),
+      },
+    ] as any);
+
+    const res = await POST(
+      req({
+        message: {
+          type: 'tool-calls',
+          phoneNumber: { id: 'phone-1' },
+          call: { customer: { number: '+15551234567' } },
+          toolCallList: [
+            {
+              id: 'tool-1',
+              function: {
+                name: 'manage_booking',
+                arguments: {
+                  action: 'checkAvailability',
+                  date: '2026-03-10',
+                  requestedTime: '11 AM',
+                  serviceIds: ['svc-gel', 'svc-pedi'],
+                  staffId: 'staff-1',
+                },
+              },
+            },
+          ],
+        },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.results[0].result).toContain("11:00 AM isn't available");
+  });
+
+  it('creates one combined AI appointment for multiple requested services', async () => {
+    const res = await POST(
+      req({
+        message: {
+          type: 'tool-calls',
+          phoneNumber: { id: 'phone-1' },
+          call: { customer: { number: '+15551234567' } },
+          toolCallList: [
+            {
+              id: 'tool-1',
+              function: {
+                name: 'manage_booking',
+                arguments: {
+                  action: 'createBooking',
+                  slotTime: '2026-03-10T15:00:00.000Z',
+                  customerName: 'Jane',
+                  serviceIds: ['svc-gel', 'svc-pedi'],
+                  staffId: 'staff-1',
+                },
+              },
+            },
+          ],
+        },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    expect(prisma.appointment.create).toHaveBeenCalledTimes(1);
+    expect(prisma.appointment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          serviceId: 'svc-gel',
+          serviceIds: ['svc-gel', 'svc-pedi'],
+          duration: 105,
+          source: 'ai',
+          staffId: 'staff-1',
+        }),
+      })
+    );
+    expect(sendAppointmentConfirmation).toHaveBeenCalledWith(
+      '+15551234567',
+      expect.objectContaining({
+        serviceName: 'Gel Manicure and Pedicure',
+        duration: 105,
+      })
+    );
+    expect(body.results[0].result).toContain('Gel Manicure and Pedicure');
   });
 });

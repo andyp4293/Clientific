@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { businessDayStart, localToUTC, timezoneFromCoordinates } from './timezone';
+import {
+  businessDayStart,
+  localToUTC,
+  timezoneFromCoordinates,
+  weekdayIndexInTimeZone,
+} from './timezone';
 
 describe('timezone utilities', () => {
   it('converts business-local winter and summer times to correct UTC instants', () => {
@@ -24,5 +29,12 @@ describe('timezone utilities', () => {
   it('returns null for invalid coordinates', () => {
     expect(timezoneFromCoordinates(91, -74.006)).toBeNull();
     expect(timezoneFromCoordinates(40.7128, -190)).toBeNull();
+  });
+
+  it('derives the weekday in the business timezone for UTC appointment instants', () => {
+    const utcInstant = new Date('2026-03-10T00:30:00.000Z');
+
+    expect(weekdayIndexInTimeZone(utcInstant, 'America/New_York')).toBe(1);
+    expect(weekdayIndexInTimeZone(utcInstant, 'UTC')).toBe(2);
   });
 });

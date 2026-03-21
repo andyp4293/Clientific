@@ -405,6 +405,8 @@ describe('POST /api/public/business/[slug]/book — staff-service validation', (
     // Staff is restricted to svc-1 only
     vi.mocked(prisma.staff.findFirst).mockResolvedValue({
       id: 'staff-1',
+      fullName: 'Alice',
+      workDays: [1, 2, 3, 4, 5],
       serviceAssignments: [{ serviceId: 'svc-1' }],
     } as any);
 
@@ -427,6 +429,8 @@ describe('POST /api/public/business/[slug]/book — staff-service validation', (
   it('allows booking when staff has no service restrictions', async () => {
     vi.mocked(prisma.staff.findFirst).mockResolvedValue({
       id: 'staff-1',
+      fullName: 'Alice',
+      workDays: [1, 2, 3, 4, 5],
       serviceAssignments: [],
     } as any);
 
@@ -447,6 +451,8 @@ describe('POST /api/public/business/[slug]/book — staff-service validation', (
   it('allows booking when staff can perform all selected services', async () => {
     vi.mocked(prisma.staff.findFirst).mockResolvedValue({
       id: 'staff-1',
+      fullName: 'Alice',
+      workDays: [1, 2, 3, 4, 5],
       serviceAssignments: [{ serviceId: 'svc-1' }, { serviceId: 'svc-2' }],
     } as any);
 
@@ -584,8 +590,11 @@ describe('getPublicAvailableSlots — staff_cant_do_service', () => {
         },
       },
     } as any);
-    vi.mocked(prisma.service.findUnique).mockResolvedValue({ duration: 60 } as any);
-    vi.mocked(prisma.staff.findUnique).mockResolvedValue({
+    vi.mocked(prisma.service.findMany).mockResolvedValue([
+      { id: 'svc-requested', duration: 60 },
+    ] as any);
+    vi.mocked(prisma.staff.findFirst).mockResolvedValue({
+      fullName: 'Alice',
       workDays: [0, 1, 2, 3, 4, 5, 6], // works all days
       serviceAssignments: [{ serviceId: 'svc-other' }], // NOT svc-requested
     } as any);
@@ -614,8 +623,11 @@ describe('getPublicAvailableSlots — staff_cant_do_service', () => {
         },
       },
     } as any);
-    vi.mocked(prisma.service.findUnique).mockResolvedValue({ duration: 60 } as any);
-    vi.mocked(prisma.staff.findUnique).mockResolvedValue({
+    vi.mocked(prisma.service.findMany).mockResolvedValue([
+      { id: 'svc-any', duration: 60 },
+    ] as any);
+    vi.mocked(prisma.staff.findFirst).mockResolvedValue({
+      fullName: 'Alice',
       workDays: [0, 1, 2, 3, 4, 5, 6],
       serviceAssignments: [], // no restrictions
     } as any);

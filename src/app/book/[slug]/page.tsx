@@ -212,6 +212,7 @@ export default function PublicBookingPage() {
       const qp = new URLSearchParams({
         date: formatDateLocal(selectedDate),
         serviceId: selectedServices[0].id,
+        serviceIds: selectedServices.map((service) => service.id).join(','),
         duration: String(totalDuration),
         ...(selectedStaff && selectedStaff !== 'anyone' && { staffId: selectedStaff }),
       });

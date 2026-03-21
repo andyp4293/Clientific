@@ -53,6 +53,32 @@ export function businessDayStart(dateStr: string, timezone: string): Date {
   return localToUTC(dateStr, 0, 0, timezone);
 }
 
+export function weekdayIndexInTimeZone(date: Date, timezone: string): number {
+  const weekday = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    weekday: 'long',
+  }).format(date);
+
+  switch (weekday) {
+    case 'Sunday':
+      return 0;
+    case 'Monday':
+      return 1;
+    case 'Tuesday':
+      return 2;
+    case 'Wednesday':
+      return 3;
+    case 'Thursday':
+      return 4;
+    case 'Friday':
+      return 5;
+    case 'Saturday':
+      return 6;
+    default:
+      return date.getUTCDay();
+  }
+}
+
 export function timezoneFromCoordinates(
   latitude: number,
   longitude: number

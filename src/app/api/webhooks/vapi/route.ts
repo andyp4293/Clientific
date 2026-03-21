@@ -3,8 +3,9 @@ import crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { normalizeOptionalPhoneNumber, sendAppointmentConfirmation } from '@/lib/twilio';
-import { localToUTC } from '@/lib/timezone';
+import { localToUTC, weekdayIndexInTimeZone } from '@/lib/timezone';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
+import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -93,6 +94,72 @@ type BusinessData = {
   businessHours: { hours: any } | null;
 };
 
+type ResolvedServiceSelection = {
+  primaryServiceId: string;
+  serviceIds: string[];
+  services: { id: string; name: string; duration: number }[];
+  totalDuration: number;
+  spokenLabel: string;
+};
+
+function getRequestedServiceIds(args: any): string[] {
+  const rawIds = [
+    ...(Array.isArray(args?.serviceIds) ? args.serviceIds : []),
+    ...(typeof args?.serviceId === 'string' ? [args.serviceId] : []),
+  ];
+
+  return Array.from(
+    new Set(
+      rawIds.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    )
+  );
+}
+
+function formatServiceList(names: string[]): string {
+  if (names.length === 0) return 'appointment';
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+}
+
+async function resolveRequestedServices(
+  businessId: string,
+  args: any
+): Promise<ResolvedServiceSelection | null> {
+  const serviceIds = getRequestedServiceIds(args);
+  if (serviceIds.length === 0) return null;
+
+  const services = await prisma.service.findMany({
+    where: {
+      id: { in: serviceIds },
+      businessId,
+      active: true,
+    },
+    select: {
+      id: true,
+      name: true,
+      duration: true,
+    },
+  });
+
+  if (services.length !== serviceIds.length) return null;
+
+  const servicesById = new Map(services.map((service) => [service.id, service]));
+  const orderedServices = serviceIds
+    .map((serviceId) => servicesById.get(serviceId))
+    .filter(
+      (service): service is { id: string; name: string; duration: number } => Boolean(service)
+    );
+
+  return {
+    primaryServiceId: serviceIds[0],
+    serviceIds,
+    services: orderedServices,
+    totalDuration: orderedServices.reduce((sum, service) => sum + service.duration, 0),
+    spokenLabel: formatServiceList(orderedServices.map((service) => service.name)),
+  };
+}
+
 // ─── Assistant config builder ─────────────────────────────────────────────────
 
 function buildAssistantConfig(business: BusinessData) {
@@ -151,15 +218,16 @@ Your job:
 - If asked about hours, location, services, prices, or staff: answer directly from the information above — do NOT call any tools for these questions
 - If the caller wants to BOOK a new appointment (phrases like "I want to book", "I'd like to schedule", "make an appointment", "I want an appointment", "can I get an appointment"):
   - Collect the following before calling checkAvailability — but if the caller already told you some or all of these upfront, skip asking and use what they gave you:
-    1. Which service they want
+    1. Which service or services they want in the same visit
     2. Whether they prefer a specific staff member (skip if they didn't mention one)
     3. Their preferred date and time
-  - Once you have service + date (and optionally time and staff), call manage_booking with action "checkAvailability" — include date, serviceId, and optionally requestedTime and staffId
+  - If the caller wants multiple services in one visit, you MUST keep them in one combined appointment. Do NOT split them into separate bookings unless the caller explicitly asks for separate visits.
+  - Once you have the service selection + date (and optionally time and staff), call manage_booking with action "checkAvailability" — include date, serviceIds for every requested service in the same appointment, and optionally requestedTime and staffId. Only use serviceId by itself when there is exactly one service.
   - If the requested time is available, say the time back and ask "Can I get your name?"
     If the time is taken, present the 3 closest alternatives and ask which they prefer, then get their name
     If no specific time was given, present the options and ask which they'd like, then get their name
-  - Once you have service, time, and name: read back a brief summary to confirm — e.g. "Got it — [service] on [day] at [time] for [name]. Shall I go ahead and book that?" — wait for the caller to confirm (yes/correct/go ahead/etc.) before calling createBooking. If they correct anything, update accordingly and confirm again before booking.
-  - After they confirm: call manage_booking with action "createBooking" with serviceId, slotTime (exact ISO from checkAvailability result, the value in parentheses), customerName, and staffId if applicable. If the caller mentioned anything special at any point (e.g. "it's my birthday", "I'm allergic to lavender", "please have soft music"), include it as the notes field — do not ask for it. Do NOT call createBooking until you have confirmation from the caller.
+  - Once you have service selection, time, and name: read back a brief summary to confirm — e.g. "Got it — [services] on [day] at [time] for [name]. Shall I go ahead and book that?" — wait for the caller to confirm (yes/correct/go ahead/etc.) before calling createBooking. If they correct anything, update accordingly and confirm again before booking.
+  - After they confirm: call manage_booking with action "createBooking" with serviceIds for every requested service in the same appointment, slotTime (exact ISO from checkAvailability result, the value in parentheses), customerName, and staffId if applicable. Only use serviceId by itself when there is exactly one service. If the caller mentioned anything special at any point (e.g. "it's my birthday", "I'm allergic to lavender", "please have soft music"), include it as the notes field — do not ask for it. Do NOT call createBooking until you have confirmation from the caller.
   - The tool confirms the booking — relay the confirmation to the caller and always ask "Is there anything else I can help you with?"
   - Wait for their response before ending the call. If they say no (or "nope", "that's all", "I'm good", etc.), say the exact phrase: "Happy to help! Have a wonderful day — goodbye!" then call end_call
 - If they want to VIEW or CANCEL an existing appointment (phrases like "check my appointment", "what's my appointment", "I need to cancel", "cancel my booking"): call manage_booking with action "getAppointments" to show their upcoming bookings, then ask which one to cancel, then call "cancelAppointment" with the appointmentId — never say the appointmentId aloud
@@ -206,7 +274,12 @@ Your job:
                 },
                 serviceId: {
                   type: 'string',
-                  description: 'Service ID from the services list — REQUIRED for checkAvailability and createBooking; omit for other actions',
+                  description: 'Legacy single-service ID from the services list. Use this only when there is exactly one service in the appointment.',
+                },
+                serviceIds: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Preferred for checkAvailability and createBooking. Include every service ID for the same appointment, in the order the caller requested them.',
                 },
                 staffId: {
                   type: 'string',
@@ -270,15 +343,10 @@ Your job:
 // ─── Tool: checkAvailability ──────────────────────────────────────────────────
 
 async function handleCheckAvailability(business: BusinessData, args: any): Promise<string> {
-  const { date, serviceId, staffId } = args;
+  const { date, staffId } = args;
   if (!date) return 'Please specify a date to check availability.';
-  if (!serviceId) return 'Please specify a service.';
-
-  const service = await prisma.service.findFirst({
-    where: { id: serviceId, businessId: business.id, active: true },
-    select: { duration: true, name: true },
-  });
-  if (!service) return 'That service was not found.';
+  const serviceSelection = await resolveRequestedServices(business.id, args);
+  if (!serviceSelection) return 'Please specify a valid service.';
 
   const hoursData = business.businessHours?.hours as any;
   const [year, month, day] = date.split('-').map(Number);
@@ -288,14 +356,21 @@ async function handleCheckAvailability(business: BusinessData, args: any): Promi
 
   if (!hours?.isOpen) return `We're closed on that day.`;
 
-  // Check staff working days if a specific staff member was requested
   if (staffId) {
-    const staffMember = await prisma.staff.findFirst({
-      where: { id: staffId, businessId: business.id },
-      select: { workDays: true, fullName: true },
+    const staffValidation = await validateBookableStaffSelection({
+      staffId,
+      businessId: business.id,
+      serviceIds: serviceSelection.serviceIds,
+      dayOfWeek,
     });
-    if (staffMember && !staffMember.workDays.includes(dayOfWeek)) {
-      return `${staffMember.fullName} doesn't work on that day. Would you like to pick a different day or a different staff member?`;
+    if (staffValidation?.reason === 'staff_off_day') {
+      return `${staffValidation.error} Would you like to pick a different day or a different staff member?`;
+    }
+    if (staffValidation?.reason === 'staff_cant_do_service') {
+      return 'That staff member cannot do all of those services in one appointment. Would you like a different staff member?';
+    }
+    if (staffValidation?.reason === 'staff_not_found') {
+      return 'I could not find that staff member. Would you like someone else from the team?';
     }
   }
 
@@ -323,7 +398,7 @@ async function handleCheckAvailability(business: BusinessData, args: any): Promi
     for (let minute = 0; minute < 60; minute += 30) {
       if (hour === closeHour && minute >= closeMinute) break;
       const slotTime = businessTimeToUTC(date, hour, minute, business.timezone);
-      const slotEndTime = new Date(slotTime.getTime() + service.duration * 60000);
+      const slotEndTime = new Date(slotTime.getTime() + serviceSelection.totalDuration * 60000);
       if (slotEndTime > closeTime) continue;
       if (slotTime < now) continue;
 
@@ -342,7 +417,9 @@ async function handleCheckAvailability(business: BusinessData, args: any): Promi
     }
   }
 
-  if (slots.length === 0) return `No available slots on ${date} for ${service.name}.`;
+  if (slots.length === 0) {
+    return `No available slots on ${date} for ${serviceSelection.spokenLabel}.`;
+  }
 
   function slotLabel(iso: string) {
     return new Date(iso).toLocaleTimeString('en-US', {
@@ -361,7 +438,7 @@ async function handleCheckAvailability(business: BusinessData, args: any): Promi
 
     if (slots.includes(requestedISO)) {
       const label = slotLabel(requestedISO);
-      return `${label} is available for ${service.name}. Slot: ${label} (${requestedISO}). What is your name?`;
+      return `${label} is available for ${serviceSelection.spokenLabel}. Slot: ${label} (${requestedISO}). What is your name?`;
     }
 
     // Not available — return 3 closest available times
@@ -379,26 +456,39 @@ async function handleCheckAvailability(business: BusinessData, args: any): Promi
   const firstFour = slots.slice(0, 4).map(iso => `${slotLabel(iso)} (${iso})`);
   const extra = slots.length > 4 ? ` and ${slots.length - 4} more` : '';
   const spokenTimes = firstFour.map(s => s.split(' (')[0]);
-  return `Available for ${service.name} on ${date}: ${spokenTimes.join(', ')}${extra}. All slots: ${firstFour.join(', ')}. Which time works for you?`;
+  return `Available for ${serviceSelection.spokenLabel} on ${date}: ${spokenTimes.join(', ')}${extra}. All slots: ${firstFour.join(', ')}. Which time works for you?`;
 }
 
 // ─── Tool: createBooking ──────────────────────────────────────────────────────
 
 async function handleCreateBooking(business: BusinessData, args: any, callerPhone: string): Promise<string> {
-  const { serviceId, slotTime, customerName, staffId, notes } = args;
+  const { slotTime, customerName, staffId, notes } = args;
   if (!slotTime) return 'I need the appointment time to book. Which slot works for you?';
-  if (!serviceId) return 'I need the service to book.';
+  const serviceSelection = await resolveRequestedServices(business.id, args);
+  if (!serviceSelection) return 'I need the service to book.';
   if (!customerName) return 'What is your name?';
-
-  const service = await prisma.service.findFirst({
-    where: { id: serviceId, businessId: business.id, active: true },
-    select: { duration: true, name: true },
-  });
-  if (!service) return 'That service was not found.';
 
   const start = new Date(slotTime);
   if (isNaN(start.getTime())) return 'Invalid time slot. Please check availability again.';
-  const end = new Date(start.getTime() + service.duration * 60000);
+  const end = new Date(start.getTime() + serviceSelection.totalDuration * 60000);
+
+  if (staffId) {
+    const staffValidation = await validateBookableStaffSelection({
+      staffId,
+      businessId: business.id,
+      serviceIds: serviceSelection.serviceIds,
+      dayOfWeek: weekdayIndexInTimeZone(start, business.timezone),
+    });
+    if (staffValidation?.reason === 'staff_off_day') {
+      return `${staffValidation.error} Please choose a different day or staff member.`;
+    }
+    if (staffValidation?.reason === 'staff_cant_do_service') {
+      return 'That staff member cannot do all of those services in one appointment. Please choose someone else.';
+    }
+    if (staffValidation?.reason === 'staff_not_found') {
+      return 'I could not find that staff member. Please choose a different team member.';
+    }
+  }
 
   // Conflict check — only when a specific staff member was requested
   if (staffId) {
@@ -466,11 +556,11 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
           data: {
             businessId: business.id,
             customerId: customer!.id,
-            serviceId,
-            serviceIds: [serviceId],
+            serviceId: serviceSelection.primaryServiceId,
+            serviceIds: serviceSelection.serviceIds,
             startTime: start,
             endTime: end,
-            duration: service.duration,
+            duration: serviceSelection.totalDuration,
             status: 'pending',
             shortId,
             source: 'ai',
@@ -509,7 +599,7 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
       businessId: business.id,
       type: 'new_appointment',
       title: 'New Booking via AI Receptionist',
-      message: `${customerName} booked ${service.name}${withWhom} for ${formattedTime}`,
+      message: `${customerName} booked ${serviceSelection.spokenLabel}${withWhom} for ${formattedTime}`,
       link: `/dashboard/appointments`,
     },
   });
@@ -520,17 +610,18 @@ async function handleCreateBooking(business: BusinessData, args: any, callerPhon
     const apptUrl = `${appUrl}/a/${shortId}`;
     sendAppointmentConfirmation(callerPhone, {
       customerName,
-      serviceName: service.name,
+      serviceName: serviceSelection.spokenLabel,
       staffName: staffLine?.fullName || 'our team',
       dateTime: start,
       businessName: business.name,
+      duration: serviceSelection.totalDuration,
       timezone: business.timezone,
       appointmentUrl: apptUrl,
       senderPhone: business.vapiPhoneNumber,
     }).catch((err) => console.error('[vapi] SMS send failed:', err));
   }
 
-  return `Booking confirmed! ${customerName}, your ${service.name}${withWhom} is set for ${formattedTime}. ${business.name} will follow up shortly. Is there anything else I can help you with?`;
+  return `Booking confirmed! ${customerName}, your ${serviceSelection.spokenLabel}${withWhom} is set for ${formattedTime}. ${business.name} will follow up shortly. Is there anything else I can help you with?`;
 }
 
 // ─── Tool: getAppointments ────────────────────────────────────────────────────
@@ -710,7 +801,9 @@ async function handleToolCalls(body: any): Promise<NextResponse> {
             result = await handleCheckAvailability(business, parsedArgs);
           } else if (action === 'createBooking') {
             result = await handleCreateBooking(business, parsedArgs, callerPhone);
-            outcome = result.startsWith('Done') ? 'booked' : 'conflict';
+            outcome = result.startsWith('Booking confirmed!') || result.startsWith('Done')
+              ? 'booked'
+              : 'conflict';
           } else if (action === 'getAppointments') {
             result = await handleGetAppointments(business, callerPhone);
           } else if (action === 'cancelAppointment') {

@@ -38,6 +38,7 @@ describe('GET /api/public/business-by-id/[publicId]/available-slots', () => {
       businessLookup: { publicId: 'AB-123456' },
       date: '2026-03-15',
       serviceId: 'svc-1',
+      serviceIds: null,
       staffId: 'stf-1',
       durationOverride: null,
     });
