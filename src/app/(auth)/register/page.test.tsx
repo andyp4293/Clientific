@@ -8,6 +8,7 @@ const mockSignIn = vi.fn();
 const mockUseSession = vi.fn();
 const mockAssign = vi.fn();
 const mockReplace = vi.fn();
+const searchParamValues = new Map<string, string | null>();
 
 vi.mock('next-auth/react', () => ({
   useSession: () => mockUseSession(),
@@ -16,13 +17,14 @@ vi.mock('next-auth/react', () => ({
 
 vi.mock('next/navigation', () => ({
   useSearchParams: () => ({
-    get: () => null,
+    get: (key: string) => searchParamValues.get(key) ?? null,
   }),
 }));
 
 describe('RegisterPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    searchParamValues.clear();
     mockUseSession.mockReturnValue({ status: 'unauthenticated', data: null });
     mockSignIn.mockResolvedValue(undefined);
     Object.defineProperty(window, 'location', {
@@ -175,5 +177,111 @@ describe('RegisterPage', () => {
     });
 
     expect(screen.getByText(/redirecting to your dashboard/i)).toBeInTheDocument();
+  });
+
+  it('uses partner mode to create a free referral account without the business-type field', async () => {
+    searchParamValues.set('partner', '1');
+
+    render(<RegisterPage />);
+
+    expect(
+      screen.getByText(/create a free referral partner account, finish payout setup/i)
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/email address/i), {
+      target: { value: 'partner@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/^password \*/i), {
+      target: { value: 'Password123!' },
+    });
+    fireEvent.change(screen.getByLabelText(/confirm password/i), {
+      target: { value: 'Password123!' },
+    });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: /^next$/i }));
+
+    await screen.findByRole('heading', { name: /set up your partner profile/i });
+
+    expect(screen.getByLabelText(/your name/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/business type/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/you do not need an active clientific subscription/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/your name/i), {
+      target: { value: 'Jane Partner' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    await screen.findByRole('heading', { name: /check your email/i });
+    expect(screen.getByText(/finish stripe payout setup, then open referrals/i)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    const registerCall = vi.mocked(global.fetch).mock.calls[1];
+    const payload = JSON.parse((registerCall?.[1] as RequestInit).body as string);
+    expect(payload).toMatchObject({
+      email: 'partner@example.com',
+      businessName: 'Jane Partner',
+      businessType: 'Referral Partner',
+    });
+  });
+
+  it('redirects partner signups to payout setup after verification succeeds', async () => {
+    searchParamValues.set('partner', '1');
+
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ available: true }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ verificationEmailSent: true }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true }),
+      } as Response);
+    mockSignIn.mockResolvedValue({ ok: true });
+
+    render(<RegisterPage />);
+
+    fireEvent.change(screen.getByLabelText(/email address/i), {
+      target: { value: 'partner@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/^password \*/i), {
+      target: { value: 'Password123!' },
+    });
+    fireEvent.change(screen.getByLabelText(/confirm password/i), {
+      target: { value: 'Password123!' },
+    });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: /^next$/i }));
+
+    await screen.findByRole('heading', { name: /set up your partner profile/i });
+
+    fireEvent.change(screen.getByLabelText(/your name/i), {
+      target: { value: 'Jane Partner' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    await screen.findByRole('heading', { name: /check your email/i });
+
+    fireEvent.change(screen.getByLabelText(/verification code/i), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /verify code/i }));
+
+    await waitFor(() => {
+      expect(mockSignIn).toHaveBeenCalledWith('credentials', {
+        email: 'partner@example.com',
+        password: 'Password123!',
+        redirect: false,
+      });
+    });
+
+    expect(mockAssign).toHaveBeenCalledWith('/dashboard/payouts/setup');
   });
 });

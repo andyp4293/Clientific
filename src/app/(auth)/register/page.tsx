@@ -42,8 +42,10 @@ function RegisterForm() {
   const defaultEmail = searchParams.get('email') || '';
   const refCode = searchParams.get('ref') || '';
   const affCode = searchParams.get('aff') || '';
+  const isPartnerSignup = searchParams.get('partner') === '1';
   const oauthProvider = searchParams.get('oauth');
   const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === 'true';
+  const partnerBusinessType = 'Referral Partner';
 
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -63,7 +65,7 @@ function RegisterForm() {
     confirmPassword: '',
     acceptTerms: false,
     businessName: '',
-    businessType: 'Salon',
+    businessType: isPartnerSignup ? partnerBusinessType : 'Salon',
     timezone: '',
     plan: defaultPlan,
     referralCode: refCode,
@@ -119,6 +121,20 @@ function RegisterForm() {
   ];
 
   const selectedPlanLabel = getPublicPlanLabel(formData.plan);
+  const verificationRedirectPath = isPartnerSignup
+    ? '/dashboard/payouts/setup'
+    : '/dashboard/onboarding';
+  const stepItems = isPartnerSignup
+    ? [
+        { num: 1, label: 'Account' },
+        { num: 2, label: 'Profile' },
+        { num: 3, label: 'Verify' },
+      ]
+    : [
+        { num: 1, label: 'Account' },
+        { num: 2, label: 'Business' },
+        { num: 3, label: 'Verify' },
+      ];
 
   const updateFormData = (updates: Partial<FormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
@@ -157,7 +173,7 @@ function RegisterForm() {
 
     if (step === 2) {
       if (!formData.businessName.trim()) {
-        setError('Business name is required');
+        setError(isPartnerSignup ? 'Name is required' : 'Business name is required');
         return false;
       }
       return true;
@@ -209,6 +225,7 @@ function RegisterForm() {
     try {
       const payload = {
         ...formData,
+        businessType: isPartnerSignup ? partnerBusinessType : formData.businessType,
         timezone:
           formData.timezone ||
           Intl.DateTimeFormat().resolvedOptions().timeZone ||
@@ -263,9 +280,8 @@ function RegisterForm() {
   };
 
   const signInAfterVerification = async () => {
-    const onboardingPath = '/dashboard/onboarding';
     setAutoSignInFailed(false);
-    setPendingRedirect(onboardingPath);
+    setPendingRedirect(verificationRedirectPath);
 
     const result = await signIn('credentials', {
       email: formData.email.trim().toLowerCase(),
@@ -276,11 +292,15 @@ function RegisterForm() {
     if (result?.error) {
       setPendingRedirect(null);
       setAutoSignInFailed(true);
-      setNotice('Email verified successfully. Please log in to continue onboarding.');
+      setNotice(
+        isPartnerSignup
+          ? 'Email verified successfully. Please log in to finish payout setup.'
+          : 'Email verified successfully. Please log in to continue onboarding.'
+      );
       return;
     }
 
-    window.location.assign(onboardingPath);
+    window.location.assign(verificationRedirectPath);
   };
 
   const verifyEmailCode = async () => {
@@ -308,7 +328,11 @@ function RegisterForm() {
       }
       setEmailVerified(true);
       setAutoSignInFailed(false);
-      setNotice('Email verified. Redirecting you to onboarding...');
+      setNotice(
+        isPartnerSignup
+          ? 'Email verified. Redirecting you to payout setup...'
+          : 'Email verified. Redirecting you to onboarding...'
+      );
       await signInAfterVerification();
     } catch (err: any) {
       setError(err.message || 'Unable to verify email');
@@ -363,17 +387,15 @@ function RegisterForm() {
             </span>
           </Link>
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2">
-            Create your account, verify your email, and finish setup inside the app.
+            {isPartnerSignup
+              ? 'Create a free referral partner account, finish payout setup, and unlock your recurring referral link.'
+              : 'Create your account, verify your email, and finish setup inside the app.'}
           </p>
         </div>
 
         <div className="mb-6 sm:mb-8">
           <div className="flex items-start">
-            {[
-              { num: 1, label: 'Account' },
-              { num: 2, label: 'Business' },
-              { num: 3, label: 'Verify' },
-            ].map((item, idx) => (
+            {stepItems.map((item, idx) => (
               <React.Fragment key={item.num}>
                 {idx > 0 && (
                   <div
@@ -416,7 +438,7 @@ function RegisterForm() {
           {currentStep === 1 && (
             <div className="space-y-3 sm:space-y-4">
               <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-900 dark:text-gray-100">
-                Create Your Account
+                {isPartnerSignup ? 'Create Your Referral Partner Account' : 'Create Your Account'}
               </h2>
 
               {oauthProvider === 'google' && (
@@ -527,21 +549,35 @@ function RegisterForm() {
           {currentStep === 2 && (
             <div className="space-y-4">
               <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-900 dark:text-gray-100">
-                Tell Us About Your Business
+                {isPartnerSignup ? 'Set Up Your Partner Profile' : 'Tell Us About Your Business'}
               </h2>
 
-              <div className="rounded-2xl border border-primary/20 bg-primary-50 px-4 py-4 dark:border-primary/30 dark:bg-primary/10">
-                <p className="text-xs font-semibold uppercase tracking-wide text-primary-700 dark:text-primary-200">
-                  Free trial
-                </p>
-                <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
-                  You&apos;re starting on the {selectedPlanLabel} trial. We&apos;ll collect your phone, address, and other setup details right after verification.
-                </p>
-              </div>
+              {isPartnerSignup ? (
+                <div className="rounded-2xl border border-primary/20 bg-primary-50 px-4 py-4 dark:border-primary/30 dark:bg-primary/10">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary-700 dark:text-primary-200">
+                    Free partner access
+                  </p>
+                  <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                    This account is for payouts and recurring referrals. You do not need an
+                    active Clientific subscription to finish payout setup and use the Referrals
+                    and Payouts pages.
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-primary/20 bg-primary-50 px-4 py-4 dark:border-primary/30 dark:bg-primary/10">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary-700 dark:text-primary-200">
+                    Free trial
+                  </p>
+                  <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                    You&apos;re starting on the {selectedPlanLabel} trial. We&apos;ll collect
+                    your phone, address, and other setup details right after verification.
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label htmlFor="businessName" className="label">
-                  Business Name *
+                  {isPartnerSignup ? 'Your Name *' : 'Business Name *'}
                 </label>
                 <input
                   id="businessName"
@@ -549,23 +585,25 @@ function RegisterForm() {
                   value={formData.businessName}
                   onChange={(e) => updateFormData({ businessName: e.target.value })}
                   className="input"
-                  placeholder="Acme Salon & Spa"
+                  placeholder={isPartnerSignup ? 'Jane Smith' : 'Acme Salon & Spa'}
                   required
                 />
               </div>
 
-              <div>
-                <label htmlFor="businessType" className="label">
-                  Business Type *
-                </label>
-                <CustomSelect
-                  id="businessType"
-                  value={formData.businessType}
-                  onChange={(val) => updateFormData({ businessType: val })}
-                  options={businessTypes.map((type) => ({ value: type, label: type }))}
-                  required
-                />
-              </div>
+              {!isPartnerSignup && (
+                <div>
+                  <label htmlFor="businessType" className="label">
+                    Business Type *
+                  </label>
+                  <CustomSelect
+                    id="businessType"
+                    value={formData.businessType}
+                    onChange={(val) => updateFormData({ businessType: val })}
+                    options={businessTypes.map((type) => ({ value: type, label: type }))}
+                    required
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -617,9 +655,19 @@ function RegisterForm() {
               <div className="card bg-primary-50 dark:bg-primary/10 border-primary-200 dark:border-primary/20 p-6 text-left mb-8">
                 <h3 className="font-semibold mb-3">What happens next</h3>
                 <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                  <li>1. Enter the verification code from your inbox.</li>
-                  <li>2. We&apos;ll sign you in automatically.</li>
-                  <li>3. Finish your phone and location setup before the dashboard unlocks.</li>
+                  {isPartnerSignup ? (
+                    <>
+                      <li>1. Enter the verification code from your inbox.</li>
+                      <li>2. We&apos;ll sign you in automatically.</li>
+                      <li>3. Finish Stripe payout setup, then open Referrals to copy your recurring link.</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>1. Enter the verification code from your inbox.</li>
+                      <li>2. We&apos;ll sign you in automatically.</li>
+                      <li>3. Finish your phone and location setup before the dashboard unlocks.</li>
+                    </>
+                  )}
                 </ul>
               </div>
 

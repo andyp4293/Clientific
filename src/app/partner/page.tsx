@@ -1,192 +1,183 @@
-'use client';
-
-import { useState } from 'react';
 import Link from 'next/link';
-import { APP_NAME } from '@/lib/brand';
 import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
+import {
+  REFERRAL_COMMISSION_DISPLAY,
+  STANDARD_TRIAL_DAYS,
+} from '@/lib/referral-config';
+
+const highlights = [
+  {
+    title: 'Free partner account',
+    body:
+      'Create a free Clientific partner account so you can finish payout setup and manage your referral link.',
+  },
+  {
+    title: 'Recurring monthly earnings',
+    body: `Earn ${REFERRAL_COMMISSION_DISPLAY} of every paid subscription invoice from the business you referred while they stay subscribed.`,
+  },
+  {
+    title: 'Payouts through Stripe',
+    body:
+      'Finish secure Stripe payout setup first. After that, your referral earnings move through the same payouts flow shown in the dashboard.',
+  },
+];
+
+const steps = [
+  {
+    num: '1',
+    title: 'Create your free account',
+    body: 'Start with a free partner account. No paid Clientific subscription is required.',
+  },
+  {
+    num: '2',
+    title: 'Finish payout setup',
+    body:
+      'Verify your email, sign in, and complete secure Stripe payout setup before sharing your referral link.',
+  },
+  {
+    num: '3',
+    title: 'Share your referral link',
+    body:
+      'Copy your link from the Referrals page once payouts are ready. The link stays locked until payout setup is complete.',
+  },
+  {
+    num: '4',
+    title: 'Earn every paid month',
+    body: `After the business owner signs up and starts paying after their ${STANDARD_TRIAL_DAYS}-day trial, you earn ${REFERRAL_COMMISSION_DISPLAY} of each paid subscription invoice while they remain subscribed.`,
+  },
+];
 
 export default function PartnerPage() {
-  const [form, setForm] = useState({ name: '', email: '', payoutInfo: '' });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [result, setResult] = useState<{ code: string } | null>(null);
-  const [copied, setCopied] = useState(false);
-
-  const partnerUrl = result
-    ? (typeof window !== 'undefined' ? `${window.location.origin}/register?aff=${result.code}` : '')
-    : '';
-
-  const handleCopy = () => {
-    if (partnerUrl) {
-      navigator.clipboard.writeText(partnerUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const res = await fetch('/api/public/affiliate/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Something went wrong');
-      setResult(data);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="page-shell min-h-screen">
       <PublicSiteHeader active="partner" />
 
-      <main className="max-w-2xl mx-auto px-4 py-12 md:py-20">
+      <main className="mx-auto max-w-5xl px-4 py-12 md:py-20">
+        <section className="overflow-hidden rounded-[32px] border border-gray-200 bg-gradient-to-br from-white via-white to-primary-50 px-6 py-10 shadow-sm dark:border-gray-800 dark:from-gray-950 dark:via-gray-950 dark:to-primary-950/30 md:px-10 md:py-14">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+              Referral Program
+            </div>
+            <h1 className="mt-5 text-4xl font-bold tracking-tight text-gray-900 dark:text-white md:text-5xl">
+              Earn {REFERRAL_COMMISSION_DISPLAY} every month a referred business pays
+            </h1>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-gray-600 dark:text-gray-300 md:text-lg">
+              This page now follows the same recurring referral program used inside the
+              dashboard. Create a free Clientific partner account, finish payout setup,
+              and share your referral link. No paid Clientific subscription is required
+              to earn or collect payouts.
+            </p>
 
-        {/* Hero */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
-            Partner Program
+            <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200">
+              Referral sharing unlocks only after Stripe payout setup is complete. That
+              keeps earnings flowing into the payouts page correctly from day one.
+            </div>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link href="/register?partner=1" className="btn-primary text-center">
+                Create Free Referral Account
+              </Link>
+              <Link href="/login" className="btn-outline text-center">
+                Log In To Referrals
+              </Link>
+            </div>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3">
-            Earn $15 for every business you refer
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 text-lg leading-relaxed">
-            No subscription needed. Share your unique link and earn $15 when the business you referred starts a paid subscription.
-          </p>
-          <p className="text-sm text-amber-600 dark:text-amber-400 font-medium mt-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 px-4 py-2 rounded-lg inline-block">
-            You earn only when they subscribe and pay, not just for signing up.
-          </p>
-        </div>
+        </section>
 
-        {/* How it works */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
-          {[
-            { num: '1', title: 'Get your link', body: 'Sign up below and we send you a unique referral link in seconds.' },
-            { num: '2', title: 'Share it', body: 'Send it to business owners, post it in Facebook groups, or add it to your website.' },
-            { num: '3', title: 'Get paid', body: 'Once they start a paid plan (after any trial), we pay you $15 directly. No payment from them means no payout for you.' },
-          ].map(({ num, title, body }) => (
-            <div key={num} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
-              <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold mb-3">
-                {num}
-              </div>
-              <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">{title}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{body}</p>
+        <section className="mt-8 grid gap-4 md:grid-cols-3">
+          {highlights.map((item) => (
+            <div
+              key={item.title}
+              className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+            >
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {item.title}
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-400">
+                {item.body}
+              </p>
             </div>
           ))}
-        </div>
+        </section>
 
-        {/* Form / Success state */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 md:p-8 shadow-sm">
-          {result ? (
-            /* Success */
-            <div className="text-center">
-              <div className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4">
-                <svg className="w-7 h-7 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+        <section className="mt-10 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900 md:p-8">
+            <div className="flex items-center gap-2">
+              <div className="h-9 w-9 rounded-2xl bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">
+                4
               </div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">You are all set!</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                Your partner code is <span className="font-mono font-bold text-primary">{result.code}</span>. Share your link below to start earning.
-              </p>
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4 flex items-center gap-2">
-                <input
-                  type="text"
-                  value={partnerUrl}
-                  readOnly
-                  className="flex-1 bg-transparent text-sm text-gray-700 dark:text-gray-300 focus:outline-none truncate"
-                />
-                <button
-                  onClick={handleCopy}
-                  className="flex items-center gap-1.5 text-xs font-semibold bg-primary text-white px-3 py-1.5 rounded-lg hover:bg-primary-700 transition-colors shrink-0"
-                >
-                  {copied ? 'Copied!' : 'Copy'}
-                </button>
-              </div>
-              <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
-                Save this link. We will reach out using your payout details once a referred business makes their first payment. There is no limit on how many businesses you can refer.
-              </p>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                How the recurring referral flow works
+              </h2>
             </div>
-          ) : (
-            /* Sign-up form */
-            <>
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Create your partner account</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Takes 30 seconds. No credit card, no subscription required.</p>
 
-              {error && (
-                <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-400">
-                  {error}
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
-                    Your name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="block w-full rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:bg-gray-800 dark:text-gray-100"
-                    placeholder="Jane Smith"
-                    value={form.name}
-                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
-                    Email address <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    className="block w-full rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:bg-gray-800 dark:text-gray-100"
-                    placeholder="jane@example.com"
-                    value={form.email}
-                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
-                    Where should we send your earnings?
-                  </label>
-                  <input
-                    type="text"
-                    className="block w-full rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:bg-gray-800 dark:text-gray-100"
-                    placeholder="e.g. PayPal: jane@example.com, Venmo: @jane, Zelle: 555-123-4567"
-                    value={form.payoutInfo}
-                    onChange={e => setForm(f => ({ ...f, payoutInfo: e.target.value }))}
-                  />
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Optional now. You can update this before your first payout.</p>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3 bg-primary text-white rounded-lg font-semibold text-sm hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              {steps.map((item) => (
+                <div
+                  key={item.num}
+                  className="rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-950/60"
                 >
-                  {loading ? 'Creating your account...' : 'Get my referral link'}
-                </button>
-              </form>
-            </>
-          )}
-        </div>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                    {item.num}
+                  </div>
+                  <h3 className="mt-4 text-base font-semibold text-gray-900 dark:text-white">
+                    {item.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
+                    {item.body}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
 
-        <p className="text-xs text-center text-gray-400 dark:text-gray-500 mt-6">
-          Already a Clientific subscriber? Your referral link is inside your dashboard under Refer &amp; Earn.
-        </p>
+          <div className="space-y-4">
+            <div className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900 md:p-8">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                Important
+              </p>
+              <h2 className="mt-3 text-xl font-bold text-gray-900 dark:text-white">
+                What this page is promising now
+              </h2>
+              <ul className="mt-5 space-y-3 text-sm leading-6 text-gray-600 dark:text-gray-400">
+                <li>No paid subscription is required for the referrer.</li>
+                <li>
+                  Earnings are recurring, not one-time, while the referred business keeps
+                  paying.
+                </li>
+                <li>
+                  Payout setup must be complete before the referral link can be shared.
+                </li>
+                <li>
+                  The dashboard Referrals and Payouts pages are the source of truth after
+                  signup.
+                </li>
+              </ul>
+            </div>
+
+            <div className="rounded-[28px] border border-primary/20 bg-primary-50 p-6 shadow-sm dark:border-primary/30 dark:bg-primary/10 md:p-8">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                Already have an account?
+              </p>
+              <h2 className="mt-3 text-xl font-bold text-gray-900 dark:text-white">
+                Jump straight to your referral tools
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-gray-300">
+                If you already have a Clientific login, go to the dashboard, finish payout
+                setup, and open Referrals to copy your recurring link.
+              </p>
+              <div className="mt-5 flex flex-col gap-3">
+                <Link href="/login" className="btn-primary text-center">
+                  Log In
+                </Link>
+                <Link href="/register?partner=1" className="btn-outline text-center">
+                  Create A Free Partner Account
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   );
 }
-
