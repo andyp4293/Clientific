@@ -1150,11 +1150,11 @@ export default function ServicesPage() {
                 </label>
               </div>
 
-              {saveServiceMutation.isError && (
-                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                  <p className="text-sm text-red-600 dark:text-red-400">{saveServiceMutation.error?.message || 'Failed to save service'}</p>
-                </div>
-              )}
+                {saveServiceMutation.isError && (
+                  <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <p className="text-sm text-red-600 dark:text-red-400">{saveServiceMutation.error?.message || 'Failed to save service'}</p>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col-reverse gap-3 border-t border-gray-100 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] dark:border-gray-700 sm:flex-row sm:border-t-0 sm:px-6 sm:pb-6 sm:pt-2">
@@ -1192,7 +1192,7 @@ export default function ServicesPage() {
       {/* Staff Modal */}
       {modalType === 'staff' && (
         <div data-mobile-overlay="true" className="fixed inset-0 z-[70] bg-black/50 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
-          <div className="flex h-[100dvh] w-full flex-col bg-white shadow-2xl dark:bg-gray-800 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-xl sm:border sm:border-gray-100 dark:border-gray-700">
+          <div className="flex h-[100dvh] w-full flex-col bg-white shadow-2xl dark:bg-gray-800 sm:h-auto sm:max-h-[90vh] sm:max-w-3xl lg:max-w-5xl sm:rounded-xl sm:border sm:border-gray-100 dark:border-gray-700">
             <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 pt-[calc(env(safe-area-inset-top)+1rem)] dark:border-gray-700 sm:border-b-0 sm:px-6 sm:pb-0 sm:pt-6">
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                 {editingStaff ? 'Edit Staff Member' : 'Add New Staff Member'}
@@ -1208,7 +1208,8 @@ export default function ServicesPage() {
             </div>
 
             <form onSubmit={handleStaffSubmit} className="flex flex-1 flex-col overflow-hidden">
-              <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:pb-0 sm:pt-4">
+              <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:pb-0 sm:pt-4">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
                 <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Full Name <span className="text-red-500 dark:text-red-400">*</span>
@@ -1262,7 +1263,7 @@ export default function ServicesPage() {
                 />
               </div>
 
-              <div>
+              <div className="lg:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Bio
                 </label>
@@ -1344,7 +1345,7 @@ export default function ServicesPage() {
                     Select at least one working day to set the staff schedule.
                   </p>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-3 xl:grid xl:grid-cols-2 xl:gap-3 xl:space-y-0">
                     {staffFormData.workDays.map((dayOfWeek) => {
                       const businessDay = businessHoursRecord[dayOfWeek];
                       const dayLabel = DAY_LABELS[dayOfWeek];
@@ -1661,10 +1662,11 @@ export default function ServicesPage() {
               </div>
 
               {saveStaffMutation.isError && (
-                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg lg:col-span-2">
                   <p className="text-sm text-red-600 dark:text-red-400">{saveStaffMutation.error?.message || 'Failed to save staff member'}</p>
                 </div>
               )}
+              </div>
               </div>
 
               <div className="flex flex-col-reverse gap-3 border-t border-gray-100 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] dark:border-gray-700 sm:flex-row sm:border-t-0 sm:px-6 sm:pb-6 sm:pt-2">
