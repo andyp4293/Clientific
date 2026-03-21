@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { APP_NAME, APP_SUPPORT_EMAIL, APP_PRIVACY_EMAIL } from '@/lib/brand';
+import { APP_NAME, APP_SUPPORT_EMAIL } from '@/lib/brand';
 
 export default function PrivacyPolicyPage() {
   return (
@@ -167,8 +167,8 @@ export default function PrivacyPolicyPage() {
               </ul>
               <p className="mt-2">
                 To exercise these rights, please contact us at{' '}
-                <a href={`mailto:${APP_PRIVACY_EMAIL}`} className="text-primary hover:text-primary-700">
-                  {APP_PRIVACY_EMAIL}
+                <a href={`mailto:${APP_SUPPORT_EMAIL}`} className="text-primary hover:text-primary-700">
+                  {APP_SUPPORT_EMAIL}
                 </a>
               </p>
             </div>
@@ -239,8 +239,7 @@ export default function PrivacyPolicyPage() {
               If you have any questions about this Privacy Policy, please contact us:
             </p>
             <div className="text-gray-800 dark:text-gray-100 leading-relaxed mt-2">
-              <p>Email: <a href={`mailto:${APP_PRIVACY_EMAIL}`} className="text-primary hover:text-primary-700">{APP_PRIVACY_EMAIL}</a></p>
-              <p>Support: <a href={`mailto:${APP_SUPPORT_EMAIL}`} className="text-primary hover:text-primary-700">{APP_SUPPORT_EMAIL}</a></p>
+              <p>Email: <a href={`mailto:${APP_SUPPORT_EMAIL}`} className="text-primary hover:text-primary-700">{APP_SUPPORT_EMAIL}</a></p>
             </div>
           </section>
         </div>

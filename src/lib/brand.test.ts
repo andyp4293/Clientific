@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   APP_DOMAIN,
   APP_NAME,
-  APP_PRIVACY_EMAIL,
   APP_SUPPORT_EMAIL,
   APP_URL,
 } from '@/lib/brand';
@@ -22,9 +21,5 @@ describe('brand constants', () => {
 
   it('uses canonical support email', () => {
     expect(APP_SUPPORT_EMAIL).toBe('support@clientific.app');
-  });
-
-  it('uses canonical privacy email', () => {
-    expect(APP_PRIVACY_EMAIL).toBe('privacy@clientific.app');
   });
 });
