@@ -102,6 +102,12 @@ type ResolvedServiceSelection = {
   spokenLabel: string;
 };
 
+const MAX_VAPI_APPOINTMENT_SERVICES = 5;
+
+function getTooManyServicesMessage(): string {
+  return `I can help book up to ${MAX_VAPI_APPOINTMENT_SERVICES} services in one appointment. Which ${MAX_VAPI_APPOINTMENT_SERVICES} services would you like to keep together?`;
+}
+
 function getRequestedServiceIds(args: any): string[] {
   const rawIds = [
     ...(Array.isArray(args?.serviceIds) ? args.serviceIds : []),
@@ -221,6 +227,7 @@ Your job:
     1. Which service or services they want in the same visit
     2. Whether they prefer a specific staff member (skip if they didn't mention one)
     3. Their preferred date and time
+  - The maximum is 5 services in one appointment. If they ask for more than 5, help them narrow it down to 5 for that visit before calling any booking tool.
   - If the caller wants multiple services in one visit, you MUST keep them in one combined appointment. Do NOT split them into separate bookings unless the caller explicitly asks for separate visits.
   - Once you have the service selection + date (and optionally time and staff), call manage_booking with action "checkAvailability" — include date, serviceIds for every requested service in the same appointment, and optionally requestedTime and staffId. Only use serviceId by itself when there is exactly one service.
   - If the requested time is available, say the time back and ask "Can I get your name?"
@@ -279,7 +286,7 @@ Your job:
                 serviceIds: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'Preferred for checkAvailability and createBooking. Include every service ID for the same appointment, in the order the caller requested them.',
+                  description: 'Preferred for checkAvailability and createBooking. Include every service ID for the same appointment, in the order the caller requested them. Maximum 5 services per appointment.',
                 },
                 staffId: {
                   type: 'string',
@@ -345,6 +352,9 @@ Your job:
 async function handleCheckAvailability(business: BusinessData, args: any): Promise<string> {
   const { date, staffId } = args;
   if (!date) return 'Please specify a date to check availability.';
+  if (getRequestedServiceIds(args).length > MAX_VAPI_APPOINTMENT_SERVICES) {
+    return getTooManyServicesMessage();
+  }
   const serviceSelection = await resolveRequestedServices(business.id, args);
   if (!serviceSelection) return 'Please specify a valid service.';
 
@@ -464,6 +474,9 @@ async function handleCheckAvailability(business: BusinessData, args: any): Promi
 async function handleCreateBooking(business: BusinessData, args: any, callerPhone: string): Promise<string> {
   const { slotTime, customerName, staffId, notes } = args;
   if (!slotTime) return 'I need the appointment time to book. Which slot works for you?';
+  if (getRequestedServiceIds(args).length > MAX_VAPI_APPOINTMENT_SERVICES) {
+    return getTooManyServicesMessage();
+  }
   const serviceSelection = await resolveRequestedServices(business.id, args);
   if (!serviceSelection) return 'I need the service to book.';
   if (!customerName) return 'What is your name?';

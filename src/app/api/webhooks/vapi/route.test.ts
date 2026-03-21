@@ -128,6 +128,7 @@ describe('POST /api/webhooks/vapi', () => {
     expect(toolProps.serviceIds).toBeDefined();
     expect(systemPrompt).toContain('Do NOT split them into separate bookings');
     expect(systemPrompt).toContain('serviceIds for every requested service');
+    expect(systemPrompt).toContain('maximum is 5 services in one appointment');
   });
 
   it('refuses availability when the requested staff member is off that day', async () => {
@@ -262,5 +263,66 @@ describe('POST /api/webhooks/vapi', () => {
       })
     );
     expect(body.results[0].result).toContain('Gel Manicure and Pedicure');
+  });
+
+  it('caps AI phone appointments at five services during availability checks', async () => {
+    const res = await POST(
+      req({
+        message: {
+          type: 'tool-calls',
+          phoneNumber: { id: 'phone-1' },
+          call: { customer: { number: '+15551234567' } },
+          toolCallList: [
+            {
+              id: 'tool-1',
+              function: {
+                name: 'manage_booking',
+                arguments: {
+                  action: 'checkAvailability',
+                  date: '2026-03-10',
+                  serviceIds: ['svc-1', 'svc-2', 'svc-3', 'svc-4', 'svc-5', 'svc-6'],
+                },
+              },
+            },
+          ],
+        },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.results[0].result).toContain('up to 5 services in one appointment');
+    expect(prisma.service.findMany).not.toHaveBeenCalled();
+  });
+
+  it('caps AI phone appointments at five services before booking creation', async () => {
+    const res = await POST(
+      req({
+        message: {
+          type: 'tool-calls',
+          phoneNumber: { id: 'phone-1' },
+          call: { customer: { number: '+15551234567' } },
+          toolCallList: [
+            {
+              id: 'tool-1',
+              function: {
+                name: 'manage_booking',
+                arguments: {
+                  action: 'createBooking',
+                  slotTime: '2026-03-10T15:00:00.000Z',
+                  customerName: 'Jane',
+                  serviceIds: ['svc-1', 'svc-2', 'svc-3', 'svc-4', 'svc-5', 'svc-6'],
+                },
+              },
+            },
+          ],
+        },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.results[0].result).toContain('up to 5 services in one appointment');
+    expect(prisma.appointment.create).not.toHaveBeenCalled();
   });
 });
