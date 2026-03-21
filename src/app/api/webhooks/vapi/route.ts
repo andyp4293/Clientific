@@ -6,6 +6,12 @@ import { normalizeOptionalPhoneNumber, sendAppointmentConfirmation } from '@/lib
 import { localToUTC, weekdayIndexForLocalDate, weekdayIndexInTimeZone } from '@/lib/timezone';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
+import {
+  buildAppointmentStartOptions,
+  formatStaffAvailabilitySummary,
+  getEffectiveStaffDayHours,
+  normalizeBusinessHoursRecord,
+} from '@/lib/staff-schedule';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -90,7 +96,7 @@ type BusinessData = {
   aiReceptionistPhone: string | null;
   aiReceptionistFaq: unknown;
   services: { id: string; name: string; price: number | null; duration: number }[];
-  staff: { id: string; fullName: string; role: string; workDays: number[] }[];
+  staff: { id: string; fullName: string; role: string; workDays: number[]; workHours: unknown }[];
   businessHours: { hours: any } | null;
 };
 
@@ -119,7 +125,6 @@ type ResolvedServiceSelection = {
 };
 
 const MAX_VAPI_APPOINTMENT_SERVICES = 5;
-const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const STAFF_CLEAR_PATTERNS = [
   /\banyone\b/i,
   /\bno preference\b/i,
@@ -151,7 +156,7 @@ const AI_ENABLED_BUSINESS_SELECT = {
   },
   staff: {
     where: { active: true },
-    select: { id: true, fullName: true, role: true, workDays: true },
+    select: { id: true, fullName: true, role: true, workDays: true, workHours: true },
     take: 20,
   },
   businessHours: { select: { hours: true } },
@@ -173,21 +178,6 @@ function parseToolArguments(rawArgs: unknown): Record<string, unknown> {
   }
 
   return typeof rawArgs === 'object' ? rawArgs as Record<string, unknown> : {};
-}
-
-function formatWorkDays(workDays: number[]): string {
-  if (workDays.length === 0) return 'availability not configured';
-
-  const sorted = Array.from(new Set(workDays))
-    .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
-    .sort((a, b) => a - b);
-
-  if (sorted.length === WEEKDAY_NAMES.length) return 'works every day';
-
-  const working = sorted.map((day) => WEEKDAY_NAMES[day]);
-  const offDays = WEEKDAY_NAMES.filter((_, index) => !sorted.includes(index));
-  const offText = offDays.length > 0 ? `; off ${formatServiceList(offDays)}` : '';
-  return `works ${formatServiceList(working)}${offText}`;
 }
 
 function escapeRegExp(value: string): string {
@@ -384,7 +374,11 @@ function buildAssistantConfig(business: BusinessData) {
   const staffList = business.staff.length > 0
     ? business.staff
         .map((staffMember) =>
-          `- ${staffMember.fullName} (ID: ${staffMember.id}${staffMember.role !== 'staff' ? `, ${staffMember.role}` : ''}, ${formatWorkDays(staffMember.workDays)})`
+          `- ${staffMember.fullName} (ID: ${staffMember.id}${staffMember.role !== 'staff' ? `, ${staffMember.role}` : ''}, ${formatStaffAvailabilitySummary({
+            workDays: staffMember.workDays,
+            workHours: staffMember.workHours,
+            businessHours: business.businessHours?.hours,
+          })})`
         )
         .join('\n')
     : null;
@@ -409,7 +403,7 @@ Online booking: ${bookingUrl}${faqText}
 
 Your job:
 - If asked about hours, location, services, prices, or staff: answer directly from the information above — do NOT call any tools for these questions
-- If the caller asks whether a staff member works on a specific day, answer from the team availability above. Never say someone is available on a day that is not listed in their working days.
+- If the caller asks whether a staff member works on a specific day or time, answer from the team availability above. Never say someone is available outside the listed days or hours.
 - If the caller asks for a staff member who is not listed on the team, say you could not find them on the team and offer another team member.
 - If the caller wants to BOOK a new appointment (phrases like "I want to book", "I'd like to schedule", "make an appointment", "I want an appointment", "can I get an appointment"):
   - Collect the following before calling checkAvailability — but if the caller already told you some or all of these upfront, skip asking and use what they gave you:
@@ -423,7 +417,7 @@ Your job:
   - If the requested time is available, say the time back and ask "Can I get your name?"
     If the time is taken, present the 3 closest alternatives and ask which they prefer, then get their name
     If no specific time was given, present the options and ask which they'd like, then get their name
-    If the tool says the staff member is off that day, unavailable, or not found, do not keep offering that same staff member as available.
+    If the tool says the staff member is off that day, outside their working hours, unavailable, or not found, do not keep offering that same staff member as available.
   - Once you have service selection, time, and name: read back a brief summary to confirm — e.g. "Got it — [services] on [day] at [time] for [name]. Shall I go ahead and book that?" — wait for the caller to confirm (yes/correct/go ahead/etc.) before calling createBooking. If they correct anything, update accordingly and confirm again before booking.
   - After they confirm: call manage_booking with action "createBooking" with serviceIds for every requested service in the same appointment, slotTime (exact ISO from checkAvailability result, the value in parentheses), customerName, and staffId if applicable. Only use serviceId by itself when there is exactly one service. If the caller mentioned anything special at any point (e.g. "it's my birthday", "I'm allergic to lavender", "please have soft music"), include it as the notes field — do not ask for it. Do NOT call createBooking until you have confirmation from the caller.
   - The tool confirms the booking — relay the confirmation to the caller and always ask "Is there anything else I can help you with?"
@@ -671,11 +665,14 @@ async function handleCheckAvailability(
     return `I couldn't find ${missingStaffName} on the team. Would you like someone else?`;
   }
 
-  const hoursData = business.businessHours?.hours as any;
+  const hoursData = normalizeBusinessHoursRecord(business.businessHours?.hours);
   const dayOfWeek = weekdayIndexForLocalDate(date, business.timezone);
-  const hours = hoursData?.[dayOfWeek.toString()] ?? (Array.isArray(hoursData) ? hoursData[dayOfWeek] : null);
+  const hours = hoursData[dayOfWeek];
 
-  if (!hours?.isOpen) return `We're closed on that day.`;
+  if (!hours?.isOpen || !hours.openTime || !hours.closeTime) return `We're closed on that day.`;
+
+  let openTime = hours.openTime;
+  let closeTimeLabel = hours.closeTime;
 
   if (staffId) {
     const staffValidation = await validateBookableStaffSelection({
@@ -683,6 +680,8 @@ async function handleCheckAvailability(
       businessId: business.id,
       serviceIds: serviceSelection.serviceIds,
       dayOfWeek,
+      businessHours: hoursData,
+      timezone: business.timezone,
     });
     if (staffValidation?.reason === 'staff_off_day') {
       return `${staffValidation.error} Would you like to pick a different day or a different staff member?`;
@@ -693,10 +692,37 @@ async function handleCheckAvailability(
     if (staffValidation?.reason === 'staff_not_found') {
       return 'I could not find that staff member. Would you like someone else from the team?';
     }
-  }
 
-  const [openHour, openMinute] = hours.openTime.split(':').map(Number);
-  const [closeHour, closeMinute] = hours.closeTime.split(':').map(Number);
+    const staffMember =
+      await prisma.staff.findFirst({
+        where: { id: staffId, businessId: business.id, active: true },
+        select: {
+          id: true,
+          fullName: true,
+          workDays: true,
+          workHours: true,
+        },
+      }) ?? business.staff.find((member) => member.id === staffId);
+    if (staffMember) {
+      const staffHours = getEffectiveStaffDayHours({
+        dayOfWeek,
+        workDays: staffMember.workDays,
+        workHours: staffMember.workHours,
+        businessHours: hoursData,
+      });
+
+      if (!staffHours.worksDay) {
+        return `${staffMember.fullName} doesn't work on that day. Would you like to pick a different day or a different staff member?`;
+      }
+
+      if (!staffHours.startTime || !staffHours.endTime) {
+        return `${staffMember.fullName} is unavailable on that day. Would you like a different day or staff member?`;
+      }
+
+      openTime = staffHours.startTime;
+      closeTimeLabel = staffHours.endTime;
+    }
+  }
 
   const startOfDay = businessTimeToUTC(date, 0, 0, business.timezone);
   const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1);
@@ -711,31 +737,40 @@ async function handleCheckAvailability(
     select: { startTime: true, endTime: true },
   });
 
-  const closeTime = businessTimeToUTC(date, closeHour, closeMinute, business.timezone);
+  const closeTime = businessTimeToUTC(
+    date,
+    Number.parseInt(closeTimeLabel.slice(0, 2), 10),
+    Number.parseInt(closeTimeLabel.slice(3, 5), 10),
+    business.timezone
+  );
   const now = new Date();
   const slots: string[] = [];
 
-  for (let hour = openHour; hour <= closeHour; hour++) {
-    for (let minute = 0; minute < 60; minute += 30) {
-      if (hour === closeHour && minute >= closeMinute) break;
-      const slotTime = businessTimeToUTC(date, hour, minute, business.timezone);
-      const slotEndTime = new Date(slotTime.getTime() + serviceSelection.totalDuration * 60000);
-      if (slotEndTime > closeTime) continue;
-      if (slotTime < now) continue;
+  const timeOptions = buildAppointmentStartOptions(openTime, closeTimeLabel, serviceSelection.totalDuration);
 
-      // Only filter by conflicts when a specific staff member was requested
-      const hasConflict = staffId && existingAppointments.some(apt => {
-        const aptStart = new Date(apt.startTime);
-        const aptEnd = new Date(apt.endTime);
-        return (
-          (slotTime >= aptStart && slotTime < aptEnd) ||
-          (slotEndTime > aptStart && slotEndTime <= aptEnd) ||
-          (slotTime <= aptStart && slotEndTime >= aptEnd)
-        );
-      });
+  for (const timeValue of timeOptions) {
+    const slotTime = businessTimeToUTC(
+      date,
+      Number.parseInt(timeValue.slice(0, 2), 10),
+      Number.parseInt(timeValue.slice(3, 5), 10),
+      business.timezone
+    );
+    const slotEndTime = new Date(slotTime.getTime() + serviceSelection.totalDuration * 60000);
+    if (slotEndTime > closeTime) continue;
+    if (slotTime < now) continue;
 
-      if (!hasConflict) slots.push(slotTime.toISOString());
-    }
+    // Only filter by conflicts when a specific staff member was requested
+    const hasConflict = staffId && existingAppointments.some(apt => {
+      const aptStart = new Date(apt.startTime);
+      const aptEnd = new Date(apt.endTime);
+      return (
+        (slotTime >= aptStart && slotTime < aptEnd) ||
+        (slotEndTime > aptStart && slotEndTime <= aptEnd) ||
+        (slotTime <= aptStart && slotEndTime >= aptEnd)
+      );
+    });
+
+    if (!hasConflict) slots.push(slotTime.toISOString());
   }
 
   if (slots.length === 0) {
@@ -817,9 +852,16 @@ async function handleCreateBooking(
       businessId: business.id,
       serviceIds: serviceSelection.serviceIds,
       dayOfWeek: weekdayIndexInTimeZone(start, business.timezone),
+      businessHours: business.businessHours?.hours,
+      timezone: business.timezone,
+      startTime: start,
+      endTime: end,
     });
     if (staffValidation?.reason === 'staff_off_day') {
       return `${staffValidation.error} Please choose a different day or staff member.`;
+    }
+    if (staffValidation?.reason === 'staff_outside_hours') {
+      return `${staffValidation.error} Please choose a time inside those hours.`;
     }
     if (staffValidation?.reason === 'staff_cant_do_service') {
       return 'That staff member cannot do all of those services in one appointment. Please choose someone else.';

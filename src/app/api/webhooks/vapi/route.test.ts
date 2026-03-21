@@ -53,7 +53,18 @@ const BASE_BUSINESS = {
     { id: 'svc-gel', name: 'Gel Manicure', price: 45, duration: 45 },
     { id: 'svc-pedi', name: 'Pedicure', price: 55, duration: 60 },
   ],
-  staff: [{ id: 'staff-1', fullName: 'Andy', role: 'Technician', workDays: [0, 1, 3, 4, 5, 6] }],
+  staff: [
+    {
+      id: 'staff-1',
+      fullName: 'Andy',
+      role: 'Technician',
+      workDays: [0, 1, 3, 4, 5, 6],
+      workHours: {
+        1: { startTime: '10:00', endTime: '16:00' },
+        3: { startTime: '09:00', endTime: '15:00' },
+      },
+    },
+  ],
   businessHours: {
     hours: {
       '0': { isOpen: false, openTime: null, closeTime: null },
@@ -81,6 +92,9 @@ describe('POST /api/webhooks/vapi', () => {
       id: 'staff-1',
       fullName: 'Andy',
       workDays: [2],
+      workHours: {
+        2: { startTime: '09:00', endTime: '17:00' },
+      },
       serviceAssignments: [
         { serviceId: 'svc-gel' },
         { serviceId: 'svc-pedi' },
@@ -134,7 +148,8 @@ describe('POST /api/webhooks/vapi', () => {
     expect(systemPrompt).toContain('serviceIds for every requested service');
     expect(systemPrompt).toContain('maximum is 5 services in one appointment');
     expect(systemPrompt).toContain('keep that same staffId on every later manage_booking call');
-    expect(systemPrompt).toContain('off Tuesday');
+    expect(systemPrompt).toContain('Tue off');
+    expect(systemPrompt).toContain('Mon 10:00 AM-4:00 PM');
     expect(systemPrompt).toContain('could not find them on the team');
   });
 
@@ -178,6 +193,9 @@ describe('POST /api/webhooks/vapi', () => {
       id: 'staff-1',
       fullName: 'Andy',
       workDays: [1],
+      workHours: {
+        1: { startTime: '10:00', endTime: '16:00' },
+      },
       serviceAssignments: [
         { serviceId: 'svc-gel' },
         { serviceId: 'svc-pedi' },
@@ -214,6 +232,56 @@ describe('POST /api/webhooks/vapi', () => {
     expect(prisma.appointment.findMany).not.toHaveBeenCalled();
   });
 
+  it('does not offer times outside a staff member’s working hours', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'));
+    vi.mocked(prisma.service.findMany).mockResolvedValueOnce([
+      { id: 'svc-gel', name: 'Gel Manicure', duration: 45 },
+    ] as any);
+    vi.mocked(prisma.staff.findFirst).mockResolvedValue({
+      id: 'staff-1',
+      fullName: 'Andy',
+      workDays: [1],
+      workHours: {
+        1: { startTime: '10:00', endTime: '16:00' },
+      },
+      serviceAssignments: [
+        { serviceId: 'svc-gel' },
+        { serviceId: 'svc-pedi' },
+      ],
+    } as any);
+
+    const res = await POST(
+      req({
+        message: {
+          type: 'tool-calls',
+          phoneNumber: { id: 'phone-1' },
+          call: { customer: { number: '+15551234567' } },
+          toolCallList: [
+            {
+              id: 'tool-1',
+              function: {
+                name: 'manage_booking',
+                arguments: {
+                  action: 'checkAvailability',
+                  date: '2026-03-09',
+                  requestedTime: '9 AM',
+                  serviceIds: ['svc-gel'],
+                  staffId: 'staff-1',
+                },
+              },
+            },
+          ],
+        },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.results[0].result).toContain("9:00 AM isn't available");
+    expect(body.results[0].result).toContain('10:00 AM');
+  });
+
   it('keeps the requested staff member attached across tool calls when Vapi omits staffId', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'));
@@ -221,6 +289,9 @@ describe('POST /api/webhooks/vapi', () => {
       id: 'staff-1',
       fullName: 'Andy',
       workDays: [1],
+      workHours: {
+        1: { startTime: '10:00', endTime: '16:00' },
+      },
       serviceAssignments: [
         { serviceId: 'svc-gel' },
         { serviceId: 'svc-pedi' },
@@ -271,6 +342,18 @@ describe('POST /api/webhooks/vapi', () => {
     vi.mocked(prisma.aiCallSession.findUnique).mockResolvedValue({
       requestedStaffId: 'staff-1',
       requestedStaffName: 'Andy',
+    } as any);
+    vi.mocked(prisma.staff.findFirst).mockResolvedValue({
+      id: 'staff-1',
+      fullName: 'Andy',
+      workDays: [2],
+      workHours: {
+        2: { startTime: '09:00', endTime: '17:00' },
+      },
+      serviceAssignments: [
+        { serviceId: 'svc-gel' },
+        { serviceId: 'svc-pedi' },
+      ],
     } as any);
     vi.mocked(prisma.appointment.findMany).mockResolvedValue([
       {
@@ -357,6 +440,18 @@ describe('POST /api/webhooks/vapi', () => {
   it('uses the combined service duration when checking a requested staff member', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'));
+    vi.mocked(prisma.staff.findFirst).mockResolvedValue({
+      id: 'staff-1',
+      fullName: 'Andy',
+      workDays: [2],
+      workHours: {
+        2: { startTime: '09:00', endTime: '17:00' },
+      },
+      serviceAssignments: [
+        { serviceId: 'svc-gel' },
+        { serviceId: 'svc-pedi' },
+      ],
+    } as any);
     vi.mocked(prisma.appointment.findMany).mockResolvedValue([
       {
         startTime: new Date('2026-03-10T16:00:00.000Z'),

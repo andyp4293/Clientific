@@ -5,6 +5,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { CustomSelect } from '@/components/ui/CustomSelect';
+import {
+  buildAppointmentStartOptions,
+  getEffectiveStaffDayHours,
+  normalizeBusinessHoursRecord,
+  type StaffWorkHoursRecord,
+} from '@/lib/staff-schedule';
 
 interface Appointment {
   id: string;
@@ -33,6 +39,20 @@ interface Appointment {
     id: string;
     fullName: string;
   } | null;
+}
+
+interface StaffOption {
+  id: string;
+  fullName: string;
+  workDays?: number[];
+  workHours?: StaffWorkHoursRecord;
+}
+
+interface BusinessHour {
+  dayOfWeek: number;
+  isOpen: boolean;
+  openTime: string | null;
+  closeTime: string | null;
 }
 
 function toDateStr(d: Date) {
@@ -769,8 +789,24 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
 
   const customers: any[] = customersData?.customers || [];
   const services: any[] = servicesData?.services || [];
-  const staffList: any[] = staffQueryData?.staff || [];
-  const businessHours: any[] = businessHoursData?.businessHours || [];
+  const staffList: StaffOption[] = staffQueryData?.staff || [];
+  const businessHours: BusinessHour[] = businessHoursData?.businessHours || [];
+  const businessHoursRecord = useMemo(
+    () =>
+      normalizeBusinessHoursRecord(
+        Object.fromEntries(
+          businessHours.map((hour) => [
+            hour.dayOfWeek,
+            {
+              isOpen: hour.isOpen,
+              openTime: hour.openTime,
+              closeTime: hour.closeTime,
+            },
+          ])
+        )
+      ),
+    [businessHours]
+  );
 
   // Fetch existing appointments for the selected staff member + date to show availability
   const { data: staffApptData } = useQuery({
@@ -784,23 +820,49 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
   });
 
   // Derive time slots from business hours for the selected date
-  const { timeSlots, isClosed } = useMemo(() => {
-    if (!businessHours.length || !formData.date) return { timeSlots: [], isClosed: false };
+  const { timeSlots, isClosed, emptyMessage } = useMemo(() => {
+    if (!formData.date) return { timeSlots: [], isClosed: false, emptyMessage: 'Select a date to view times.' };
     const [year, month, day] = formData.date.split('-').map(Number);
     const dayOfWeek = new Date(year, month - 1, day).getDay();
-    const dayHours = businessHours.find((h: any) => h.dayOfWeek === dayOfWeek);
-    if (!dayHours?.isOpen || !dayHours.openTime || !dayHours.closeTime) return { timeSlots: [], isClosed: true };
-    const [openH, openM] = dayHours.openTime.split(':').map(Number);
-    const [closeH, closeM] = dayHours.closeTime.split(':').map(Number);
-    const slots: string[] = [];
-    let h = openH, m = openM;
-    while (h < closeH || (h === closeH && m < closeM)) {
-      slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
-      m += 30;
-      if (m >= 60) { m -= 60; h++; }
+    const dayHours = businessHoursRecord[dayOfWeek];
+    if (!dayHours?.isOpen || !dayHours.openTime || !dayHours.closeTime) {
+      return { timeSlots: [], isClosed: true, emptyMessage: 'Closed on this day' };
     }
-    return { timeSlots: slots, isClosed: false };
-  }, [businessHours, formData.date]);
+
+    let openTime = dayHours.openTime;
+    let closeTime = dayHours.closeTime;
+
+    if (formData.staffId) {
+      const selectedStaff = staffList.find((staffMember) => staffMember.id === formData.staffId);
+      if (!selectedStaff) {
+        return { timeSlots: [], isClosed: false, emptyMessage: 'Choose a valid staff member.' };
+      }
+
+      const staffHours = getEffectiveStaffDayHours({
+        dayOfWeek,
+        workDays: selectedStaff.workDays ?? [],
+        workHours: selectedStaff.workHours,
+        businessHours: businessHoursRecord,
+      });
+
+      if (!staffHours.worksDay || !staffHours.startTime || !staffHours.endTime) {
+        return {
+          timeSlots: [],
+          isClosed: false,
+          emptyMessage: `${selectedStaff.fullName} is not working during business hours on this day.`,
+        };
+      }
+
+      openTime = staffHours.startTime;
+      closeTime = staffHours.endTime;
+    }
+
+    return {
+      timeSlots: buildAppointmentStartOptions(openTime, closeTime, formData.duration),
+      isClosed: false,
+      emptyMessage: 'No times available for this schedule.',
+    };
+  }, [businessHoursRecord, formData.date, formData.duration, formData.staffId, staffList]);
 
   // Compute which slots are blocked by the selected staff's existing appointments
   const blockedSlots = useMemo(() => {
@@ -834,6 +896,12 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
       setFormData(prev => ({ ...prev, time: '' }));
     }
   }, [blockedSlots, formData.time]);
+
+  useEffect(() => {
+    if (formData.time && !timeSlots.includes(formData.time)) {
+      setFormData((prev) => ({ ...prev, time: '' }));
+    }
+  }, [formData.time, timeSlots]);
 
   const formatSlot = (slot: string) => {
     const [h, m] = slot.split(':').map(Number);
@@ -936,7 +1004,7 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
                 {isClosed ? (
                   <p className="text-xs text-gray-400 dark:text-gray-500 py-4 text-center">Closed on this day</p>
                 ) : timeSlots.length === 0 ? (
-                  <p className="text-xs text-gray-400 dark:text-gray-500 py-4 text-center">Loading hours…</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 py-4 text-center">{emptyMessage || 'No times available for this schedule.'}</p>
                 ) : (
                   <div className="grid grid-cols-3 gap-1 max-h-[210px] overflow-y-auto pr-0.5">
                     {timeSlots.map(slot => {

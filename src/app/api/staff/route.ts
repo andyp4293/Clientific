@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { requireActiveSubscription, checkPlanLimit } from '@/lib/subscription';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
+import { normalizeStaffWorkHours, sanitizeStaffWorkHoursForSave } from '@/lib/staff-schedule';
 
 const STAFF_SELECT = {
   id: true,
@@ -16,6 +17,7 @@ const STAFF_SELECT = {
   role: true,
   active: true,
   workDays: true,
+  workHours: true,
   serviceAssignments: { select: { serviceId: true } },
 } as const;
 
@@ -30,13 +32,15 @@ function mapStaff(member: {
   role: string;
   active: boolean;
   workDays: number[];
+  workHours: unknown;
   serviceAssignments: { serviceId: string }[];
 }) {
-  const { serviceAssignments, active, ...rest } = member;
+  const { serviceAssignments, active, workHours, ...rest } = member;
   return {
     ...rest,
     active,
     isActive: active,
+    workHours: normalizeStaffWorkHours(workHours),
     // Empty array = no restrictions (can perform all services).
     // Non-empty = only these service IDs.
     serviceIds: serviceAssignments.map((a) => a.serviceId),
@@ -89,7 +93,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { fullName, email, phone, role, bio, workDays, serviceIds } = body;
+    const { fullName, email, phone, role, bio, workDays, workHours, serviceIds } = body;
 
     if (!fullName) {
       return NextResponse.json({ error: 'Full name is required' }, { status: 400 });
@@ -105,6 +109,16 @@ export async function POST(req: NextRequest) {
     }
 
     const validatedServiceIds: string[] = Array.isArray(serviceIds) ? serviceIds : [];
+    const normalizedWorkDays = Array.isArray(workDays) ? workDays : [0, 1, 2, 3, 4, 5, 6];
+    const businessHours = await prisma.businessHours.findUnique({
+      where: { businessId: session.user.id },
+      select: { hours: true },
+    });
+    const sanitizedWorkHours = sanitizeStaffWorkHoursForSave({
+      workDays: normalizedWorkDays,
+      workHours,
+      businessHours: businessHours?.hours,
+    });
 
     const staff = await prisma.$transaction(async (tx) => {
       const created = await tx.staff.create({
@@ -115,7 +129,8 @@ export async function POST(req: NextRequest) {
           phone: phone || null,
           role: role || undefined,
           active: true,
-          workDays: Array.isArray(workDays) ? workDays : [0, 1, 2, 3, 4, 5, 6],
+          workDays: normalizedWorkDays,
+          workHours: Object.keys(sanitizedWorkHours).length > 0 ? sanitizedWorkHours : undefined,
         },
         select: STAFF_SELECT,
       });

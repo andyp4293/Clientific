@@ -20,5 +20,7 @@ describe('appointments page mobile dialog contract', () => {
     expect(source).toContain('pt-[calc(env(safe-area-inset-top)+1rem)]');
     expect(source).toContain('pb-[calc(env(safe-area-inset-bottom)+1rem)]');
     expect(source).toContain('sticky bottom-0 -mx-4 flex flex-col-reverse gap-3 border-t border-gray-100 bg-white px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] dark:border-gray-700 dark:bg-gray-800 sm:mx-0 sm:flex-row sm:border-t-0 sm:px-0 sm:pb-0 sm:pt-2');
+    expect(source).toContain('buildAppointmentStartOptions');
+    expect(source).toContain('getEffectiveStaffDayHours');
   });
 });

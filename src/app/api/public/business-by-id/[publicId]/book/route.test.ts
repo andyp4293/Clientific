@@ -201,4 +201,31 @@ describe('POST /api/public/business-by-id/[publicId]/book', () => {
     });
     expect(prisma.appointment.create).not.toHaveBeenCalled();
   });
+
+  it('blocks booking when the requested time is outside the staff member’s hours', async () => {
+    vi.mocked(prisma.staff.findFirst).mockResolvedValue({
+      id: 'staff-1',
+      fullName: 'Andy',
+      workDays: [2],
+      workHours: {
+        2: { startTime: '10:00', endTime: '16:00' },
+      },
+      serviceAssignments: [],
+    } as any);
+
+    const res = await POST(
+      req({
+        ...BASE_BODY,
+        staffId: 'staff-1',
+        startTime: '2026-03-10T13:00:00.000Z',
+      }),
+      { params: Promise.resolve({ publicId: 'pub_123' }) }
+    );
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({
+      error: expect.stringContaining('Andy is available Tuesday from 10:00 AM to 4:00 PM.'),
+    });
+    expect(prisma.appointment.create).not.toHaveBeenCalled();
+  });
 });

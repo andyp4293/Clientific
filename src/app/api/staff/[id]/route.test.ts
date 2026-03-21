@@ -4,6 +4,7 @@ import { NextRequest } from 'next/server';
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: { findUnique: vi.fn() },
+    businessHours: { findUnique: vi.fn() },
     staff: { findUnique: vi.fn(), update: vi.fn(), delete: vi.fn(), findUniqueOrThrow: vi.fn() },
     staffService: { deleteMany: vi.fn(), createMany: vi.fn() },
     appointment: { count: vi.fn(), updateMany: vi.fn() },
@@ -198,6 +199,76 @@ describe('PATCH /api/staff/[id]', () => {
     });
     const body = await res.json();
     expect(body.staff.serviceIds).toEqual(['svc-1', 'svc-2']);
+  });
+
+  it('stores custom work-hour overrides on update', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
+    mockStaffFindUnique.mockResolvedValue({ ...existingStaff, workDays: [1], workHours: null });
+    vi.mocked(prisma.businessHours.findUnique).mockResolvedValue({
+      hours: {
+        1: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+      },
+    } as any);
+
+    const updateMock = vi.fn().mockResolvedValue({ id: 'staff-1' });
+    const updatedStaff = {
+      id: 'staff-1',
+      fullName: 'Jane',
+      businessId: 'biz-1',
+      email: null,
+      phone: null,
+      role: 'staff',
+      active: true,
+      workDays: [1],
+      workHours: {
+        1: { startTime: '10:00', endTime: '16:00' },
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      serviceAssignments: [],
+    };
+
+    mockTransaction.mockImplementationOnce(async (fn: any) => {
+      const tx = {
+        staff: {
+          update: updateMock,
+          findUniqueOrThrow: vi.fn().mockResolvedValue(updatedStaff),
+        },
+        staffService: { deleteMany: vi.fn(), createMany: vi.fn() },
+      };
+      return fn(tx);
+    });
+
+    const res = await PATCH(
+      makePatchRequest({
+        fullName: 'Jane',
+        workDays: [1],
+        workHours: {
+          1: { startTime: '10:00', endTime: '16:00' },
+        },
+      }),
+      routeParams
+    );
+
+    expect(res.status).toBe(200);
+    expect(updateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          workDays: [1],
+          workHours: {
+            1: { startTime: '10:00', endTime: '16:00' },
+          },
+        }),
+      })
+    );
+    await expect(res.json()).resolves.toMatchObject({
+      staff: {
+        workHours: {
+          1: { startTime: '10:00', endTime: '16:00' },
+        },
+      },
+    });
   });
 });
 

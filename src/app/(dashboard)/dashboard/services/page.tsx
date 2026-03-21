@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -8,6 +8,15 @@ import {
   syncServiceGroupCounts,
   upsertServicesQueryData,
 } from '@/lib/service-cache';
+import {
+  addMinutesToTimeString,
+  buildTimeOptions,
+  formatStaffAvailabilitySummary,
+  normalizeBusinessHoursRecord,
+  normalizeStaffWorkHours,
+  type BusinessHoursRecord,
+  type StaffWorkHoursRecord,
+} from '@/lib/staff-schedule';
 
 interface Service {
   id: string;
@@ -27,6 +36,13 @@ interface ServiceGroup {
   _count?: { services: number };
 }
 
+interface BusinessHour {
+  dayOfWeek: number;
+  isOpen: boolean;
+  openTime: string | null;
+  closeTime: string | null;
+}
+
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
@@ -39,12 +55,62 @@ interface Staff {
   bio: string | null;
   isActive: boolean;
   workDays: number[];
+  workHours?: StaffWorkHoursRecord;
   /** Empty = no restrictions (can perform all services). Non-empty = restricted to these service IDs. */
   serviceIds: string[];
 }
 
 type Tab = 'services' | 'staff';
 type ModalType = 'service' | 'staff' | null;
+
+function businessHoursArrayToRecord(hours: BusinessHour[]): BusinessHoursRecord {
+  const raw = Object.fromEntries(
+    hours.map((hour) => [
+      hour.dayOfWeek,
+      {
+        isOpen: hour.isOpen,
+        openTime: hour.openTime,
+        closeTime: hour.closeTime,
+      },
+    ])
+  );
+
+  return normalizeBusinessHoursRecord(raw);
+}
+
+function getDefaultStaffWorkDays(businessHoursRecord: BusinessHoursRecord): number[] {
+  const openDays = DAY_LABELS.map((_, index) => index).filter((dayOfWeek) => {
+    const day = businessHoursRecord[dayOfWeek];
+    return Boolean(day?.isOpen && day.openTime && day.closeTime);
+  });
+
+  return openDays.length > 0 ? openDays : ALL_DAYS;
+}
+
+function deriveStaffWorkHoursForForm({
+  workDays,
+  workHours,
+  businessHoursRecord,
+}: {
+  workDays: number[];
+  workHours?: unknown;
+  businessHoursRecord: BusinessHoursRecord;
+}): StaffWorkHoursRecord {
+  const normalizedWorkHours = normalizeStaffWorkHours(workHours);
+  const next: StaffWorkHoursRecord = {};
+
+  for (const dayOfWeek of workDays) {
+    const businessDay = businessHoursRecord[dayOfWeek];
+    if (!businessDay?.isOpen || !businessDay.openTime || !businessDay.closeTime) continue;
+
+    next[dayOfWeek] = {
+      startTime: normalizedWorkHours[dayOfWeek]?.startTime ?? businessDay.openTime,
+      endTime: normalizedWorkHours[dayOfWeek]?.endTime ?? businessDay.closeTime,
+    };
+  }
+
+  return next;
+}
 
 function ServicesTab({
   services,
@@ -325,11 +391,13 @@ function ServiceRow({
 function StaffTab({
   staff,
   services,
+  businessHoursRecord,
   onEdit,
   onDelete,
 }: {
   staff: Staff[];
   services: Service[];
+  businessHoursRecord: BusinessHoursRecord;
   onEdit: (staff: Staff) => void;
   onDelete: (id: string) => void;
 }) {
@@ -409,6 +477,15 @@ function StaffTab({
             </div>
           )}
 
+          <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+            {formatStaffAvailabilitySummary({
+              workDays: member.workDays,
+              workHours: member.workHours,
+              businessHours: businessHoursRecord,
+              weekdayLabels: DAY_LABELS,
+            })}
+          </p>
+
           {/* Service assignment indicator */}
           <div className="mb-3">
             {!member.serviceIds || member.serviceIds.length === 0 ? (
@@ -487,6 +564,7 @@ export default function ServicesPage() {
     bio: '',
     isActive: true,
     workDays: ALL_DAYS,
+    workHours: {} as StaffWorkHoursRecord,
     serviceIds: [] as string[],
   });
 
@@ -516,6 +594,15 @@ export default function ServicesPage() {
     queryFn: async () => {
       const res = await fetch('/api/staff');
       if (!res.ok) throw new Error('Failed to fetch staff');
+      return res.json();
+    },
+  });
+
+  const { data: businessHoursData } = useQuery({
+    queryKey: ['business-hours'],
+    queryFn: async () => {
+      const res = await fetch('/api/business-hours');
+      if (!res.ok) throw new Error('Failed to fetch business hours');
       return res.json();
     },
   });
@@ -689,7 +776,11 @@ export default function ServicesPage() {
       // added in future are automatically available to this staff member.
       const allActiveIds = services.filter((s) => s.isActive).map((s) => s.id);
       const allSelected = allActiveIds.length > 0 && allActiveIds.every((id) => data.serviceIds.includes(id));
-      const payload = { ...data, serviceIds: allSelected ? [] : data.serviceIds };
+      const payload = {
+        ...data,
+        serviceIds: allSelected ? [] : data.serviceIds,
+        workHours: data.workHours,
+      };
 
       const res = await fetch(url, {
         method,
@@ -727,6 +818,11 @@ export default function ServicesPage() {
   const services: Service[] = servicesData?.services || [];
   const groups: ServiceGroup[] = groupsData?.groups || [];
   const staff: Staff[] = staffData?.staff || [];
+  const businessHours: BusinessHour[] = businessHoursData?.businessHours || [];
+  const businessHoursRecord = useMemo(
+    () => businessHoursArrayToRecord(businessHours),
+    [businessHours]
+  );
 
   const openServiceModal = (service?: Service) => {
     if (service) {
@@ -755,8 +851,10 @@ export default function ServicesPage() {
 
   const openStaffModal = (staffMember?: Staff) => {
     const allActiveIds = services.filter((s) => s.isActive).map((s) => s.id);
+    const defaultWorkDays = getDefaultStaffWorkDays(businessHoursRecord);
     if (staffMember) {
       setEditingStaff(staffMember);
+      const workDays = staffMember.workDays ?? defaultWorkDays;
       setStaffFormData({
         fullName: staffMember.fullName,
         email: staffMember.email || '',
@@ -764,7 +862,12 @@ export default function ServicesPage() {
         role: staffMember.role || '',
         bio: staffMember.bio || '',
         isActive: staffMember.isActive,
-        workDays: staffMember.workDays ?? ALL_DAYS,
+        workDays,
+        workHours: deriveStaffWorkHoursForForm({
+          workDays,
+          workHours: staffMember.workHours,
+          businessHoursRecord,
+        }),
         // Empty serviceIds = no restrictions = highlight all services in the UI
         serviceIds: (staffMember.serviceIds && staffMember.serviceIds.length > 0)
           ? staffMember.serviceIds
@@ -779,7 +882,11 @@ export default function ServicesPage() {
         role: '',
         bio: '',
         isActive: true,
-        workDays: ALL_DAYS,
+        workDays: defaultWorkDays,
+        workHours: deriveStaffWorkHoursForForm({
+          workDays: defaultWorkDays,
+          businessHoursRecord,
+        }),
         serviceIds: allActiveIds,
       });
     }
@@ -932,6 +1039,7 @@ export default function ServicesPage() {
         <StaffTab
           staff={staff}
           services={services}
+          businessHoursRecord={businessHoursRecord}
           onEdit={openStaffModal}
           onDelete={(id) => deleteStaffMutation.mutate(id)}
         />
@@ -1171,26 +1279,184 @@ export default function ServicesPage() {
                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Working Days</p>
                 <div className="flex flex-wrap gap-2">
                   {DAY_LABELS.map((label, i) => (
+                    (() => {
+                      const businessDay = businessHoursRecord[i];
+                      const isBusinessOpen = Boolean(
+                        businessDay?.isOpen && businessDay.openTime && businessDay.closeTime
+                      );
+                      const isSelected = staffFormData.workDays.includes(i);
+
+                      return (
                     <button
                       key={i}
                       type="button"
                       onClick={() => {
                         const current = staffFormData.workDays;
-                        const next = current.includes(i)
-                          ? current.filter(d => d !== i)
+                        const next = isSelected
+                          ? current.filter((d) => d !== i)
                           : [...current, i].sort((a, b) => a - b);
-                        setStaffFormData({ ...staffFormData, workDays: next });
+                        const nextWorkHours = { ...staffFormData.workHours };
+
+                        if (isSelected) {
+                          delete nextWorkHours[i];
+                        } else if (isBusinessOpen && businessDay?.openTime && businessDay.closeTime) {
+                          nextWorkHours[i] = {
+                            startTime: businessDay.openTime,
+                            endTime: businessDay.closeTime,
+                          };
+                        }
+
+                        setStaffFormData({
+                          ...staffFormData,
+                          workDays: next,
+                          workHours: nextWorkHours,
+                        });
                       }}
+                      disabled={!isBusinessOpen && !isSelected}
+                      title={!isBusinessOpen && !isSelected ? 'Business is closed on this day' : undefined}
                       className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors ${
-                        staffFormData.workDays.includes(i)
+                        isSelected
                           ? 'bg-primary text-white border-primary'
-                          : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:border-gray-400'
+                          : !isBusinessOpen
+                            ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700 cursor-not-allowed'
+                            : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:border-gray-400'
                       }`}
                     >
                       {label}
                     </button>
+                      );
+                    })()
                   ))}
                 </div>
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Staff hours are set per day below and always stay inside the business hours.
+                </p>
+              </div>
+
+              <div className="space-y-3 rounded-lg bg-gray-50 p-3 dark:bg-gray-700">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Working Hours</p>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">30-minute increments</span>
+                </div>
+
+                {staffFormData.workDays.length === 0 ? (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Select at least one working day to set the staff schedule.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {staffFormData.workDays.map((dayOfWeek) => {
+                      const businessDay = businessHoursRecord[dayOfWeek];
+                      const dayLabel = DAY_LABELS[dayOfWeek];
+
+                      if (!businessDay?.isOpen || !businessDay.openTime || !businessDay.closeTime) {
+                        return (
+                          <div
+                            key={dayOfWeek}
+                            className="rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300"
+                          >
+                            {dayLabel}: Business is closed, so no staff hours can be set.
+                          </div>
+                        );
+                      }
+
+                      const selectedHours = staffFormData.workHours[dayOfWeek] ?? {
+                        startTime: businessDay.openTime,
+                        endTime: businessDay.closeTime,
+                      };
+                      const startOptions = buildTimeOptions(
+                        businessDay.openTime,
+                        businessDay.closeTime
+                      );
+                      const minimumEnd = addMinutesToTimeString(selectedHours.startTime, 30);
+                      const endOptions = buildTimeOptions(minimumEnd, businessDay.closeTime, {
+                        includeEnd: true,
+                      });
+                      const safeEndTime = endOptions.includes(selectedHours.endTime)
+                        ? selectedHours.endTime
+                        : endOptions[endOptions.length - 1];
+
+                      return (
+                        <div
+                          key={dayOfWeek}
+                          className="rounded-lg border border-gray-200 bg-white/80 p-3 dark:border-gray-600 dark:bg-gray-800/60"
+                        >
+                          <div className="mb-2 flex items-center justify-between gap-3">
+                            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{dayLabel}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              Business: {businessDay.openTime} - {businessDay.closeTime}
+                            </p>
+                          </div>
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <label className="space-y-1">
+                              <span className="block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                Start
+                              </span>
+                              <select
+                                value={selectedHours.startTime}
+                                onChange={(e) => {
+                                  const startTime = e.target.value;
+                                  const nextEndOptions = buildTimeOptions(
+                                    addMinutesToTimeString(startTime, 30),
+                                    businessDay.closeTime!,
+                                    { includeEnd: true }
+                                  );
+                                  const nextEndTime = nextEndOptions.includes(selectedHours.endTime)
+                                    ? selectedHours.endTime
+                                    : nextEndOptions[nextEndOptions.length - 1];
+                                  setStaffFormData({
+                                    ...staffFormData,
+                                    workHours: {
+                                      ...staffFormData.workHours,
+                                      [dayOfWeek]: {
+                                        startTime,
+                                        endTime: nextEndTime,
+                                      },
+                                    },
+                                  });
+                                }}
+                                className="input w-full"
+                              >
+                                {startOptions.map((timeValue) => (
+                                  <option key={timeValue} value={timeValue}>
+                                    {timeValue}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <label className="space-y-1">
+                              <span className="block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                End
+                              </span>
+                              <select
+                                value={safeEndTime}
+                                onChange={(e) =>
+                                  setStaffFormData({
+                                    ...staffFormData,
+                                    workHours: {
+                                      ...staffFormData.workHours,
+                                      [dayOfWeek]: {
+                                        startTime: selectedHours.startTime,
+                                        endTime: e.target.value,
+                                      },
+                                    },
+                                  })
+                                }
+                                className="input w-full"
+                              >
+                                {endOptions.map((timeValue) => (
+                                  <option key={timeValue} value={timeValue}>
+                                    {timeValue}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Service Assignments */}

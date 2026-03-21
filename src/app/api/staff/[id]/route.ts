@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
+import { normalizeStaffWorkHours, sanitizeStaffWorkHoursForSave } from '@/lib/staff-schedule';
 
 const STAFF_SELECT = {
   id: true,
@@ -16,6 +18,7 @@ const STAFF_SELECT = {
   role: true,
   active: true,
   workDays: true,
+  workHours: true,
   serviceAssignments: { select: { serviceId: true } },
 } as const;
 
@@ -36,7 +39,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { fullName, email, phone, role, bio, isActive, workDays, serviceIds } = body;
+    const { fullName, email, phone, role, bio, isActive, workDays, workHours, serviceIds } = body;
 
     const blockedField = getBlockedFieldLabel([
       { label: 'Staff name', value: fullName },
@@ -53,6 +56,20 @@ export async function PATCH(
       return NextResponse.json({ error: 'Staff member not found' }, { status: 404 });
     }
 
+    const normalizedWorkDays = Array.isArray(workDays) ? workDays : existingStaff.workDays;
+    const businessHours = await prisma.businessHours.findUnique({
+      where: { businessId: session.user.id },
+      select: { hours: true },
+    });
+    const sanitizedWorkHours =
+      workHours !== undefined || Array.isArray(workDays)
+        ? sanitizeStaffWorkHoursForSave({
+            workDays: normalizedWorkDays,
+            workHours,
+            businessHours: businessHours?.hours,
+          })
+        : undefined;
+
     const staff = await prisma.$transaction(async (tx) => {
       const updated = await tx.staff.update({
         where: { id },
@@ -62,7 +79,13 @@ export async function PATCH(
           phone,
           role,
           active: isActive,
-          ...(Array.isArray(workDays) && { workDays }),
+          ...(Array.isArray(workDays) && { workDays: normalizedWorkDays }),
+          ...(sanitizedWorkHours !== undefined && {
+            workHours:
+              Object.keys(sanitizedWorkHours).length > 0
+                ? sanitizedWorkHours
+                : Prisma.JsonNull,
+          }),
         },
       });
 
@@ -84,12 +107,13 @@ export async function PATCH(
       });
     });
 
-    const { serviceAssignments, active, ...rest } = staff;
+    const { serviceAssignments, active, workHours: nextWorkHours, ...rest } = staff;
     return NextResponse.json({
       staff: {
         ...rest,
         active,
         isActive: active,
+        workHours: normalizeStaffWorkHours(nextWorkHours),
         serviceIds: serviceAssignments.map((a) => a.serviceId),
       },
     });

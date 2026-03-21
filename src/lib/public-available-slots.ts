@@ -1,12 +1,18 @@
 import { prisma } from '@/lib/prisma';
 import { localToUTC, weekdayIndexForLocalDate } from '@/lib/timezone';
 import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
+import {
+  buildAppointmentStartOptions,
+  getEffectiveStaffDayHours,
+  normalizeBusinessHoursRecord,
+} from '@/lib/staff-schedule';
 
 const businessTimeToUTC = localToUTC;
 
 export type AvailabilityReason =
   | 'business_closed'
   | 'staff_off_day'
+  | 'staff_outside_hours'
   | 'staff_cant_do_service'
   | 'staff_not_found';
 
@@ -99,13 +105,10 @@ export async function getPublicAvailableSlots({
     };
   }
 
-  const hoursData = business.businessHours.hours as Record<
-    string,
-    { isOpen?: boolean; openTime?: string | null; closeTime?: string | null } | undefined
-  >;
-  const hours = hoursData[dayOfWeek.toString()];
+  const hoursData = normalizeBusinessHoursRecord(business.businessHours.hours);
+  const businessDayHours = hoursData[dayOfWeek];
 
-  if (!hours || !hours.isOpen || !hours.openTime || !hours.closeTime) {
+  if (!businessDayHours?.isOpen || !businessDayHours.openTime || !businessDayHours.closeTime) {
     return {
       slots: [],
       unavailableSlots: [],
@@ -120,12 +123,16 @@ export async function getPublicAvailableSlots({
       businessId: business.id,
       serviceIds: requestedServiceIds,
       dayOfWeek,
+      businessHours: hoursData,
+      timezone: business.timezone,
     });
 
     if (staffValidation) {
       const message =
         staffValidation.reason === 'staff_off_day'
           ? 'Selected staff member is off on this day.'
+          : staffValidation.reason === 'staff_outside_hours'
+            ? 'Selected staff member is unavailable at that time.'
           : staffValidation.reason === 'staff_cant_do_service'
             ? 'Selected staff member does not perform one or more of the chosen services.'
             : 'Selected staff member was not found.';
@@ -139,8 +146,6 @@ export async function getPublicAvailableSlots({
     }
   }
 
-  const [openHour, openMinute] = hours.openTime.split(':').map(Number);
-  const [closeHour, closeMinute] = hours.closeTime.split(':').map(Number);
   const parsedDuration = durationOverride ? Number.parseInt(durationOverride, 10) : NaN;
   const duration =
     Number.isFinite(parsedDuration) && parsedDuration > 0
@@ -148,9 +153,64 @@ export async function getPublicAvailableSlots({
       : orderedServices.reduce((sum, service) => sum + service.duration, 0);
   const slotInterval = 30;
 
+  let openTime = businessDayHours.openTime;
+  let closeTimeLabel = businessDayHours.closeTime;
+
+  if (staffId && staffId !== 'anyone') {
+    const staffMember = await prisma.staff.findFirst({
+      where: { id: staffId, businessId: business.id, active: true },
+      select: {
+        workDays: true,
+        workHours: true,
+      },
+    });
+
+    if (!staffMember) {
+      return {
+        slots: [],
+        unavailableSlots: [],
+        availabilityReason: 'staff_not_found',
+        message: 'Selected staff member was not found.',
+      };
+    }
+
+    const staffDayHours = getEffectiveStaffDayHours({
+      dayOfWeek,
+      workDays: staffMember.workDays,
+      workHours: staffMember.workHours,
+      businessHours: hoursData,
+    });
+
+    if (!staffDayHours.worksDay) {
+      return {
+        slots: [],
+        unavailableSlots: [],
+        availabilityReason: 'staff_off_day',
+        message: 'Selected staff member is off on this day.',
+      };
+    }
+
+    if (!staffDayHours.startTime || !staffDayHours.endTime) {
+      return {
+        slots: [],
+        unavailableSlots: [],
+        availabilityReason: 'staff_off_day',
+        message: 'Selected staff member is unavailable on this day.',
+      };
+    }
+
+    openTime = staffDayHours.startTime;
+    closeTimeLabel = staffDayHours.endTime;
+  }
+
   const startOfDay = businessTimeToUTC(date, 0, 0, business.timezone);
   const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1);
-  const closeTime = businessTimeToUTC(date, closeHour, closeMinute, business.timezone);
+  const closeTime = businessTimeToUTC(
+    date,
+    Number.parseInt(closeTimeLabel.slice(0, 2), 10),
+    Number.parseInt(closeTimeLabel.slice(3, 5), 10),
+    business.timezone
+  );
 
   const existingAppointments =
     staffId && staffId !== 'anyone'
@@ -167,33 +227,35 @@ export async function getPublicAvailableSlots({
   const slots: string[] = [];
   const unavailableSlots: string[] = [];
 
-  for (let hour = openHour; hour < closeHour; hour++) {
-    for (let minute = 0; minute < 60; minute += slotInterval) {
-      if (hour === closeHour && minute >= closeMinute) break;
-      if (hour === closeHour - 1 && minute + duration > 60 && closeMinute === 0) break;
+  const timeOptions = buildAppointmentStartOptions(openTime, closeTimeLabel, duration, slotInterval);
 
-      const slotTime = businessTimeToUTC(date, hour, minute, business.timezone);
-      const slotEndTime = new Date(slotTime.getTime() + duration * 60000);
+  for (const timeValue of timeOptions) {
+    const slotTime = businessTimeToUTC(
+      date,
+      Number.parseInt(timeValue.slice(0, 2), 10),
+      Number.parseInt(timeValue.slice(3, 5), 10),
+      business.timezone
+    );
+    const slotEndTime = new Date(slotTime.getTime() + duration * 60000);
 
-      if (slotEndTime > closeTime) continue;
-      if (slotTime < new Date()) continue;
+    if (slotEndTime > closeTime) continue;
+    if (slotTime < new Date()) continue;
 
-      const hasConflict = existingAppointments.some((appointment) => {
-        const appointmentStart = new Date(appointment.startTime);
-        const appointmentEnd = new Date(appointment.endTime);
+    const hasConflict = existingAppointments.some((appointment) => {
+      const appointmentStart = new Date(appointment.startTime);
+      const appointmentEnd = new Date(appointment.endTime);
 
-        return (
-          (slotTime >= appointmentStart && slotTime < appointmentEnd) ||
-          (slotEndTime > appointmentStart && slotEndTime <= appointmentEnd) ||
-          (slotTime <= appointmentStart && slotEndTime >= appointmentEnd)
-        );
-      });
+      return (
+        (slotTime >= appointmentStart && slotTime < appointmentEnd) ||
+        (slotEndTime > appointmentStart && slotEndTime <= appointmentEnd) ||
+        (slotTime <= appointmentStart && slotEndTime >= appointmentEnd)
+      );
+    });
 
-      if (hasConflict) {
-        unavailableSlots.push(slotTime.toISOString());
-      } else {
-        slots.push(slotTime.toISOString());
-      }
+    if (hasConflict) {
+      unavailableSlots.push(slotTime.toISOString());
+    } else {
+      slots.push(slotTime.toISOString());
     }
   }
 

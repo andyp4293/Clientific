@@ -94,4 +94,31 @@ describe('public available slots helper', () => {
 
     vi.useRealTimers();
   });
+
+  it('limits staff slots to that staff member’s configured working hours', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'));
+
+    vi.mocked(prisma.staff.findFirst).mockResolvedValue({
+      fullName: 'Andy',
+      workDays: [2],
+      workHours: {
+        2: { startTime: '10:00', endTime: '13:00' },
+      },
+      serviceAssignments: [],
+    } as any);
+
+    const result = await getPublicAvailableSlots({
+      businessLookup: { slug: 'test-salon' },
+      date: '2026-03-10',
+      serviceId: 'svc-1',
+      staffId: 'stf-1',
+    });
+
+    expect(result.slots).toContain('2026-03-10T14:00:00.000Z');
+    expect(result.slots).not.toContain('2026-03-10T13:00:00.000Z');
+    expect(result.slots).not.toContain('2026-03-10T17:00:00.000Z');
+
+    vi.useRealTimers();
+  });
 });

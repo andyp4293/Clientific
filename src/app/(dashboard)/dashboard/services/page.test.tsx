@@ -22,5 +22,7 @@ describe('services page cache sync contract', () => {
     expect(source).toContain('pt-[calc(env(safe-area-inset-top)+1rem)]');
     expect(source).toContain('pb-[calc(env(safe-area-inset-bottom)+1rem)]');
     expect(source).toContain('flex flex-col-reverse gap-3 border-t border-gray-100 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] dark:border-gray-700 sm:flex-row sm:border-t-0 sm:px-6 sm:pb-6 sm:pt-2');
+    expect(source).toContain('Working Hours');
+    expect(source).toContain('Staff hours are set per day below and always stay inside the business hours.');
   });
 });

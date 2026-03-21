@@ -4,6 +4,7 @@ import { NextRequest } from 'next/server';
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: { findUnique: vi.fn() },
+    businessHours: { findUnique: vi.fn() },
     staff: { findMany: vi.fn(), create: vi.fn(), count: vi.fn() },
     staffService: { deleteMany: vi.fn(), createMany: vi.fn() },
     $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn({
@@ -164,5 +165,70 @@ describe('POST /api/staff', () => {
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.staff.id).toBe('staff-1');
+  });
+
+  it('stores custom work hours while leaving business-hour defaults implicit', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        subscriptionPlan: 'starter',
+        _count: { customers: 0, staff: 0, services: 0 },
+      });
+    vi.mocked(prisma.businessHours.findUnique).mockResolvedValue({
+      hours: {
+        1: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+      },
+    } as any);
+
+    const createdStaff = {
+      id: 'staff-1',
+      fullName: 'John Doe',
+      businessId: 'biz-1',
+      email: null,
+      phone: null,
+      role: null,
+      active: true,
+      workDays: [1],
+      workHours: { 1: { startTime: '10:00', endTime: '16:00' } },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      serviceAssignments: [],
+    };
+    const createMock = vi.fn().mockResolvedValue(createdStaff);
+
+    mockTransaction.mockImplementationOnce(async (fn: any) => {
+      const tx = {
+        staff: {
+          create: createMock,
+          update: vi.fn(),
+          findUniqueOrThrow: vi.fn().mockResolvedValue(createdStaff),
+        },
+        staffService: { deleteMany: vi.fn(), createMany: vi.fn() },
+      };
+      return fn(tx);
+    });
+
+    const res = await POST(
+      makeRequest({
+        fullName: 'John Doe',
+        workDays: [1],
+        workHours: {
+          1: { startTime: '10:00', endTime: '16:00' },
+        },
+      })
+    );
+
+    expect(res.status).toBe(201);
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          workDays: [1],
+          workHours: {
+            1: { startTime: '10:00', endTime: '16:00' },
+          },
+        }),
+      })
+    );
   });
 });

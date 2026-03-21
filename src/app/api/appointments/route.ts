@@ -9,6 +9,7 @@ import { requireActiveSubscription } from '@/lib/subscription';
 import { revalidateTag } from 'next/cache';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
+import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
 import {
   collectAppointmentServiceIds,
   withAppointmentServiceDisplay,
@@ -121,6 +122,7 @@ export async function POST(req: NextRequest) {
         timezone: true,
         notifyNewBookingEmail: true,
         vapiPhoneNumber: true,
+        businessHours: { select: { hours: true } },
       },
     });
 
@@ -151,6 +153,22 @@ export async function POST(req: NextRequest) {
 
     const start = new Date(startTime);
     const end = new Date(start.getTime() + duration * 60000);
+
+    if (staffId) {
+      const staffError = await validateBookableStaffSelection({
+        staffId,
+        businessId: business.id,
+        serviceIds: serviceId ? [serviceId] : [],
+        businessHours: business.businessHours?.hours,
+        timezone: business.timezone,
+        startTime: start,
+        endTime: end,
+      });
+
+      if (staffError) {
+        return NextResponse.json({ error: staffError.error }, { status: staffError.status });
+      }
+    }
 
     // Check for conflicts — only when a specific staff member is assigned
     if (staffId) {

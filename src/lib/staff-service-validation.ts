@@ -1,9 +1,13 @@
 import { prisma } from '@/lib/prisma';
+import {
+  formatStaffDayWindow,
+  isAppointmentWithinStaffHours,
+} from '@/lib/staff-schedule';
 
 export type StaffSelectionValidationError = {
   error: string;
   status: 404 | 400;
-  reason: 'staff_not_found' | 'staff_off_day' | 'staff_cant_do_service';
+  reason: 'staff_not_found' | 'staff_off_day' | 'staff_cant_do_service' | 'staff_outside_hours';
 };
 
 /**
@@ -58,11 +62,19 @@ export async function validateBookableStaffSelection({
   businessId,
   serviceIds,
   dayOfWeek,
+  businessHours,
+  timezone,
+  startTime,
+  endTime,
 }: {
   staffId: string;
   businessId: string;
   serviceIds: string[];
   dayOfWeek?: number;
+  businessHours?: unknown;
+  timezone?: string;
+  startTime?: Date;
+  endTime?: Date;
 }): Promise<StaffSelectionValidationError | null> {
   const staffMember = await prisma.staff.findFirst({
     where: { id: staffId, businessId, active: true },
@@ -70,6 +82,7 @@ export async function validateBookableStaffSelection({
       id: true,
       fullName: true,
       workDays: true,
+      workHours: true,
       serviceAssignments: { select: { serviceId: true } },
     },
   });
@@ -84,6 +97,40 @@ export async function validateBookableStaffSelection({
       status: 400,
       reason: 'staff_off_day',
     };
+  }
+
+  if (startTime && endTime && timezone) {
+    const scheduleCheck = isAppointmentWithinStaffHours({
+      startTime,
+      endTime,
+      timezone,
+      workDays: staffMember.workDays,
+      workHours: staffMember.workHours,
+      businessHours,
+    });
+
+    if (!scheduleCheck.allowed) {
+      const workingWindow = formatStaffDayWindow({
+        dayOfWeek: scheduleCheck.dayOfWeek,
+        workDays: staffMember.workDays,
+        workHours: staffMember.workHours,
+        businessHours,
+      });
+
+      if (!workingWindow) {
+        return {
+          error: `${staffMember.fullName} doesn't work on that day.`,
+          status: 400,
+          reason: 'staff_off_day',
+        };
+      }
+
+      return {
+        error: `${staffMember.fullName} is available ${workingWindow}.`,
+        status: 400,
+        reason: 'staff_outside_hours',
+      };
+    }
   }
 
   const assigned = staffMember.serviceAssignments.map((assignment) => assignment.serviceId);

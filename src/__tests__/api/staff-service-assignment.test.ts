@@ -27,6 +27,7 @@ vi.mock('@/app/api/auth/[...nextauth]/route', () => ({ authOptions: {} }));
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: { findUnique: vi.fn() },
+    businessHours: { findUnique: vi.fn() },
     staff: {
       findMany: vi.fn(),
       findUnique: vi.fn(),

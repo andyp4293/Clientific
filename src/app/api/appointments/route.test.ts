@@ -4,6 +4,7 @@ import { NextRequest } from 'next/server';
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: { findUnique: vi.fn() },
+    staff: { findFirst: vi.fn() },
     appointment: { findMany: vi.fn(), create: vi.fn() },
     service: { findMany: vi.fn() },
     notification: { create: vi.fn() },
@@ -23,7 +24,14 @@ vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
 vi.mock('@/app/api/auth/[...nextauth]/route', () => ({ authOptions: {} }));
 vi.mock('@/lib/twilio', () => ({ sendAppointmentConfirmation: vi.fn().mockResolvedValue({ success: true }) }));
 vi.mock('@/lib/email', () => ({ sendNewBookingEmail: vi.fn().mockResolvedValue(undefined) }));
-vi.mock('@/lib/timezone', () => ({ businessDayStart: vi.fn((date: string) => new Date(date)) }));
+vi.mock('@/lib/timezone', () => ({
+  businessDayStart: vi.fn((date: string) => new Date(date)),
+  weekdayIndexInTimeZone: vi.fn((date: Date) => date.getUTCDay()),
+  localToUTC: vi.fn((dateStr: string, hour: number, minute: number) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(Date.UTC(year, month - 1, day, hour, minute, 0));
+  }),
+}));
 
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
@@ -32,6 +40,7 @@ import { GET, POST } from './route';
 
 const mockSession = getServerSession as ReturnType<typeof vi.fn>;
 const mockBusiness = prisma.business.findUnique as ReturnType<typeof vi.fn>;
+const mockStaffFindFirst = prisma.staff.findFirst as ReturnType<typeof vi.fn>;
 const mockAppointmentFindMany = prisma.appointment.findMany as ReturnType<typeof vi.fn>;
 const mockAppointmentCreate = prisma.appointment.create as ReturnType<typeof vi.fn>;
 const mockServiceFindMany = prisma.service.findMany as ReturnType<typeof vi.fn>;
@@ -51,7 +60,7 @@ const fakeBusiness = {
 
 const validApptBody = {
   customerId: 'cust-1',
-  startTime: new Date(Date.now() + 3600000).toISOString(),
+  startTime: '2026-03-10T14:00:00.000Z',
   duration: 60,
 };
 
@@ -65,6 +74,13 @@ function makeRequest(body: Record<string, unknown> = validApptBody) {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  mockStaffFindFirst.mockResolvedValue({
+    id: 'staff-1',
+    fullName: 'Andy',
+    workDays: [0, 1, 2, 3, 4, 5, 6],
+    workHours: null,
+    serviceAssignments: [],
+  });
 });
 
 describe('GET /api/appointments', () => {
@@ -159,6 +175,44 @@ describe('POST /api/appointments', () => {
       makeRequest({ ...validApptBody, staffId: 'staff-1' })
     );
     expect(res.status).toBe(409);
+  });
+
+  it('blocks dashboard bookings outside the selected staff member’s hours', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        ...fakeBusiness,
+        businessHours: {
+          hours: {
+            2: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+          },
+        },
+      });
+    mockStaffFindFirst.mockResolvedValue({
+      id: 'staff-1',
+      fullName: 'Andy',
+      workDays: [2],
+      workHours: {
+        2: { startTime: '10:00', endTime: '16:00' },
+      },
+      serviceAssignments: [],
+    });
+
+    const res = await POST(
+      makeRequest({
+        customerId: 'cust-1',
+        staffId: 'staff-1',
+        startTime: '2026-03-10T09:00:00.000Z',
+        duration: 60,
+      })
+    );
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({
+      error: expect.stringContaining('Andy is available Tuesday from 10:00 AM to 4:00 PM.'),
+    });
+    expect(mockAppointmentFindMany).not.toHaveBeenCalled();
   });
 
   it('creates appointment successfully with no conflicts', async () => {

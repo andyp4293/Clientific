@@ -25,6 +25,7 @@ export async function POST(
         timezone: true,
         notifyNewBookingEmail: true,
         vapiPhoneNumber: true,
+        businessHours: { select: { hours: true } },
       },
     });
 
@@ -129,6 +130,10 @@ export async function POST(
         businessId: business.id,
         serviceIds,
         dayOfWeek: weekdayIndexInTimeZone(start, business.timezone),
+        businessHours: business.businessHours?.hours,
+        timezone: business.timezone,
+        startTime: start,
+        endTime: end,
       });
       if (staffError) {
         return NextResponse.json({ error: staffError.error }, { status: staffError.status });
