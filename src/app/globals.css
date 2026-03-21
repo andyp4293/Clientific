@@ -84,6 +84,11 @@
     position: static;
     flex-shrink: 0;
   }
+
+  body.dashboard-mobile-overlay-open .dashboard-mobile-header,
+  body.dashboard-mobile-overlay-open .dashboard-mobile-bottom-nav {
+    display: none !important;
+  }
 }
 
 @layer components {

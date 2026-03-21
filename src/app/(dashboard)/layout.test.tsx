@@ -46,6 +46,10 @@ vi.mock('@/components/layout/MobileBottomNav', () => ({
   MobileBottomNav: () => <div data-testid="mobile-bottom-nav">Mobile bottom nav</div>,
 }));
 
+vi.mock('@/components/layout/MobileOverlayChromeWatcher', () => ({
+  MobileOverlayChromeWatcher: () => <div data-testid="mobile-overlay-watcher">Overlay watcher</div>,
+}));
+
 vi.mock('@/components/billing/SubscriptionBanner', () => ({
   SubscriptionBanner: () => <div data-testid="subscription-banner">Subscription banner</div>,
 }));

@@ -78,9 +78,9 @@ export default function SendCustomerMessageModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 px-4 py-6">
-      <div className="w-full max-w-xl rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-800 sm:p-6">
-        <div className="mb-5 flex items-start justify-between gap-4">
+    <div data-mobile-overlay="true" className="fixed inset-0 z-[70] bg-black/50 p-0 sm:flex sm:items-center sm:justify-center sm:px-4 sm:py-6">
+      <div className="flex h-[100dvh] w-full flex-col bg-white shadow-2xl dark:bg-gray-800 sm:h-auto sm:max-w-xl sm:rounded-2xl sm:border sm:border-gray-200 dark:border-gray-700">
+        <div className="flex items-start justify-between gap-4 border-b border-gray-200 px-4 py-4 pt-[calc(env(safe-area-inset-top)+1rem)] dark:border-gray-700 sm:border-b-0 sm:px-6 sm:pb-0 sm:pt-6">
           <div>
             <h3 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
               Send Text to {customer.name}
@@ -106,32 +106,34 @@ export default function SendCustomerMessageModal({
           </button>
         </div>
 
-        {error && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700 dark:border-red-800/60 dark:bg-red-900/20 dark:text-red-300">
-            {error}
-          </div>
-        )}
+        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:pb-0">
+            {error && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700 dark:border-red-800/60 dark:bg-red-900/20 dark:text-red-300">
+                {error}
+              </div>
+            )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="customer-message" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Message
-            </label>
-            <textarea
-              id="customer-message"
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-              rows={5}
-              maxLength={MAX_MESSAGE_LENGTH}
-              placeholder="Type the message you want to send..."
-              className="input min-h-[132px] resize-y"
-            />
-            <div className="mt-1 text-right text-xs text-gray-500 dark:text-gray-400">
-              {message.trim().length}/{MAX_MESSAGE_LENGTH}
+            <div>
+              <label htmlFor="customer-message" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Message
+              </label>
+              <textarea
+                id="customer-message"
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+                rows={5}
+                maxLength={MAX_MESSAGE_LENGTH}
+                placeholder="Type the message you want to send..."
+                className="input min-h-[132px] resize-y"
+              />
+              <div className="mt-1 text-right text-xs text-gray-500 dark:text-gray-400">
+                {message.trim().length}/{MAX_MESSAGE_LENGTH}
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col-reverse gap-3 sm:flex-row">
+          <div className="flex flex-col-reverse gap-3 border-t border-gray-200 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] dark:border-gray-700 sm:flex-row sm:border-t-0 sm:px-6 sm:pb-6 sm:pt-4">
             <button
               type="button"
               onClick={handleClose}

@@ -690,7 +690,7 @@ function AppointmentRow({ appointment, timezone }: { appointment: Appointment; t
       {showEditModal && <EditAppointmentModal appointment={appointment} onClose={() => setShowEditModal(false)} />}
 
       {showNotesModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setShowNotesModal(false)}>
+        <div data-mobile-overlay="true" className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setShowNotesModal(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-xl max-w-sm w-full p-5 shadow-2xl border border-gray-100 dark:border-gray-700" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Notes</h3>
@@ -706,7 +706,7 @@ function AppointmentRow({ appointment, timezone }: { appointment: Appointment; t
       )}
 
       {showCancelConfirm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4">
+        <div data-mobile-overlay="true" className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl max-w-sm w-full p-6 shadow-2xl border border-gray-100 dark:border-gray-700">
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">Cancel appointment?</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
@@ -885,11 +885,11 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
   const labelClass = 'block text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5';
 
   return (
-    <div className="fixed inset-0 z-[70] bg-black/50 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
+    <div data-mobile-overlay="true" className="fixed inset-0 z-[70] bg-black/50 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
       <div className="flex h-[100dvh] w-full flex-col bg-white shadow-2xl dark:bg-gray-800 sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-2xl sm:border sm:border-gray-100 dark:border-gray-700">
 
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 dark:border-gray-700 flex-shrink-0 sm:px-6">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 pt-[calc(env(safe-area-inset-top)+1rem)] dark:border-gray-700 flex-shrink-0 sm:px-6 sm:pt-4">
           <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">New Appointment</h2>
           <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 transition-colors">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -1073,7 +1073,7 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
         </form>
 
         {/* Footer */}
-        <div className="flex flex-col-reverse gap-3 border-t border-gray-100 px-4 py-4 dark:border-gray-700 flex-shrink-0 sm:flex-row sm:items-center sm:justify-end sm:px-6">
+        <div className="flex flex-col-reverse gap-3 border-t border-gray-100 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] dark:border-gray-700 flex-shrink-0 sm:flex-row sm:items-center sm:justify-end sm:px-6 sm:pb-4">
           <button type="button" onClick={onClose} className="btn-outline text-sm px-5">Cancel</button>
           <button type="submit" form="new-appt-form" disabled={submitting} className="btn-primary text-sm px-6 disabled:opacity-60">
             {submitting ? 'Creating…' : 'Create Appointment'}
@@ -1123,9 +1123,9 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
   const initials = appointment.customer.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <div className="fixed inset-0 z-[70] bg-black/40 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
+    <div data-mobile-overlay="true" className="fixed inset-0 z-[70] bg-black/40 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
       <div className="flex h-[100dvh] w-full flex-col bg-white shadow-2xl dark:bg-gray-800 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-xl sm:border sm:border-gray-100 dark:border-gray-700">
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 dark:border-gray-700 sm:border-b-0 sm:px-6 sm:pb-0 sm:pt-6">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 pt-[calc(env(safe-area-inset-top)+1rem)] dark:border-gray-700 sm:border-b-0 sm:px-6 sm:pb-0 sm:pt-6">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Edit Appointment</h2>
             <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-400 transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1211,7 +1211,7 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
               <label className="label">Notes</label>
               <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="input" rows={3} placeholder="Any special requests or notes…" />
             </div>
-            <div className="sticky bottom-0 -mx-4 flex flex-col-reverse gap-3 border-t border-gray-100 bg-white px-4 py-4 dark:border-gray-700 dark:bg-gray-800 sm:mx-0 sm:flex-row sm:border-t-0 sm:px-0 sm:pb-0 sm:pt-2">
+            <div className="sticky bottom-0 -mx-4 flex flex-col-reverse gap-3 border-t border-gray-100 bg-white px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] dark:border-gray-700 dark:bg-gray-800 sm:mx-0 sm:flex-row sm:border-t-0 sm:px-0 sm:pb-0 sm:pt-2">
               <button type="button" onClick={onClose} disabled={updateMutation.isPending} className="flex-1 btn-outline">Cancel</button>
               <button type="submit" disabled={updateMutation.isPending} className="flex-1 btn-primary">
                 {updateMutation.isPending ? 'Saving…' : 'Save Changes'}

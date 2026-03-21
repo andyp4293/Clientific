@@ -9,6 +9,7 @@ import { isBusinessOnboardingComplete } from '@/lib/onboarding';
 import { DashboardNav } from '@/components/layout/DashboardNav';
 import { DashboardHeader } from '@/components/layout/DashboardHeader';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
+import { MobileOverlayChromeWatcher } from '@/components/layout/MobileOverlayChromeWatcher';
 import { SubscriptionBanner } from '@/components/billing/SubscriptionBanner';
 import { NotificationBell } from '@/components/layout/NotificationBell';
 import { Toaster } from 'sonner';
@@ -232,7 +233,9 @@ export default async function DashboardLayout({
 
   return (
     <div className="dashboard-shell lg:min-h-screen brand-shell">
-      <div className="lg:hidden shrink-0">
+      <MobileOverlayChromeWatcher />
+
+      <div className="dashboard-mobile-header lg:hidden shrink-0">
         <DashboardHeader />
       </div>
 
@@ -258,7 +261,7 @@ export default async function DashboardLayout({
       </div>
 
       <div
-        className="dashboard-nav-bar lg:hidden fixed bottom-0 left-0 right-0 brand-panel border-t border-gray-200 dark:border-gray-800 z-50"
+        className="dashboard-mobile-bottom-nav dashboard-nav-bar lg:hidden fixed bottom-0 left-0 right-0 brand-panel border-t border-gray-200 dark:border-gray-800 z-50"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 4px)' }}
       >
         <MobileBottomNav />

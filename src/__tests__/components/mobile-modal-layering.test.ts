@@ -19,16 +19,18 @@ describe('mobile modal layering contract', () => {
     for (const segments of modalFiles) {
       const source = readFileSync(join(process.cwd(), ...segments), 'utf8');
       expect(source).toContain('z-[70]');
+      expect(source).toContain('data-mobile-overlay="true"');
     }
   });
 
   it('keeps long mobile dialogs either constrained or fully fullscreen so actions stay reachable', () => {
     const constrainedFiles = [
-      ['src', 'components', 'customers', 'AddCustomerModal.tsx'],
-      ['src', 'components', 'customers', 'EditCustomerModal.tsx'],
       ['src', 'app', '(dashboard)', 'dashboard', 'checkins', 'page.tsx'],
     ];
     const fullscreenFiles = [
+      ['src', 'components', 'customers', 'AddCustomerModal.tsx'],
+      ['src', 'components', 'customers', 'EditCustomerModal.tsx'],
+      ['src', 'components', 'customers', 'SendCustomerMessageModal.tsx'],
       ['src', 'app', '(dashboard)', 'dashboard', 'appointments', 'page.tsx'],
       ['src', 'app', '(dashboard)', 'dashboard', 'services', 'page.tsx'],
     ];
@@ -42,5 +44,27 @@ describe('mobile modal layering contract', () => {
       const source = readFileSync(join(process.cwd(), ...segments), 'utf8');
       expect(source).toContain('h-[100dvh] w-full flex-col');
     }
+  });
+
+  it('hides the mobile dashboard chrome whenever a modal overlay is present', () => {
+    const layoutSource = readFileSync(
+      join(process.cwd(), 'src', 'app', '(dashboard)', 'layout.tsx'),
+      'utf8'
+    );
+    const watcherSource = readFileSync(
+      join(process.cwd(), 'src', 'components', 'layout', 'MobileOverlayChromeWatcher.tsx'),
+      'utf8'
+    );
+    const globalStyles = readFileSync(
+      join(process.cwd(), 'src', 'app', 'globals.css'),
+      'utf8'
+    );
+
+    expect(layoutSource).toContain('MobileOverlayChromeWatcher');
+    expect(layoutSource).toContain('dashboard-mobile-header');
+    expect(layoutSource).toContain('dashboard-mobile-bottom-nav');
+    expect(watcherSource).toContain('dashboard-mobile-overlay-open');
+    expect(globalStyles).toContain('body.dashboard-mobile-overlay-open .dashboard-mobile-header');
+    expect(globalStyles).toContain('body.dashboard-mobile-overlay-open .dashboard-mobile-bottom-nav');
   });
 });

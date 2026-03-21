@@ -554,7 +554,7 @@ export default function AiReceptionistManager() {
       </div>
 
       {showEnableModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+        <div data-mobile-overlay="true" className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-primary-100 dark:bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
@@ -613,7 +613,7 @@ export default function AiReceptionistManager() {
       )}
 
       {showDisableModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+        <div data-mobile-overlay="true" className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
               Disable AI Receptionist?

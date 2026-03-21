@@ -937,9 +937,9 @@ export default function ServicesPage() {
         />
       )}      {/* Service Modal */}
       {modalType === 'service' && (
-        <div className="fixed inset-0 z-[70] bg-black/50 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
+        <div data-mobile-overlay="true" className="fixed inset-0 z-[70] bg-black/50 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
           <div className="flex h-[100dvh] w-full flex-col bg-white shadow-2xl dark:bg-gray-800 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-xl sm:border sm:border-gray-100 dark:border-gray-700">
-            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 dark:border-gray-700 sm:border-b-0 sm:px-6 sm:pb-0 sm:pt-6">
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 pt-[calc(env(safe-area-inset-top)+1rem)] dark:border-gray-700 sm:border-b-0 sm:px-6 sm:pb-0 sm:pt-6">
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                 {editingService ? 'Edit Service' : 'Add New Service'}
               </h2>
@@ -1049,7 +1049,7 @@ export default function ServicesPage() {
               )}
               </div>
 
-              <div className="flex flex-col-reverse gap-3 border-t border-gray-100 px-4 py-4 dark:border-gray-700 sm:flex-row sm:border-t-0 sm:px-6 sm:pb-6 sm:pt-2">
+              <div className="flex flex-col-reverse gap-3 border-t border-gray-100 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] dark:border-gray-700 sm:flex-row sm:border-t-0 sm:px-6 sm:pb-6 sm:pt-2">
                 <button
                   type="button"
                   onClick={closeModal}
@@ -1083,9 +1083,9 @@ export default function ServicesPage() {
 
       {/* Staff Modal */}
       {modalType === 'staff' && (
-        <div className="fixed inset-0 z-[70] bg-black/50 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
+        <div data-mobile-overlay="true" className="fixed inset-0 z-[70] bg-black/50 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
           <div className="flex h-[100dvh] w-full flex-col bg-white shadow-2xl dark:bg-gray-800 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-xl sm:border sm:border-gray-100 dark:border-gray-700">
-            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 dark:border-gray-700 sm:border-b-0 sm:px-6 sm:pb-0 sm:pt-6">
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 pt-[calc(env(safe-area-inset-top)+1rem)] dark:border-gray-700 sm:border-b-0 sm:px-6 sm:pb-0 sm:pt-6">
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                 {editingStaff ? 'Edit Staff Member' : 'Add New Staff Member'}
               </h2>
@@ -1401,7 +1401,7 @@ export default function ServicesPage() {
               )}
               </div>
 
-              <div className="flex flex-col-reverse gap-3 border-t border-gray-100 px-4 py-4 dark:border-gray-700 sm:flex-row sm:border-t-0 sm:px-6 sm:pb-6 sm:pt-2">
+              <div className="flex flex-col-reverse gap-3 border-t border-gray-100 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] dark:border-gray-700 sm:flex-row sm:border-t-0 sm:px-6 sm:pb-6 sm:pt-2">
                 <button
                   type="button"
                   onClick={closeModal}
