@@ -202,7 +202,7 @@ export default function BusinessInfoPage() {
             {business.enableOnlineBooking && (
               <Link
                 href={`/book/${business.publicId}`}
-                className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-white text-gray-900 font-semibold hover:bg-primary-50 transition-colors"
+                className="btn-primary px-5 py-3 font-semibold"
               >
                 Book Appointment
               </Link>

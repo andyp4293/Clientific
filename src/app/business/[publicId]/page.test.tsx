@@ -28,4 +28,11 @@ describe('public business profile page source', () => {
     expect(source).not.toContain('Mail');
     expect(source).not.toContain('Phone');
   });
+
+  it('uses the shared primary button style for the booking CTA', () => {
+    const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('className="btn-primary px-5 py-3 font-semibold"');
+    expect(source).not.toContain('bg-white text-gray-900 font-semibold hover:bg-primary-50');
+  });
 });
