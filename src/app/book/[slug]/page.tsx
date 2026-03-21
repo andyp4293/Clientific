@@ -18,8 +18,6 @@ interface Business {
   slug: string;
   publicId: string;
   businessType: string;
-  phone: string;
-  businessEmail: string | null;
   street: string | null;
   city: string | null;
   state: string | null;

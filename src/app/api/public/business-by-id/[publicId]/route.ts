@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { sanitizePublicBusiness } from '@/lib/public-business';
 
 // GET - Get public business info by publicId
 export async function GET(
@@ -60,7 +61,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ business });
+    return NextResponse.json({ business: sanitizePublicBusiness(business) });
   } catch (error: any) {
     console.error('Fetch business by publicId error:', error);
     return NextResponse.json(

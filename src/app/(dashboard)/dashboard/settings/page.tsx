@@ -744,18 +744,6 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {[
                     {
-                      key: 'publicProfileShowPhone' as const,
-                      label: 'Show phone number',
-                      hint: 'Display tap-to-call on your public profile',
-                      defaultValue: true,
-                    },
-                    {
-                      key: 'publicProfileShowEmail' as const,
-                      label: 'Show email',
-                      hint: 'Display your public contact email',
-                      defaultValue: true,
-                    },
-                    {
                       key: 'publicProfileShowAddress' as const,
                       label: 'Show address',
                       hint: 'Display map and directions link',

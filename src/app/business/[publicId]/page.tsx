@@ -8,9 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Clock3,
   ExternalLink,
-  Mail,
   MapPin,
-  Phone,
   Sparkles,
   Users,
 } from 'lucide-react';
@@ -29,8 +27,6 @@ interface Business {
   slug: string;
   publicId: string;
   businessType: string;
-  phone: string | null;
-  businessEmail: string | null;
   street: string | null;
   city: string | null;
   state: string | null;
@@ -41,8 +37,6 @@ interface Business {
   businessHours: { hours: Record<string, DayHours> } | null;
   publicProfileHeadline: string | null;
   publicProfileAbout: string | null;
-  publicProfileShowPhone: boolean;
-  publicProfileShowEmail: boolean;
   publicProfileShowAddress: boolean;
   publicProfileShowHours: boolean;
   publicProfileShowServices: boolean;
@@ -151,15 +145,11 @@ export default function BusinessInfoPage() {
 
   const hoursData: Record<string, DayHours> = business.businessHours?.hours ?? {};
   const visibility = getPublicProfileVisibility({
-    publicProfileShowPhone: business.publicProfileShowPhone,
-    publicProfileShowEmail: business.publicProfileShowEmail,
     publicProfileShowAddress: business.publicProfileShowAddress,
     publicProfileShowHours: business.publicProfileShowHours,
     publicProfileShowServices: business.publicProfileShowServices,
     publicProfileShowTeam: business.publicProfileShowTeam,
     publicProfileShowSocialLinks: business.publicProfileShowSocialLinks,
-    phone: business.phone,
-    businessEmail: business.businessEmail,
     street: business.street,
     city: business.city,
     state: business.state,
@@ -329,26 +319,8 @@ export default function BusinessInfoPage() {
 
         <aside className="space-y-4 lg:sticky lg:top-4 h-fit">
           <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Contact</h2>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Location</h2>
             <div className="space-y-4">
-              {visibility.showPhone && business.phone && (
-                <a href={`tel:${business.phone}`} className="flex items-start gap-3 group">
-                  <Phone className="w-4 h-4 mt-1 text-primary-600 dark:text-primary-400" />
-                  <span className="text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white">
-                    {business.phone}
-                  </span>
-                </a>
-              )}
-
-              {visibility.showEmail && business.businessEmail && (
-                <a href={`mailto:${business.businessEmail}`} className="flex items-start gap-3 group">
-                  <Mail className="w-4 h-4 mt-1 text-primary-600 dark:text-primary-400" />
-                  <span className="text-gray-700 dark:text-gray-300 break-all group-hover:text-gray-900 dark:group-hover:text-white">
-                    {business.businessEmail}
-                  </span>
-                </a>
-              )}
-
               {visibility.showAddress && (
                 <div className="space-y-1">
                   <div className="flex items-start gap-3">

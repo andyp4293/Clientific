@@ -18,4 +18,14 @@ describe('public business profile page source', () => {
     expect(source).not.toContain('Globe2');
     expect(source).not.toContain('{business.timezone}');
   });
+
+  it('only shows location details in the public sidebar', () => {
+    const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('Location');
+    expect(source).not.toContain('mailto:');
+    expect(source).not.toContain('tel:');
+    expect(source).not.toContain('Mail');
+    expect(source).not.toContain('Phone');
+  });
 });
