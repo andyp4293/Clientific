@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: `${APP_NAME} - Customer Management Platform`,
-  description: 'Manage customers, appointments, and loyalty programs for your service business',
+  description: 'Manage customers, appointments, deals, and payouts for your service business',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,

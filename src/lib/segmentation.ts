@@ -30,12 +30,3 @@ export function calculateCustomerSegment(
   // NEW: 1-2 visits total
   return 'NEW';
 }
-
-export function calculatePointsEarned(
-  amountSpent: number | null,
-  pointsPerDollar: number,
-  pointsPerVisit: number
-): number {
-  const spendPoints = amountSpent ? Math.floor(amountSpent * pointsPerDollar) : 0;
-  return spendPoints + pointsPerVisit;
-}

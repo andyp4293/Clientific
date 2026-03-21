@@ -52,7 +52,6 @@ export const PRICING_PLANS: Record<PricingPlanKey, PublicPricingPlan> = {
       'Up to 1,000 customers',
       'Advanced check-in & kiosk mode',
       'Online booking page',
-      'Loyalty rewards program',
       'Marketing campaigns',
       'Advanced analytics',
       'Priority support',

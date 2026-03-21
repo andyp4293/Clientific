@@ -10,7 +10,6 @@ export type DashboardNavIcon =
   | 'scan'
   | 'star'
   | 'chart'
-  | 'gift'
   | 'clock'
   | 'megaphone'
   | 'creditcard'
@@ -103,13 +102,6 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
     name: 'Analytics',
     href: '/dashboard/analytics',
     icon: 'chart',
-    section: 'growth',
-  },
-  {
-    key: 'rewards',
-    name: 'Rewards',
-    href: '/dashboard/rewards',
-    icon: 'gift',
     section: 'growth',
   },
   {

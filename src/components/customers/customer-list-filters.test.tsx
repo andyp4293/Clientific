@@ -36,7 +36,6 @@ const baseCustomer = {
   smsConsent: true,
   smsOptedOut: false,
   segment: "VIP",
-  points: 120,
   totalSpent: 250,
   lastVisit: new Date("2026-03-12T12:00:00.000Z"),
   birthday: null,

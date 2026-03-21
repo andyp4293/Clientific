@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { formatPhoneNumber } from "@/lib/utils";
-import { calculateCustomerSegment } from "@/lib/segmentation";
 import { requireActiveSubscription } from "@/lib/subscription";
 import { blockedContentError, getBlockedFieldLabel } from "@/lib/moderation";
 
@@ -25,7 +24,8 @@ export async function GET(
       where: {
         id,
         businessId: session.user.businessId,
-      },      include: {
+      },
+      include: {
         checkIns: {
           orderBy: { createdAt: "desc" },
           take: 10,
@@ -37,15 +37,6 @@ export async function GET(
             service: true,
             staff: true,
           },
-        },        redemptions: {
-          orderBy: { createdAt: "desc" },
-          include: {
-            reward: true,
-          },
-        },
-        pointsTransactions: {
-          orderBy: { createdAt: "desc" },
-          take: 20,
         },
       },
     });

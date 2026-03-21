@@ -47,7 +47,6 @@ export default function PrivacyPolicyPage() {
               <li>Customer names and contact details</li>
               <li>Visit history and check-ins</li>
               <li>Reviews and ratings</li>
-              <li>Loyalty points and rewards</li>
               <li>Appointment information</li>
               <li>SMS consent and opt-in/opt-out audit records</li>
             </ul>

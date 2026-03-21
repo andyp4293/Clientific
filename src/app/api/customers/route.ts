@@ -130,7 +130,6 @@ export async function POST(request: NextRequest) {
         birthday: birthday ? new Date(birthday) : null,
         notes: notes || null,
         segment: "NEW", // Default segment
-        points: 0,
         totalSpent: 0,
       },
     });

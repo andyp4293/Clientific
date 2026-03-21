@@ -47,7 +47,6 @@ describe('CustomerList messaging', () => {
             smsConsent: true,
             smsOptedOut: false,
             segment: 'VIP',
-            points: 120,
             totalSpent: 250,
             lastVisit: new Date('2026-03-12T12:00:00.000Z'),
             birthday: null,
@@ -97,7 +96,6 @@ describe('CustomerList messaging', () => {
             smsConsent: true,
             smsOptedOut: false,
             segment: 'VIP',
-            points: 120,
             totalSpent: 250,
             lastVisit: new Date('2026-03-12T12:00:00.000Z'),
             birthday: null,
@@ -116,7 +114,6 @@ describe('CustomerList messaging', () => {
             smsConsent: false,
             smsOptedOut: true,
             segment: 'REGULAR',
-            points: 40,
             totalSpent: 90,
             lastVisit: null,
             birthday: null,
@@ -135,7 +132,6 @@ describe('CustomerList messaging', () => {
             smsConsent: false,
             smsOptedOut: false,
             segment: 'NEW',
-            points: 0,
             totalSpent: 0,
             lastVisit: null,
             birthday: null,
@@ -172,7 +168,6 @@ describe('CustomerList messaging', () => {
             smsConsent: true,
             smsOptedOut: false,
             segment: 'VIP',
-            points: 120,
             totalSpent: 250,
             lastVisit: new Date('2026-03-12T12:00:00.000Z'),
             birthday: null,
@@ -194,7 +189,6 @@ describe('CustomerList messaging', () => {
     expect(within(mobileList).getByText('Joined')).toBeInTheDocument();
     expect(within(mobileList).getByText('Mar 1, 2026')).toBeInTheDocument();
     expect(within(mobileList).getByText('Visits')).toBeInTheDocument();
-    expect(within(mobileList).getByText('Points')).toBeInTheDocument();
     expect(within(mobileList).getByText('Total spent')).toBeInTheDocument();
     expect(within(mobileList).getByText('Last visit')).toBeInTheDocument();
     expect(within(mobileList).getByRole('link', { name: /^view$/i })).toBeInTheDocument();

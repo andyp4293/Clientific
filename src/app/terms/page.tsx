@@ -29,9 +29,9 @@ export default function TermsOfServicePage() {
             <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
               {APP_NAME} provides a SaaS platform for service-based businesses, including: appointment booking and
               management, customer relationship management, online booking pages, SMS appointment reminders, an
-              AI-powered phone receptionist (automated voice system), deals and promotions management, loyalty
-              points tracking, and business analytics. We reserve the right to modify, suspend, or discontinue
-              the Service at any time without notice.
+              AI-powered phone receptionist (automated voice system), deals and promotions management, and
+              business analytics. We reserve the right to modify, suspend, or discontinue the Service at any time
+              without notice.
             </p>
           </section>
 

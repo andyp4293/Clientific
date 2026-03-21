@@ -20,7 +20,6 @@ type Customer = {
   phone: string | null;
   smsConsent: boolean;
   smsOptedOut: boolean;
-  points: number;
   totalSpent: number;
   lastVisit: Date | null;
   birthday: Date | null;
@@ -478,14 +477,6 @@ export default function CustomerList({
                       </div>
                       <div className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-700 dark:bg-gray-800/80">
                         <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                          Points
-                        </dt>
-                        <dd className="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
-                          {customer.points.toLocaleString()}
-                        </dd>
-                      </div>
-                      <div className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-700 dark:bg-gray-800/80">
-                        <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
                           Total spent
                         </dt>
                         <dd className="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -520,9 +511,6 @@ export default function CustomerList({
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
                       Visits
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                      Points
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
                       Total Spent
@@ -571,9 +559,6 @@ export default function CustomerList({
                         </td>
                         <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                           {customer._count.checkIns}
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                          {customer.points.toLocaleString()}
                         </td>
                         <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                           ${customer.totalSpent.toFixed(2)}

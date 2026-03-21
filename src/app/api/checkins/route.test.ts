@@ -5,7 +5,6 @@ vi.mock('@/lib/prisma', () => ({
     business: { findUnique: vi.fn() },
     checkIn: { findMany: vi.fn(), create: vi.fn() },
     customer: { update: vi.fn() },
-    pointsTransaction: { create: vi.fn() },
   },
 }));
 
@@ -33,12 +32,11 @@ const mockBusiness = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockCheckInFindMany = prisma.checkIn.findMany as ReturnType<typeof vi.fn>;
 const mockCheckInCreate = prisma.checkIn.create as ReturnType<typeof vi.fn>;
 const mockCustomerUpdate = prisma.customer.update as ReturnType<typeof vi.fn>;
-const mockPointsCreate = prisma.pointsTransaction.create as ReturnType<typeof vi.fn>;
 const mockUpdateSegment = updateCustomerSegment as ReturnType<typeof vi.fn>;
 
 // Checkins use session.user.businessId
 const activeSession = { user: { businessId: 'biz-1' } };
-const fakeBusiness = { id: 'biz-1', timezone: 'America/New_York', pointsPerVisit: 10, pointsPerDollar: 1 };
+const fakeBusiness = { id: 'biz-1', timezone: 'America/New_York' };
 
 function makeRequest(body: Record<string, unknown> = { customerId: 'cust-1' }) {
   return new Request('http://localhost/api/checkins', {
@@ -94,29 +92,24 @@ describe('POST /api/checkins', () => {
 
   it('returns 400 when customerId is missing', async () => {
     mockSession.mockResolvedValue(activeSession);
-    mockBusiness
-      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
-      .mockResolvedValueOnce(fakeBusiness);
+    mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
     const res = await POST(makeRequest({}));
     expect(res.status).toBe(400);
   });
 
-  it('creates check-in and awards points', async () => {
+  it('creates a check-in and updates the customer visit history', async () => {
     mockSession.mockResolvedValue(activeSession);
-    mockBusiness
-      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
-      .mockResolvedValueOnce(fakeBusiness);
+    mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
     const fakeCheckIn = {
       id: 'ci-1',
       customerId: 'cust-1',
-      pointsEarned: 10,
+      pointsEarned: 0,
       customer: { id: 'cust-1' },
       service: null,
       staff: null,
     };
     mockCheckInCreate.mockResolvedValue(fakeCheckIn);
-    mockCustomerUpdate.mockResolvedValue({ id: 'cust-1', points: 10 });
-    mockPointsCreate.mockResolvedValue({});
+    mockCustomerUpdate.mockResolvedValue({ id: 'cust-1' });
 
     const res = await POST(makeRequest({ customerId: 'cust-1' }));
     expect(res.status).toBe(200);
@@ -127,29 +120,26 @@ describe('POST /api/checkins', () => {
     );
   });
 
-  it('calculates extra points when amountSpent is provided', async () => {
+  it('stores amount spent when provided', async () => {
     mockSession.mockResolvedValue(activeSession);
-    mockBusiness
-      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
-      .mockResolvedValueOnce(fakeBusiness); // pointsPerVisit: 10, pointsPerDollar: 1
+    mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
     const fakeCheckIn = {
       id: 'ci-2',
       customerId: 'cust-1',
-      pointsEarned: 60, // 10 base + 50 from $50 spend
+      amountSpent: 50,
+      pointsEarned: 0,
       customer: { id: 'cust-1' },
       service: null,
       staff: null,
     };
     mockCheckInCreate.mockResolvedValue(fakeCheckIn);
-    mockCustomerUpdate.mockResolvedValue({ id: 'cust-1', points: 60 });
-    mockPointsCreate.mockResolvedValue({});
+    mockCustomerUpdate.mockResolvedValue({ id: 'cust-1' });
 
     const res = await POST(makeRequest({ customerId: 'cust-1', amountSpent: 50 }));
     expect(res.status).toBe(200);
-    // Verify create was called with correct pointsEarned (10 base + 50*1 = 60)
     expect(mockCheckInCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ pointsEarned: 60 }),
+        data: expect.objectContaining({ amountSpent: 50 }),
       })
     );
   });

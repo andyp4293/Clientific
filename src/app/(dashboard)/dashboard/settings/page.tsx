@@ -28,7 +28,7 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string>
   });
 }
 
-type Tab = 'profile' | 'branding' | 'integrations' | 'notifications' | 'loyalty' | 'ai-receptionist';
+type Tab = 'profile' | 'branding' | 'integrations' | 'notifications' | 'ai-receptionist';
 
 function BookingQRCode({ bookingUrl, businessName }: { bookingUrl: string; businessName: string }) {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -127,8 +127,6 @@ interface Business {
   smsAiGreeting: string | null;
   vapiPhoneNumber: string | null;
   notifyNewBookingEmail: boolean;
-  pointsPerDollar: number;
-  pointsPerVisit: number;
 }
 
 export const AI_RECEPTIONIST_ACTIVATION_WINDOW_MS = 2 * 60 * 1000;
@@ -456,7 +454,6 @@ export default function SettingsPage() {
     { id: 'integrations', label: 'Social & Reviews', icon: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1' },
     { id: 'notifications', label: 'Notifications', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' },
     { id: 'ai-receptionist', label: 'AI Receptionist', icon: 'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z' },
-    { id: 'loyalty', label: 'Loyalty Points', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
   ];
   const aiSetupState = getAiReceptionistSetupState(
     formData,
@@ -1246,56 +1243,6 @@ export default function SettingsPage() {
                   )}
                 </div>
               )}
-            </div>
-          </div>
-        )}
-
-        {/* Loyalty Tab */}
-        {activeTab === 'loyalty' && (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Points Earning Rules</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                Customers earn points automatically on each check-in. Adjust the rates below to match your business.
-              </p>
-
-              <div className="space-y-4">
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Points per visit
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={formData.pointsPerVisit ?? 10}
-                    onChange={(e) => handleInputChange('pointsPerVisit', Math.max(0, Math.round(Number(e.target.value))))}
-                    className="input w-40"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Flat points awarded for each check-in</p>
-                </div>
-
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Points per dollar spent
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.1}
-                    value={formData.pointsPerDollar ?? 1}
-                    onChange={(e) => handleInputChange('pointsPerDollar', Math.max(0, Number(e.target.value)))}
-                    className="input w-40"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Points awarded per dollar of spend at check-in</p>
-                </div>
-              </div>
-
-              <div className="mt-2 p-4 bg-primary-50 dark:bg-primary/10 rounded-lg border border-primary-200 dark:border-primary/20">
-                <p className="text-sm text-primary-800 dark:text-primary-200">
-                  <strong>Referral bonus:</strong> 50 points per successful referral (fixed — configurable in a future update).
-                </p>
-              </div>
             </div>
           </div>
         )}

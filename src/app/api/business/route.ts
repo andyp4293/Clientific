@@ -264,8 +264,6 @@ export async function GET(req: NextRequest) {
         smsAiGreeting: true,
         vapiPhoneNumber: true,
         notifyNewBookingEmail: true,
-        pointsPerDollar: true,
-        pointsPerVisit: true,
       },
     });
 
@@ -329,8 +327,6 @@ export async function PATCH(req: NextRequest) {
       smsAiPhoneNumber,
       smsAiGreeting,
       notifyNewBookingEmail,
-      pointsPerDollar,
-      pointsPerVisit,
     } = body;
 
     const blockedField = getBlockedFieldLabel([
@@ -715,8 +711,6 @@ export async function PATCH(req: NextRequest) {
         ...(smsAiPhoneNumber !== undefined && { smsAiPhoneNumber }),
         ...(smsAiGreeting !== undefined && { smsAiGreeting }),
         ...(notifyNewBookingEmail !== undefined && { notifyNewBookingEmail }),
-        ...(pointsPerDollar !== undefined && { pointsPerDollar: Number(pointsPerDollar) }),
-        ...(pointsPerVisit !== undefined && { pointsPerVisit: Math.round(Number(pointsPerVisit)) }),
         ...('vapiPhoneNumberId' in vapiUpdates && { vapiPhoneNumberId: vapiUpdates.vapiPhoneNumberId }),
         ...('vapiPhoneNumber' in vapiUpdates && { vapiPhoneNumber: vapiUpdates.vapiPhoneNumber }),
         ...('smsAiPhoneNumber' in vapiUpdates && { smsAiPhoneNumber: vapiUpdates.smsAiPhoneNumber }),

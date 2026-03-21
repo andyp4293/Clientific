@@ -24,7 +24,6 @@ type Customer = {
   smsConsent: boolean;
   smsOptedOut: boolean;
   segment: string;
-  points: number;
   totalSpent: number;
   lastVisit: Date | null;
   birthday: Date | null;
@@ -34,7 +33,6 @@ type Customer = {
     id: string;
     createdAt: Date;
     amountSpent: number | null;
-    pointsEarned: number;
   }>;
   appointments: Array<{
     id: string;
@@ -43,21 +41,6 @@ type Customer = {
     status: string;
     service: { id: string; name: string } | null;
     staff: { id: string; fullName: string } | null;
-  }>;
-  redemptions: Array<{
-    id: string;
-    createdAt: Date;
-    code: string;
-    pointsSpent: number;
-    reward: {
-      name: string;
-    };
-  }>;
-  pointsTransactions: Array<{
-    id: string;
-    amount: number;
-    description: string;
-    createdAt: Date;
   }>;
   _count: {
     checkIns: number;
@@ -101,7 +84,7 @@ export default function CustomerDetail({
 }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "history" | "messages" | "points">(
+  const [activeTab, setActiveTab] = useState<"overview" | "history" | "messages">(
     "overview"
   );
   const [requestingReview, setRequestingReview] = useState(false);
@@ -295,16 +278,6 @@ export default function CustomerDetail({
               >
                 Messages
               </button>
-              <button
-                onClick={() => setActiveTab("points")}
-                className={`border-b-2 px-6 py-3 text-sm font-medium ${
-                  activeTab === "points"
-                    ? "border-primary text-primary"
-                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-gray-300"
-                }`}
-              >
-                Points & Rewards
-              </button>
             </nav>
           </div>
 
@@ -377,100 +350,6 @@ export default function CustomerDetail({
                     </div>
                   ))
                 )}
-              </div>
-            )}
-
-            {activeTab === "points" && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-4 rounded-lg bg-primary-50 p-4 dark:bg-primary/10">
-                  <div className="text-4xl font-bold text-primary">{customer.points}</div>
-                  <div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      Points Balance
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      Available to redeem
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">
-                    Points History
-                  </h3>
-                  {customer.pointsTransactions.length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      No points activity yet.
-                    </p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-gray-200 text-left text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                            <th className="pb-2 pr-4 font-medium">Date</th>
-                            <th className="pb-2 pr-4 font-medium">Description</th>
-                            <th className="pb-2 text-right font-medium">Points</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                          {customer.pointsTransactions.map((transaction) => (
-                            <tr key={transaction.id}>
-                              <td className="whitespace-nowrap py-2 pr-4 text-gray-600 dark:text-gray-400">
-                                {format(new Date(transaction.createdAt), "MMM d, yyyy")}
-                              </td>
-                              <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">
-                                {transaction.description}
-                              </td>
-                              <td
-                                className={`whitespace-nowrap py-2 text-right font-medium ${
-                                  transaction.amount >= 0
-                                    ? "text-green-600 dark:text-green-400"
-                                    : "text-red-600 dark:text-red-400"
-                                }`}
-                              >
-                                {transaction.amount >= 0 ? "+" : ""}
-                                {transaction.amount}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <h3 className="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">
-                    Rewards Redeemed
-                  </h3>
-                  {customer.redemptions.length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      No rewards redeemed yet.
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {customer.redemptions.map((redemption) => (
-                        <div
-                          key={redemption.id}
-                          className="flex items-center justify-between rounded-lg bg-gray-50 p-3 dark:bg-gray-700"
-                        >
-                          <div>
-                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                              {redemption.reward.name}
-                            </div>
-                            <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                              {format(new Date(redemption.createdAt), "MMM d, yyyy")} - Code:{" "}
-                              <span className="font-mono">{redemption.code}</span>
-                            </div>
-                          </div>
-                          <div className="text-sm font-medium text-red-600 dark:text-red-400">
-                            -{redemption.pointsSpent} pts
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
               </div>
             )}
 

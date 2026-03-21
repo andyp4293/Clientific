@@ -64,25 +64,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Customer ID required' }, { status: 400 });
     }
 
-    // Get business settings for points calculation
-    const business = await prisma.business.findUnique({
-      where: { id: session.user.businessId },
-      select: {
-        pointsPerVisit: true,
-        pointsPerDollar: true,
-      },
-    });
-
-    if (!business) {
-      return NextResponse.json({ error: 'Business not found' }, { status: 404 });
-    }
-
-    // Calculate points earned
-    let pointsEarned = business.pointsPerVisit || 10;
-    if (amountSpent && business.pointsPerDollar) {
-      pointsEarned += Math.floor(amountSpent * business.pointsPerDollar);
-    }
-
     // Create check-in
     const checkIn = await prisma.checkIn.create({
       data: {
@@ -91,7 +72,6 @@ export async function POST(req: Request) {
         serviceId: serviceId || undefined,
         staffId: staffId || undefined,
         amountSpent: amountSpent || undefined,
-        pointsEarned,
         checkInTime: new Date(),
       },
       include: {
@@ -99,23 +79,14 @@ export async function POST(req: Request) {
         service: true,
         staff: true,
       },
-    });    // Update customer points and stats
-    const updatedCustomer = await prisma.customer.update({
-      where: { id: customerId },
-      data: {
-        points: { increment: pointsEarned },
-        lastVisit: new Date(),
-        totalSpent: amountSpent ? { increment: amountSpent } : undefined,
-      },
     });
 
-    // Create points transaction record
-    await prisma.pointsTransaction.create({
+    // Keep customer visit and spend history in sync with the new check-in.
+    await prisma.customer.update({
+      where: { id: customerId },
       data: {
-        customerId,
-        amount: pointsEarned,
-        description: 'Check-in points',
-        balanceAfter: updatedCustomer.points,
+        lastVisit: new Date(),
+        totalSpent: amountSpent ? { increment: amountSpent } : undefined,
       },
     });
 

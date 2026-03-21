@@ -50,7 +50,6 @@ async function getDashboardStats(businessId: string, timezone: string) {
     newCustomersThisMonth,
     checkInsToday,
     checkInsThisWeek,
-    pointsThisMonth,
     segments,
     upcomingAppointments,
   ] = await Promise.all([
@@ -58,10 +57,6 @@ async function getDashboardStats(businessId: string, timezone: string) {
     prisma.customer.count({ where: { businessId, createdAt: { gte: thisMonthStart } } }),
     prisma.checkIn.count({ where: { businessId, checkInTime: { gte: today } } }),
     prisma.checkIn.count({ where: { businessId, checkInTime: { gte: thisWeekStart } } }),
-    prisma.pointsTransaction.aggregate({
-      where: { customer: { businessId }, createdAt: { gte: thisMonthStart }, amount: { gt: 0 } },
-      _sum: { amount: true },
-    }),
     prisma.customer.groupBy({ by: ['segment'], where: { businessId }, _count: true }),
     prisma.appointment.findMany({
       where: {
@@ -80,7 +75,6 @@ async function getDashboardStats(businessId: string, timezone: string) {
     newCustomersThisMonth,
     checkInsToday,
     checkInsThisWeek,
-    pointsThisMonth: pointsThisMonth._sum.amount || 0,
     segments: segments.reduce((acc: Record<string, number>, segment) => {
       acc[segment.segment] = segment._count;
       return acc;
@@ -167,13 +161,13 @@ export default async function DashboardPage({
         'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
     },
     {
-      label: 'Points Issued',
-      value: stats.pointsThisMonth,
+      label: 'New Customers',
+      value: stats.newCustomersThisMonth,
       helper: 'This month',
       accent: 'from-primary/12 via-primary/5 to-transparent',
       iconBg: 'bg-primary/10 dark:bg-primary/18',
       icon:
-        'M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7',
+        'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z',
     },
   ] as const;
 
