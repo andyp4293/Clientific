@@ -20,7 +20,6 @@ interface FormData {
   timezone: string;
   plan: string;
   referralCode: string;
-  affiliateCode: string;
 }
 
 function AuthRedirectScreen({ message }: { message: string }) {
@@ -41,7 +40,6 @@ function RegisterForm() {
   const defaultPlan = getPublicPlanSlug(searchParams.get('plan') || 'base');
   const defaultEmail = searchParams.get('email') || '';
   const refCode = searchParams.get('ref') || '';
-  const affCode = searchParams.get('aff') || '';
   const isPartnerSignup = searchParams.get('partner') === '1';
   const oauthProvider = searchParams.get('oauth');
   const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === 'true';
@@ -69,7 +67,6 @@ function RegisterForm() {
     timezone: '',
     plan: defaultPlan,
     referralCode: refCode,
-    affiliateCode: affCode,
   });
 
   useEffect(() => {

@@ -37,7 +37,6 @@ export async function POST(request: Request) {
       timezone,
       plan,
       referralCode,
-      affiliateCode,
     } = body;
 
     if (!email || !password || !businessName || !businessType) {
@@ -172,10 +171,6 @@ export async function POST(request: Request) {
       }
     }
 
-    const affiliate = !referrerBusiness && affiliateCode
-      ? await prisma.affiliate.findFirst({ where: { code: affiliateCode, active: true } })
-      : null;
-
     const normalizedPlan = normalizeSubscriptionPlan(plan ?? 'base');
     const trialDays = STANDARD_TRIAL_DAYS;
     const trialEndsAt = addDays(new Date(), trialDays);
@@ -208,7 +203,6 @@ export async function POST(request: Request) {
         trialEndsAt,
         referralCode: newReferralCode,
         ...(referrerBusiness && { referredById: referrerBusiness.id }),
-        ...(affiliate && { affiliateCodeUsed: affiliate.code }),
       },
     });
 
@@ -217,15 +211,6 @@ export async function POST(request: Request) {
         data: {
           referrerId: referrerBusiness.id,
           refereeId: business.id,
-        },
-      });
-    }
-
-    if (affiliate) {
-      await prisma.affiliateSignup.create({
-        data: {
-          affiliateId: affiliate.id,
-          businessId: business.id,
         },
       });
     }

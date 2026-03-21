@@ -332,30 +332,6 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
       }
     }
 
-    const affSignup = await prisma.affiliateSignup.findFirst({
-      where: { businessId: business.id, status: 'pending' },
-    });
-
-    if (affSignup) {
-      const affCommissionDollars =
-        Math.round(invoice.amount_paid * REFERRAL_COMMISSION_PERCENT) / 100;
-
-      try {
-        await prisma.affiliateSignup.update({
-          where: { id: affSignup.id },
-          data: {
-            status: 'earned',
-            earnedAt: new Date(),
-            earnAmount: affCommissionDollars,
-          },
-        });
-        console.log(
-          `Affiliate signup earned: $${affCommissionDollars.toFixed(2)} for ${affSignup.affiliateId}`
-        );
-      } catch (error) {
-        console.warn('Affiliate signup update failed:', error);
-      }
-    }
   }
 }
 
