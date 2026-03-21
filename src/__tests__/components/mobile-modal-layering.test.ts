@@ -64,7 +64,12 @@ describe('mobile modal layering contract', () => {
     expect(layoutSource).toContain('dashboard-mobile-header');
     expect(layoutSource).toContain('dashboard-mobile-bottom-nav');
     expect(watcherSource).toContain('dashboard-mobile-overlay-open');
+    expect(watcherSource).toContain('document.documentElement.classList.toggle(BODY_CLASS, hasOverlay);');
     expect(globalStyles).toContain('body.dashboard-mobile-overlay-open .dashboard-mobile-header');
     expect(globalStyles).toContain('body.dashboard-mobile-overlay-open .dashboard-mobile-bottom-nav');
+    expect(globalStyles).toContain('[data-mobile-overlay="true"] {');
+    expect(globalStyles).toContain('background-color: rgb(var(--color-gray-50)) !important;');
+    expect(globalStyles).toContain('html.dashboard-mobile-overlay-open,');
+    expect(globalStyles).toContain('body.dashboard-mobile-overlay-open .dashboard-scroll');
   });
 });

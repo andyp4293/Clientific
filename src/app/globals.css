@@ -85,6 +85,36 @@
     flex-shrink: 0;
   }
 
+  [data-mobile-overlay="true"] {
+    background-color: rgb(var(--color-gray-50)) !important;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: auto;
+  }
+
+  .dark [data-mobile-overlay="true"] {
+    background-color: rgb(var(--color-gray-900)) !important;
+  }
+
+  [data-mobile-overlay="true"] > * {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html.dashboard-mobile-overlay-open,
+  body.dashboard-mobile-overlay-open,
+  html.dashboard-mobile-overlay-open body,
+  body.dashboard-mobile-overlay-open .dashboard-shell,
+  body.dashboard-mobile-overlay-open .dashboard-scroll {
+    overflow: hidden !important;
+    overscroll-behavior: none;
+    touch-action: none;
+  }
+
+  body.dashboard-mobile-overlay-open [data-mobile-overlay="true"],
+  body.dashboard-mobile-overlay-open [data-mobile-overlay="true"] > * {
+    touch-action: auto;
+  }
+
   body.dashboard-mobile-overlay-open .dashboard-mobile-header,
   body.dashboard-mobile-overlay-open .dashboard-mobile-bottom-nav {
     display: none !important;

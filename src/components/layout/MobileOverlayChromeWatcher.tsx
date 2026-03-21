@@ -9,6 +9,7 @@ function syncOverlayBodyClass() {
   if (typeof document === 'undefined') return;
   const hasOverlay = document.querySelector(OVERLAY_SELECTOR) !== null;
   document.body.classList.toggle(BODY_CLASS, hasOverlay);
+  document.documentElement.classList.toggle(BODY_CLASS, hasOverlay);
 }
 
 export function MobileOverlayChromeWatcher() {
@@ -29,6 +30,7 @@ export function MobileOverlayChromeWatcher() {
     return () => {
       observer.disconnect();
       document.body.classList.remove(BODY_CLASS);
+      document.documentElement.classList.remove(BODY_CLASS);
     };
   }, []);
 
