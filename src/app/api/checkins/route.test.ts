@@ -103,7 +103,6 @@ describe('POST /api/checkins', () => {
     const fakeCheckIn = {
       id: 'ci-1',
       customerId: 'cust-1',
-      pointsEarned: 0,
       customer: { id: 'cust-1' },
       service: null,
       staff: null,
@@ -127,7 +126,6 @@ describe('POST /api/checkins', () => {
       id: 'ci-2',
       customerId: 'cust-1',
       amountSpent: 50,
-      pointsEarned: 0,
       customer: { id: 'cust-1' },
       service: null,
       staff: null,

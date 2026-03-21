@@ -60,7 +60,6 @@ model Business {
   resetToken                   String?
   resetTokenExpiry             DateTime?
   enableOnlineBooking          Boolean                @default(true)
-  enableBirthdayCampaign       Boolean                @default(true)
   aiReceptionistEnabled        Boolean                @default(false)
   aiReceptionistPhone          String?
   aiReceptionistGreeting       String?
@@ -70,9 +69,6 @@ model Business {
   smsAiGreeting                String?
   vapiPhoneNumberId            String?
   vapiPhoneNumber              String?
-  pointsPerDollar              Float                  @default(1.0)
-  pointsPerVisit               Int                    @default(10)
-  referralBonusPoints          Int                    @default(50)
   notifyNewBookingEmail        Boolean                @default(true)
   referralCode                 String?                @unique
   referredById                 String?
@@ -85,7 +81,6 @@ model Business {
   affiliateSignup              AffiliateSignup?
   appointments                 Appointment[]
   businessHours                BusinessHours?
-  campaigns                    Campaign[]
   checkIns                     CheckIn[]
   customers                    Customer[]
   deals                        Deal[]
@@ -94,7 +89,6 @@ model Business {
   invoices                     Invoice[]
   notifications                Notification[]
   payments                     Payment[]
-  rewards                      Reward[]
   serviceGroups                ServiceGroup[]
   services                     Service[]
   smsLogs                      SmsLog[]               @relation("SmsLogs")
@@ -138,7 +132,6 @@ model Customer {
   segment               String                 @default("NEW")
   totalSpent            Float                  @default(0)
   lastVisit             DateTime?
-  points                Int                    @default(0)
   optedInMarketing      Boolean                @default(true)
   optedOutAt            DateTime?
   notes                 String?
@@ -153,8 +146,6 @@ model Customer {
   dealPurchases         DealPurchase[]
   dealNotificationSends DealNotificationSend[]
   business              Business               @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  pointsTransactions    PointsTransaction[]
-  redemptions           Redemption[]
   smsConsentEvents      SmsConsentEvent[]      @relation("CustomerSmsConsentEvents")
 
   @@index([businessId, segment])
@@ -171,7 +162,6 @@ model CheckIn {
   staffId             String?
   checkInTime         DateTime  @default(now())
   amountSpent         Float?
-  pointsEarned        Int       @default(0)
   feedbackRequested   Boolean   @default(false)
   feedbackRequestedAt DateTime?
   business            Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
@@ -272,74 +262,6 @@ model StaffService {
 
   @@id([staffId, serviceId])
   @@index([serviceId])
-}
-
-model Reward {
-  id             String       @id @default(cuid())
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  businessId     String
-  name           String
-  description    String
-  pointsCost     Int
-  rewardType     String
-  rewardValue    Float?
-  active         Boolean      @default(true)
-  expirationDays Int?
-  redemptions    Redemption[]
-  business       Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
-
-  @@index([businessId, active])
-}
-
-model Redemption {
-  id          String    @id @default(cuid())
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  customerId  String
-  rewardId    String
-  pointsSpent Int
-  code        String    @unique
-  used        Boolean   @default(false)
-  usedAt      DateTime?
-  expiresAt   DateTime?
-  customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  reward      Reward    @relation(fields: [rewardId], references: [id], onDelete: Cascade)
-
-  @@index([customerId, createdAt])
-}
-
-model PointsTransaction {
-  id           String   @id @default(cuid())
-  createdAt    DateTime @default(now())
-  customerId   String
-  amount       Int
-  description  String
-  balanceAfter Int
-  customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-
-  @@index([customerId, createdAt])
-}
-
-model Campaign {
-  id             String    @id @default(cuid())
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  businessId     String
-  name           String
-  type           String
-  message        String
-  targetSegments String[]
-  status         String    @default("draft")
-  scheduledFor   DateTime?
-  sentAt         DateTime?
-  recipientCount Int       @default(0)
-  sentCount      Int       @default(0)
-  deliveredCount Int       @default(0)
-  failedCount    Int       @default(0)
-  business       Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-
-  @@index([businessId, status])
 }
 
 model SmsLog {

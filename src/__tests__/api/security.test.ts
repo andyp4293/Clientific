@@ -161,7 +161,7 @@ describe('IDOR — businessId isolation', () => {
     vi.mocked(prisma.customer.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.customer.create).mockResolvedValue({
       id: 'cust-1', businessId: 'biz-A', name: 'Jane', email: null, phone: null,
-      birthday: null, notes: null, segment: 'NEW', points: 0, totalSpent: 0,
+      birthday: null, notes: null, segment: 'NEW', totalSpent: 0,
       smsConsent: false, smsOptedOut: false, createdAt: new Date(), updatedAt: new Date(),
     } as any);
 
@@ -194,7 +194,7 @@ describe('IDOR — businessId isolation', () => {
     vi.mocked(prisma.customer.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.customer.create).mockResolvedValue({
       id: 'cust-1', businessId: 'biz-A', name: 'Hack', email: null, phone: null,
-      birthday: null, notes: null, segment: 'NEW', points: 0, totalSpent: 0,
+      birthday: null, notes: null, segment: 'NEW', totalSpent: 0,
       smsConsent: false, smsOptedOut: false, createdAt: new Date(), updatedAt: new Date(),
     } as any);
 
