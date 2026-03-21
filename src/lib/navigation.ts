@@ -4,6 +4,7 @@ export type DashboardNavIcon =
   | 'home'
   | 'calendar'
   | 'users'
+  | 'phone'
   | 'briefcase'
   | 'tag'
   | 'check'
@@ -89,6 +90,14 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
     href: '/dashboard/business-hours',
     icon: 'clock',
     section: 'operations',
+  },
+  {
+    key: 'ai-receptionist',
+    name: 'AI Receptionist',
+    href: '/dashboard/ai-receptionist',
+    icon: 'phone',
+    section: 'operations',
+    exact: true,
   },
   {
     key: 'reviews',

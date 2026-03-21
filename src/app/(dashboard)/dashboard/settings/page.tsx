@@ -14,6 +14,12 @@ import {
   resolveBusinessAddressTimezone,
   type BusinessAddressCoordinates,
 } from '@/lib/business-location';
+import {
+  AI_RECEPTIONIST_ACTIVATION_WINDOW_MS,
+  getAiReceptionistActivationStorageKey,
+  getAiReceptionistSetupState,
+  readAiReceptionistActivationUntil,
+} from '@/lib/ai-receptionist-settings';
 
 async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -133,57 +139,6 @@ interface Business {
   notifyNewBookingEmail: boolean;
 }
 
-export const AI_RECEPTIONIST_ACTIVATION_WINDOW_MS = 2 * 60 * 1000;
-
-export function getAiReceptionistActivationStorageKey(
-  businessId?: string | null
-): string | null {
-  const id = businessId?.trim();
-  if (!id) return null;
-  return `clientific.aiReceptionist.activationUntil.${id}`;
-}
-
-export function readAiReceptionistActivationUntil(
-  storage: Pick<Storage, 'getItem' | 'removeItem'>,
-  businessId?: string | null,
-  nowMs = Date.now()
-): Date | null {
-  const key = getAiReceptionistActivationStorageKey(businessId);
-  if (!key) return null;
-
-  const raw = storage.getItem(key);
-  if (!raw) return null;
-
-  const until = new Date(raw);
-  if (Number.isNaN(until.getTime()) || until.getTime() <= nowMs) {
-    storage.removeItem(key);
-    return null;
-  }
-
-  return until;
-}
-
-export function getAiReceptionistSetupState(
-  formData: Partial<Business>,
-  isPending: boolean,
-  hasError = false
-): { unifiedNumber: string; state: 'active' | 'pending' | 'error' } {
-  const unifiedNumber = (formData.vapiPhoneNumber || formData.smsAiPhoneNumber || '').trim();
-  if (unifiedNumber) {
-    return { unifiedNumber, state: 'active' };
-  }
-  if (isPending) {
-    return { unifiedNumber: '', state: 'pending' };
-  }
-  if (hasError) {
-    return { unifiedNumber: '', state: 'error' };
-  }
-  if (formData.aiReceptionistEnabled) {
-    return { unifiedNumber: '', state: 'pending' };
-  }
-  return { unifiedNumber: '', state: 'error' };
-}
-
 export default function SettingsPage() {
   const queryClient = useQueryClient();
   const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
@@ -283,7 +238,6 @@ export default function SettingsPage() {
     },
   });
 
-  // Dedicated mutation for AI receptionist toggle — fires immediately, no Save needed
   const aiToggleMutation = useMutation({
     mutationFn: async (enabled: boolean) => {
       const res = await fetch('/api/business', {
@@ -335,6 +289,8 @@ export default function SettingsPage() {
     clearActivationCountdown();
     aiToggleMutation.mutate(false);
   };
+
+  // Dedicated mutation for AI receptionist toggle — fires immediately, no Save needed
   const handleInputChange = (field: keyof Business, value: any) => {
     if ((BUSINESS_ADDRESS_FIELDS as readonly string[]).includes(field)) {
       setSelectedCoordinates(null);
@@ -524,7 +480,6 @@ export default function SettingsPage() {
     { id: 'branding', label: 'Branding & Logo', icon: 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01' },
     { id: 'integrations', label: 'Social & Reviews', icon: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1' },
     { id: 'notifications', label: 'Notifications', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' },
-    { id: 'ai-receptionist', label: 'AI Receptionist', icon: 'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z' },
   ];
   const aiSetupState = getAiReceptionistSetupState(
     formData,

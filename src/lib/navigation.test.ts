@@ -114,6 +114,8 @@ describe('getActiveDashboardRoute', () => {
     ['/dashboard/redeem/manual', null],
     ['/dashboard/business-hours', 'business-hours'],
     ['/dashboard/business-hours/edit', 'business-hours'],
+    ['/dashboard/ai-receptionist', 'ai-receptionist'],
+    ['/dashboard/ai-receptionist/setup', null],
     ['/dashboard/reviews', 'reviews'],
     ['/dashboard/reviews/respond', 'reviews'],
     ['/dashboard/analytics', 'analytics'],
