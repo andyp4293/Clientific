@@ -60,6 +60,19 @@ function isConnectAccountReady(account: Pick<Stripe.Account, 'charges_enabled' |
   return Boolean(account.charges_enabled && account.payouts_enabled && account.details_submitted);
 }
 
+function buildStatementDescriptor(name: string) {
+  const sanitized = name
+    .normalize('NFKD')
+    .replace(/[^\x00-\x7F]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9 ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const truncated = sanitized.slice(0, 22).trim();
+  return truncated.length >= 5 ? truncated : APP_NAME.toUpperCase();
+}
+
 function isLegacyApplicationManagedAccount(account: Stripe.Account) {
   return Boolean(
     account.type === 'custom' ||
@@ -110,6 +123,20 @@ function buildConnectBusinessProfile(
     support_email: supportEmail,
     ...(supportPhone ? { support_phone: supportPhone } : {}),
     url: publicUrl,
+  };
+}
+
+function buildConnectAccountRefreshParams(
+  business: BusinessConnectSeed,
+  appUrl: string
+): Stripe.AccountUpdateParams {
+  return {
+    business_profile: buildConnectBusinessProfile(business, appUrl),
+    settings: {
+      payments: {
+        statement_descriptor: buildStatementDescriptor(business.name),
+      },
+    },
   };
 }
 
@@ -303,6 +330,15 @@ export async function ensureBusinessConnectAccount(
       } else if (shouldRecreateLegacyEmbeddedAccount(existing)) {
         await resetBusinessConnectState(business.id);
       } else {
+        if (!isConnectAccountReady(existing)) {
+          const refreshed = await stripe.accounts.update(
+            existing.id,
+            buildConnectAccountRefreshParams(business, appUrl)
+          );
+          await syncBusinessConnectAccount(business.id, refreshed);
+          return refreshed;
+        }
+
         await syncBusinessConnectAccount(business.id, existing);
         return existing;
       }
