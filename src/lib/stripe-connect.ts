@@ -102,6 +102,15 @@ function canDisableStripeUserAuthentication(
   );
 }
 
+function canRefreshIncompleteConnectAccount(
+  account: Pick<Stripe.Account, 'type' | 'controller'>
+) {
+  return Boolean(
+    account.type === 'custom' ||
+    account.controller?.requirement_collection === 'application'
+  );
+}
+
 function buildConnectBusinessProfile(
   business: BusinessConnectSeed,
   appUrl: string
@@ -330,7 +339,7 @@ export async function ensureBusinessConnectAccount(
       } else if (shouldRecreateLegacyEmbeddedAccount(existing)) {
         await resetBusinessConnectState(business.id);
       } else {
-        if (!isConnectAccountReady(existing)) {
+        if (!isConnectAccountReady(existing) && canRefreshIncompleteConnectAccount(existing)) {
           const refreshed = await stripe.accounts.update(
             existing.id,
             buildConnectAccountRefreshParams(business, appUrl)

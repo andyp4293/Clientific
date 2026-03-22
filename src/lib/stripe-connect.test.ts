@@ -160,7 +160,7 @@ describe('ensureBusinessConnectAccount', () => {
     );
   });
 
-  it('refreshes incomplete embedded accounts with the latest business profile details before reusing them', async () => {
+  it('reuses stripe-managed incomplete embedded accounts without patching restricted fields', async () => {
     const existingAccount = {
       id: 'acct_current',
       type: 'none',
@@ -177,38 +177,8 @@ describe('ensureBusinessConnectAccount', () => {
 
     const account = await ensureBusinessConnectAccount(business, 'https://clientific.app');
 
-    expect(account).toEqual(
-      expect.objectContaining({
-        id: 'acct_current',
-        business_profile: expect.objectContaining({
-          name: 'Test Salon',
-          support_email: 'hello@testsalon.com',
-          support_phone: '+15551112222',
-          url: 'https://clientific.app/business/CF-66W551',
-        }),
-        settings: expect.objectContaining({
-          payments: expect.objectContaining({
-            statement_descriptor: 'TEST SALON',
-          }),
-        }),
-      })
-    );
-    expect(mockAccountUpdate).toHaveBeenCalledWith(
-      'acct_current',
-      expect.objectContaining({
-        business_profile: expect.objectContaining({
-          name: 'Test Salon',
-          support_email: 'hello@testsalon.com',
-          support_phone: '+15551112222',
-          url: 'https://clientific.app/business/CF-66W551',
-        }),
-        settings: expect.objectContaining({
-          payments: expect.objectContaining({
-            statement_descriptor: 'TEST SALON',
-          }),
-        }),
-      })
-    );
+    expect(account).toEqual(existingAccount);
+    expect(mockAccountUpdate).not.toHaveBeenCalled();
     expect(mockAccountCreate).not.toHaveBeenCalled();
     expect(mockBankDeleteMany).not.toHaveBeenCalled();
     expect(mockBusinessUpdate).toHaveBeenCalledTimes(1);
