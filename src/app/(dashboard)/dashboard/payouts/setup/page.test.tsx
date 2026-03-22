@@ -171,6 +171,8 @@ describe('PayoutsSetupPage', () => {
       screen.getByText(/your payout account is live\. review balances, payouts, and payout settings below\./i)
     ).toBeInTheDocument();
     expect(screen.queryByText(/finish payout setup/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/everything is connected/i)).toBeInTheDocument();
+    expect(screen.queryByText(/funds status/i)).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText(/failed to create stripe connect session/i)).toBeInTheDocument();
@@ -258,7 +260,7 @@ describe('PayoutsSetupPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows pending fund reasons in the setup sidebar', () => {
+  it('keeps setup copy focused on Stripe steps instead of a redundant funds sidebar', () => {
     mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
       const key = config?.queryKey?.[0];
 
@@ -302,9 +304,10 @@ describe('PayoutsSetupPage', () => {
 
     render(<PayoutsSetupPage />);
 
-    expect(screen.getByText(/funds status/i)).toBeInTheDocument();
-    expect(screen.getByText(/recent deal payments/i)).toBeInTheDocument();
-    expect(screen.getByText(/older deal earnings waiting on payout setup/i)).toBeInTheDocument();
-    expect(screen.getByText(/referral earnings waiting on payout setup/i)).toBeInTheDocument();
+    expect(screen.queryByText(/funds status/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/what to expect/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/stripe will start with the bank account and only the payout details it still requires/i)
+    ).toBeInTheDocument();
   });
 });

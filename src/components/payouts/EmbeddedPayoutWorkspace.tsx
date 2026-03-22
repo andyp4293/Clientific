@@ -8,7 +8,6 @@ import {
   ConnectAccountOnboarding,
   ConnectBalances,
   ConnectComponentsProvider,
-  ConnectNotificationBanner,
   ConnectPayouts,
 } from '@stripe/react-connect-js';
 import { sanitizeStripeEnvValue } from '@/lib/stripe-env';
@@ -84,6 +83,51 @@ type WorkspaceErrorState = {
   message: string;
   retryable: boolean;
 };
+
+function buildConnectAppearance(isDark: boolean) {
+  return {
+    overlays: 'dialog' as const,
+    variables: {
+      colorPrimary: '#0F8A63',
+      colorBackground: isDark ? '#12202A' : '#FCFEFD',
+      colorText: isDark ? '#F3F8F7' : '#102026',
+      colorSecondaryText: isDark ? '#B8CAC5' : '#546A67',
+      colorDanger: '#DC2626',
+      colorBorder: isDark ? 'rgba(184, 202, 197, 0.18)' : '#D7E2E0',
+      buttonPrimaryColorBackground: '#0F8A63',
+      buttonPrimaryColorBorder: '#0F8A63',
+      buttonPrimaryColorText: '#F8FFFC',
+      buttonSecondaryColorBackground: isDark ? '#182A34' : '#F3F8F7',
+      buttonSecondaryColorBorder: isDark ? '#31505B' : '#D7E2E0',
+      buttonSecondaryColorText: isDark ? '#F3F8F7' : '#102026',
+      badgeNeutralColorBackground: isDark ? '#1A2C36' : '#F3F8F7',
+      badgeNeutralColorBorder: isDark ? '#31505B' : '#D7E2E0',
+      badgeNeutralColorText: isDark ? '#D9E7E3' : '#385059',
+      badgeSuccessColorBackground: isDark ? 'rgba(15, 138, 99, 0.18)' : 'rgba(15, 138, 99, 0.10)',
+      badgeSuccessColorBorder: isDark ? 'rgba(103, 223, 178, 0.24)' : 'rgba(15, 138, 99, 0.18)',
+      badgeSuccessColorText: isDark ? '#82E7BF' : '#0F8A63',
+      badgeWarningColorBackground: isDark ? 'rgba(217, 119, 6, 0.18)' : 'rgba(217, 119, 6, 0.12)',
+      badgeWarningColorBorder: isDark ? 'rgba(251, 191, 36, 0.24)' : 'rgba(217, 119, 6, 0.18)',
+      badgeWarningColorText: isDark ? '#FCD34D' : '#B45309',
+      badgeDangerColorBackground: isDark ? 'rgba(220, 38, 38, 0.18)' : 'rgba(220, 38, 38, 0.10)',
+      badgeDangerColorBorder: isDark ? 'rgba(248, 113, 113, 0.24)' : 'rgba(220, 38, 38, 0.18)',
+      badgeDangerColorText: isDark ? '#FCA5A5' : '#B91C1C',
+      offsetBackgroundColor: isDark ? '#182A34' : '#F3F8F7',
+      formBackgroundColor: isDark ? '#0D1820' : '#FFFFFF',
+      formHighlightColorBorder: '#0F8A63',
+      formAccentColor: '#0F8A63',
+      actionPrimaryColorText: isDark ? '#82E7BF' : '#0F8A63',
+      actionSecondaryColorText: isDark ? '#E7F2EF' : '#102026',
+      borderRadius: '20px',
+      buttonBorderRadius: '18px',
+      formBorderRadius: '18px',
+      overlayBorderRadius: '22px',
+      spacingUnit: '12px',
+      fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
+      overlayBackdropColor: isDark ? 'rgba(3, 12, 18, 0.72)' : 'rgba(12, 24, 33, 0.18)',
+    },
+  };
+}
 
 export function sumBalanceAmounts(amounts: BalanceAmount[] | undefined) {
   return (amounts ?? []).reduce((sum, amount) => sum + amount.amount, 0);
@@ -263,6 +307,15 @@ export function EmbeddedPayoutWorkspace({
   const [workspaceError, setWorkspaceError] = useState<WorkspaceErrorState | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
   const [refreshSeed, setRefreshSeed] = useState(0);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const checkTheme = () => setIsDark(document.documentElement.classList.contains('dark'));
+    checkTheme();
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!visible) {
@@ -308,20 +361,7 @@ export function EmbeddedPayoutWorkspace({
         const clientSecret = body.clientSecret as string;
         const instance = loadConnectAndInitialize({
           publishableKey,
-          appearance: {
-            overlays: 'dialog',
-            variables: {
-              colorPrimary: '#059669',
-              colorBackground: '#FFFFFF',
-              colorText: '#111827',
-              colorDanger: '#DC2626',
-              colorBorder: '#E5E7EB',
-              borderRadius: '18px',
-              spacingUnit: '12px',
-              fontFamily:
-                'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
-            },
-          },
+          appearance: buildConnectAppearance(isDark),
           fetchClientSecret: async () => clientSecret,
         });
 
@@ -349,7 +389,7 @@ export function EmbeddedPayoutWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [publishableKey, refreshSeed, visible]);
+  }, [isDark, publishableKey, refreshSeed, visible]);
 
   if (!visible) {
     return null;
@@ -394,7 +434,7 @@ export function EmbeddedPayoutWorkspace({
         <ConnectComponentsProvider connectInstance={connectInstance}>
           <div className="space-y-4">
             {!onboardingComplete ? (
-              <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+              <div className="overflow-hidden rounded-[28px] border border-gray-200/80 bg-white/85 shadow-sm dark:border-white/10 dark:bg-[#0f1b23]/88">
                 <ConnectAccountOnboarding
                   collectionOptions={{ fields: 'currently_due' }}
                   onExit={onRefresh}
@@ -402,18 +442,13 @@ export function EmbeddedPayoutWorkspace({
               </div>
             ) : (
               <>
-                <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-                  <ConnectNotificationBanner
-                    collectionOptions={{ fields: 'currently_due', futureRequirements: 'include' }}
-                  />
-                </div>
-                <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                <div className="overflow-hidden rounded-[28px] border border-gray-200/80 bg-white/85 shadow-sm dark:border-white/10 dark:bg-[#0f1b23]/88">
                   <ConnectBalances />
                 </div>
-                <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                <div className="overflow-hidden rounded-[28px] border border-gray-200/80 bg-white/85 shadow-sm dark:border-white/10 dark:bg-[#0f1b23]/88">
                   <ConnectPayouts />
                 </div>
-                <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                <div className="overflow-hidden rounded-[28px] border border-gray-200/80 bg-white/85 shadow-sm dark:border-white/10 dark:bg-[#0f1b23]/88">
                   <ConnectAccountManagement
                     collectionOptions={{ fields: 'currently_due', futureRequirements: 'include' }}
                   />
