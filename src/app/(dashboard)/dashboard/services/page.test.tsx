@@ -30,10 +30,14 @@ describe("services page cache sync contract", () => {
     expect(source).toContain(
       "fixed inset-0 z-[70] overflow-hidden overscroll-none bg-[rgb(var(--color-gray-50))] dark:bg-[rgb(var(--color-gray-950))]",
     );
+    expect(source).toContain("sm:bg-black/50 sm:backdrop-blur-[2px] sm:p-4");
     expect(source).toContain(
       "flex h-[100dvh] min-h-[100dvh] w-screen max-w-none flex-col overflow-hidden bg-white shadow-2xl dark:bg-gray-900",
     );
     expect(source).toContain("sm:max-w-5xl xl:max-w-[1100px]");
+    expect(source).toContain("sm:bg-white/95");
+    expect(source).toContain("dark:sm:bg-gray-950/92");
+    expect(source).toContain("sm:bg-transparent sm:px-6 sm:py-5");
     expect(source).toContain("grid grid-cols-1 gap-4 xl:grid-cols-2 xl:gap-5");
     expect(source).toContain('className="space-y-4 xl:contents"');
     expect(source).toContain("xl:col-span-2");

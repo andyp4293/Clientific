@@ -1487,10 +1487,10 @@ export default function ServicesPage() {
       {modalType === "staff" && (
         <div
           data-mobile-overlay="true"
-          className="fixed inset-0 z-[70] overflow-hidden overscroll-none bg-[rgb(var(--color-gray-50))] dark:bg-[rgb(var(--color-gray-950))] sm:flex sm:items-center sm:justify-center sm:bg-black/55 sm:p-4"
+          className="fixed inset-0 z-[70] overflow-hidden overscroll-none bg-[rgb(var(--color-gray-50))] dark:bg-[rgb(var(--color-gray-950))] sm:flex sm:items-center sm:justify-center sm:bg-black/50 sm:backdrop-blur-[2px] sm:p-4"
         >
-          <div className="flex h-[100dvh] min-h-[100dvh] w-screen max-w-none flex-col overflow-hidden bg-white shadow-2xl dark:bg-gray-900 sm:h-auto sm:min-h-0 sm:w-full sm:max-h-[88vh] sm:max-w-5xl xl:max-w-[1100px] sm:rounded-[1.5rem] sm:border sm:border-gray-200/80 dark:sm:border-white/10">
-            <div className="border-b border-gray-200/80 bg-gray-950 text-white dark:border-white/10">
+          <div className="flex h-[100dvh] min-h-[100dvh] w-screen max-w-none flex-col overflow-hidden bg-white shadow-2xl dark:bg-gray-900 sm:h-auto sm:min-h-0 sm:w-full sm:max-h-[88vh] sm:max-w-5xl xl:max-w-[1100px] sm:rounded-[1.5rem] sm:border sm:border-white/10 sm:bg-white/95 sm:shadow-[0_40px_120px_-40px_rgba(2,6,23,0.8)] sm:backdrop-blur-xl dark:sm:bg-gray-950/92">
+            <div className="border-b border-gray-200/80 bg-gray-950 text-white dark:border-white/10 sm:bg-gray-950/88 sm:backdrop-blur-xl">
               <div className="px-4 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] sm:px-6 sm:pb-5 sm:pt-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="max-w-2xl">
@@ -1530,7 +1530,7 @@ export default function ServicesPage() {
               onSubmit={handleStaffSubmit}
               className="flex flex-1 flex-col overflow-hidden"
             >
-              <div className="flex-1 overflow-y-auto overscroll-y-contain bg-gray-50/70 px-4 py-4 dark:bg-gray-950 sm:px-6 sm:py-5">
+              <div className="flex-1 overflow-y-auto overscroll-y-contain bg-gray-50/70 px-4 py-4 dark:bg-gray-950 sm:bg-transparent sm:px-6 sm:py-5 dark:sm:bg-transparent">
                 <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 xl:gap-5">
                   <div className="space-y-4 xl:contents">
                     <section className="rounded-[1.75rem] border border-gray-200/80 bg-white p-5 shadow-[0_24px_70px_-42px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-gray-900/85">
