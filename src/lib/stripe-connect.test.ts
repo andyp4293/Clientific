@@ -68,15 +68,13 @@ const createdAccount = {
   payouts_enabled: false,
   details_submitted: false,
   capabilities: {
+    card_payments: 'inactive',
     transfers: 'inactive',
   },
   controller: {
     losses: { payments: 'stripe' },
     requirement_collection: 'stripe',
     stripe_dashboard: { type: 'none' },
-  },
-  tos_acceptance: {
-    service_agreement: 'recipient',
   },
 };
 
@@ -92,15 +90,13 @@ beforeEach(() => {
     payouts_enabled: false,
     details_submitted: false,
     capabilities: {
+      card_payments: 'inactive',
       transfers: 'inactive',
     },
     controller: {
       losses: { payments: 'stripe' },
       requirement_collection: 'stripe',
       stripe_dashboard: { type: 'none' },
-    },
-    tos_acceptance: {
-      service_agreement: 'recipient',
     },
     business_profile: params.business_profile,
     settings: params.settings,
@@ -150,13 +146,11 @@ describe('ensureBusinessConnectAccount', () => {
           stripe_dashboard: { type: 'none' },
         }),
         capabilities: {
+          card_payments: { requested: true },
           transfers: { requested: true },
         },
         email: 'owner@example.com',
         metadata: expect.objectContaining({ businessId: 'biz-1' }),
-        tos_acceptance: {
-          service_agreement: 'recipient',
-        },
       })
     );
     expect(mockBusinessUpdate).toHaveBeenCalledTimes(2);
@@ -192,16 +186,14 @@ describe('ensureBusinessConnectAccount', () => {
           stripe_dashboard: { type: 'none' },
         }),
         capabilities: {
+          card_payments: { requested: true },
           transfers: { requested: true },
-        },
-        tos_acceptance: {
-          service_agreement: 'recipient',
         },
       })
     );
   });
 
-  it('recreates stripe-managed incomplete merchant-style accounts into lighter recipient payout accounts', async () => {
+  it('recreates stripe-managed incomplete unsupported recipient accounts into the supported lighter onboarding flow', async () => {
     const existingAccount = {
       id: 'acct_current',
       type: 'none',
@@ -218,7 +210,7 @@ describe('ensureBusinessConnectAccount', () => {
         stripe_dashboard: { type: 'none' },
       },
       tos_acceptance: {
-        service_agreement: 'full',
+        service_agreement: 'recipient',
       },
     };
     mockAccountRetrieve.mockResolvedValue(existingAccount);
@@ -230,18 +222,19 @@ describe('ensureBusinessConnectAccount', () => {
     expect(mockAccountCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         capabilities: {
+          card_payments: { requested: true },
           transfers: { requested: true },
         },
-        tos_acceptance: {
-          service_agreement: 'recipient',
-        },
+        metadata: expect.objectContaining({
+          payoutSetupMode: 'currently_due_only',
+        }),
       })
     );
     expect(mockBankDeleteMany).toHaveBeenCalledWith({ where: { businessId: 'biz-1' } });
     expect(mockBusinessUpdate).toHaveBeenCalledTimes(2);
   });
 
-  it('reuses stripe-managed incomplete recipient payout accounts without patching restricted fields', async () => {
+  it('reuses stripe-managed incomplete standard accounts without patching restricted fields', async () => {
     const existingAccount = {
       id: 'acct_current',
       type: 'none',
@@ -249,15 +242,13 @@ describe('ensureBusinessConnectAccount', () => {
       payouts_enabled: false,
       details_submitted: false,
       capabilities: {
+        card_payments: 'inactive',
         transfers: 'inactive',
       },
       controller: {
         losses: { payments: 'stripe' },
         requirement_collection: 'stripe',
         stripe_dashboard: { type: 'none' },
-      },
-      tos_acceptance: {
-        service_agreement: 'recipient',
       },
     };
     mockAccountRetrieve.mockResolvedValue(existingAccount);

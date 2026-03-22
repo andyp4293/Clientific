@@ -62,16 +62,6 @@ function hasActiveConnectMoneyMovement(
   return Boolean(account.charges_enabled || account.capabilities?.transfers === 'active');
 }
 
-function isRecipientPayoutOnlyAccount(
-  account: Pick<Stripe.Account, 'capabilities' | 'tos_acceptance'>
-) {
-  const serviceAgreement = account.tos_acceptance?.service_agreement?.toLowerCase();
-  const hasTransfersCapability = Boolean(account.capabilities?.transfers);
-  const hasCardPaymentsCapability = Boolean(account.capabilities?.card_payments);
-
-  return serviceAgreement === 'recipient' || (hasTransfersCapability && !hasCardPaymentsCapability);
-}
-
 export function isConnectAccountReady(
   account: Pick<
     Stripe.Account,
@@ -115,10 +105,12 @@ function shouldRecreateLegacyEmbeddedAccount(account: Stripe.Account) {
   );
 }
 
-function shouldRecreateIncompleteNonRecipientAccount(account: Stripe.Account) {
+function shouldRecreateIncompleteUnsupportedRecipientAccount(account: Stripe.Account) {
+  const serviceAgreement = account.tos_acceptance?.service_agreement?.toLowerCase();
+
   return Boolean(
     !isConnectAccountReady(account) &&
-      !isRecipientPayoutOnlyAccount(account)
+      serviceAgreement === 'recipient'
   );
 }
 
@@ -356,9 +348,9 @@ export async function syncBusinessConnectState(
 }
 
 /**
- * Ensures a lighter payout-only Connect account exists for the business.
- * Stripe still handles secure bank onboarding and compliance, but the account
- * is configured for transfers-only recipient payouts instead of full merchant capabilities.
+ * Ensures a lighter Stripe-managed Connect account exists for the business.
+ * On US platforms, Stripe still requires a merchant-capable connected account,
+ * but we keep onboarding lighter by collecting only currently due requirements.
  */
 export async function ensureBusinessConnectAccount(
   business: BusinessConnectSeed,
@@ -372,7 +364,7 @@ export async function ensureBusinessConnectAccount(
         await resetBusinessConnectState(business.id);
       } else if (shouldRecreateLegacyEmbeddedAccount(existing)) {
         await resetBusinessConnectState(business.id);
-      } else if (shouldRecreateIncompleteNonRecipientAccount(existing)) {
+      } else if (shouldRecreateIncompleteUnsupportedRecipientAccount(existing)) {
         await resetBusinessConnectState(business.id);
       } else {
         if (!isConnectAccountReady(existing) && canRefreshIncompleteConnectAccount(existing)) {
@@ -406,6 +398,7 @@ export async function ensureBusinessConnectAccount(
       },
     },
     capabilities: {
+      card_payments: { requested: true },
       transfers: { requested: true },
     },
     settings: {
@@ -416,13 +409,10 @@ export async function ensureBusinessConnectAccount(
         },
       },
     },
-    tos_acceptance: {
-      service_agreement: 'recipient',
-    },
     metadata: {
       businessId: business.id,
       businessName: business.name,
-      payoutSetupMode: 'recipient',
+      payoutSetupMode: 'currently_due_only',
     },
   });
 
