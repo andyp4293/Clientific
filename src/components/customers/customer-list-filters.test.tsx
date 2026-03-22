@@ -86,9 +86,8 @@ describe("CustomerList filters", () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText(/sms status/i), {
-      target: { value: "enabled" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: /sms status/i }));
+    fireEvent.click(screen.getByRole("option", { name: /sms enabled/i }));
 
     expect(mockPush).toHaveBeenCalledWith(
       "/dashboard/customers?search=jane&contact=both&visit=visited&sms=enabled",

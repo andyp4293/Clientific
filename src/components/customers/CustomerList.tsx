@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import AddCustomerModal from "./AddCustomerModal";
 import EditCustomerModal from "./EditCustomerModal";
 import SendCustomerMessageModal from "./SendCustomerMessageModal";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 import {
   type CustomerContactFilter,
   type CustomerSmsFilter,
@@ -296,57 +297,44 @@ export default function CustomerList({
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
                 SMS status
               </span>
-              <select
-                aria-label="SMS status"
+              <CustomSelect
+                ariaLabel="SMS status"
                 value={initialSmsFilter}
-                onChange={(event) => updateQueryParam("sms", event.target.value || undefined)}
-                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-transparent focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-              >
-                <option value="">All SMS statuses</option>
-                {smsFilterOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => updateQueryParam("sms", value || undefined)}
+                className="input w-full"
+                placeholder="All SMS statuses"
+                options={smsFilterOptions}
+              />
             </label>
 
             <label className="space-y-1">
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
                 Contact details
               </span>
-              <select
-                aria-label="Contact details"
+              <CustomSelect
+                ariaLabel="Contact details"
                 value={initialContactFilter}
-                onChange={(event) => updateQueryParam("contact", event.target.value || undefined)}
-                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-transparent focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-              >
-                <option value="">All contacts</option>
-                {contactFilterOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) =>
+                  updateQueryParam("contact", value || undefined)
+                }
+                className="input w-full"
+                placeholder="All contacts"
+                options={contactFilterOptions}
+              />
             </label>
 
             <label className="space-y-1">
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
                 Visit history
               </span>
-              <select
-                aria-label="Visit history"
+              <CustomSelect
+                ariaLabel="Visit history"
                 value={initialVisitFilter}
-                onChange={(event) => updateQueryParam("visit", event.target.value || undefined)}
-                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-transparent focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-              >
-                <option value="">All visits</option>
-                {visitFilterOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => updateQueryParam("visit", value || undefined)}
+                className="input w-full"
+                placeholder="All visits"
+                options={visitFilterOptions}
+              />
             </label>
           </div>
 

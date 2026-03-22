@@ -1754,6 +1754,12 @@ export default function ServicesPage() {
                               businessDay.openTime,
                               businessDay.closeTime,
                             );
+                            const startSelectOptions = startOptions.map(
+                              (timeValue) => ({
+                                value: timeValue,
+                                label: formatScheduleTimeLabel(timeValue),
+                              }),
+                            );
                             const minimumEnd = addMinutesToTimeString(
                               selectedHours.startTime,
                               30,
@@ -1764,6 +1770,12 @@ export default function ServicesPage() {
                               {
                                 includeEnd: true,
                               },
+                            );
+                            const endSelectOptions = endOptions.map(
+                              (timeValue) => ({
+                                value: timeValue,
+                                label: formatScheduleTimeLabel(timeValue),
+                              }),
                             );
                             const safeEndTime = endOptions.includes(
                               selectedHours.endTime,
@@ -1797,10 +1809,10 @@ export default function ServicesPage() {
                                     <span className="block text-xs font-medium uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
                                       Start
                                     </span>
-                                    <select
+                                    <CustomSelect
+                                      ariaLabel={`${dayLabel} start time`}
                                       value={selectedHours.startTime}
-                                      onChange={(e) => {
-                                        const startTime = e.target.value;
+                                      onChange={(startTime) => {
                                         const nextEndOptions = buildTimeOptions(
                                           addMinutesToTimeString(startTime, 30),
                                           businessDay.closeTime!,
@@ -1826,24 +1838,17 @@ export default function ServicesPage() {
                                         });
                                       }}
                                       className="input w-full"
-                                    >
-                                      {startOptions.map((timeValue) => (
-                                        <option
-                                          key={timeValue}
-                                          value={timeValue}
-                                        >
-                                          {formatScheduleTimeLabel(timeValue)}
-                                        </option>
-                                      ))}
-                                    </select>
+                                      options={startSelectOptions}
+                                    />
                                   </label>
                                   <label className="space-y-1.5">
                                     <span className="block text-xs font-medium uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
                                       End
                                     </span>
-                                    <select
+                                    <CustomSelect
+                                      ariaLabel={`${dayLabel} end time`}
                                       value={safeEndTime}
-                                      onChange={(e) =>
+                                      onChange={(endTime) =>
                                         setStaffFormData({
                                           ...staffFormData,
                                           workHours: {
@@ -1851,22 +1856,14 @@ export default function ServicesPage() {
                                             [dayOfWeek]: {
                                               startTime:
                                                 selectedHours.startTime,
-                                              endTime: e.target.value,
+                                              endTime,
                                             },
                                           },
                                         })
                                       }
                                       className="input w-full"
-                                    >
-                                      {endOptions.map((timeValue) => (
-                                        <option
-                                          key={timeValue}
-                                          value={timeValue}
-                                        >
-                                          {formatScheduleTimeLabel(timeValue)}
-                                        </option>
-                                      ))}
-                                    </select>
+                                      options={endSelectOptions}
+                                    />
                                   </label>
                                 </div>
                               </div>
