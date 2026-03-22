@@ -14,7 +14,7 @@ vi.mock('resend', () => ({
   Resend: mockResendCtor,
 }));
 
-import { sendEmailVerificationEmail } from './email';
+import { sendEmailVerificationEmail, sendSupportContactEmail } from './email';
 
 describe('email sender configuration', () => {
   beforeEach(() => {
@@ -49,5 +49,26 @@ describe('email sender configuration', () => {
     await sendEmailVerificationEmail('owner@example.com', '123456');
 
     expect(mockResendCtor).toHaveBeenCalledWith('re_test_key');
+  });
+
+  it('sends support contact email to the canonical support inbox with reply-to set', async () => {
+    await sendSupportContactEmail({
+      name: 'Jane Doe',
+      email: 'owner@example.com',
+      company: 'Test Salon',
+      subject: 'Billing question',
+      message: 'Need help with an invoice.',
+    });
+
+    expect(mockSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: 'Clientific <noreply@clientific.app>',
+        to: 'support@clientific.app',
+        replyTo: 'owner@example.com',
+        subject: 'Support request: Billing question',
+        text: expect.stringContaining('Need help with an invoice.'),
+        html: expect.stringContaining('Need help with an invoice.'),
+      })
+    );
   });
 });

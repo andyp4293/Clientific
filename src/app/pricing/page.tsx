@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { APP_SUPPORT_EMAIL } from '@/lib/brand';
+import { APP_SUPPORT_PATH } from '@/lib/brand';
 import { getPublicPlanSlug, getPricingPlanKey } from '@/lib/plan-utils';
 import { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/pricing-plans';
 import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
@@ -149,9 +149,9 @@ function PricingContent() {
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Questions about which plan fits best?{' '}
-            <a href={`mailto:${APP_SUPPORT_EMAIL}`} className="text-primary hover:underline">
+            <Link href={APP_SUPPORT_PATH} className="text-primary hover:underline">
               Contact support
-            </a>
+            </Link>
           </p>
         </div>
       </div>

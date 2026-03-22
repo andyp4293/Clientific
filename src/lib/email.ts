@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
-import { APP_NAME } from '@/lib/brand';
+import { APP_NAME, APP_SUPPORT_EMAIL } from '@/lib/brand';
 
 interface NewBookingDetails {
   businessName: string;
@@ -22,6 +22,23 @@ function getResendFromEmail(): string {
 }
 
 const getResendApiKey = () => (process.env.RESEND_API_KEY || '').trim();
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+interface SupportContactDetails {
+  name: string;
+  email: string;
+  company?: string | null;
+  subject?: string | null;
+  message: string;
+}
 
 export async function sendNewBookingEmail(businessEmail: string, details: NewBookingDetails): Promise<void> {
   const resend = new Resend(getResendApiKey());
@@ -78,6 +95,82 @@ export async function sendNewBookingEmail(businessEmail: string, details: NewBoo
           You're receiving this because new appointment notifications are enabled for ${details.businessName}.
           You can turn this off in Settings → Notifications.
         </p>
+      </div>
+    `,
+  });
+}
+
+export async function sendSupportContactEmail(details: SupportContactDetails): Promise<void> {
+  const resend = new Resend(getResendApiKey());
+  const FROM = getResendFromEmail();
+
+  const safeName = escapeHtml(details.name);
+  const safeEmail = escapeHtml(details.email);
+  const safeCompany = details.company ? escapeHtml(details.company) : null;
+  const safeSubject = details.subject ? escapeHtml(details.subject) : null;
+  const safeMessage = escapeHtml(details.message).replace(/\n/g, '<br />');
+  const subjectLine = details.subject?.trim()
+    ? `Support request: ${details.subject.trim()}`
+    : `New support request from ${details.name}`;
+
+  const text = [
+    `New support request for ${APP_NAME}`,
+    '',
+    `Name: ${details.name}`,
+    `Email: ${details.email}`,
+    ...(details.company ? [`Company: ${details.company}`] : []),
+    ...(details.subject ? [`Subject: ${details.subject}`] : []),
+    '',
+    details.message,
+  ].join('\n');
+
+  await resend.emails.send({
+    from: `${APP_NAME} <${FROM}>`,
+    to: APP_SUPPORT_EMAIL,
+    replyTo: details.email,
+    subject: subjectLine,
+    text,
+    html: `
+      <div style="font-family: ui-sans-serif, system-ui, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; background: #ffffff;">
+        <div style="margin-bottom: 24px;">
+          <span style="font-size: 22px; font-weight: 700; color: #111827;">${APP_NAME}</span>
+        </div>
+        <h1 style="font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 8px;">New support request</h1>
+        <p style="color: #4b5563; margin: 0 0 24px;">A new message was submitted from the public support page.</p>
+
+        <table style="width: 100%; border-collapse: collapse; background: #f9fafb; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+          <tbody>
+            <tr>
+              <td style="padding: 10px 14px; color: #6b7280; font-size: 14px; white-space: nowrap;">Name</td>
+              <td style="padding: 10px 14px; color: #111827; font-size: 14px;">${safeName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 14px; color: #6b7280; font-size: 14px; white-space: nowrap;">Email</td>
+              <td style="padding: 10px 14px; color: #111827; font-size: 14px;">${safeEmail}</td>
+            </tr>
+            ${
+              safeCompany
+                ? `<tr>
+              <td style="padding: 10px 14px; color: #6b7280; font-size: 14px; white-space: nowrap;">Company</td>
+              <td style="padding: 10px 14px; color: #111827; font-size: 14px;">${safeCompany}</td>
+            </tr>`
+                : ''
+            }
+            ${
+              safeSubject
+                ? `<tr>
+              <td style="padding: 10px 14px; color: #6b7280; font-size: 14px; white-space: nowrap;">Subject</td>
+              <td style="padding: 10px 14px; color: #111827; font-size: 14px;">${safeSubject}</td>
+            </tr>`
+                : ''
+            }
+          </tbody>
+        </table>
+
+        <div style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 18px; background: #ffffff;">
+          <p style="margin: 0 0 10px; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #6b7280;">Message</p>
+          <p style="margin: 0; font-size: 15px; line-height: 1.7; color: #111827;">${safeMessage}</p>
+        </div>
       </div>
     `,
   });

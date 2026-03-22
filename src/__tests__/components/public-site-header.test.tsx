@@ -64,4 +64,13 @@ describe('PublicSiteHeader', () => {
     expect(screen.getByRole('link', { name: 'For Customers' })).toHaveClass('text-gray-500');
     expect(screen.getByRole('link', { name: 'Pricing' })).toHaveClass('text-gray-500');
   });
+
+  it('does not force a primary nav item active for support pages', () => {
+    render(<PublicSiteHeader active="support" />);
+
+    expect(screen.getByRole('link', { name: 'For Businesses' })).toHaveClass('text-gray-500');
+    expect(screen.getByRole('link', { name: 'For Customers' })).toHaveClass('text-gray-500');
+    expect(screen.getByRole('link', { name: 'Pricing' })).toHaveClass('text-gray-500');
+    expect(screen.getByRole('link', { name: 'Refer & Earn' })).toHaveClass('text-gray-500');
+  });
 });

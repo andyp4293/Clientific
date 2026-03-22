@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { APP_SUPPORT_PATH } from '@/lib/brand';
 
 export default function Error({
   error,
@@ -57,7 +58,11 @@ export default function Error({
           </div>
 
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-6">
-            If the problem persists, please contact support.
+            If the problem persists, please{' '}
+            <Link href={APP_SUPPORT_PATH} className="text-primary hover:underline">
+              contact support
+            </Link>
+            .
           </p>
         </div>
       </div>

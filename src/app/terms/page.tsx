@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { APP_NAME, APP_SUPPORT_EMAIL } from '@/lib/brand';
+import { APP_NAME, APP_SUPPORT_EMAIL, APP_SUPPORT_PATH } from '@/lib/brand';
 
 export default function TermsOfServicePage() {
   return (
@@ -165,9 +165,9 @@ export default function TermsOfServicePage() {
               <p>
                 If you need help or have questions about SMS notifications, reply <strong>HELP</strong> to any 
                 message or contact us at{' '}
-                <a href={`mailto:${APP_SUPPORT_EMAIL}`} className="text-primary hover:text-primary-700">
+                <Link href={APP_SUPPORT_PATH} className="text-primary hover:text-primary-700">
                   {APP_SUPPORT_EMAIL}
-                </a>
+                </Link>
               </p>
 
               <h3 className="font-semibold text-gray-900 dark:text-gray-50 mt-4">Carrier Liability</h3>
@@ -225,9 +225,9 @@ export default function TermsOfServicePage() {
             <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
               If you have any questions about these Terms, please contact us at:
               <br />
-              <a href={`mailto:${APP_SUPPORT_EMAIL}`} className="text-primary hover:text-primary-700">
+              <Link href={APP_SUPPORT_PATH} className="text-primary hover:text-primary-700">
                 {APP_SUPPORT_EMAIL}
-              </a>
+              </Link>
             </p>
           </section>
         </div>

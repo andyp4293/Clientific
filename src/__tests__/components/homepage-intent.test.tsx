@@ -52,7 +52,7 @@ describe('Homepage audience intent', () => {
     );
     expect(screen.getByRole('link', { name: 'Questions? support@clientific.app' })).toHaveAttribute(
       'href',
-      'mailto:support@clientific.app'
+      '/support'
     );
   });
 

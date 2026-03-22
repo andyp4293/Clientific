@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useState } from 'react';
-import { APP_DOMAIN, APP_NAME, APP_SUPPORT_EMAIL } from '@/lib/brand';
+import { APP_DOMAIN, APP_NAME, APP_SUPPORT_EMAIL, APP_SUPPORT_PATH } from '@/lib/brand';
 import { getPublicPlanSlug } from '@/lib/plan-utils';
 import { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/pricing-plans';
 import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
@@ -554,9 +554,9 @@ export default function HomePage() {
               </div>
               <p className="mt-5 text-sm text-gray-700 dark:text-gray-300">
                 Questions before you start?{' '}
-                <a href={`mailto:${APP_SUPPORT_EMAIL}`} className="text-primary hover:underline">
+                <Link href={APP_SUPPORT_PATH} className="text-primary hover:underline">
                   {APP_SUPPORT_EMAIL}
-                </a>
+                </Link>
               </p>
             </div>
 
@@ -720,14 +720,14 @@ export default function HomePage() {
           <div className="mt-10 flex flex-wrap items-center justify-center gap-6">
             {closingNotes.map((note) =>
               note.includes('@') ? (
-                <a
+                <Link
                   key={note}
-                  href={`mailto:${APP_SUPPORT_EMAIL}`}
+                  href={APP_SUPPORT_PATH}
                   className="flex items-center gap-2 text-sm text-gray-700 hover:text-primary dark:text-gray-300"
                 >
                   <CheckIcon className="text-primary" />
                   {note}
-                </a>
+                </Link>
               ) : (
                 <div key={note} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                   <CheckIcon className="text-primary" />
@@ -819,12 +819,12 @@ export default function HomePage() {
                   </a>
                 </li>
                 <li>
-                  <a
-                    href={`mailto:${APP_SUPPORT_EMAIL}`}
+                  <Link
+                    href={APP_SUPPORT_PATH}
                     className="transition-colors hover:text-gray-950 dark:hover:text-gray-100"
                   >
                     {APP_SUPPORT_EMAIL}
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>

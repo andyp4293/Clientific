@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { APP_NAME } from '@/lib/brand';
 
-type PublicNavKey = 'home' | 'explore' | 'pricing' | 'partner' | 'business' | 'deal' | 'book';
+type PublicNavKey = 'home' | 'explore' | 'pricing' | 'partner' | 'business' | 'deal' | 'book' | 'support';
 
 interface PublicSiteHeaderProps {
   active?: PublicNavKey;
