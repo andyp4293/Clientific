@@ -420,40 +420,6 @@ export async function ensureBusinessConnectAccount(
   return created;
 }
 
-/**
- * Attaches a bank account to the business's Custom Connect account.
- * Used as a fallback path when a platform admin enters bank details directly.
- */
-export async function addBankAccountToConnect(
-  connectAccountId: string,
-  routingNumber: string,
-  accountNumber: string,
-  accountHolderName: string
-): Promise<Stripe.BankAccount> {
-  const token = await stripe.tokens.create({
-    bank_account: {
-      country: 'US',
-      currency: 'usd',
-      routing_number: routingNumber,
-      account_number: accountNumber,
-      account_holder_name: accountHolderName,
-      account_holder_type: 'company',
-    },
-  });
-
-  return stripe.accounts.createExternalAccount(connectAccountId, {
-    external_account: token.id,
-    default_for_currency: true,
-  }) as Promise<Stripe.BankAccount>;
-}
-
-export async function removeBankAccountFromConnect(
-  connectAccountId: string,
-  externalAccountId: string
-) {
-  await stripe.accounts.deleteExternalAccount(connectAccountId, externalAccountId);
-}
-
 export async function fetchConnectPayoutsOverview(accountId: string) {
   const [balance, payouts] = await Promise.all([
     stripe.balance.retrieve({}, { stripeAccount: accountId }),

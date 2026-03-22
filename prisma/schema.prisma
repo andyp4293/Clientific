@@ -561,7 +561,6 @@ model Affiliate {
   name       String
   email      String            @unique
   code       String            @unique
-  payoutInfo String?
   active     Boolean           @default(true)
   signups    AffiliateSignup[]
 }
