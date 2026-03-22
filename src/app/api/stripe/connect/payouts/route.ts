@@ -4,6 +4,11 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { getSessionBusinessId } from '@/lib/session-business';
 import {
+  emptyDealPayoutSummary,
+  getDealPayoutSummary,
+  settlePendingDealPurchasePayouts,
+} from '@/lib/deal-payouts';
+import {
   emptyReferralPayoutSummary,
   getReferralPayoutSummary,
   settlePendingReferralCommissions,
@@ -14,7 +19,11 @@ import {
   syncBusinessConnectState,
 } from '@/lib/stripe-connect';
 
-function emptyResponse(notConnected: boolean, referralPayouts = emptyReferralPayoutSummary()) {
+function emptyResponse(
+  notConnected: boolean,
+  referralPayouts = emptyReferralPayoutSummary(),
+  dealPayouts = emptyDealPayoutSummary()
+) {
   return {
     notConnected,
     accountId: null,
@@ -35,6 +44,7 @@ function emptyResponse(notConnected: boolean, referralPayouts = emptyReferralPay
     },
     balances: null,
     payouts: [],
+    dealPayouts,
     referralPayouts,
   };
 }
@@ -78,10 +88,13 @@ export async function GET(_req: NextRequest) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
-    const referralPayouts = await getReferralPayoutSummary(business.id);
+    const [referralPayouts, dealPayouts] = await Promise.all([
+      getReferralPayoutSummary(business.id),
+      getDealPayoutSummary(business.id),
+    ]);
 
     if (!business.stripeConnectAccountId) {
-      return NextResponse.json(emptyResponse(true, referralPayouts));
+      return NextResponse.json(emptyResponse(true, referralPayouts, dealPayouts));
     }
 
     try {
@@ -90,13 +103,20 @@ export async function GET(_req: NextRequest) {
         business.stripeConnectAccountId
       );
       if (status.onboardingComplete) {
+        await settlePendingDealPurchasePayouts({
+          businessId: business.id,
+          connectAccountId: status.accountId,
+        });
         await settlePendingReferralCommissions({
           businessId: business.id,
           connectAccountId: status.accountId,
         });
       }
 
-      const refreshedReferralPayouts = await getReferralPayoutSummary(business.id);
+      const [refreshedReferralPayouts, refreshedDealPayouts] = await Promise.all([
+        getReferralPayoutSummary(business.id),
+        getDealPayoutSummary(business.id),
+      ]);
       const overview = status.onboardingComplete
         ? await fetchConnectPayoutsOverview(status.accountId)
         : null;
@@ -120,12 +140,13 @@ export async function GET(_req: NextRequest) {
             }
           : null,
         payouts: overview?.payouts ?? [],
+        dealPayouts: refreshedDealPayouts,
         referralPayouts: refreshedReferralPayouts,
       });
     } catch (error: any) {
       if (isRecoverableConnectAccountError(error)) {
         await clearStaleConnectState(business.id);
-        return NextResponse.json(emptyResponse(true, referralPayouts));
+        return NextResponse.json(emptyResponse(true, referralPayouts, dealPayouts));
       }
 
       throw error;

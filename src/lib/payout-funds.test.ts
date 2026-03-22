@@ -6,6 +6,8 @@ describe('buildPayoutFundsBreakdown', () => {
     const result = buildPayoutFundsBreakdown({
       availableAmountCents: 12500,
       stripePendingAmountCents: 4300,
+      dealPendingAmountCents: 0,
+      dealPendingCount: 0,
       referralPendingAmountCents: 870,
       referralPendingCount: 1,
       readyForPaidDeals: true,
@@ -29,6 +31,8 @@ describe('buildPayoutFundsBreakdown', () => {
     const result = buildPayoutFundsBreakdown({
       availableAmountCents: 0,
       stripePendingAmountCents: 0,
+      dealPendingAmountCents: 0,
+      dealPendingCount: 0,
       referralPendingAmountCents: 1740,
       referralPendingCount: 2,
       readyForPaidDeals: false,
@@ -48,6 +52,8 @@ describe('buildPayoutFundsBreakdown', () => {
     const result = buildPayoutFundsBreakdown({
       availableAmountCents: 0,
       stripePendingAmountCents: 0,
+      dealPendingAmountCents: 0,
+      dealPendingCount: 0,
       referralPendingAmountCents: 0,
       referralPendingCount: 0,
       readyForPaidDeals: true,
@@ -56,5 +62,26 @@ describe('buildPayoutFundsBreakdown', () => {
     expect(result.pendingAmountCents).toBe(0);
     expect(result.pendingDescription).toBe('Nothing is pending right now.');
     expect(result.pendingReasons).toEqual([]);
+  });
+
+  it('explains older deal earnings that are still waiting to move into Stripe', () => {
+    const result = buildPayoutFundsBreakdown({
+      availableAmountCents: 0,
+      stripePendingAmountCents: 0,
+      dealPendingAmountCents: 128,
+      dealPendingCount: 3,
+      referralPendingAmountCents: 0,
+      referralPendingCount: 0,
+      readyForPaidDeals: false,
+    });
+
+    expect(result.pendingAmountCents).toBe(128);
+    expect(result.pendingReasons).toEqual([
+      expect.objectContaining({
+        id: 'deal_setup',
+        label: 'Older deal earnings waiting on payout setup',
+        description: expect.stringMatching(/finish payout setup/i),
+      }),
+    ]);
   });
 });

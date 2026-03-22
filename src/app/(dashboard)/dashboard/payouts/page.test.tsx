@@ -31,6 +31,15 @@ const buildConnectData = (overrides: Record<string, unknown> = {}) => ({
   },
   balances: null,
   payouts: [],
+  dealPayouts: {
+    lifetimeEarned: 0,
+    pendingTransfer: 0,
+    transferredToConnect: 0,
+    pendingCount: 0,
+    transferredCount: 0,
+    automaticCount: 0,
+    lastTransferredAt: null,
+  },
   referralPayouts: {
     lifetimeEarned: 0,
     pendingTransfer: 0,
@@ -251,6 +260,53 @@ describe('PayoutsPage', () => {
     expect(screen.getByText(/recent deal payments/i)).toBeInTheDocument();
     expect(
       screen.getByText(/these payments are still clearing through stripe before they move into your available balance/i)
+    ).toBeInTheDocument();
+  });
+
+  it('explains when older deal earnings are still waiting to move into Stripe', () => {
+    mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
+      const key = config?.queryKey?.[0];
+
+      if (key === 'deal-earnings') {
+        return {
+          data: {
+            transactions: [],
+            totals: {
+              totalGross: 152,
+              totalFees: 24,
+              totalNet: 128,
+              transactionCount: 3,
+            },
+          },
+          isLoading: false,
+        };
+      }
+
+      if (key === 'connect-payouts') {
+        return {
+          data: buildConnectData({
+            dealPayouts: {
+              lifetimeEarned: 128,
+              pendingTransfer: 128,
+              transferredToConnect: 0,
+              pendingCount: 3,
+              transferredCount: 0,
+              automaticCount: 0,
+              lastTransferredAt: null,
+            },
+          }),
+          isLoading: false,
+        };
+      }
+
+      return { data: undefined, isLoading: false };
+    });
+
+    render(<PayoutsPage />);
+
+    expect(screen.getByText(/older deal earnings waiting on payout setup/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/finish payout setup so clientific can move them into your stripe payout balance/i)
     ).toBeInTheDocument();
   });
 

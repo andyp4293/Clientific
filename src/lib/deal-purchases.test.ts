@@ -33,6 +33,10 @@ vi.mock('@/lib/twilio', () => ({
   formatDealPurchaseConfirmationSMS: vi.fn(() => 'Your code is ABCD1234'),
 }));
 
+vi.mock('@/lib/deal-payouts', () => ({
+  syncDealPurchasePayoutTracking: vi.fn(),
+}));
+
 import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
 import { sendSMS } from '@/lib/twilio';

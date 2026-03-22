@@ -9,6 +9,7 @@ import {
 } from '@/lib/twilio';
 import { sendDealPurchaseReceiptEmail } from '@/lib/email';
 import type { DealPurchaseTotals } from '@/lib/deal-purchase-pricing';
+import { syncDealPurchasePayoutTracking } from '@/lib/deal-payouts';
 
 const DEAL_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -330,6 +331,11 @@ export async function createDealPurchaseFromPaymentIntent(
     return created;
   });
 
+  await syncDealPurchasePayoutTracking({
+    purchaseId: purchase.id,
+    paymentIntent,
+  });
+
   const smsResult = await sendSMS({
     to: purchase.customerPhone,
     message: formatDealPurchaseConfirmationSMS({
@@ -476,6 +482,13 @@ export async function finalizeDealPurchaseFromCheckoutSession(
     return updated;
   });
 
+  if (typeof session.payment_intent === 'string') {
+    await syncDealPurchasePayoutTracking({
+      purchaseId: purchase.id,
+      paymentIntentId: session.payment_intent,
+    });
+  }
+
   const smsResult = await sendSMS({
     to: purchase.customerPhone,
     from: purchase.business.vapiPhoneNumber ?? null,
@@ -599,6 +612,11 @@ export async function finalizeDealPurchaseFromPaymentIntent(
     }
 
     return updated;
+  });
+
+  await syncDealPurchasePayoutTracking({
+    purchaseId: purchase.id,
+    paymentIntent,
   });
 
   const smsResult = await sendSMS({

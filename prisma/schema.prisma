@@ -483,7 +483,11 @@ model DealPurchase {
   stripeCheckoutSessionId   String?            @unique
   stripePaymentIntentId     String?            @unique
   stripeChargeId            String?            @unique
+  stripeTransferId          String?            @unique
   stripeReceiptUrl          String?
+  payoutTransferStatus      String?
+  payoutTransferredAt       DateTime?
+  payoutTransferFailureReason String?
   redemptionCode            String?            @unique
   purchasedAt               DateTime?
   redeemedAt                DateTime?
@@ -500,6 +504,7 @@ model DealPurchase {
   @@index([customerId, createdAt])
   @@index([customerPhone, createdAt])
   @@index([status, createdAt])
+  @@index([payoutTransferStatus, createdAt])
 }
 
 model DealPurchaseItem {

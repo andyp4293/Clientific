@@ -42,6 +42,8 @@ export default function PayoutsSetupPage() {
 
   const availableBalance = sumBalanceAmounts(connectData?.balances?.available);
   const pendingBalance = sumBalanceAmounts(connectData?.balances?.pending);
+  const dealPending = connectData?.dealPayouts?.pendingTransfer ?? 0;
+  const dealPendingCount = connectData?.dealPayouts?.pendingCount ?? 0;
   const referralPending = connectData?.referralPayouts?.pendingTransfer ?? 0;
   const referralPendingCount = connectData?.referralPayouts?.pendingCount ?? 0;
   const rawRequirementList = collectOutstandingRequirementKeys(connectData?.requirements);
@@ -266,6 +268,8 @@ export default function PayoutsSetupPage() {
           <FundsStatusPanel
             availableAmountCents={availableBalance}
             stripePendingAmountCents={pendingBalance}
+            dealPendingAmountCents={dealPending}
+            dealPendingCount={dealPendingCount}
             referralPendingAmountCents={referralPending}
             referralPendingCount={referralPendingCount}
             readyForPaidDeals={Boolean(connectData?.readyForPaidDeals)}

@@ -95,6 +95,8 @@ export default function PayoutsPage() {
   const transactions = earningsData?.transactions ?? [];
   const availableBalance = sumBalanceAmounts(connectData?.balances?.available);
   const pendingBalance = sumBalanceAmounts(connectData?.balances?.pending);
+  const dealPending = connectData?.dealPayouts?.pendingTransfer ?? 0;
+  const dealPendingCount = connectData?.dealPayouts?.pendingCount ?? 0;
   const needsSetup = !connectData?.readyForPaidDeals;
   const referralLifetime = connectData?.referralPayouts?.lifetimeEarned ?? 0;
   const referralPending = connectData?.referralPayouts?.pendingTransfer ?? 0;
@@ -237,6 +239,8 @@ export default function PayoutsPage() {
           <FundsStatusPanel
             availableAmountCents={availableBalance}
             stripePendingAmountCents={pendingBalance}
+            dealPendingAmountCents={dealPending}
+            dealPendingCount={dealPendingCount}
             referralPendingAmountCents={referralPending}
             referralPendingCount={referralPendingCount}
             readyForPaidDeals={Boolean(connectData?.readyForPaidDeals)}

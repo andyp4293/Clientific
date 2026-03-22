@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/referral-payouts",
       "schedule": "17 5 * * *"
+    },
+    {
+      "path": "/api/cron/deal-payouts",
+      "schedule": "47 5 * * *"
     }
   ]
 }

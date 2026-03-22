@@ -1,13 +1,20 @@
 export type PayoutFundsBreakdownInput = {
   availableAmountCents: number;
   stripePendingAmountCents: number;
+  dealPendingAmountCents: number;
+  dealPendingCount: number;
   referralPendingAmountCents: number;
   referralPendingCount: number;
   readyForPaidDeals: boolean;
 };
 
 export type PendingFundsReason = {
-  id: 'stripe_settlement' | 'referral_setup' | 'referral_transfer';
+  id:
+    | 'stripe_settlement'
+    | 'deal_setup'
+    | 'deal_transfer'
+    | 'referral_setup'
+    | 'referral_transfer';
   label: string;
   amountCents: number;
   description: string;
@@ -31,12 +38,24 @@ function pluralizeReferralCount(count: number) {
     : `${count} recorded referral commissions are still waiting to move.`;
 }
 
+function pluralizeDealCount(count: number) {
+  if (count <= 0) {
+    return 'Recorded deal earnings are still waiting to move.';
+  }
+
+  return count === 1
+    ? '1 recorded deal purchase is still waiting to move.'
+    : `${count} recorded deal purchases are still waiting to move.`;
+}
+
 export function buildPayoutFundsBreakdown(
   input: PayoutFundsBreakdownInput
 ): PayoutFundsBreakdown {
   const {
     availableAmountCents,
     stripePendingAmountCents,
+    dealPendingAmountCents,
+    dealPendingCount,
     referralPendingAmountCents,
     referralPendingCount,
     readyForPaidDeals,
@@ -55,6 +74,19 @@ export function buildPayoutFundsBreakdown(
     });
   }
 
+  if (dealPendingAmountCents > 0) {
+    pendingReasons.push({
+      id: readyForPaidDeals ? 'deal_transfer' : 'deal_setup',
+      label: readyForPaidDeals
+        ? 'Older deal earnings still moving to Stripe'
+        : 'Older deal earnings waiting on payout setup',
+      amountCents: dealPendingAmountCents,
+      description: readyForPaidDeals
+        ? `${pluralizeDealCount(dealPendingCount)} Clientific moves them into your Stripe payout balance automatically.`
+        : `${pluralizeDealCount(dealPendingCount)} Finish payout setup so Clientific can move them into your Stripe payout balance.`,
+    });
+  }
+
   if (referralPendingAmountCents > 0) {
     pendingReasons.push({
       id: readyForPaidDeals ? 'referral_transfer' : 'referral_setup',
@@ -68,7 +100,8 @@ export function buildPayoutFundsBreakdown(
     });
   }
 
-  const pendingAmountCents = stripePendingAmountCents + referralPendingAmountCents;
+  const pendingAmountCents =
+    stripePendingAmountCents + dealPendingAmountCents + referralPendingAmountCents;
 
   return {
     availableAmountCents,

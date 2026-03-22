@@ -22,6 +22,19 @@ vi.mock('@/lib/referral-payouts', () => ({
   getReferralPayoutSummary: vi.fn(),
   settlePendingReferralCommissions: vi.fn(),
 }));
+vi.mock('@/lib/deal-payouts', () => ({
+  emptyDealPayoutSummary: vi.fn(() => ({
+    lifetimeEarned: 0,
+    pendingTransfer: 0,
+    transferredToConnect: 0,
+    pendingCount: 0,
+    transferredCount: 0,
+    automaticCount: 0,
+    lastTransferredAt: null,
+  })),
+  getDealPayoutSummary: vi.fn(),
+  settlePendingDealPurchasePayouts: vi.fn(),
+}));
 vi.mock('@/lib/stripe-connect', () => ({
   syncBusinessConnectState: vi.fn(),
   fetchConnectPayoutsOverview: vi.fn(),
@@ -31,6 +44,10 @@ vi.mock('@/lib/stripe-connect', () => ({
 import { getServerSession } from 'next-auth';
 import { getSessionBusinessId } from '@/lib/session-business';
 import { prisma } from '@/lib/prisma';
+import {
+  getDealPayoutSummary,
+  settlePendingDealPurchasePayouts,
+} from '@/lib/deal-payouts';
 import {
   getReferralPayoutSummary,
   settlePendingReferralCommissions,
@@ -47,6 +64,9 @@ const mockGetBusinessId = getSessionBusinessId as ReturnType<typeof vi.fn>;
 const mockFindUnique = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockUpdate = prisma.business.update as ReturnType<typeof vi.fn>;
 const mockDeleteMany = prisma.businessBankAccount.deleteMany as ReturnType<typeof vi.fn>;
+const mockGetDealSummary = getDealPayoutSummary as ReturnType<typeof vi.fn>;
+const mockSettleDealPurchases =
+  settlePendingDealPurchasePayouts as ReturnType<typeof vi.fn>;
 const mockGetReferralSummary = getReferralPayoutSummary as ReturnType<typeof vi.fn>;
 const mockSettleReferralCommissions =
   settlePendingReferralCommissions as ReturnType<typeof vi.fn>;
@@ -61,6 +81,16 @@ const referralSummary = {
   pendingCount: 1,
   transferredCount: 1,
   lastTransferredAt: '2026-03-10T12:00:00.000Z',
+};
+
+const dealSummary = {
+  lifetimeEarned: 1280,
+  pendingTransfer: 128,
+  transferredToConnect: 1152,
+  pendingCount: 1,
+  transferredCount: 3,
+  automaticCount: 2,
+  lastTransferredAt: '2026-03-11T12:00:00.000Z',
 };
 
 function makeRequest() {
@@ -127,6 +157,13 @@ beforeEach(() => {
   mockUpdate.mockResolvedValue({});
   mockDeleteMany.mockResolvedValue({});
   mockIsRecoverable.mockReturnValue(false);
+  mockGetDealSummary.mockResolvedValue(dealSummary);
+  mockSettleDealPurchases.mockResolvedValue({
+    transferredAmount: 128,
+    transferredCount: 1,
+    automaticCount: 0,
+    failedCount: 0,
+  });
   mockGetReferralSummary.mockResolvedValue(referralSummary);
   mockSettleReferralCommissions.mockResolvedValue({
     transferredAmount: 870,
@@ -153,6 +190,7 @@ describe('GET /api/stripe/connect/payouts', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.notConnected).toBe(true);
+    expect(body.dealPayouts).toEqual(dealSummary);
     expect(body.referralPayouts).toEqual(referralSummary);
     expect(body.balances).toBeNull();
     expect(body.payouts).toHaveLength(0);
@@ -174,8 +212,13 @@ describe('GET /api/stripe/connect/payouts', () => {
     expect(body.payoutSchedule.interval).toBe('manual');
     expect(body.balances.available[0].amount).toBe(50000);
     expect(body.payouts[0].id).toBe('po_1');
+    expect(body.dealPayouts).toEqual(dealSummary);
     expect(body.referralPayouts).toEqual(referralSummary);
     expect(mockSyncStatus).toHaveBeenCalledWith('biz-1', 'acct_test123');
+    expect(mockSettleDealPurchases).toHaveBeenCalledWith({
+      businessId: 'biz-1',
+      connectAccountId: 'acct_test123',
+    });
     expect(mockSettleReferralCommissions).toHaveBeenCalledWith({
       businessId: 'biz-1',
       connectAccountId: 'acct_test123',
@@ -197,9 +240,11 @@ describe('GET /api/stripe/connect/payouts', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.onboardingComplete).toBe(false);
+    expect(body.dealPayouts).toEqual(dealSummary);
     expect(body.referralPayouts).toEqual(referralSummary);
     expect(body.balances).toBeNull();
     expect(body.payouts).toHaveLength(0);
+    expect(mockSettleDealPurchases).not.toHaveBeenCalled();
     expect(mockSettleReferralCommissions).not.toHaveBeenCalled();
     expect(mockFetchOverview).not.toHaveBeenCalled();
   });

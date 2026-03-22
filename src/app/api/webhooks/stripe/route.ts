@@ -11,6 +11,10 @@ import {
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { REFERRAL_COMMISSION_PERCENT } from '@/lib/referral-config';
 import {
+  canAutoTransferDealPayouts,
+  settlePendingDealPurchasePayouts,
+} from '@/lib/deal-payouts';
+import {
   canAutoTransferReferralPayouts,
   recordReferralCommission,
   settlePendingReferralCommissions,
@@ -350,10 +354,13 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent)
       '[deal-webhook] finalizing purchase',
       paymentIntent.metadata.dealPurchaseId
     );
-    await finalizeDealPurchaseFromPaymentIntent(
+    const purchase = await finalizeDealPurchaseFromPaymentIntent(
       paymentIntent,
       getConfiguredAppBaseUrl()
     );
+    if (purchase?.businessId) {
+      await maybeSettleDealPurchasePayouts(purchase.businessId);
+    }
     console.log(
       '[deal-webhook] finalized purchase',
       paymentIntent.metadata.dealPurchaseId
@@ -366,10 +373,38 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent)
       '[deal-webhook] legacy create for purchaseToken',
       paymentIntent.metadata.purchaseToken
     );
-    await createDealPurchaseFromPaymentIntent(
+    const purchase = await createDealPurchaseFromPaymentIntent(
       paymentIntent,
       getConfiguredAppBaseUrl()
     );
+    if (purchase?.businessId) {
+      await maybeSettleDealPurchasePayouts(purchase.businessId);
+    }
+  }
+}
+
+async function maybeSettleDealPurchasePayouts(businessId: string) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: {
+      stripeConnectAccountId: true,
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+      stripeConnectDetailsSubmitted: true,
+    },
+  });
+
+  if (!canAutoTransferDealPayouts(business) || !business?.stripeConnectAccountId) {
+    return;
+  }
+
+  try {
+    await settlePendingDealPurchasePayouts({
+      businessId,
+      connectAccountId: business.stripeConnectAccountId,
+    });
+  } catch (error) {
+    console.warn('Deal payout backfill handling failed:', error);
   }
 }
 

@@ -55,6 +55,15 @@ const buildConnectData = (overrides: Record<string, unknown> = {}) => ({
   },
   balances: null,
   payouts: [],
+  dealPayouts: {
+    lifetimeEarned: 0,
+    pendingTransfer: 0,
+    transferredToConnect: 0,
+    pendingCount: 0,
+    transferredCount: 0,
+    automaticCount: 0,
+    lastTransferredAt: null,
+  },
   referralPayouts: {
     lifetimeEarned: 0,
     pendingTransfer: 0,
@@ -258,6 +267,15 @@ describe('PayoutsSetupPage', () => {
               available: [{ amount: 5000, currency: 'usd' }],
               pending: [{ amount: 1250, currency: 'usd' }],
             },
+            dealPayouts: {
+              lifetimeEarned: 128,
+              pendingTransfer: 128,
+              transferredToConnect: 0,
+              pendingCount: 3,
+              transferredCount: 0,
+              automaticCount: 0,
+              lastTransferredAt: null,
+            },
             referralPayouts: {
               lifetimeEarned: 3200,
               pendingTransfer: 870,
@@ -279,6 +297,7 @@ describe('PayoutsSetupPage', () => {
 
     expect(screen.getByText(/funds status/i)).toBeInTheDocument();
     expect(screen.getByText(/recent deal payments/i)).toBeInTheDocument();
+    expect(screen.getByText(/older deal earnings waiting on payout setup/i)).toBeInTheDocument();
     expect(screen.getByText(/referral earnings waiting on payout setup/i)).toBeInTheDocument();
   });
 });

@@ -8,6 +8,8 @@ const cents = (value: number) =>
 export function FundsStatusPanel({
   availableAmountCents,
   stripePendingAmountCents,
+  dealPendingAmountCents,
+  dealPendingCount,
   referralPendingAmountCents,
   referralPendingCount,
   readyForPaidDeals,
@@ -16,6 +18,8 @@ export function FundsStatusPanel({
 }: {
   availableAmountCents: number;
   stripePendingAmountCents: number;
+  dealPendingAmountCents: number;
+  dealPendingCount: number;
   referralPendingAmountCents: number;
   referralPendingCount: number;
   readyForPaidDeals: boolean;
@@ -25,6 +29,8 @@ export function FundsStatusPanel({
   const breakdown = buildPayoutFundsBreakdown({
     availableAmountCents,
     stripePendingAmountCents,
+    dealPendingAmountCents,
+    dealPendingCount,
     referralPendingAmountCents,
     referralPendingCount,
     readyForPaidDeals,

@@ -36,6 +36,11 @@ vi.mock('@/lib/deal-purchases', () => ({
   createDealPurchaseFromPaymentIntent: vi.fn(),
 }));
 
+vi.mock('@/lib/deal-payouts', () => ({
+  canAutoTransferDealPayouts: vi.fn(() => false),
+  settlePendingDealPurchasePayouts: vi.fn(),
+}));
+
 vi.mock('@/lib/app-url', () => ({
   getConfiguredAppBaseUrl: vi.fn(() => 'https://clientific.net'),
 }));

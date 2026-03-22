@@ -61,6 +61,15 @@ export type ConnectData = {
     bankLast4: string | null;
     bankName: string | null;
   }>;
+  dealPayouts: {
+    lifetimeEarned: number;
+    pendingTransfer: number;
+    transferredToConnect: number;
+    pendingCount: number;
+    transferredCount: number;
+    automaticCount: number;
+    lastTransferredAt: string | null;
+  };
   referralPayouts: {
     lifetimeEarned: number;
     pendingTransfer: number;
