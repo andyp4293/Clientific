@@ -191,6 +191,7 @@ describe('CustomerList messaging', () => {
     expect(within(mobileList).getByText('Visits')).toBeInTheDocument();
     expect(within(mobileList).getByText('Total spent')).toBeInTheDocument();
     expect(within(mobileList).getByText('Last visit')).toBeInTheDocument();
+    expect(within(mobileList).getAllByTestId('customer-mobile-stat-card')).toHaveLength(4);
     expect(within(mobileList).getByRole('link', { name: /^view$/i })).toBeInTheDocument();
   });
 });

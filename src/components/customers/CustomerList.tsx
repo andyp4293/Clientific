@@ -447,7 +447,10 @@ export default function CustomerList({
                     </div>
 
                     <dl className="mt-4 grid grid-cols-2 gap-3">
-                      <div className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-700 dark:bg-gray-800/80">
+                      <div
+                        data-testid="customer-mobile-stat-card"
+                        className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-700 dark:bg-gray-800/80"
+                      >
                         <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
                           Joined
                         </dt>
@@ -455,7 +458,10 @@ export default function CustomerList({
                           {formatDateLabel(customer.createdAt)}
                         </dd>
                       </div>
-                      <div className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-700 dark:bg-gray-800/80">
+                      <div
+                        data-testid="customer-mobile-stat-card"
+                        className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-700 dark:bg-gray-800/80"
+                      >
                         <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
                           Visits
                         </dt>
@@ -463,7 +469,10 @@ export default function CustomerList({
                           {customer._count.checkIns}
                         </dd>
                       </div>
-                      <div className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-700 dark:bg-gray-800/80">
+                      <div
+                        data-testid="customer-mobile-stat-card"
+                        className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-700 dark:bg-gray-800/80"
+                      >
                         <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
                           Total spent
                         </dt>
@@ -471,7 +480,10 @@ export default function CustomerList({
                           ${customer.totalSpent.toFixed(2)}
                         </dd>
                       </div>
-                      <div className="col-span-2 rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-700 dark:bg-gray-800/80">
+                      <div
+                        data-testid="customer-mobile-stat-card"
+                        className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-700 dark:bg-gray-800/80"
+                      >
                         <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
                           Last visit
                         </dt>
