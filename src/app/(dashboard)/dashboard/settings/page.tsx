@@ -231,7 +231,10 @@ export default function SettingsPage() {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      queryClient.setQueryData(['business-info'], result);
+      setFormData(result.business);
+      setLogoPreview(result.business.logoUrl ?? null);
       queryClient.invalidateQueries({ queryKey: ['business-info'] });
       toast.success('Settings saved!');
     },
@@ -256,6 +259,7 @@ export default function SettingsPage() {
     onSuccess: (data) => {
       const newNumber = data.business.vapiPhoneNumber ?? null;
       const unifiedNumber = (data.business.vapiPhoneNumber || data.business.smsAiPhoneNumber || '').trim();
+      queryClient.setQueryData(['business-info'], data);
       setFormData(prev => ({
         ...prev,
         aiReceptionistEnabled: data.business.aiReceptionistEnabled,

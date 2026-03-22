@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useSession, signOut } from 'next-auth/react';
 import {
   DASHBOARD_MOBILE_MORE_NAV,
@@ -16,10 +17,37 @@ import { DashboardIcon } from '@/components/layout/nav-icons';
 // Nav bar height above safe area (matches iOS tab bar standard)
 const NAV_HEIGHT = 52;
 
-export function MobileBottomNav() {
+type MobileBottomNavBusiness = {
+  name: string;
+  email: string;
+  logoUrl: string | null;
+};
+
+type MobileBottomNavProps = {
+  initialBusiness: MobileBottomNavBusiness;
+};
+
+export function MobileBottomNav({ initialBusiness }: MobileBottomNavProps) {
   const pathname = usePathname();
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const { data: session } = useSession();
+  const { data } = useQuery({
+    queryKey: ['business-info'],
+    queryFn: async () => {
+      const res = await fetch('/api/business');
+      if (!res.ok) throw new Error('Failed to fetch business');
+      return res.json();
+    },
+    staleTime: 30_000,
+    initialData: {
+      business: initialBusiness,
+    },
+  });
+
+  const business = data?.business ?? initialBusiness;
+  const businessName = business?.name?.trim() || session?.user?.name || 'User';
+  const businessEmail = business?.email?.trim() || session?.user?.email || '';
+  const businessInitial = businessName.charAt(0).toUpperCase() || 'U';
 
   const isOnMorePage = DASHBOARD_MOBILE_MORE_NAV.some((item) =>
     isDashboardRouteActive(pathname, item)
@@ -55,12 +83,20 @@ export function MobileBottomNav() {
 
             {/* Account row */}
             <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-4 dark:border-gray-800">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary">
-                <span className="text-sm font-semibold text-white">{session?.user?.name?.charAt(0).toUpperCase() || 'U'}</span>
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary">
+                {business?.logoUrl ? (
+                  <img
+                    src={business.logoUrl}
+                    alt={`${businessName} logo`}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="text-sm font-semibold text-white">{businessInitial}</span>
+                )}
               </div>
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{session?.user?.name || 'User'}</p>
-                <p className="truncate text-xs text-gray-500 dark:text-gray-400">{session?.user?.email || ''}</p>
+                <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{businessName}</p>
+                <p className="truncate text-xs text-gray-500 dark:text-gray-400">{businessEmail}</p>
               </div>
             </div>
 

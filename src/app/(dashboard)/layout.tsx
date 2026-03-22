@@ -15,6 +15,11 @@ import { NotificationBell } from '@/components/layout/NotificationBell';
 import { Toaster } from 'sonner';
 
 type DashboardBusinessSnapshot = {
+  id: string;
+  name: string;
+  email: string;
+  businessEmail: string | null;
+  logoUrl: string | null;
   phone: string | null;
   street: string | null;
   city: string | null;
@@ -32,6 +37,11 @@ async function loadDashboardBusiness(
     return await prisma.business.findUnique({
       where: { id: businessId },
       select: {
+        id: true,
+        name: true,
+        email: true,
+        businessEmail: true,
+        logoUrl: true,
         phone: true,
         street: true,
         city: true,
@@ -49,6 +59,11 @@ async function loadDashboardBusiness(
     return prisma.business.findUnique({
       where: { id: businessId },
       select: {
+        id: true,
+        name: true,
+        email: true,
+        businessEmail: true,
+        logoUrl: true,
         phone: true,
         street: true,
         city: true,
@@ -250,7 +265,13 @@ export default async function DashboardLayout({
       </div>
 
       <div className="hidden lg:fixed lg:top-16 lg:bottom-0 lg:left-0 lg:flex lg:w-64 lg:flex-col">
-        <DashboardNav />
+        <DashboardNav
+          initialBusiness={{
+            name: business!.name,
+            email: business!.businessEmail?.trim() || business!.email,
+            logoUrl: business!.logoUrl,
+          }}
+        />
       </div>
 
       <div className="dashboard-scroll lg:pl-64 lg:pt-16">
@@ -264,7 +285,13 @@ export default async function DashboardLayout({
         className="dashboard-mobile-bottom-nav dashboard-nav-bar lg:hidden fixed bottom-0 left-0 right-0 brand-panel border-t border-gray-200 dark:border-gray-800 z-50"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 4px)' }}
       >
-        <MobileBottomNav />
+        <MobileBottomNav
+          initialBusiness={{
+            name: business!.name,
+            email: business!.businessEmail?.trim() || business!.email,
+            logoUrl: business!.logoUrl,
+          }}
+        />
       </div>
 
       <Toaster richColors position="top-right" />

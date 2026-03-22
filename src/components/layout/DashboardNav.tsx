@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
+import { useQuery } from '@tanstack/react-query';
 import {
   DASHBOARD_DESKTOP_NAV,
   DASHBOARD_SECTION_ORDER,
@@ -12,9 +13,36 @@ import {
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { DashboardIcon } from '@/components/layout/nav-icons';
 
-export function DashboardNav() {
+type DashboardNavBusiness = {
+  name: string;
+  email: string;
+  logoUrl: string | null;
+};
+
+type DashboardNavProps = {
+  initialBusiness: DashboardNavBusiness;
+};
+
+export function DashboardNav({ initialBusiness }: DashboardNavProps) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+  const { data } = useQuery({
+    queryKey: ['business-info'],
+    queryFn: async () => {
+      const res = await fetch('/api/business');
+      if (!res.ok) throw new Error('Failed to fetch business');
+      return res.json();
+    },
+    staleTime: 30_000,
+    initialData: {
+      business: initialBusiness,
+    },
+  });
+
+  const business = data?.business ?? initialBusiness;
+  const businessName = business?.name?.trim() || session?.user?.name || 'User';
+  const businessEmail = business?.email?.trim() || session?.user?.email || '';
+  const businessInitial = businessName.charAt(0).toUpperCase() || 'U';
 
   return (
     <div className="brand-panel flex h-full flex-col rounded-none border-y-0 border-l-0 border-r">
@@ -62,14 +90,22 @@ export function DashboardNav() {
       {status !== 'loading' && (
         <div className="border-t border-gray-200 p-4 dark:border-gray-800">
           <div className="mb-3 flex items-center">
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-primary">
-              <span className="text-sm font-semibold text-white">{session?.user?.name?.charAt(0).toUpperCase() || 'U'}</span>
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary">
+              {business?.logoUrl ? (
+                <img
+                  src={business.logoUrl}
+                  alt={`${businessName} logo`}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-sm font-semibold text-white">{businessInitial}</span>
+              )}
             </div>
             <div className="ml-3 min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
-                {session?.user?.name || 'User'}
+                {businessName}
               </p>
-              <p className="truncate text-xs text-gray-600 dark:text-gray-300">{session?.user?.email || ''}</p>
+              <p className="truncate text-xs text-gray-600 dark:text-gray-300">{businessEmail}</p>
             </div>
           </div>
           <ThemeToggle />
