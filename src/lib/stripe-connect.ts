@@ -56,8 +56,33 @@ export type ConnectAccountStatusSummary = {
   requirements: ConnectRequirementsSummary;
 };
 
-function isConnectAccountReady(account: Pick<Stripe.Account, 'charges_enabled' | 'payouts_enabled' | 'details_submitted'>) {
-  return Boolean(account.charges_enabled && account.payouts_enabled && account.details_submitted);
+function hasActiveConnectMoneyMovement(
+  account: Pick<Stripe.Account, 'charges_enabled' | 'capabilities'>
+) {
+  return Boolean(account.charges_enabled || account.capabilities?.transfers === 'active');
+}
+
+function isRecipientPayoutOnlyAccount(
+  account: Pick<Stripe.Account, 'capabilities' | 'tos_acceptance'>
+) {
+  const serviceAgreement = account.tos_acceptance?.service_agreement?.toLowerCase();
+  const hasTransfersCapability = Boolean(account.capabilities?.transfers);
+  const hasCardPaymentsCapability = Boolean(account.capabilities?.card_payments);
+
+  return serviceAgreement === 'recipient' || (hasTransfersCapability && !hasCardPaymentsCapability);
+}
+
+export function isConnectAccountReady(
+  account: Pick<
+    Stripe.Account,
+    'charges_enabled' | 'payouts_enabled' | 'details_submitted' | 'capabilities'
+  >
+) {
+  return Boolean(
+    hasActiveConnectMoneyMovement(account) &&
+      account.payouts_enabled &&
+      account.details_submitted
+  );
 }
 
 function buildStatementDescriptor(name: string) {
@@ -87,6 +112,13 @@ function shouldRecreateLegacyEmbeddedAccount(account: Stripe.Account) {
     !account.details_submitted &&
     !account.charges_enabled &&
     !account.payouts_enabled
+  );
+}
+
+function shouldRecreateIncompleteNonRecipientAccount(account: Stripe.Account) {
+  return Boolean(
+    !isConnectAccountReady(account) &&
+      !isRecipientPayoutOnlyAccount(account)
   );
 }
 
@@ -142,7 +174,7 @@ function buildConnectAccountRefreshParams(
   return {
     business_profile: buildConnectBusinessProfile(business, appUrl),
     settings: {
-      payments: {
+      payouts: {
         statement_descriptor: buildStatementDescriptor(business.name),
       },
     },
@@ -268,11 +300,13 @@ export async function syncBusinessConnectAccount(
   businessId: string,
   account: Stripe.Account
 ) {
+  const moneyMovementEnabled = hasActiveConnectMoneyMovement(account);
+
   return prisma.business.update({
     where: { id: businessId },
     data: {
       stripeConnectAccountId: account.id,
-      stripeConnectChargesEnabled: account.charges_enabled,
+      stripeConnectChargesEnabled: moneyMovementEnabled,
       stripeConnectPayoutsEnabled: account.payouts_enabled,
       stripeConnectDetailsSubmitted: account.details_submitted,
       stripeConnectOnboardedAt: isConnectAccountReady(account) ? new Date() : null,
@@ -293,7 +327,7 @@ export async function fetchConnectAccountStatus(
 
   return {
     accountId: account.id,
-    chargesEnabled: account.charges_enabled,
+    chargesEnabled: hasActiveConnectMoneyMovement(account),
     payoutsEnabled: account.payouts_enabled,
     detailsSubmitted: account.details_submitted,
     onboardingComplete: isConnectAccountReady(account),
@@ -322,9 +356,9 @@ export async function syncBusinessConnectState(
 }
 
 /**
- * Ensures an embedded no-dashboard Connect account exists for the business.
- * Stripe handles hosted onboarding, compliance, and negative-balance liability,
- * while the business still experiences payouts inside Clientific.
+ * Ensures a lighter payout-only Connect account exists for the business.
+ * Stripe still handles secure bank onboarding and compliance, but the account
+ * is configured for transfers-only recipient payouts instead of full merchant capabilities.
  */
 export async function ensureBusinessConnectAccount(
   business: BusinessConnectSeed,
@@ -337,6 +371,8 @@ export async function ensureBusinessConnectAccount(
       if ((existing as Stripe.Account).type === 'express') {
         await resetBusinessConnectState(business.id);
       } else if (shouldRecreateLegacyEmbeddedAccount(existing)) {
+        await resetBusinessConnectState(business.id);
+      } else if (shouldRecreateIncompleteNonRecipientAccount(existing)) {
         await resetBusinessConnectState(business.id);
       } else {
         if (!isConnectAccountReady(existing) && canRefreshIncompleteConnectAccount(existing)) {
@@ -370,19 +406,23 @@ export async function ensureBusinessConnectAccount(
       },
     },
     capabilities: {
-      card_payments: { requested: true },
       transfers: { requested: true },
     },
     settings: {
       payouts: {
+        statement_descriptor: buildStatementDescriptor(business.name),
         schedule: {
           interval: 'manual',
         },
       },
     },
+    tos_acceptance: {
+      service_agreement: 'recipient',
+    },
     metadata: {
       businessId: business.id,
       businessName: business.name,
+      payoutSetupMode: 'recipient',
     },
   });
 
@@ -520,7 +560,7 @@ export async function createConnectOnboardingLink({
     return_url: returnUrl,
     type: 'account_onboarding',
     collection_options: {
-      fields: 'eventually_due',
+      fields: 'currently_due',
     },
   });
 }

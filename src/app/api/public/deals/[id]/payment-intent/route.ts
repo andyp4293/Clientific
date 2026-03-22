@@ -13,7 +13,10 @@ import {
   createPendingDealPurchase,
   finalizeDealPurchaseFromPaymentIntent,
 } from '@/lib/deal-purchases';
-import { ensureBusinessConnectAccount } from '@/lib/stripe-connect';
+import {
+  ensureBusinessConnectAccount,
+  isConnectAccountReady,
+} from '@/lib/stripe-connect';
 import { formatPhoneNumber, isValidPhoneNumber } from '@/lib/twilio';
 
 export async function POST(
@@ -142,7 +145,7 @@ export async function POST(
         appUrl
       );
 
-      if (!(connectAccount.charges_enabled && connectAccount.payouts_enabled && connectAccount.details_submitted)) {
+      if (!isConnectAccountReady(connectAccount)) {
         return NextResponse.json(
           {
             error:

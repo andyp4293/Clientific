@@ -33,6 +33,9 @@ vi.mock('@/lib/deal-purchases', () => ({
 
 vi.mock('@/lib/stripe-connect', () => ({
   ensureBusinessConnectAccount: vi.fn(),
+  isConnectAccountReady: vi.fn((account: { charges_enabled?: boolean; payouts_enabled?: boolean; details_submitted?: boolean }) =>
+    Boolean(account?.charges_enabled && account?.payouts_enabled && account?.details_submitted)
+  ),
 }));
 
 vi.mock('@/lib/twilio', () => ({
@@ -53,7 +56,10 @@ import {
   DealPurchasePricingError,
 } from '@/lib/deal-purchase-pricing';
 import { createPendingDealPurchase, finalizeDealPurchaseFromCheckoutSession } from '@/lib/deal-purchases';
-import { ensureBusinessConnectAccount } from '@/lib/stripe-connect';
+import {
+  ensureBusinessConnectAccount,
+  isConnectAccountReady,
+} from '@/lib/stripe-connect';
 import { isValidPhoneNumber } from '@/lib/twilio';
 import { POST } from './route';
 
@@ -63,6 +69,7 @@ const mockSessionCreate = stripe.checkout.sessions.create as ReturnType<typeof v
 const mockCreatePending = createPendingDealPurchase as ReturnType<typeof vi.fn>;
 const mockFinalize = finalizeDealPurchaseFromCheckoutSession as ReturnType<typeof vi.fn>;
 const mockEnsureConnect = ensureBusinessConnectAccount as ReturnType<typeof vi.fn>;
+const mockIsConnectAccountReady = isConnectAccountReady as ReturnType<typeof vi.fn>;
 const mockIsValidPhone = isValidPhoneNumber as ReturnType<typeof vi.fn>;
 const mockGetSelectable = getSelectableServicesForDeal as ReturnType<typeof vi.fn>;
 const mockResolveSelected = resolveSelectedServicesForDeal as ReturnType<typeof vi.fn>;
@@ -125,6 +132,9 @@ beforeEach(() => {
   mockCalculateTotals.mockReturnValue({ subtotalAmount: 5000, discountAmount: 1000, totalAmount: 4000, items: [] });
   mockCreatePending.mockResolvedValue(basePurchase);
   mockEnsureConnect.mockResolvedValue(readyConnectAccount);
+  mockIsConnectAccountReady.mockImplementation((account: { charges_enabled?: boolean; payouts_enabled?: boolean; details_submitted?: boolean }) =>
+    Boolean(account?.charges_enabled && account?.payouts_enabled && account?.details_submitted)
+  );
   mockSessionCreate.mockResolvedValue({ id: 'cs_test_123', url: 'https://checkout.stripe.com/pay/cs_test_123' });
   mockDealPurchaseUpdate.mockResolvedValue({});
 });
@@ -212,6 +222,25 @@ describe('POST /api/public/deals/[id]/checkout', () => {
     expect(res.status).toBe(409);
     const body = await res.json();
     expect(body.error).toMatch(/not ready/i);
+  });
+
+  it('allows recipient transfer-only payout accounts when the shared readiness helper marks them ready', async () => {
+    mockEnsureConnect.mockResolvedValue({
+      id: 'acct_recipient',
+      charges_enabled: false,
+      payouts_enabled: true,
+      details_submitted: true,
+      capabilities: { transfers: 'active' },
+    });
+    mockIsConnectAccountReady.mockReturnValue(true);
+
+    const res = await POST(
+      makeRequest({ customerName: 'Jane Doe', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] }),
+      { params: Promise.resolve({ id: 'deal-1' }) }
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockSessionCreate).toHaveBeenCalledTimes(1);
   });
 
   it('creates a Stripe Checkout session and returns the URL for a paid deal', async () => {

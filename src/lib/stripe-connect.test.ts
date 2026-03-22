@@ -19,6 +19,9 @@ vi.mock('@/lib/stripe', () => ({
       create: vi.fn(),
       update: vi.fn(),
     },
+    balanceSettings: {
+      retrieve: vi.fn(),
+    },
     accountLinks: {
       create: vi.fn(),
     },
@@ -34,6 +37,7 @@ import {
   createConnectOnboardingLink,
   createConnectAccountSession,
   ensureBusinessConnectAccount,
+  fetchConnectAccountStatus,
   isRecoverableConnectAccountError,
 } from './stripe-connect';
 
@@ -42,6 +46,7 @@ const mockBankDeleteMany = prisma.businessBankAccount.deleteMany as ReturnType<t
 const mockAccountRetrieve = stripe.accounts.retrieve as ReturnType<typeof vi.fn>;
 const mockAccountCreate = stripe.accounts.create as ReturnType<typeof vi.fn>;
 const mockAccountUpdate = stripe.accounts.update as ReturnType<typeof vi.fn>;
+const mockBalanceSettingsRetrieve = stripe.balanceSettings.retrieve as ReturnType<typeof vi.fn>;
 const mockAccountLinkCreate = stripe.accountLinks.create as ReturnType<typeof vi.fn>;
 const mockAccountSessionCreate = stripe.accountSessions.create as ReturnType<typeof vi.fn>;
 
@@ -62,10 +67,16 @@ const createdAccount = {
   charges_enabled: false,
   payouts_enabled: false,
   details_submitted: false,
+  capabilities: {
+    transfers: 'inactive',
+  },
   controller: {
     losses: { payments: 'stripe' },
     requirement_collection: 'stripe',
     stripe_dashboard: { type: 'none' },
+  },
+  tos_acceptance: {
+    service_agreement: 'recipient',
   },
 };
 
@@ -80,14 +91,32 @@ beforeEach(() => {
     charges_enabled: false,
     payouts_enabled: false,
     details_submitted: false,
+    capabilities: {
+      transfers: 'inactive',
+    },
     controller: {
       losses: { payments: 'stripe' },
       requirement_collection: 'stripe',
       stripe_dashboard: { type: 'none' },
     },
+    tos_acceptance: {
+      service_agreement: 'recipient',
+    },
     business_profile: params.business_profile,
     settings: params.settings,
   }));
+  mockBalanceSettingsRetrieve.mockResolvedValue({
+    payments: {
+      payouts: {
+        schedule: {
+          interval: 'manual',
+          monthly_payout_days: [],
+          weekly_payout_days: [],
+        },
+        statement_descriptor: 'TEST SALON',
+      },
+    },
+  });
   mockAccountLinkCreate.mockResolvedValue({ url: 'https://connect.stripe.test/onboarding' });
   mockAccountSessionCreate.mockResolvedValue({ client_secret: 'cas_test_secret' });
 });
@@ -120,8 +149,14 @@ describe('ensureBusinessConnectAccount', () => {
         controller: expect.objectContaining({
           stripe_dashboard: { type: 'none' },
         }),
+        capabilities: {
+          transfers: { requested: true },
+        },
         email: 'owner@example.com',
         metadata: expect.objectContaining({ businessId: 'biz-1' }),
+        tos_acceptance: {
+          service_agreement: 'recipient',
+        },
       })
     );
     expect(mockBusinessUpdate).toHaveBeenCalledTimes(2);
@@ -156,21 +191,73 @@ describe('ensureBusinessConnectAccount', () => {
         controller: expect.objectContaining({
           stripe_dashboard: { type: 'none' },
         }),
+        capabilities: {
+          transfers: { requested: true },
+        },
+        tos_acceptance: {
+          service_agreement: 'recipient',
+        },
       })
     );
   });
 
-  it('reuses stripe-managed incomplete embedded accounts without patching restricted fields', async () => {
+  it('recreates stripe-managed incomplete merchant-style accounts into lighter recipient payout accounts', async () => {
     const existingAccount = {
       id: 'acct_current',
       type: 'none',
       charges_enabled: false,
       payouts_enabled: false,
       details_submitted: false,
+      capabilities: {
+        card_payments: 'inactive',
+        transfers: 'inactive',
+      },
       controller: {
         losses: { payments: 'stripe' },
         requirement_collection: 'stripe',
         stripe_dashboard: { type: 'none' },
+      },
+      tos_acceptance: {
+        service_agreement: 'full',
+      },
+    };
+    mockAccountRetrieve.mockResolvedValue(existingAccount);
+
+    const account = await ensureBusinessConnectAccount(business, 'https://clientific.app');
+
+    expect(account).toEqual(createdAccount);
+    expect(mockAccountUpdate).not.toHaveBeenCalled();
+    expect(mockAccountCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        capabilities: {
+          transfers: { requested: true },
+        },
+        tos_acceptance: {
+          service_agreement: 'recipient',
+        },
+      })
+    );
+    expect(mockBankDeleteMany).toHaveBeenCalledWith({ where: { businessId: 'biz-1' } });
+    expect(mockBusinessUpdate).toHaveBeenCalledTimes(2);
+  });
+
+  it('reuses stripe-managed incomplete recipient payout accounts without patching restricted fields', async () => {
+    const existingAccount = {
+      id: 'acct_current',
+      type: 'none',
+      charges_enabled: false,
+      payouts_enabled: false,
+      details_submitted: false,
+      capabilities: {
+        transfers: 'inactive',
+      },
+      controller: {
+        losses: { payments: 'stripe' },
+        requirement_collection: 'stripe',
+        stripe_dashboard: { type: 'none' },
+      },
+      tos_acceptance: {
+        service_agreement: 'recipient',
       },
     };
     mockAccountRetrieve.mockResolvedValue(existingAccount);
@@ -298,7 +385,7 @@ describe('createConnectAccountSession', () => {
 });
 
 describe('createConnectOnboardingLink', () => {
-  it('creates a hosted onboarding link that collects eventually due requirements', async () => {
+  it('creates a hosted onboarding link that collects only currently due requirements', async () => {
     await createConnectOnboardingLink({
       accountId: 'acct_hosted',
       refreshUrl: 'https://clientific.app/api/stripe/connect/onboarding-link/refresh',
@@ -311,8 +398,53 @@ describe('createConnectOnboardingLink', () => {
       return_url: 'https://clientific.app/dashboard/payouts/setup?stripe_onboarding=return',
       type: 'account_onboarding',
       collection_options: {
-        fields: 'eventually_due',
+        fields: 'currently_due',
       },
     });
+  });
+});
+
+describe('fetchConnectAccountStatus', () => {
+  it('treats recipient transfer-only accounts as payout-ready when transfers are active', async () => {
+    mockAccountRetrieve.mockResolvedValue({
+      id: 'acct_recipient',
+      charges_enabled: false,
+      payouts_enabled: true,
+      details_submitted: true,
+      capabilities: {
+        transfers: 'active',
+      },
+      external_accounts: {
+        data: [
+          {
+            object: 'bank_account',
+            id: 'ba_123',
+            bank_name: 'Chase',
+            last4: '6789',
+            routing_number: '110000000',
+            account_holder_name: 'Test Salon',
+            default_for_currency: true,
+            status: 'verified',
+          },
+        ],
+      },
+      requirements: {
+        currently_due: [],
+        eventually_due: [],
+        past_due: [],
+        pending_verification: [],
+        disabled_reason: null,
+      },
+    });
+
+    const status = await fetchConnectAccountStatus('acct_recipient');
+
+    expect(mockAccountRetrieve).toHaveBeenCalledWith('acct_recipient', {
+      expand: ['external_accounts'],
+    });
+    expect(status.chargesEnabled).toBe(true);
+    expect(status.onboardingComplete).toBe(true);
+    expect(status.bankAccountConnected).toBe(true);
+    expect(status.externalAccount?.last4).toBe('6789');
   });
 });

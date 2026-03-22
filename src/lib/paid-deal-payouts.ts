@@ -64,7 +64,7 @@ export function getPaidDealPayoutStatus(
       ready: false,
       code: 'charges_disabled',
       message:
-        'Stripe is still reviewing this payout setup. Paid deal purchases can go live once charges are enabled.',
+        'Stripe is still activating money movement for this payout setup. Paid deal purchases can go live once that review finishes.',
     };
   }
 

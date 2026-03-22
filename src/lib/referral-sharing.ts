@@ -51,7 +51,7 @@ export function getReferralSharingStatus(
       ready: false,
       code: 'charges_disabled',
       message:
-        'Stripe is still reviewing this payout setup. You can share referral links once charges are enabled.',
+        'Stripe is still activating money movement for this payout setup. You can share referral links once that review finishes.',
     };
   }
 
