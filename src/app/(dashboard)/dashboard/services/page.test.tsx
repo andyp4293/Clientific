@@ -28,24 +28,21 @@ describe("services page cache sync contract", () => {
       "flex h-[100dvh] w-full flex-col bg-white shadow-2xl dark:bg-gray-800 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-xl",
     );
     expect(source).toContain(
-      "fixed inset-0 z-[70] overflow-hidden overscroll-none bg-[rgb(var(--color-gray-50))] dark:bg-[rgb(var(--color-gray-950))]",
+      'className="fixed inset-0 z-[70] bg-black/50 p-0 sm:flex sm:items-center sm:justify-center sm:p-4"',
     );
-    expect(source).toContain("sm:bg-black/50 sm:backdrop-blur-[2px] sm:p-4");
     expect(source).toContain(
-      "flex h-[100dvh] min-h-[100dvh] w-screen max-w-none flex-col overflow-hidden bg-white shadow-2xl dark:bg-gray-900",
+      "flex h-[100dvh] min-h-[100dvh] w-full flex-col bg-white shadow-2xl dark:bg-gray-800",
     );
-    expect(source).toContain("sm:max-w-5xl xl:max-w-[1100px]");
-    expect(source).toContain("sm:bg-white/95");
-    expect(source).toContain("dark:sm:bg-gray-950/92");
-    expect(source).toContain("sm:bg-transparent sm:px-6 sm:py-5");
-    expect(source).toContain("grid grid-cols-1 gap-4 xl:grid-cols-2 xl:gap-5");
-    expect(source).toContain('className="space-y-4 xl:contents"');
-    expect(source).toContain("xl:col-span-2");
+    expect(source).toContain("sm:max-w-5xl sm:rounded-xl sm:border");
+    expect(source).toContain("flex-1 space-y-4 overflow-y-auto px-4 py-4");
+    expect(source).toContain("grid grid-cols-1 gap-4 lg:grid-cols-2");
+    expect(source).toContain('className="space-y-4 lg:contents"');
+    expect(source).toContain("lg:col-span-2");
     expect(source).toContain("grid grid-cols-1 gap-4 sm:grid-cols-2");
     expect(source).toContain("pt-[calc(env(safe-area-inset-top)+1rem)]");
     expect(source).toContain("pb-[calc(env(safe-area-inset-bottom)+1rem)]");
     expect(source).toContain(
-      "flex flex-col-reverse gap-3 border-t border-gray-200/80 bg-white/95 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] backdrop-blur",
+      "flex flex-col-reverse gap-3 border-t border-gray-100 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]",
     );
     expect(source).toContain("Working hours");
     expect(source).toContain("Times shown in {businessTimezoneLabel}");
@@ -56,9 +53,7 @@ describe("services page cache sync contract", () => {
     expect(source).toContain(
       "Staff hours are set per day below, stay inside business",
     );
-    expect(source).toContain(
-      "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3",
-    );
+    expect(source).toContain("grid grid-cols-1 gap-4 md:grid-cols-2");
     expect(source).not.toContain(
       "Set working days, bookable services, and appointment hours",
     );

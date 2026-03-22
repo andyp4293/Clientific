@@ -1487,53 +1487,42 @@ export default function ServicesPage() {
       {modalType === "staff" && (
         <div
           data-mobile-overlay="true"
-          className="fixed inset-0 z-[70] overflow-hidden overscroll-none bg-[rgb(var(--color-gray-50))] dark:bg-[rgb(var(--color-gray-950))] sm:flex sm:items-center sm:justify-center sm:bg-black/50 sm:backdrop-blur-[2px] sm:p-4"
+          className="fixed inset-0 z-[70] bg-black/50 p-0 sm:flex sm:items-center sm:justify-center sm:p-4"
         >
-          <div className="flex h-[100dvh] min-h-[100dvh] w-screen max-w-none flex-col overflow-hidden bg-white shadow-2xl dark:bg-gray-900 sm:h-auto sm:min-h-0 sm:w-full sm:max-h-[88vh] sm:max-w-5xl xl:max-w-[1100px] sm:rounded-[1.5rem] sm:border sm:border-white/10 sm:bg-white/95 sm:shadow-[0_40px_120px_-40px_rgba(2,6,23,0.8)] sm:backdrop-blur-xl dark:sm:bg-gray-950/92">
-            <div className="border-b border-gray-200/80 bg-gray-950 text-white dark:border-white/10 sm:bg-gray-950/88 sm:backdrop-blur-xl">
-              <div className="px-4 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] sm:px-6 sm:pb-5 sm:pt-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="max-w-2xl">
-                    <span className="inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">
-                      Staff availability
-                    </span>
-                    <h2 className="mt-3 text-[2rem] font-semibold tracking-tight text-white sm:text-[2.15rem]">
-                      {editingStaff
-                        ? "Edit Staff Member"
-                        : "Add New Staff Member"}
-                    </h2>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={closeModal}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
-                  >
-                    <svg
-                      className="h-6 w-6"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </div>
+          <div className="flex h-[100dvh] min-h-[100dvh] w-full flex-col bg-white shadow-2xl dark:bg-gray-800 sm:h-auto sm:min-h-0 sm:max-h-[90vh] sm:max-w-5xl sm:rounded-xl sm:border sm:border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 pt-[calc(env(safe-area-inset-top)+1rem)] dark:border-gray-700 sm:px-6 sm:pb-0 sm:pt-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                {editingStaff ? "Edit Staff Member" : "Add New Staff Member"}
+              </h2>
+              <button
+                type="button"
+                onClick={closeModal}
+                className="text-gray-400 transition-colors hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400"
+              >
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
             </div>
 
             <form
               onSubmit={handleStaffSubmit}
               className="flex flex-1 flex-col overflow-hidden"
             >
-              <div className="flex-1 overflow-y-auto overscroll-y-contain bg-gray-50/70 px-4 py-4 dark:bg-gray-950 sm:bg-transparent sm:px-6 sm:py-5 dark:sm:bg-transparent">
-                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 xl:gap-5">
-                  <div className="space-y-4 xl:contents">
-                    <section className="rounded-[1.75rem] border border-gray-200/80 bg-white p-5 shadow-[0_24px_70px_-42px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-gray-900/85">
+              <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:pb-0 sm:pt-4">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <div className="space-y-4 lg:contents">
+                    <section className="rounded-xl border border-gray-100 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div className="sm:col-span-2">
                           <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -1632,14 +1621,11 @@ export default function ServicesPage() {
                     </section>
                   </div>
 
-                  <div className="space-y-4 xl:contents">
-                    <section className="rounded-[1.75rem] border border-gray-200/80 bg-white p-5 shadow-[0_24px_70px_-42px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-gray-900/85">
+                  <div className="space-y-4 lg:contents">
+                    <section className="rounded-xl border border-gray-100 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary-700 dark:text-primary-300">
-                            Availability
-                          </p>
-                          <h3 className="mt-2 text-lg font-semibold text-gray-950 dark:text-white">
+                          <h3 className="text-lg font-semibold text-gray-950 dark:text-white">
                             Working days
                           </h3>
                         </div>
@@ -1711,7 +1697,7 @@ export default function ServicesPage() {
                           })(),
                         )}
                       </div>
-                      <div className="mt-4 rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 px-4 py-3 text-sm leading-6 text-gray-600 dark:border-white/10 dark:bg-gray-800/70 dark:text-gray-300">
+                      <div className="mt-4 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm leading-6 text-gray-600 dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-300">
                         Staff hours are set per day below, stay inside business
                         hours, and are interpreted in the business timezone so
                         desktop, public booking, and AI booking all stay in
@@ -1719,13 +1705,10 @@ export default function ServicesPage() {
                       </div>
                     </section>
 
-                    <section className="rounded-[1.75rem] border border-gray-200/80 bg-white p-5 shadow-[0_24px_70px_-42px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-gray-900/85 xl:col-span-2">
+                    <section className="rounded-xl border border-gray-100 bg-white p-5 dark:border-gray-700 dark:bg-gray-800 lg:col-span-2">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary-700 dark:text-primary-300">
-                            Schedule
-                          </p>
-                          <h3 className="mt-2 text-lg font-semibold text-gray-950 dark:text-white">
+                          <h3 className="text-lg font-semibold text-gray-950 dark:text-white">
                             Working hours
                           </h3>
                         </div>
@@ -1735,12 +1718,12 @@ export default function ServicesPage() {
                       </div>
 
                       {staffFormData.workDays.length === 0 ? (
-                        <div className="mt-5 rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 px-4 py-4 text-sm leading-6 text-gray-600 dark:border-white/10 dark:bg-gray-800/70 dark:text-gray-300">
+                        <div className="mt-5 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-4 text-sm leading-6 text-gray-600 dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-300">
                           Select at least one working day to define the exact
                           hours this staff member accepts appointments.
                         </div>
                       ) : (
-                        <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
                           {staffFormData.workDays.map((dayOfWeek) => {
                             const businessDay = businessHoursRecord[dayOfWeek];
                             const dayLabel = DAY_LABELS[dayOfWeek];
@@ -1791,7 +1774,7 @@ export default function ServicesPage() {
                             return (
                               <div
                                 key={dayOfWeek}
-                                className="rounded-[1.35rem] border border-gray-200/80 bg-gray-50/80 p-4 shadow-[0_18px_40px_-38px_rgba(15,23,42,0.8)] dark:border-white/10 dark:bg-gray-950/70"
+                                className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/70"
                               >
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                   <div>
@@ -1894,13 +1877,10 @@ export default function ServicesPage() {
                     </section>
 
                     {/* Service Assignments */}
-                    <section className="rounded-[1.75rem] border border-gray-200/80 bg-white p-5 shadow-[0_24px_70px_-42px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-gray-900/85 xl:col-span-2">
+                    <section className="rounded-xl border border-gray-100 bg-white p-5 dark:border-gray-700 dark:bg-gray-800 lg:col-span-2">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary-700 dark:text-primary-300">
-                            Bookable menu
-                          </p>
-                          <h3 className="mt-2 text-lg font-semibold text-gray-950 dark:text-white">
+                          <h3 className="text-lg font-semibold text-gray-950 dark:text-white">
                             Services this staff can perform
                           </h3>
                         </div>
@@ -1958,7 +1938,7 @@ export default function ServicesPage() {
                               return (
                                 <div
                                   key={group.id}
-                                  className="rounded-[1.35rem] border border-gray-200/80 bg-gray-50/80 p-4 dark:border-white/10 dark:bg-gray-950/70"
+                                  className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/70"
                                 >
                                   <div className="mb-3 flex items-center justify-between gap-3">
                                     <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-600 dark:text-gray-400">
@@ -2052,7 +2032,7 @@ export default function ServicesPage() {
                             );
                             if (ungrouped.length === 0) return null;
                             return (
-                              <div className="rounded-[1.35rem] border border-gray-200/80 bg-gray-50/80 p-4 dark:border-white/10 dark:bg-gray-950/70">
+                              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/70">
                                 <div className="mb-3 flex items-center justify-between gap-3">
                                   <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-600 dark:text-gray-400">
                                     Other
@@ -2170,7 +2150,7 @@ export default function ServicesPage() {
                       )}
                     </section>
 
-                    <section className="rounded-[1.75rem] border border-gray-200/80 bg-white p-5 shadow-[0_24px_70px_-42px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-gray-900/85 xl:col-span-2">
+                    <section className="rounded-xl border border-gray-100 bg-white p-5 dark:border-gray-700 dark:bg-gray-800 lg:col-span-2">
                       <label
                         htmlFor="staffActive"
                         className="flex items-start gap-3"
@@ -2197,7 +2177,7 @@ export default function ServicesPage() {
                   </div>
 
                   {saveStaffMutation.isError && (
-                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20 xl:col-span-2">
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20 lg:col-span-2">
                       <p className="text-sm text-red-600 dark:text-red-400">
                         {saveStaffMutation.error?.message ||
                           "Failed to save staff member"}
@@ -2207,18 +2187,18 @@ export default function ServicesPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col-reverse gap-3 border-t border-gray-200/80 bg-white/95 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] backdrop-blur dark:border-white/10 dark:bg-gray-900/95 sm:flex-row sm:px-6 sm:py-4 sm:pb-4">
+              <div className="flex flex-col-reverse gap-3 border-t border-gray-100 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] dark:border-gray-700 sm:flex-row sm:border-t-0 sm:px-6 sm:pb-6 sm:pt-2">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="flex-1 rounded-2xl border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                  className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                   disabled={saveStaffMutation.isPending}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-[0_24px_50px_-28px_rgba(24,166,120,0.95)] transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white transition-colors shadow-sm hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={saveStaffMutation.isPending}
                 >
                   {saveStaffMutation.isPending ? (
