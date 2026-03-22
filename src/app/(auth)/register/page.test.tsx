@@ -51,7 +51,7 @@ describe("RegisterPage", () => {
   it("uses a minimal business step and moves the rest of setup into onboarding", async () => {
     render(<RegisterPage />);
 
-    fireEvent.change(screen.getByLabelText(/email address/i), {
+    fireEvent.change(screen.getByLabelText(/account email/i), {
       target: { value: "owner@example.com" },
     });
     fireEvent.change(screen.getByLabelText(/^password \*/i), {
@@ -129,7 +129,7 @@ describe("RegisterPage", () => {
 
     render(<RegisterPage />);
 
-    fireEvent.change(screen.getByLabelText(/email address/i), {
+    fireEvent.change(screen.getByLabelText(/account email/i), {
       target: { value: "owner@example.com" },
     });
     fireEvent.change(screen.getByLabelText(/^password \*/i), {
@@ -206,7 +206,7 @@ describe("RegisterPage", () => {
       ),
     ).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText(/email address/i), {
+    fireEvent.change(screen.getByLabelText(/account email/i), {
       target: { value: "partner@example.com" },
     });
     fireEvent.change(screen.getByLabelText(/^password \*/i), {
@@ -274,7 +274,7 @@ describe("RegisterPage", () => {
 
     render(<RegisterPage />);
 
-    fireEvent.change(screen.getByLabelText(/email address/i), {
+    fireEvent.change(screen.getByLabelText(/account email/i), {
       target: { value: "partner@example.com" },
     });
     fireEvent.change(screen.getByLabelText(/^password \*/i), {

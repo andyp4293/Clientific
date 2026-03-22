@@ -229,6 +229,7 @@ export async function GET(req: NextRequest) {
         publicId: true,
         email: true,
         businessType: true,
+        ownerPhone: true,
         phone: true,
         businessEmail: true,
         street: true,
@@ -296,6 +297,7 @@ export async function PATCH(req: NextRequest) {
     const {
       name,
       businessType,
+      ownerPhone,
       phone,
       businessEmail,
       street,
@@ -353,6 +355,9 @@ export async function PATCH(req: NextRequest) {
     if (aiReceptionistPhone !== undefined && !isNullableString(aiReceptionistPhone)) {
       return NextResponse.json({ error: 'Transfer-to phone number must be text' }, { status: 400 });
     }
+    if (ownerPhone !== undefined && !isNullableString(ownerPhone)) {
+      return NextResponse.json({ error: 'Personal phone must be text' }, { status: 400 });
+    }
     if (typeof publicProfileHeadline === 'string' && publicProfileHeadline.trim().length > 90) {
       return NextResponse.json({ error: 'Public profile headline must be 90 characters or less' }, { status: 400 });
     }
@@ -396,6 +401,10 @@ export async function PATCH(req: NextRequest) {
       aiReceptionistPhone === undefined
         ? undefined
         : normalizeOptionalPhoneNumber(aiReceptionistPhone);
+    const normalizedOwnerPhone =
+      ownerPhone === undefined
+        ? undefined
+        : normalizeOptionalPhoneNumber(ownerPhone);
 
     if (
       typeof aiReceptionistPhone === 'string' &&
@@ -406,6 +415,20 @@ export async function PATCH(req: NextRequest) {
         {
           error:
             'Transfer-to phone number must be a valid phone number with country code or 10-digit US format',
+        },
+        { status: 400 }
+      );
+    }
+
+    if (
+      typeof ownerPhone === 'string' &&
+      ownerPhone.trim().length > 0 &&
+      !normalizedOwnerPhone
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Personal phone must be a valid phone number with country code or 10-digit US format',
         },
         { status: 400 }
       );
@@ -678,6 +701,7 @@ export async function PATCH(req: NextRequest) {
       data: {
         ...(name && { name }),
         ...(businessType && { businessType }),
+        ...(normalizedOwnerPhone !== undefined && { ownerPhone: normalizedOwnerPhone }),
         ...(phone && { phone }),
         ...(businessEmail !== undefined && { businessEmail }),
         ...(street !== undefined && { street }),

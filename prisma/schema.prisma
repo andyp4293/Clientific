@@ -22,6 +22,7 @@ model Business {
   slug                         String                 @unique
   publicId                     String?                @unique
   businessType                 String
+  ownerPhone                   String?
   phone                        String
   businessEmail                String?
   street                       String?

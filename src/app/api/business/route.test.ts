@@ -64,6 +64,7 @@ const fakeBusiness = {
   name: 'Test Salon',
   slug: 'test-salon',
   email: 'owner@test.com',
+  ownerPhone: null,
   subscriptionStatus: 'active',
   trialEndsAt: null,
   aiReceptionistEnabled: false,
@@ -181,6 +182,28 @@ describe('PATCH /api/business', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           aiReceptionistPhone: '+19087272437',
+        }),
+      })
+    );
+  });
+
+  it('normalizes the personal owner phone before saving settings', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({ ...fakeBusiness });
+    mockBusinessUpdate.mockResolvedValue({
+      ...fakeBusiness,
+      ownerPhone: '+19087272437',
+    });
+
+    const res = await PATCH(makePatchRequest({ ownerPhone: '(908) 727-2437' }));
+
+    expect(res.status).toBe(200);
+    expect(mockBusinessUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          ownerPhone: '+19087272437',
         }),
       })
     );

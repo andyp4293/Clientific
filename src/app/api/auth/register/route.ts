@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     const normalizedBusinessEmail =
       typeof businessEmail === 'string' && businessEmail.trim().length > 0
         ? businessEmail.trim()
-        : normalizedEmail;
+        : null;
     const normalizedStreet =
       typeof street === 'string' && street.trim().length > 0 ? street.trim() : null;
     const normalizedCity =

@@ -40,7 +40,13 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string>
   });
 }
 
-type Tab = 'profile' | 'branding' | 'integrations' | 'notifications' | 'ai-receptionist';
+type Tab =
+  | 'profile'
+  | 'personal'
+  | 'branding'
+  | 'integrations'
+  | 'notifications'
+  | 'ai-receptionist';
 
 function BookingQRCode({ bookingUrl, businessName }: { bookingUrl: string; businessName: string }) {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -107,6 +113,7 @@ interface Business {
   publicId: string;
   email: string;
   businessType: string;
+  ownerPhone: string | null;
   phone: string;
   businessEmail: string | null;
   street: string | null;
@@ -482,7 +489,8 @@ export default function SettingsPage() {
   }
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
-    { id: 'profile', label: 'Business Profile', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
+    { id: 'profile', label: 'Business Info', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
+    { id: 'personal', label: 'Personal Info', icon: 'M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z' },
     { id: 'branding', label: 'Branding & Logo', icon: 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01' },
     { id: 'integrations', label: 'Social & Reviews', icon: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1' },
     { id: 'notifications', label: 'Notifications', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' },
@@ -554,6 +562,10 @@ export default function SettingsPage() {
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Business Information</h3>
+
+              <div className="mb-6 rounded-xl border border-primary/20 bg-primary-50 px-4 py-4 text-sm text-gray-700 dark:border-primary/20 dark:bg-primary/10 dark:text-gray-300">
+                These are the customer-facing details for your business. Private account contact lives under Personal Info.
+              </div>
               
               {/* Business Name */}
               <div className="mb-4">
@@ -584,7 +596,7 @@ export default function SettingsPage() {
               {/* Phone */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Phone Number *
+                  Business Phone Number *
                 </label>
                 <input
                   type="tel"
@@ -593,12 +605,15 @@ export default function SettingsPage() {
                   className="input"
                   placeholder="(555) 123-4567"
                 />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Shown anywhere customers need to call or recognize your business.
+                </p>
               </div>
 
               {/* Business Email */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Business Email
+                  Customer-Facing Business Email
                 </label>
                 <input
                   type="email"
@@ -608,7 +623,7 @@ export default function SettingsPage() {
                   placeholder="contact@yourbusiness.com"
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Public email shown to customers (optional)
+                  Optional email for customers to see on your public business profile.
                 </p>
               </div>              {/* Address */}
               <div className="mb-4">
@@ -838,6 +853,48 @@ export default function SettingsPage() {
                   <p className="text-xs text-gray-500 dark:text-gray-400">Switch between light, dark, or system default</p>
                 </div>
                 <ThemeToggle />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'personal' && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Personal Information</h3>
+              <div className="mb-6 rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300">
+                Keep your private account contact here. Nothing in this section is shown publicly on your business page.
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Account Email
+                </label>
+                <input
+                  type="email"
+                  value={formData.email || ''}
+                  disabled
+                  className="input opacity-70 cursor-not-allowed"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Used for login, password resets, billing, and private account notices.
+                </p>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Personal Phone
+                </label>
+                <input
+                  type="tel"
+                  value={formData.ownerPhone || ''}
+                  onChange={(e) => handleInputChange('ownerPhone', e.target.value)}
+                  className="input"
+                  placeholder="(555) 123-4567"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Optional private number for the business owner or primary contact. Never shown to customers.
+                </p>
               </div>
             </div>
           </div>

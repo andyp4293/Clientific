@@ -12,6 +12,8 @@ import {
 type OnboardingFormData = {
   name: string;
   businessType: string;
+  accountEmail: string;
+  ownerPhone: string;
   phone: string;
   businessEmail: string;
   street: string;
@@ -25,6 +27,8 @@ type OnboardingFormData = {
 const EMPTY_FORM: OnboardingFormData = {
   name: '',
   businessType: '',
+  accountEmail: '',
+  ownerPhone: '',
   phone: '',
   businessEmail: '',
   street: '',
@@ -65,8 +69,10 @@ export default function DashboardOnboardingPage() {
         setFormData({
           name: business.name ?? '',
           businessType: business.businessType ?? '',
+          accountEmail: business.email ?? '',
+          ownerPhone: business.ownerPhone ?? '',
           phone: business.phone ?? '',
-          businessEmail: business.businessEmail ?? business.email ?? '',
+          businessEmail: business.businessEmail ?? '',
           street: business.street ?? '',
           city: business.city ?? '',
           state: business.state ?? '',
@@ -150,6 +156,7 @@ export default function DashboardOnboardingPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          ownerPhone: formData.ownerPhone.trim() || null,
           phone: formData.phone.trim(),
           businessEmail: formData.businessEmail.trim() || null,
           street: formData.street.trim(),
@@ -193,7 +200,7 @@ export default function DashboardOnboardingPage() {
           Finish Your Business Setup
         </h1>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Add your business phone and location to unlock your dashboard, public profile, and local booking flow.
+          Add your private owner contact and customer-facing business contact to unlock your dashboard, public profile, and local booking flow.
         </p>
       </div>
 
@@ -232,33 +239,78 @@ export default function DashboardOnboardingPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label htmlFor="onboarding-phone" className="label">
-              Business Phone *
-            </label>
-            <input
-              id="onboarding-phone"
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => updateField('phone', e.target.value)}
-              className="input"
-              placeholder="(555) 123-4567"
-            />
-          </div>
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/40">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            Personal Info
+          </h2>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            Private account contact. Never shown to customers.
+          </p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="onboarding-account-email" className="label">
+                Account Email
+              </label>
+              <input
+                id="onboarding-account-email"
+                type="email"
+                value={formData.accountEmail}
+                disabled
+                className="input opacity-70 cursor-not-allowed"
+              />
+            </div>
 
-          <div>
-            <label htmlFor="onboarding-business-email" className="label">
-              Business Email
-            </label>
-            <input
-              id="onboarding-business-email"
-              type="email"
-              value={formData.businessEmail}
-              onChange={(e) => updateField('businessEmail', e.target.value)}
-              className="input"
-              placeholder="hello@yourbusiness.com"
-            />
+            <div>
+              <label htmlFor="onboarding-owner-phone" className="label">
+                Personal Phone
+              </label>
+              <input
+                id="onboarding-owner-phone"
+                type="tel"
+                value={formData.ownerPhone}
+                onChange={(e) => updateField('ownerPhone', e.target.value)}
+                className="input"
+                placeholder="(555) 123-4567"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-primary/20 bg-primary-50 px-4 py-4 dark:border-primary/20 dark:bg-primary/10">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            Business Contact
+          </h2>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            Customer-facing details for your business profile, booking page, and reminders.
+          </p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="onboarding-phone" className="label">
+                Business Phone *
+              </label>
+              <input
+                id="onboarding-phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => updateField('phone', e.target.value)}
+                className="input"
+                placeholder="(555) 123-4567"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="onboarding-business-email" className="label">
+                Business Email
+              </label>
+              <input
+                id="onboarding-business-email"
+                type="email"
+                value={formData.businessEmail}
+                onChange={(e) => updateField('businessEmail', e.target.value)}
+                className="input"
+                placeholder="hello@yourbusiness.com"
+              />
+            </div>
           </div>
         </div>
 

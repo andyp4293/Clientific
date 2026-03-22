@@ -268,7 +268,7 @@ export default async function DashboardLayout({
         <DashboardNav
           initialBusiness={{
             name: business!.name,
-            email: business!.businessEmail?.trim() || business!.email,
+            email: business!.email,
             logoUrl: business!.logoUrl,
           }}
         />
@@ -288,7 +288,7 @@ export default async function DashboardLayout({
         <MobileBottomNav
           initialBusiness={{
             name: business!.name,
-            email: business!.businessEmail?.trim() || business!.email,
+            email: business!.email,
             logoUrl: business!.logoUrl,
           }}
         />

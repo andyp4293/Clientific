@@ -171,6 +171,26 @@ describe('POST /api/auth/register', () => {
     expect(body.business.email).toBe('owner@example.com');
   });
 
+  it('does not default the customer-facing business email to the private account email', async () => {
+    mockFindUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    mockCreate.mockResolvedValue(MOCK_BUSINESS);
+    mockHoursCreate.mockResolvedValue({});
+
+    await registerPOST(req('/api/auth/register', validBody));
+
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          email: 'new@example.com',
+          businessEmail: null,
+        }),
+      })
+    );
+  });
+
   it('persists location fields and timezone during registration', async () => {
     mockFindUnique
       .mockResolvedValueOnce(null)

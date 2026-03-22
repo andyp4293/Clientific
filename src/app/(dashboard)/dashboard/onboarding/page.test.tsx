@@ -66,8 +66,10 @@ describe('Dashboard onboarding', () => {
           business: {
             name: 'Test Salon',
             businessType: 'Salon',
+            ownerPhone: '',
             phone: '',
             email: 'owner@example.com',
+            businessEmail: '',
             street: '',
             city: '',
             state: '',
@@ -83,7 +85,7 @@ describe('Dashboard onboarding', () => {
       } as Response);
   });
 
-  it('keeps timezone hidden and saves the automatic timezone from the confirmed address', async () => {
+  it('keeps timezone hidden and saves private owner contact separately from business contact', async () => {
     render(<DashboardOnboardingPage />);
 
     await screen.findByRole('heading', { name: /finish your business setup/i });
@@ -92,7 +94,11 @@ describe('Dashboard onboarding', () => {
     expect(
       screen.queryByText(/save your local scheduling timezone automatically/i)
     ).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/account email/i)).toHaveValue('owner@example.com');
 
+    fireEvent.change(screen.getByLabelText(/personal phone/i), {
+      target: { value: '(908) 727-2437' },
+    });
     fireEvent.change(screen.getByLabelText(/business phone/i), {
       target: { value: '(555) 123-4567' },
     });
@@ -108,6 +114,7 @@ describe('Dashboard onboarding', () => {
 
     const payload = JSON.parse((saveCall?.[1] as RequestInit).body as string);
     expect(payload).toMatchObject({
+      ownerPhone: '(908) 727-2437',
       phone: '(555) 123-4567',
       street: '123 Main St',
       city: 'Austin',

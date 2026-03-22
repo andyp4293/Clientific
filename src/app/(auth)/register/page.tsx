@@ -452,7 +452,7 @@ function RegisterForm() {
 
               <div>
                 <label htmlFor="email" className="label">
-                  Email Address *
+                  Account Email *
                 </label>
                 <input
                   id="email"
@@ -463,6 +463,9 @@ function RegisterForm() {
                   placeholder="you@example.com"
                   required
                 />
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Used for login, password resets, and private account notices. Not shown publicly.
+                </p>
               </div>
 
               <div>
@@ -567,7 +570,8 @@ function RegisterForm() {
                   </p>
                   <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
                     You&apos;re starting on the {selectedPlanLabel} trial. We&apos;ll collect
-                    your phone, address, and other setup details right after verification.
+                    your private owner phone, business contact details, and location right after
+                    verification.
                   </p>
                 </div>
               )}
