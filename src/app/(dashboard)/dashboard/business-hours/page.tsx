@@ -1,27 +1,49 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { TimePicker } from '@/components/ui/TimePicker';
 
 interface BusinessHour {
-  id: string;
   dayOfWeek: number;
   isOpen: boolean;
   openTime: string | null;
   closeTime: string | null;
 }
 
+interface BusinessClosureDate {
+  date: string;
+  label: string | null;
+}
+
+interface BusinessHoursResponse {
+  businessHours: BusinessHour[];
+  closureDates: BusinessClosureDate[];
+}
+
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function formatClosureDate(date: string, timezone: string): string {
+  return new Date(`${date}T12:00:00.000Z`).toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: timezone || 'America/New_York',
+  });
+}
 
 export default function BusinessHoursPage() {
   const queryClient = useQueryClient();
   const [hasChanges, setHasChanges] = useState(false);
   const [localHours, setLocalHours] = useState<BusinessHour[]>([]);
-  const [timezone, setTimezone] = useState<string>('');
+  const [localClosures, setLocalClosures] = useState<BusinessClosureDate[]>([]);
+  const [timezone, setTimezone] = useState<string>('America/New_York');
+  const [newClosureDate, setNewClosureDate] = useState('');
+  const [newClosureLabel, setNewClosureLabel] = useState('');
+  const [closureError, setClosureError] = useState<string | null>(null);
 
-  // Fetch business hours
-  const { data, isLoading } = useQuery<{ businessHours: BusinessHour[] }>({
+  const { data, isLoading } = useQuery<BusinessHoursResponse>({
     queryKey: ['business-hours'],
     queryFn: async () => {
       const res = await fetch('/api/business-hours');
@@ -30,7 +52,6 @@ export default function BusinessHoursPage() {
     },
   });
 
-  // Fetch business info for timezone
   const { data: businessData } = useQuery({
     queryKey: ['business-info'],
     queryFn: async () => {
@@ -40,39 +61,54 @@ export default function BusinessHoursPage() {
     },
   });
 
-  // Update timezone when business data loads
   useEffect(() => {
     if (businessData?.business?.timezone) {
       setTimezone(businessData.business.timezone);
     }
   }, [businessData]);
-  // Update local hours when data loads
+
   useEffect(() => {
-    if (data?.businessHours && localHours.length === 0) {
-      // Only set local hours if actual data exists (not empty array)
-      if (data.businessHours.length > 0) {
-        setLocalHours(data.businessHours);
-      }
+    if (data && !hasChanges) {
+      setLocalHours(data.businessHours ?? []);
+      setLocalClosures(data.closureDates ?? []);
     }
-  }, [data, localHours.length]);
+  }, [data, hasChanges]);
 
-  const businessHours: BusinessHour[] = data?.businessHours || [];
-  const hasNoSavedHours = businessHours.length === 0;
+  const savedHours = data?.businessHours ?? [];
+  const savedClosures = data?.closureDates ?? [];
+  const hasNoSavedHours = savedHours.length === 0;
+  const timezoneLabel = timezone.replace(/_/g, ' ');
+  const todayDateKey = useMemo(
+    () =>
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date()),
+    [timezone]
+  );
 
-  // Update mutation
   const updateMutation = useMutation({
-    mutationFn: async (hours: BusinessHour[]) => {
+    mutationFn: async ({
+      hours,
+      closures,
+    }: {
+      hours: BusinessHour[];
+      closures: BusinessClosureDate[];
+    }) => {
       const res = await fetch('/api/business-hours', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hours }),
+        body: JSON.stringify({ hours, closures }),
       });
-      
+
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || 'Failed to update business hours');
       }
-      return res.json();    },
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['business-hours'] });
       setHasChanges(false);
@@ -80,112 +116,194 @@ export default function BusinessHoursPage() {
   });
 
   const handleToggleDay = (dayIndex: number) => {
-    const updatedHours = localHours.map((hour) =>
-      hour.dayOfWeek === dayIndex
-        ? { 
-            ...hour, 
-            isOpen: !hour.isOpen,
-            openTime: !hour.isOpen && !hour.openTime ? '09:00' : hour.openTime,
-            closeTime: !hour.isOpen && !hour.closeTime ? '17:00' : hour.closeTime,
-          }
-        : hour
+    setLocalHours((current) =>
+      current.map((hour) =>
+        hour.dayOfWeek === dayIndex
+          ? {
+              ...hour,
+              isOpen: !hour.isOpen,
+              openTime: !hour.isOpen && !hour.openTime ? '09:00' : hour.openTime,
+              closeTime: !hour.isOpen && !hour.closeTime ? '17:00' : hour.closeTime,
+            }
+          : hour
+      )
     );
-    setLocalHours(updatedHours);
     setHasChanges(true);
   };
 
-  const handleTimeChange = (dayIndex: number, field: 'openTime' | 'closeTime', value: string) => {
-    const updatedHours = localHours.map((hour) =>
-      hour.dayOfWeek === dayIndex ? { ...hour, [field]: value } : hour
+  const handleTimeChange = (
+    dayIndex: number,
+    field: 'openTime' | 'closeTime',
+    value: string
+  ) => {
+    setLocalHours((current) =>
+      current.map((hour) =>
+        hour.dayOfWeek === dayIndex ? { ...hour, [field]: value } : hour
+      )
     );
-    setLocalHours(updatedHours);
-    setHasChanges(true);  };
+    setHasChanges(true);
+  };
+
+  const handleAddClosure = () => {
+    const trimmedDate = newClosureDate.trim();
+    const trimmedLabel = newClosureLabel.trim().replace(/\s+/g, ' ');
+
+    if (!trimmedDate) {
+      setClosureError('Choose a date to close.');
+      return;
+    }
+
+    if (localClosures.some((closure) => closure.date === trimmedDate)) {
+      setClosureError('That closed date is already listed.');
+      return;
+    }
+
+    setLocalClosures((current) =>
+      [...current, { date: trimmedDate, label: trimmedLabel ? trimmedLabel.slice(0, 80) : null }]
+        .sort((a, b) => a.date.localeCompare(b.date))
+    );
+    setNewClosureDate('');
+    setNewClosureLabel('');
+    setClosureError(null);
+    setHasChanges(true);
+  };
+
+  const handleRemoveClosure = (date: string) => {
+    setLocalClosures((current) => current.filter((closure) => closure.date !== date));
+    setClosureError(null);
+    setHasChanges(true);
+  };
 
   const handleSave = () => {
-    updateMutation.mutate(localHours);
+    updateMutation.mutate({ hours: localHours, closures: localClosures });
   };
 
   const handleReset = () => {
-    setLocalHours(businessHours);
+    setLocalHours(savedHours);
+    setLocalClosures(savedClosures);
+    setNewClosureDate('');
+    setNewClosureLabel('');
+    setClosureError(null);
     setHasChanges(false);
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-primary"></div>
       </div>
     );
-  }  return (
+  }
+
+  return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Business Hours</h1>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-1">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">
+          Business Hours
+        </h1>
+        <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center">
           <p className="text-gray-600 dark:text-gray-400">
-            Set your operating hours for online bookings
+            Set your weekly schedule and any one-off closed dates for booking.
           </p>
-          {timezone && (
-            <div className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-gray-500 dark:text-gray-400 mr-1">Timezone:</span>
-              {timezone.replace(/_/g, ' ')}
-            </div>          )}
+          <div className="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300">
+            <svg className="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <span className="mr-1 text-gray-500 dark:text-gray-400">Timezone:</span>
+            {timezoneLabel}
+          </div>
         </div>
-      </div>      {/* Timezone Info Banner */}
-      {timezone && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-start gap-3">
-          <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </div>
+
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
+        <div className="flex items-start gap-3">
+          <svg
+            className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600 dark:text-blue-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
-          <div className="flex-1">
-            <p className="text-sm text-blue-900 dark:text-blue-100 font-medium">All times are shown in your business timezone</p>
-            <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-              Your timezone is set to <span className="font-semibold">{timezone.replace(/_/g, ' ')}</span>. 
-              You can change this in <a href="/dashboard/settings" className="underline hover:text-blue-800">Settings</a> if needed.
+          <div>
+            <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              Weekly hours and specific closed dates both affect bookings
+            </p>
+            <p className="mt-1 text-sm text-blue-700 dark:text-blue-300">
+              Online booking and your AI receptionist will both treat any date you add below as
+              closed for the full day.
             </p>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Warning Banner for No Saved Hours */}
       {hasNoSavedHours && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 flex items-start gap-3">
-          <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <div className="flex-1">
-            <p className="text-sm text-amber-900 dark:text-amber-100 font-medium">⚠️ No business hours configured</p>
-            <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-              Your online booking is currently unavailable. Set your hours below and click "Save Changes" to enable bookings.
-            </p>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
+          <div className="flex items-start gap-3">
+            <svg
+              className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <div>
+              <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                No business hours configured yet
+              </p>
+              <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
+                Set your weekly hours and save them to enable online booking.
+              </p>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Business Hours Card */}
-      <div className="card">{localHours.length === 0 ? (
+      <div className="card">
+        {localHours.length === 0 ? (
           <div className="p-8 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full mb-4">
-              <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">
+              <svg className="h-8 w-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No Business Hours Set</h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">Set up your weekly schedule to enable online bookings</p>
+            <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+              No weekly schedule yet
+            </h3>
+            <p className="mb-4 text-gray-600 dark:text-gray-400">
+              Set up your regular weekly hours to enable online bookings.
+            </p>
             <button
               onClick={() => {
-                // Initialize default hours (Monday-Friday 9 AM - 5 PM)
-                const defaultHours = DAYS.map((_, index) => ({
-                  id: `temp-${index}`,
-                  dayOfWeek: index,
-                  isOpen: index >= 1 && index <= 5, // Monday to Friday
-                  openTime: '09:00',
-                  closeTime: '17:00',
-                }));
-                setLocalHours(defaultHours);
+                setLocalHours(
+                  DAYS.map((_, index) => ({
+                    dayOfWeek: index,
+                    isOpen: index >= 1 && index <= 5,
+                    openTime: '09:00',
+                    closeTime: '17:00',
+                  }))
+                );
                 setHasChanges(true);
               }}
               className="btn-primary"
@@ -194,151 +312,271 @@ export default function BusinessHoursPage() {
             </button>
           </div>
         ) : (
-        <div className="divide-y divide-gray-200 dark:divide-gray-700">{localHours.map((hour) => {
-            const dayName = DAYS[hour.dayOfWeek];
-            return (
-              <div key={hour.dayOfWeek} className="p-4 sm:p-6">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                  {/* Day Toggle */}
-                  <div className="flex items-center flex-1 min-w-0">
-                    <input
-                      type="checkbox"
-                      id={`day-${hour.dayOfWeek}`}
-                      checked={hour.isOpen}
-                      onChange={() => handleToggleDay(hour.dayOfWeek)}
-                      className="w-5 h-5 text-primary border-gray-300 dark:border-gray-600 rounded focus:ring-primary mr-3"
-                    />
-                    <label
-                      htmlFor={`day-${hour.dayOfWeek}`}
-                      className={`text-base font-medium cursor-pointer select-none ${
-                        hour.isOpen ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'
-                      }`}
-                    >
-                      {dayName}
-                    </label>
-                  </div>                  {/* Time Inputs */}
-                  {hour.isOpen ? (
-                    <div className="flex items-center gap-3 sm:ml-auto flex-col sm:flex-row w-full sm:w-auto">
-                      <div className="w-full sm:w-32">
-                        <TimePicker
-                          value={hour.openTime || '09:00'}
-                          onChange={(time) => handleTimeChange(hour.dayOfWeek, 'openTime', time)}
-                        />
-                      </div>
-                      <span className="text-gray-500 dark:text-gray-400 hidden sm:inline">to</span>
-                      <div className="w-full sm:w-32">
-                        <TimePicker
-                          value={hour.closeTime || '17:00'}
-                          onChange={(time) => handleTimeChange(hour.dayOfWeek, 'closeTime', time)}
-                        />
-                      </div>
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {localHours.map((hour) => {
+              const dayName = DAYS[hour.dayOfWeek];
+              return (
+                <div key={hour.dayOfWeek} className="p-4 sm:p-6">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    <div className="flex min-w-0 flex-1 items-center">
+                      <input
+                        type="checkbox"
+                        id={`day-${hour.dayOfWeek}`}
+                        checked={hour.isOpen}
+                        onChange={() => handleToggleDay(hour.dayOfWeek)}
+                        className="mr-3 h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary dark:border-gray-600"
+                      />
+                      <label
+                        htmlFor={`day-${hour.dayOfWeek}`}
+                        className={`cursor-pointer select-none text-base font-medium ${
+                          hour.isOpen
+                            ? 'text-gray-900 dark:text-gray-100'
+                            : 'text-gray-400 dark:text-gray-500'
+                        }`}
+                      >
+                        {dayName}
+                      </label>
                     </div>
-                  ) : (
-                    <div className="text-gray-400 dark:text-gray-500 text-sm sm:ml-auto">Closed</div>
-                  )}
+
+                    {hour.isOpen ? (
+                      <div className="flex w-full flex-col items-center gap-3 sm:ml-auto sm:w-auto sm:flex-row">
+                        <div className="w-full sm:w-32">
+                          <TimePicker
+                            value={hour.openTime || '09:00'}
+                            onChange={(time) => handleTimeChange(hour.dayOfWeek, 'openTime', time)}
+                          />
+                        </div>
+                        <span className="hidden text-gray-500 dark:text-gray-400 sm:inline">to</span>
+                        <div className="w-full sm:w-32">
+                          <TimePicker
+                            value={hour.closeTime || '17:00'}
+                            onChange={(time) => handleTimeChange(hour.dayOfWeek, 'closeTime', time)}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-400 dark:text-gray-500 sm:ml-auto">
+                        Closed
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>            );
-          })}
-        </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
-      {/* Quick Actions */}
       {localHours.length > 0 && (
-      <div className="card p-4 sm:p-6">
-        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Quick Actions</h3>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => {
-              const weekdayHours = localHours.map((hour) => ({
-                ...hour,
-                isOpen: hour.dayOfWeek >= 1 && hour.dayOfWeek <= 5,
-                openTime: hour.dayOfWeek >= 1 && hour.dayOfWeek <= 5 ? '09:00' : null,
-                closeTime: hour.dayOfWeek >= 1 && hour.dayOfWeek <= 5 ? '17:00' : null,
-              }));
-              setLocalHours(weekdayHours);
-              setHasChanges(true);
-            }}
-            className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          >
-            Mon-Fri 9-5
-          </button>
-          <button
-            onClick={() => {
-              const allDayHours = localHours.map((hour) => ({
-                ...hour,
-                isOpen: true,
-                openTime: '00:00',
-                closeTime: '23:59',
-              }));
-              setLocalHours(allDayHours);
-              setHasChanges(true);
-            }}
-            className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          >
-            24/7
-          </button>
-          <button
-            onClick={() => {
-              const closedHours = localHours.map((hour) => ({
-                ...hour,
-                isOpen: false,
-                openTime: null,
-                closeTime: null,
-              }));
-              setLocalHours(closedHours);
-              setHasChanges(true);
-            }}
-            className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          >
-            Close All
-          </button>        </div>
-      </div>
+        <div className="card p-4 sm:p-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Specific Closed Dates
+              </h2>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                Add holiday closures or one-off closed dates that should override your weekly hours.
+              </p>
+            </div>
+            <div className="rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:border-gray-700 dark:text-gray-400">
+              {localClosures.length} scheduled
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,220px)_minmax(0,1fr)_auto]">
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">
+                Closed Date
+              </label>
+              <input
+                type="date"
+                value={newClosureDate}
+                min={todayDateKey}
+                onChange={(event) => {
+                  setNewClosureDate(event.target.value);
+                  setClosureError(null);
+                }}
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">
+                Reason (Optional)
+              </label>
+              <input
+                type="text"
+                value={newClosureLabel}
+                onChange={(event) => {
+                  setNewClosureLabel(event.target.value);
+                  setClosureError(null);
+                }}
+                placeholder="Memorial Day"
+                maxLength={80}
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={handleAddClosure}
+                className="w-full rounded-xl bg-primary px-5 py-3 font-medium text-white transition-colors hover:bg-primary-600 lg:w-auto"
+              >
+                Add Closed Date
+              </button>
+            </div>
+          </div>
+
+          {closureError && (
+            <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+              {closureError}
+            </div>
+          )}
+
+          <div className="mt-5">
+            {localClosures.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-400">
+                No one-off closed dates yet. Your weekly hours are the only schedule customers can book against.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {localClosures.map((closure) => (
+                  <div
+                    key={closure.date}
+                    className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-gray-50/80 px-4 py-4 dark:border-gray-700 dark:bg-gray-800/70 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
+                        {formatClosureDate(closure.date, timezone)}
+                      </p>
+                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        {closure.label ? closure.label : 'Closed all day'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveClosure(closure.date)}
+                      className="inline-flex items-center justify-center rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-900/20"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
-      {/* Error Message */}
+      {localHours.length > 0 && (
+        <div className="card p-4 sm:p-6">
+          <h3 className="mb-3 font-semibold text-gray-900 dark:text-gray-100">Quick Actions</h3>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => {
+                setLocalHours((current) =>
+                  current.map((hour) => ({
+                    ...hour,
+                    isOpen: hour.dayOfWeek >= 1 && hour.dayOfWeek <= 5,
+                    openTime: hour.dayOfWeek >= 1 && hour.dayOfWeek <= 5 ? '09:00' : null,
+                    closeTime: hour.dayOfWeek >= 1 && hour.dayOfWeek <= 5 ? '17:00' : null,
+                  }))
+                );
+                setHasChanges(true);
+              }}
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
+              Mon-Fri 9-5
+            </button>
+            <button
+              onClick={() => {
+                setLocalHours((current) =>
+                  current.map((hour) => ({
+                    ...hour,
+                    isOpen: true,
+                    openTime: '00:00',
+                    closeTime: '23:59',
+                  }))
+                );
+                setHasChanges(true);
+              }}
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
+              24/7
+            </button>
+            <button
+              onClick={() => {
+                setLocalHours((current) =>
+                  current.map((hour) => ({
+                    ...hour,
+                    isOpen: false,
+                    openTime: null,
+                    closeTime: null,
+                  }))
+                );
+                setHasChanges(true);
+              }}
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
+              Close All
+            </button>
+          </div>
+        </div>
+      )}
+
       {updateMutation.isError && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
           <p className="text-sm text-red-600 dark:text-red-400">
             {updateMutation.error?.message || 'Failed to update business hours'}
           </p>
         </div>
       )}
 
-      {/* Action Buttons */}
       {localHours.length > 0 && (
-      <div className="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">{hasNoSavedHours && (
-          <div className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-2 mr-auto">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <span className="font-medium">Click "Save Changes" to enable online bookings</span>
-          </div>
-        )}
-        <button
-          onClick={handleReset}
-          disabled={!hasChanges || updateMutation.isPending}
-          className="px-6 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Reset
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={!hasChanges || updateMutation.isPending}
-          className={`px-6 py-2.5 ${hasNoSavedHours ? 'bg-amber-600 hover:bg-amber-700' : 'bg-primary hover:bg-primary-600'} text-white font-medium rounded-lg transition-colors shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed`}
-        >
-          {updateMutation.isPending ? (
-            <span className="inline-flex items-center">
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          {hasNoSavedHours && (
+            <div className="mr-auto flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
               </svg>
-              Saving...
-            </span>
-          ) : (
-            'Save Changes'          )}
-        </button>
-      </div>
+              <span className="font-medium">Click Save Changes to enable online bookings</span>
+            </div>
+          )}
+          <button
+            onClick={handleReset}
+            disabled={!hasChanges || updateMutation.isPending}
+            className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            Reset
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!hasChanges || updateMutation.isPending}
+            className={`rounded-lg px-6 py-2.5 font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+              hasNoSavedHours ? 'bg-amber-600 hover:bg-amber-700' : 'bg-primary hover:bg-primary-600'
+            }`}
+          >
+            {updateMutation.isPending ? (
+              <span className="inline-flex items-center">
+                <svg className="-ml-1 mr-2 h-4 w-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                Saving...
+              </span>
+            ) : (
+              'Save Changes'
+            )}
+          </button>
+        </div>
       )}
     </div>
   );

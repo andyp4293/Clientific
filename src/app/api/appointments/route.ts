@@ -8,6 +8,7 @@ import { businessDayStart } from '@/lib/timezone';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { revalidateTag } from 'next/cache';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
+import { validateBusinessHoursForAppointment } from '@/lib/business-hours-validation';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
 import {
@@ -123,6 +124,12 @@ export async function POST(req: NextRequest) {
         notifyNewBookingEmail: true,
         vapiPhoneNumber: true,
         businessHours: { select: { hours: true } },
+        closureDates: {
+          select: {
+            date: true,
+            label: true,
+          },
+        },
       },
     });
 
@@ -153,6 +160,20 @@ export async function POST(req: NextRequest) {
 
     const start = new Date(startTime);
     const end = new Date(start.getTime() + duration * 60000);
+    const businessHoursError = validateBusinessHoursForAppointment({
+      startTime: start,
+      endTime: end,
+      timezone: business.timezone,
+      businessHours: business.businessHours?.hours,
+      closureDates: business.closureDates,
+    });
+
+    if (businessHoursError) {
+      return NextResponse.json(
+        { error: businessHoursError.error },
+        { status: businessHoursError.status }
+      );
+    }
 
     if (staffId) {
       const staffError = await validateBookableStaffSelection({

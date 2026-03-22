@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { findBusinessClosureForDate } from '@/lib/business-closures';
+import { weekdayIndexForLocalDate } from '@/lib/timezone';
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,6 +15,16 @@ export async function GET(req: NextRequest) {
 
     const business = await prisma.business.findUnique({
       where: { email: session.user.email },
+      select: {
+        id: true,
+        timezone: true,
+        closureDates: {
+          select: {
+            date: true,
+            label: true,
+          },
+        },
+      },
     });
 
     if (!business) {
@@ -28,7 +40,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Date is required' }, { status: 400 });
     }    // Get business hours for the selected date
     const selectedDate = new Date(date);
-    const dayOfWeek = selectedDate.getDay();
+    const dayOfWeek = weekdayIndexForLocalDate(date, business.timezone);
+    const closure = findBusinessClosureForDate(date, business.closureDates);
+
+    if (closure) {
+      return NextResponse.json({ availableSlots: [] });
+    }
 
     const businessHours = await prisma.businessHours.findUnique({
       where: {

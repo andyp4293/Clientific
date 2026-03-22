@@ -1,4 +1,8 @@
 import { prisma } from '@/lib/prisma';
+import {
+  describeBusinessClosure,
+  findBusinessClosureForDate,
+} from '@/lib/business-closures';
 import { localToUTC, weekdayIndexForLocalDate } from '@/lib/timezone';
 import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
 import {
@@ -65,7 +69,15 @@ export async function getPublicAvailableSlots({
 
   const business = await prisma.business.findUnique({
     where: businessLookup,
-    include: { businessHours: true },
+    include: {
+      businessHours: true,
+      closureDates: {
+        select: {
+          date: true,
+          label: true,
+        },
+      },
+    },
   });
 
   if (!business) {
@@ -95,6 +107,16 @@ export async function getPublicAvailableSlots({
     .filter((service): service is { id: string; duration: number } => Boolean(service));
 
   const dayOfWeek = weekdayIndexForLocalDate(date, business.timezone);
+  const closure = findBusinessClosureForDate(date, business.closureDates);
+
+  if (closure) {
+    return {
+      slots: [],
+      unavailableSlots: [],
+      availabilityReason: 'business_closed',
+      message: describeBusinessClosure(closure),
+    };
+  }
 
   if (!business.businessHours) {
     return {

@@ -83,6 +83,15 @@ export function weekdayIndexForLocalDate(dateStr: string, timezone: string): num
   return weekdayIndexInTimeZone(localToUTC(dateStr, 12, 0, timezone), timezone);
 }
 
+export function dateKeyInTimeZone(date: Date, timezone: string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
 export function timezoneFromCoordinates(
   latitude: number,
   longitude: number

@@ -255,6 +255,7 @@ export default function PublicBookingPage() {
       : null;
   const emptyAvailabilityState = getEmptyAvailabilityState({
     availabilityReason: slotsData?.availabilityReason,
+    availabilityMessage: slotsData?.message,
     selectedDate,
     selectedStaffName,
   });

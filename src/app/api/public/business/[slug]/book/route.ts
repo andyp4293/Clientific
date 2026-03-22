@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { sendAppointmentConfirmation, formatPhoneNumber } from '@/lib/twilio';
 import { sendNewBookingEmail } from '@/lib/email';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
+import { validateBusinessHoursForAppointment } from '@/lib/business-hours-validation';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
 import { weekdayIndexInTimeZone } from '@/lib/timezone';
@@ -26,6 +27,12 @@ export async function POST(
         notifyNewBookingEmail: true,
         vapiPhoneNumber: true,
         businessHours: { select: { hours: true } },
+        closureDates: {
+          select: {
+            date: true,
+            label: true,
+          },
+        },
       },
     });
 
@@ -122,6 +129,20 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid start time' }, { status: 400 });
     }
     const end = new Date(start.getTime() + duration * 60000);
+    const businessHoursError = validateBusinessHoursForAppointment({
+      startTime: start,
+      endTime: end,
+      timezone: business.timezone,
+      businessHours: business.businessHours?.hours,
+      closureDates: business.closureDates,
+    });
+
+    if (businessHoursError) {
+      return NextResponse.json(
+        { error: businessHoursError.error },
+        { status: businessHoursError.status }
+      );
+    }
 
     // Verify staff belongs to this business, is working that day, and can perform all selected services
     if (staffId && staffId !== 'anyone') {

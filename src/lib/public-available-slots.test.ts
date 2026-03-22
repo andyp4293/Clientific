@@ -26,6 +26,7 @@ describe('public available slots helper', () => {
       id: 'biz-1',
       enableOnlineBooking: true,
       timezone: 'America/New_York',
+      closureDates: [],
       businessHours: {
         hours: dayHours,
       },
@@ -59,6 +60,36 @@ describe('public available slots helper', () => {
       message: 'Selected staff member is off on this day.',
     });
     expect(prisma.appointment.findMany).not.toHaveBeenCalled();
+  });
+
+  it('returns a business-closed reason for a date-specific closure', async () => {
+    vi.mocked(prisma.business.findUnique).mockResolvedValue({
+      id: 'biz-1',
+      enableOnlineBooking: true,
+      timezone: 'America/New_York',
+      closureDates: [{ date: '2099-12-25', label: 'Christmas Day' }],
+      businessHours: {
+        hours: Object.fromEntries(
+          Array.from({ length: 7 }, (_, day) => [
+            day.toString(),
+            { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+          ])
+        ),
+      },
+    } as any);
+
+    const result = await getPublicAvailableSlots({
+      businessLookup: { slug: 'test-salon' },
+      date: '2099-12-25',
+      serviceId: 'svc-1',
+    });
+
+    expect(result).toMatchObject({
+      slots: [],
+      unavailableSlots: [],
+      availabilityReason: 'business_closed',
+      message: 'Business is closed for Christmas Day.',
+    });
   });
 
   it('uses the combined duration when checking multi-service staff availability', async () => {

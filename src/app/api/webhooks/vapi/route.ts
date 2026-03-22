@@ -3,7 +3,13 @@ import crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { normalizeOptionalPhoneNumber, sendAppointmentConfirmation } from '@/lib/twilio';
-import { localToUTC, weekdayIndexForLocalDate, weekdayIndexInTimeZone } from '@/lib/timezone';
+import { validateBusinessHoursForAppointment } from '@/lib/business-hours-validation';
+import { describeBusinessClosure, findBusinessClosureForDate } from '@/lib/business-closures';
+import {
+  localToUTC,
+  weekdayIndexForLocalDate,
+  weekdayIndexInTimeZone,
+} from '@/lib/timezone';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
 import {
@@ -59,6 +65,30 @@ function formatBusinessHours(hours: any): string {
   }
 }
 
+function formatSpecialClosures(
+  closures: BusinessData['closureDates'] | null | undefined,
+  timezone: string
+): string {
+  if (!closures?.length) return 'No specific closure dates are scheduled.';
+
+  return closures
+    .map((closure) => {
+      const date = new Date(`${closure.date}T12:00:00.000Z`);
+      const formattedDate = date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        timeZone: timezone,
+      });
+
+      return closure.label
+        ? `${formattedDate}: closed for ${closure.label}`
+        : `${formattedDate}: closed`;
+    })
+    .join('\n');
+}
+
 // ─── Time string parser ───────────────────────────────────────────────────────
 // Parses human-readable times like "3 PM", "3:30 PM", "15:00", "10am"
 
@@ -98,6 +128,7 @@ type BusinessData = {
   services: { id: string; name: string; price: number | null; duration: number }[];
   staff: { id: string; fullName: string; role: string; workDays: number[]; workHours: unknown }[];
   businessHours: { hours: any } | null;
+  closureDates: { date: string; label: string | null }[];
 };
 
 type CallConversationMessage = {
@@ -160,6 +191,14 @@ const AI_ENABLED_BUSINESS_SELECT = {
     take: 20,
   },
   businessHours: { select: { hours: true } },
+  closureDates: {
+    select: {
+      date: true,
+      label: true,
+    },
+    orderBy: { date: 'asc' },
+    take: 60,
+  },
 } satisfies Prisma.BusinessSelect;
 
 function getTooManyServicesMessage(): string {
@@ -368,6 +407,7 @@ function buildAssistantConfig(business: BusinessData) {
     : 'Services not listed. Please ask for more details.';
 
   const hoursText = formatBusinessHours(business.businessHours?.hours);
+  const closureText = formatSpecialClosures(business.closureDates, business.timezone);
   const location = [business.street, business.city, business.state].filter(Boolean).join(', ') || 'Location not listed.';
   const bookingUrl = `${appUrl}/book/${business.publicId}`;
 
@@ -395,6 +435,9 @@ Today is ${todayStr} (${todayISO}). Always use this date when the caller says "t
 Business hours:
 ${hoursText}
 
+Specific closed dates:
+${closureText}
+
 Services offered (use the ID field when calling tools, never say the ID aloud):
 ${servicesList}
 ${staffList ? `\nOur team (use the ID field when calling tools, never say the ID aloud):\n${staffList}\n` : ''}
@@ -402,7 +445,8 @@ Location: ${location}
 Online booking: ${bookingUrl}${faqText}
 
 Your job:
-- If asked about hours, location, services, prices, or staff: answer directly from the information above — do NOT call any tools for these questions
+- If asked about hours, location, services, prices, or staff: answer directly from the information above and do NOT call any tools for these questions
+- If a caller asks about a listed special closure date, tell them the business is closed that day.
 - If the caller asks whether a staff member works on a specific day or time, answer from the team availability above. Never say someone is available outside the listed days or hours.
 - If the caller asks for a staff member who is not listed on the team, say you could not find them on the team and offer another team member.
 - If the caller wants to BOOK a new appointment (phrases like "I want to book", "I'd like to schedule", "make an appointment", "I want an appointment", "can I get an appointment"):
@@ -650,6 +694,8 @@ async function handleCheckAvailability(
   const { date } = args;
   const rawStaffId = typeof args?.staffId === 'string' ? args.staffId : null;
   if (!date) return 'Please specify a date to check availability.';
+  const closure = findBusinessClosureForDate(date, business.closureDates);
+  if (closure) return `${describeBusinessClosure(closure)} Would you like a different day?`;
   if (getRequestedServiceIds(args).length > MAX_VAPI_APPOINTMENT_SERVICES) {
     return getTooManyServicesMessage();
   }
@@ -826,6 +872,18 @@ async function handleCreateBooking(
   const { slotTime, customerName, notes } = args;
   const rawStaffId = typeof args?.staffId === 'string' ? args.staffId : null;
   if (!slotTime) return 'I need the appointment time to book. Which slot works for you?';
+  const start = new Date(slotTime);
+  if (isNaN(start.getTime())) return 'Invalid time slot. Please check availability again.';
+  const startDateKey = new Intl.DateTimeFormat('en-CA', {
+    timeZone: business.timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(start);
+  const closure = findBusinessClosureForDate(startDateKey, business.closureDates);
+  if (closure) {
+    return `${describeBusinessClosure(closure)} Please choose a different day or time.`;
+  }
   if (getRequestedServiceIds(args).length > MAX_VAPI_APPOINTMENT_SERVICES) {
     return getTooManyServicesMessage();
   }
@@ -842,9 +900,18 @@ async function handleCreateBooking(
     return `I couldn't find ${missingStaffName} on the team. Please choose a listed team member or say anyone is fine.`;
   }
 
-  const start = new Date(slotTime);
-  if (isNaN(start.getTime())) return 'Invalid time slot. Please check availability again.';
   const end = new Date(start.getTime() + serviceSelection.totalDuration * 60000);
+  const businessHoursError = validateBusinessHoursForAppointment({
+    startTime: start,
+    endTime: end,
+    timezone: business.timezone,
+    businessHours: business.businessHours?.hours,
+    closureDates: business.closureDates,
+  });
+
+  if (businessHoursError) {
+    return `${businessHoursError.error} Please choose a different day or time.`;
+  }
 
   if (staffId) {
     const staffValidation = await validateBookableStaffSelection({

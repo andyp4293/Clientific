@@ -76,6 +76,7 @@ const BASE_BUSINESS = {
       '6': { isOpen: true, openTime: '09:00', closeTime: '17:00' },
     },
   },
+  closureDates: [],
 } as const;
 
 describe('POST /api/webhooks/vapi', () => {
@@ -151,6 +152,29 @@ describe('POST /api/webhooks/vapi', () => {
     expect(systemPrompt).toContain('Tue off');
     expect(systemPrompt).toContain('Mon 10:00 AM-4:00 PM');
     expect(systemPrompt).toContain('could not find them on the team');
+  });
+
+  it('includes specific closure dates in the assistant prompt', async () => {
+    vi.mocked(prisma.business.findFirst).mockResolvedValue({
+      ...BASE_BUSINESS,
+      closureDates: [{ date: '2026-12-25', label: 'Christmas Day' }],
+    } as any);
+
+    const res = await POST(
+      req({
+        message: {
+          type: 'assistant-request',
+          phoneNumber: { id: 'phone-1' },
+        },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const systemPrompt = body.assistant.model.messages[0].content as string;
+
+    expect(systemPrompt).toContain('Specific closed dates');
+    expect(systemPrompt).toContain('closed for Christmas Day');
   });
 
   it('stores a requested staff preference from conversation updates', async () => {
@@ -230,6 +254,79 @@ describe('POST /api/webhooks/vapi', () => {
     const body = await res.json();
     expect(body.results[0].result).toContain("Andy doesn't work on that day");
     expect(prisma.appointment.findMany).not.toHaveBeenCalled();
+  });
+
+  it('refuses availability on a specific closed date', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'));
+    vi.mocked(prisma.business.findFirst).mockResolvedValue({
+      ...BASE_BUSINESS,
+      closureDates: [{ date: '2026-03-10', label: 'Training Day' }],
+    } as any);
+
+    const res = await POST(
+      req({
+        message: {
+          type: 'tool-calls',
+          phoneNumber: { id: 'phone-1' },
+          call: { customer: { number: '+15551234567' } },
+          toolCallList: [
+            {
+              id: 'tool-1',
+              function: {
+                name: 'manage_booking',
+                arguments: {
+                  action: 'checkAvailability',
+                  date: '2026-03-10',
+                  serviceIds: ['svc-gel'],
+                },
+              },
+            },
+          ],
+        },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.results[0].result).toContain('Business is closed for Training Day.');
+    expect(prisma.appointment.findMany).not.toHaveBeenCalled();
+  });
+
+  it('refuses to create a booking on a specific closed date', async () => {
+    vi.mocked(prisma.business.findFirst).mockResolvedValue({
+      ...BASE_BUSINESS,
+      closureDates: [{ date: '2026-03-10', label: 'Training Day' }],
+    } as any);
+
+    const res = await POST(
+      req({
+        message: {
+          type: 'tool-calls',
+          phoneNumber: { id: 'phone-1' },
+          call: { customer: { number: '+15551234567' } },
+          toolCallList: [
+            {
+              id: 'tool-1',
+              function: {
+                name: 'manage_booking',
+                arguments: {
+                  action: 'createBooking',
+                  slotTime: '2026-03-10T14:00:00.000Z',
+                  customerName: 'Jane',
+                  serviceIds: ['svc-gel'],
+                },
+              },
+            },
+          ],
+        },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.results[0].result).toContain('Business is closed for Training Day.');
+    expect(prisma.appointment.create).not.toHaveBeenCalled();
   });
 
   it('does not offer times outside a staff member’s working hours', async () => {

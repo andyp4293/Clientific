@@ -1,48 +1,73 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
+import { prisma } from '@/lib/prisma';
+import { normalizeBusinessClosureDates } from '@/lib/business-closures';
+import { normalizeBusinessHoursRecord } from '@/lib/staff-schedule';
 import { authOptions } from '../auth/[...nextauth]/route';
 
-// GET - Get business hours
-export async function GET(req: NextRequest) {
+type HoursArrayItem = {
+  dayOfWeek: number;
+  isOpen: boolean;
+  openTime: string | null;
+  closeTime: string | null;
+};
+
+function getDefaultHours(): HoursArrayItem[] {
+  return Array.from({ length: 7 }, (_, dayOfWeek) => ({
+    dayOfWeek,
+    isOpen: dayOfWeek >= 1 && dayOfWeek <= 5,
+    openTime: dayOfWeek >= 1 && dayOfWeek <= 5 ? '09:00' : null,
+    closeTime: dayOfWeek >= 1 && dayOfWeek <= 5 ? '17:00' : null,
+  }));
+}
+
+function parseHoursRecord(hours: unknown): HoursArrayItem[] {
+  return Object.entries(normalizeBusinessHoursRecord(hours))
+    .map(([day, value]) => ({
+      dayOfWeek: Number.parseInt(day, 10),
+      isOpen: Boolean(value?.isOpen),
+      openTime: value?.openTime ?? null,
+      closeTime: value?.closeTime ?? null,
+    }))
+    .sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+}
+
+async function requireBusinessId(): Promise<string | NextResponse> {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  return session.user.id;
+}
+
+export async function GET(_req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }    const businessHours = await prisma.businessHours.findUnique({
-      where: {
-        businessId: session.user.id,
-      },
-    });
-
-    // Convert JSON structure to array format for the frontend
-    if (businessHours) {
-      const hoursArray = Object.keys(businessHours.hours as any).map((day) => {
-        const dayHours = (businessHours.hours as any)[day];
-        return {
-          dayOfWeek: parseInt(day),
-          isOpen: dayHours.isOpen || false,
-          openTime: dayHours.openTime || null,
-          closeTime: dayHours.closeTime || null,
-        };
-      }).sort((a, b) => a.dayOfWeek - b.dayOfWeek);
-
-      return NextResponse.json({ businessHours: hoursArray });
+    const businessIdOrResponse = await requireBusinessId();
+    if (businessIdOrResponse instanceof NextResponse) {
+      return businessIdOrResponse;
     }
 
-    // Return default hours if none exist
-    const defaultHours = Array.from({ length: 7 }, (_, i) => ({
-      dayOfWeek: i,
-      isOpen: i >= 1 && i <= 5,
-      openTime: i >= 1 && i <= 5 ? '09:00' : null,
-      closeTime: i >= 1 && i <= 5 ? '17:00' : null,
-    }));
+    const businessId = businessIdOrResponse;
+    const [businessHours, closureDates] = await Promise.all([
+      prisma.businessHours.findUnique({
+        where: { businessId },
+      }),
+      prisma.businessClosureDate.findMany({
+        where: { businessId },
+        orderBy: { date: 'asc' },
+        select: {
+          date: true,
+          label: true,
+        },
+      }),
+    ]);
 
-    return NextResponse.json({ businessHours: defaultHours });
+    return NextResponse.json({
+      businessHours: businessHours ? parseHoursRecord(businessHours.hours) : getDefaultHours(),
+      closureDates,
+    });
   } catch (error: any) {
     console.error('Error fetching business hours:', error);
     return NextResponse.json(
@@ -52,48 +77,63 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// PATCH - Update business hours (batch update)
 export async function PATCH(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const businessIdOrResponse = await requireBusinessId();
+    if (businessIdOrResponse instanceof NextResponse) {
+      return businessIdOrResponse;
+    }
 
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }    const body = await req.json();
-    const { hours } = body; // Array of business hours
+    const businessId = businessIdOrResponse;
+    const body = await req.json();
+    const { hours, closures } = body;
 
     if (!Array.isArray(hours)) {
+      return NextResponse.json({ error: 'Invalid data format' }, { status: 400 });
+    }
+
+    const normalizedClosures = normalizeBusinessClosureDates(closures);
+    if (closures !== undefined && normalizedClosures.length !== closures.length) {
       return NextResponse.json(
-        { error: 'Invalid data format' },
+        { error: 'One or more closed dates are invalid' },
         { status: 400 }
       );
     }
 
-    // Convert array format to JSON structure
-    const hoursJson: any = {};
-    hours.forEach((hour: any) => {
-      hoursJson[hour.dayOfWeek.toString()] = {
-        isOpen: hour.isOpen,
-        openTime: hour.openTime,
-        closeTime: hour.closeTime,
+    const hoursJson: Record<string, { isOpen: boolean; openTime: string | null; closeTime: string | null }> = {};
+    for (const hour of hours) {
+      hoursJson[String(hour.dayOfWeek)] = {
+        isOpen: Boolean(hour.isOpen),
+        openTime: typeof hour.openTime === 'string' ? hour.openTime : null,
+        closeTime: typeof hour.closeTime === 'string' ? hour.closeTime : null,
       };
-    });
+    }
 
-    // Upsert the business hours
-    await prisma.businessHours.upsert({
-      where: {
-        businessId: session.user.id,
-      },
-      update: {
-        hours: hoursJson,
-      },
-      create: {
-        businessId: session.user.id,
-        hours: hoursJson,
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.businessHours.upsert({
+        where: { businessId },
+        update: { hours: hoursJson },
+        create: {
+          businessId,
+          hours: hoursJson,
+        },
+      });
+
+      if (closures !== undefined) {
+        await tx.businessClosureDate.deleteMany({
+          where: { businessId },
+        });
+
+        if (normalizedClosures.length > 0) {
+          await tx.businessClosureDate.createMany({
+            data: normalizedClosures.map((closure) => ({
+              businessId,
+              date: closure.date,
+              label: closure.label ?? null,
+            })),
+          });
+        }
+      }
     });
 
     return NextResponse.json({ success: true });

@@ -2,6 +2,7 @@ import type { AvailabilityReason } from '@/lib/public-available-slots';
 
 type EmptyAvailabilityStateInput = {
   availabilityReason?: AvailabilityReason;
+  availabilityMessage?: string;
   selectedDate: Date;
   selectedStaffName?: string | null;
 };
@@ -22,6 +23,7 @@ function formatBookingDay(date: Date): string {
 
 export function getEmptyAvailabilityState({
   availabilityReason,
+  availabilityMessage,
   selectedDate,
   selectedStaffName,
 }: EmptyAvailabilityStateInput): EmptyAvailabilityState {
@@ -39,7 +41,7 @@ export function getEmptyAvailabilityState({
   if (availabilityReason === 'business_closed') {
     return {
       title: `This business is closed on ${formattedDay}.`,
-      description: 'Choose another date to see available booking times.',
+      description: availabilityMessage || 'Choose another date to see available booking times.',
       tone: 'default',
     };
   }

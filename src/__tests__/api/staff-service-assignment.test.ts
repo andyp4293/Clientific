@@ -368,6 +368,18 @@ describe('POST /api/public/business/[slug]/book — staff-service validation', (
       timezone: 'America/New_York',
       notifyNewBookingEmail: false,
       vapiPhoneNumber: null,
+      businessHours: {
+        hours: {
+          '0': { isOpen: false, openTime: null, closeTime: null },
+          '1': { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+          '2': { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+          '3': { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+          '4': { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+          '5': { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+          '6': { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+        },
+      },
+      closureDates: [],
     } as any);
     vi.mocked(prisma.service.findMany).mockResolvedValue([
       { id: 'svc-1', name: 'Cut' },

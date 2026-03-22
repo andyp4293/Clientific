@@ -15,6 +15,7 @@ describe('public booking page source', () => {
 
     expect(source).toContain('getEmptyAvailabilityState');
     expect(source).toContain("availabilityReason: slotsData?.availabilityReason");
+    expect(source).toContain("availabilityMessage: slotsData?.message");
     expect(source).toContain('selectedStaffName');
   });
 });

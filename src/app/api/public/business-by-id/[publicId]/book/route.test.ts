@@ -54,6 +54,18 @@ describe('POST /api/public/business-by-id/[publicId]/book', () => {
       timezone: 'America/New_York',
       notifyNewBookingEmail: false,
       vapiPhoneNumber: '+18557654989',
+      businessHours: {
+        hours: {
+          0: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+          1: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+          2: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+          3: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+          4: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+          5: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+          6: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+        },
+      },
+      closureDates: [],
     } as any);
     vi.mocked(prisma.service.findMany).mockResolvedValue([{ id: 'svc-1', name: 'Haircut' }] as any);
     vi.mocked(prisma.appointment.findMany).mockResolvedValue([] as any);
@@ -198,6 +210,35 @@ describe('POST /api/public/business-by-id/[publicId]/book', () => {
     expect(res.status).toBe(400);
     await expect(res.json()).resolves.toMatchObject({
       error: "Andy doesn't work on that day.",
+    });
+    expect(prisma.appointment.create).not.toHaveBeenCalled();
+  });
+
+  it('blocks booking on a specific closed date before creating the appointment', async () => {
+    vi.mocked(prisma.business.findUnique).mockResolvedValue({
+      id: 'biz-1',
+      enableOnlineBooking: true,
+      email: 'owner@test.com',
+      name: 'Test Salon',
+      timezone: 'America/New_York',
+      notifyNewBookingEmail: false,
+      vapiPhoneNumber: '+18557654989',
+      businessHours: {
+        hours: {
+          2: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+        },
+      },
+      closureDates: [{ date: '2026-03-10', label: 'Training Day' }],
+    } as any);
+
+    const res = await POST(
+      req(BASE_BODY),
+      { params: Promise.resolve({ publicId: 'pub_123' }) }
+    );
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({
+      error: 'Business is closed for Training Day.',
     });
     expect(prisma.appointment.create).not.toHaveBeenCalled();
   });

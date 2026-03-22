@@ -23,4 +23,15 @@ describe('booking availability empty state', () => {
     expect(state.description).toMatch(/different staff member/i);
     expect(state.tone).toBe('default');
   });
+
+  it('surfaces a business-closure message when one is provided', () => {
+    const state = getEmptyAvailabilityState({
+      availabilityReason: 'business_closed',
+      availabilityMessage: 'Business is closed for Memorial Day.',
+      selectedDate: new Date(2026, 4, 25),
+    });
+
+    expect(state.title).toContain('This business is closed');
+    expect(state.description).toBe('Business is closed for Memorial Day.');
+  });
 });

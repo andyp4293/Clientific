@@ -27,6 +27,7 @@ vi.mock('@/lib/email', () => ({ sendNewBookingEmail: vi.fn().mockResolvedValue(u
 vi.mock('@/lib/timezone', () => ({
   businessDayStart: vi.fn((date: string) => new Date(date)),
   weekdayIndexInTimeZone: vi.fn((date: Date) => date.getUTCDay()),
+  dateKeyInTimeZone: vi.fn((date: Date) => date.toISOString().slice(0, 10)),
   localToUTC: vi.fn((dateStr: string, hour: number, minute: number) => {
     const [year, month, day] = dateStr.split('-').map(Number);
     return new Date(Date.UTC(year, month - 1, day, hour, minute, 0));
@@ -54,6 +55,18 @@ const fakeBusiness = {
   name: 'Test Salon',
   timezone: 'America/New_York',
   notifyNewBookingEmail: false,
+  businessHours: {
+    hours: {
+      0: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+      1: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+      2: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+      3: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+      4: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+      5: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+      6: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+    },
+  },
+  closureDates: [],
   subscriptionStatus: 'active',
   trialEndsAt: null,
 };
@@ -213,6 +226,30 @@ describe('POST /api/appointments', () => {
       error: expect.stringContaining('Andy is available Tuesday from 10:00 AM to 4:00 PM.'),
     });
     expect(mockAppointmentFindMany).not.toHaveBeenCalled();
+  });
+
+  it('blocks dashboard bookings on a specific closed date', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        ...fakeBusiness,
+        closureDates: [{ date: '2026-03-10', label: 'Training Day' }],
+      });
+
+    const res = await POST(
+      makeRequest({
+        customerId: 'cust-1',
+        startTime: '2026-03-10T14:00:00.000Z',
+        duration: 60,
+      })
+    );
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({
+      error: 'Business is closed for Training Day.',
+    });
+    expect(mockAppointmentCreate).not.toHaveBeenCalled();
   });
 
   it('creates appointment successfully with no conflicts', async () => {
