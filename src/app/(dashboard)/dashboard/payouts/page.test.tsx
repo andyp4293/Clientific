@@ -83,6 +83,14 @@ beforeEach(() => {
 });
 
 describe('PayoutsPage', () => {
+  it('uses the full desktop page shell', () => {
+    render(<PayoutsPage />);
+
+    const page = screen.getByTestId('payouts-page');
+    expect(page).toHaveClass('w-full');
+    expect(page).not.toHaveClass('max-w-7xl');
+  });
+
   it('sends the primary setup CTA to the dedicated setup page', () => {
     render(<PayoutsPage />);
 

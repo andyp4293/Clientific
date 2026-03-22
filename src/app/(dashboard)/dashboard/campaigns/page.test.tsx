@@ -13,6 +13,14 @@ vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => mockUseQueryClient(),
 }));
 
+vi.mock('qrcode.react', () => ({
+  QRCodeCanvas: () => <div data-testid="qr-code" />,
+}));
+
+vi.mock('@/components/campaigns/InStoreCapturePanel', () => ({
+  default: () => <div data-testid="in-store-capture-panel" />,
+}));
+
 vi.mock('@/components/ui/DatePicker', () => ({
   DatePicker: () => <div data-testid="date-picker" />,
 }));
@@ -21,9 +29,9 @@ vi.mock('@/components/ui/CustomSelect', () => ({
   CustomSelect: () => <div data-testid="custom-select" />,
 }));
 
-import CheckInsPage from './page';
+import DealsPage from './page';
 
-describe('CheckInsPage', () => {
+describe('DealsPage', () => {
   it('uses the full desktop page shell', () => {
     mockUseQueryClient.mockReturnValue({
       invalidateQueries: vi.fn(),
@@ -37,20 +45,10 @@ describe('CheckInsPage', () => {
     mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
       const key = config?.queryKey?.[0];
 
-      if (key === 'checkins') {
+      if (key === 'deals') {
         return {
           data: {
-            checkIns: [],
-            timezone: 'America/New_York',
-          },
-          isLoading: false,
-        };
-      }
-
-      if (key === 'customers') {
-        return {
-          data: {
-            customers: [],
+            deals: [],
           },
           isLoading: false,
         };
@@ -65,10 +63,23 @@ describe('CheckInsPage', () => {
         };
       }
 
-      if (key === 'staff') {
+      if (key === 'business') {
         return {
           data: {
-            staff: [],
+            business: {
+              name: 'ABC Nails',
+              publicId: 'public_123',
+            },
+          },
+          isLoading: false,
+        };
+      }
+
+      if (key === 'connect-account') {
+        return {
+          data: {
+            readyForPaidDeals: true,
+            notConnected: false,
           },
           isLoading: false,
         };
@@ -77,9 +88,9 @@ describe('CheckInsPage', () => {
       return { data: undefined, isLoading: false };
     });
 
-    render(<CheckInsPage />);
+    render(<DealsPage />);
 
-    const page = screen.getByTestId('checkins-page');
+    const page = screen.getByTestId('deals-page');
     expect(page).toHaveClass('w-full');
     expect(page).not.toHaveClass('max-w-7xl');
   });

@@ -137,7 +137,7 @@ export default function CheckInsPage() {
   const averageTicket = checkIns.length > 0 ? totalSpent / checkIns.length : 0;
 
   return (
-    <div className="max-w-7xl space-y-4 sm:space-y-6">
+    <div data-testid="checkins-page" className="w-full space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">

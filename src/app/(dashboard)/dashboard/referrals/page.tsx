@@ -67,7 +67,7 @@ export default function ReferralsPage() {
   const totalCredits = data?.totalCredits ?? 0;
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl mx-auto pb-28 md:pb-8">
+    <div data-testid="referrals-page" className="p-4 md:p-6 max-w-2xl mx-auto pb-28 md:pb-8">
       {/* Hero banner */}
       <div className="brand-hero mb-6 rounded-2xl p-6 shadow-lg shadow-primary/20">
         <div className="flex items-center gap-2 mb-3">

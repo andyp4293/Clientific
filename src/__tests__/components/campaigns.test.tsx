@@ -131,14 +131,13 @@ describe('DealsPage (Campaigns)', () => {
     });
   });
 
-  it('uses the shared dashboard page width instead of a narrow local container', () => {
+  it('uses the full shared dashboard page width instead of a narrow local container', () => {
     mockQueries([makeDeal()]);
     render(<DealsPage />);
 
     const page = screen.getByTestId('deals-page');
-    expect(page.className).toContain('max-w-7xl');
-    expect(page.className).not.toContain('max-w-4xl');
-    expect(page.className).not.toContain('p-4');
+    expect(page).toHaveClass('w-full');
+    expect(page.className).not.toContain('max-w-7xl');
   });
 
   it('renders without crash while loading', () => {

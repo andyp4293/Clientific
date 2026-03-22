@@ -147,7 +147,7 @@ export default function DealsPage() {
   }
 
   return (
-    <div data-testid="deals-page" className="max-w-7xl space-y-4 pb-28 sm:space-y-6 md:pb-8">
+    <div data-testid="deals-page" className="w-full space-y-4 pb-28 sm:space-y-6 md:pb-8">
       {payoutStatusData && !payoutReady && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900/30 dark:bg-amber-900/20">
           <div className="flex flex-wrap items-center justify-between gap-4">
