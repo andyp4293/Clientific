@@ -28,12 +28,23 @@ const SHARED_THEME_HELPERS = [
   'brand-shell',
   'brand-panel',
   'brand-hero',
+  'home-hero-shell',
+  'home-hero-panel',
+  'home-hero-card',
+  'home-hero-chip',
   'card',
   'input',
   'btn-primary',
   'btn-secondary',
   'btn-outline',
   'label',
+];
+
+const RAW_DARK_SURFACE_TOKENS = [
+  'bg-[#030712]',
+  'bg-gradient-to-br from-gray-900 via-gray-800 to-primary-900',
+  'bg-[linear-gradient(135deg,rgba(6,17,24,0.96),rgba(16,72,56,0.96))]',
+  'md:bg-[linear-gradient(135deg,rgb(var(--color-gray-900))_0%,rgb(var(--color-gray-800))_55%,rgb(var(--color-primary-800))_100%)]',
 ];
 
 function walk(dir: string): string[] {
@@ -79,6 +90,23 @@ describe('theme dark mode audit', () => {
         const usesSharedThemeHelper = SHARED_THEME_HELPERS.some((helper) => source.includes(helper));
 
         if (!hasDarkSupport && !usesSharedThemeHelper) {
+          offenders.push(relPath);
+        }
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('does not leave raw dark-only branded surfaces in UI files', () => {
+    const offenders: string[] = [];
+
+    for (const root of UI_ROOTS) {
+      for (const filePath of walk(root)) {
+        const source = readFileSync(filePath, 'utf8');
+        const relPath = relative(process.cwd(), filePath).replace(/\\/g, '/');
+
+        if (RAW_DARK_SURFACE_TOKENS.some((token) => source.includes(token))) {
           offenders.push(relPath);
         }
       }

@@ -14,10 +14,11 @@ describe('Homepage theme contract', () => {
     mockUseSession.mockReturnValue({ status: 'unauthenticated', data: null });
   });
 
-  it('uses the restored dark hero with explicit surfaces for the featured plan and closing CTA', () => {
+  it('uses shared light and dark hero surfaces for the homepage, featured plan, and closing CTA', () => {
     render(<HomePage />);
 
-    expect(screen.getByTestId('homepage-hero').className).toContain('bg-[#030712]');
+    expect(screen.getByTestId('homepage-hero').className).toContain('home-hero-shell');
+    expect(screen.getByTestId('homepage-hero-panel').className).toContain('home-hero-panel');
     expect(screen.getByTestId('homepage-featured-plan').className).toContain('from-primary-50');
     expect(screen.getByTestId('homepage-featured-plan').className).toContain('dark:from-gray-950');
     expect(screen.getByTestId('homepage-cta').className).toContain('from-primary-50');

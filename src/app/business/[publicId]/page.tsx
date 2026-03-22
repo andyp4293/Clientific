@@ -172,28 +172,30 @@ export default function BusinessInfoPage() {
           </div>
         </div>
       )}
-      <div className="border-b border-gray-200 dark:border-gray-800 bg-gradient-to-br from-gray-900 via-gray-800 to-primary-900">
+      <div className="brand-hero border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-6xl mx-auto px-4 py-10 sm:py-14">
           <div className="flex flex-col sm:flex-row sm:items-start gap-5">
             {business.logoUrl ? (
               <img
                 src={business.logoUrl}
                 alt={business.name}
-                className="w-20 h-20 rounded-2xl object-cover border border-white/20 shadow-lg"
+                className="w-20 h-20 rounded-2xl object-cover border border-gray-200/80 shadow-lg dark:border-white/20"
               />
             ) : (
-              <div className="w-20 h-20 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center">
-                <Sparkles className="w-8 h-8 text-primary-200" />
+              <div className="w-20 h-20 rounded-2xl brand-hero-card flex items-center justify-center">
+                <Sparkles className="w-8 h-8 text-primary" />
               </div>
             )}
 
             <div className="flex-1">
-              <p className="text-sm uppercase tracking-[0.2em] text-primary-200/90 mb-2">
+              <p className="mb-2 text-sm uppercase tracking-[0.2em] text-primary">
                 {formatBusinessType(business.businessType)}
               </p>
-              <h1 className="text-3xl sm:text-4xl font-bold text-white">{business.name}</h1>
+              <h1 className="text-3xl sm:text-4xl font-bold text-gray-950 dark:text-white">
+                {business.name}
+              </h1>
               {business.publicProfileHeadline && (
-                <p className="text-base sm:text-lg text-gray-100/90 mt-3 max-w-2xl">
+                <p className="mt-3 max-w-2xl text-base text-gray-700 dark:text-gray-100/90 sm:text-lg">
                   {business.publicProfileHeadline}
                 </p>
               )}

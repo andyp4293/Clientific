@@ -398,16 +398,15 @@ export default function DealCheckoutPage() {
 
       <main className="mx-auto max-w-6xl px-4 py-8 pb-20 lg:px-8 lg:pb-10">
         <section className="mb-6 grid gap-5 xl:grid-cols-[1.16fr,0.84fr]">
-          <div className="relative overflow-hidden rounded-[32px] brand-hero p-6 text-white shadow-[0_36px_90px_-44px_rgba(6,17,24,0.7)] sm:p-8">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_28%)]" />
+          <div className="relative overflow-hidden rounded-[32px] brand-hero p-6 sm:p-8">
             <div className="relative space-y-5">
-              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
+              <div className="brand-hero-kicker flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em]">
                 <span>{deal.business.name}</span>
-                <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] text-white">
+                <span className="brand-hero-chip rounded-full px-3 py-1 text-[11px]">
                   {discountLabel(deal.discountType, deal.discountValue)}
                 </span>
                 {deal.business.city && (
-                  <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] text-white/85">
+                  <span className="brand-hero-chip rounded-full px-3 py-1 text-[11px]">
                     {deal.business.city}
                     {deal.business.state ? `, ${deal.business.state}` : ''}
                   </span>
@@ -415,36 +414,40 @@ export default function DealCheckoutPage() {
               </div>
 
               <div>
-                <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{deal.title}</h1>
+                <h1 className="text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">
+                  {deal.title}
+                </h1>
                 {deal.description && (
-                  <p className="mt-3 max-w-2xl text-sm leading-6 text-white/78 sm:text-base">
+                  <p className="brand-hero-muted mt-3 max-w-2xl text-sm leading-6 sm:text-base">
                     {deal.description}
                   </p>
                 )}
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+                <div className="brand-hero-card rounded-2xl px-4 py-4">
+                  <p className="brand-hero-soft text-xs font-semibold uppercase tracking-[0.18em]">
                     Services
                   </p>
-                  <p className="mt-2 text-lg font-semibold">
+                  <p className="mt-2 text-lg font-semibold text-gray-950 dark:text-white">
                     {selectedServices.length === 0
                       ? 'Choose below'
                       : `${selectedServices.length} selected`}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+                <div className="brand-hero-card rounded-2xl px-4 py-4">
+                  <p className="brand-hero-soft text-xs font-semibold uppercase tracking-[0.18em]">
                     Due today
                   </p>
-                  <p className="mt-2 text-lg font-semibold">{fmt(totals.total)}</p>
+                  <p className="mt-2 text-lg font-semibold text-gray-950 dark:text-white">
+                    {fmt(totals.total)}
+                  </p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+                <div className="brand-hero-card rounded-2xl px-4 py-4">
+                  <p className="brand-hero-soft text-xs font-semibold uppercase tracking-[0.18em]">
                     Deal ends
                   </p>
-                  <p className="mt-2 text-lg font-semibold">
+                  <p className="mt-2 text-lg font-semibold text-gray-950 dark:text-white">
                     {new Date(deal.expiresAt).toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric',
@@ -696,24 +699,25 @@ export default function DealCheckoutPage() {
           <aside className="order-1 lg:order-2">
             <div className="space-y-4 lg:sticky lg:top-6">
               <div className="overflow-hidden rounded-[30px] border border-gray-200 bg-white/88 shadow-[0_30px_90px_-54px_rgba(6,17,24,0.5)] backdrop-blur-sm dark:border-gray-700 dark:bg-gray-900/88">
-                <div className="relative overflow-hidden border-b border-gray-100 bg-[linear-gradient(135deg,rgba(6,17,24,0.96),rgba(16,72,56,0.96))] px-5 py-5 text-white dark:border-gray-800">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_32%)]" />
+                <div className="brand-hero relative overflow-hidden border-b border-gray-100 px-5 py-5 dark:border-gray-800">
                   <div className="relative">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/65">
+                        <p className="brand-hero-kicker text-xs font-semibold uppercase tracking-[0.2em]">
                           Order summary
                         </p>
-                        <h2 className="mt-2 text-xl font-semibold text-white">{deal.title}</h2>
-                        <p className="mt-1 text-sm text-white/70">{deal.business.name}</p>
+                        <h2 className="mt-2 text-xl font-semibold text-gray-950 dark:text-white">
+                          {deal.title}
+                        </h2>
+                        <p className="brand-hero-muted mt-1 text-sm">{deal.business.name}</p>
                       </div>
-                      <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/85">
+                      <span className="brand-hero-chip rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]">
                         {selectedServices.length} service{selectedServices.length === 1 ? '' : 's'}
                       </span>
                     </div>
 
                     {totals.discount > 0 && (
-                      <div className="mt-4 inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white">
+                      <div className="brand-hero-chip mt-4 inline-flex rounded-full px-4 py-2 text-sm font-semibold">
                         Save {fmt(totals.discount)} with {discountLabel(deal.discountType, deal.discountValue)}
                       </div>
                     )}

@@ -9,3 +9,9 @@ For this repository, use this default release workflow without asking for confir
 5. Deploy with `npx vercel --prod`
 
 If a step fails, fix forward and continue through the same flow.
+
+## UI Theme Parity
+
+Any user-facing UI work in this repository must ship with both light mode and dark mode support.
+Audit both themes for every page and component you touch, including marketing heroes, public flows,
+dashboard views, modals, and promotional cards.

@@ -69,45 +69,51 @@ export default function ReferralsPage() {
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto pb-28 md:pb-8">
       {/* Hero banner */}
-      <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-primary-900 p-6 mb-6 text-white shadow-lg shadow-primary/20">
+      <div className="brand-hero mb-6 rounded-2xl p-6 shadow-lg shadow-primary/20">
         <div className="flex items-center gap-2 mb-3">
-          <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
-            <Gift className="w-5 h-5 text-white" />
+          <div className="brand-hero-card flex h-9 w-9 items-center justify-center rounded-xl">
+            <Gift className="w-5 h-5 text-primary" />
           </div>
-          <h1 className="text-xl font-bold tracking-tight">Refer &amp; Earn</h1>
+          <h1 className="text-xl font-bold tracking-tight text-gray-950 dark:text-white">
+            Refer &amp; Earn
+          </h1>
         </div>
-        <p className="text-white/80 text-sm leading-relaxed mb-5">
+        <p className="brand-hero-muted mb-5 text-sm leading-relaxed">
           Once your payout setup is ready, you can share your referral link with another business
           owner. While they stay subscribed, you earn{' '}
-          <span className="text-white font-semibold">{REFERRAL_COMMISSION_DISPLAY} every month</span>.
+          <span className="font-semibold text-gray-950 dark:text-white">
+            {REFERRAL_COMMISSION_DISPLAY} every month
+          </span>.
           Those earnings stack and move into your Stripe payout balance on the Payouts page.
         </p>
 
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-white/10 rounded-xl p-3 text-center backdrop-blur-sm">
+          <div className="brand-hero-card rounded-xl p-3 text-center">
             {isLoading ? (
-              <div className="h-8 w-10 bg-white/20 rounded mx-auto mb-1 animate-pulse" />
+              <div className="mx-auto mb-1 h-8 w-10 animate-pulse rounded bg-gray-200 dark:bg-white/20" />
             ) : (
-              <div className="text-2xl font-bold">${totalCredits.toFixed(0)}</div>
+              <div className="text-2xl font-bold text-gray-950 dark:text-white">
+                ${totalCredits.toFixed(0)}
+              </div>
             )}
-            <div className="text-xs text-white/70 mt-0.5">Earned</div>
+            <div className="brand-hero-kicker mt-0.5 text-xs">Earned</div>
           </div>
-          <div className="bg-white/10 rounded-xl p-3 text-center backdrop-blur-sm">
+          <div className="brand-hero-card rounded-xl p-3 text-center">
             {isLoading ? (
-              <div className="h-8 w-8 bg-white/20 rounded mx-auto mb-1 animate-pulse" />
+              <div className="mx-auto mb-1 h-8 w-8 animate-pulse rounded bg-gray-200 dark:bg-white/20" />
             ) : (
-              <div className="text-2xl font-bold">{activeCount}</div>
+              <div className="text-2xl font-bold text-gray-950 dark:text-white">{activeCount}</div>
             )}
-            <div className="text-xs text-white/70 mt-0.5">Active</div>
+            <div className="brand-hero-kicker mt-0.5 text-xs">Active</div>
           </div>
-          <div className="bg-white/10 rounded-xl p-3 text-center backdrop-blur-sm">
+          <div className="brand-hero-card rounded-xl p-3 text-center">
             {isLoading ? (
-              <div className="h-8 w-8 bg-white/20 rounded mx-auto mb-1 animate-pulse" />
+              <div className="mx-auto mb-1 h-8 w-8 animate-pulse rounded bg-gray-200 dark:bg-white/20" />
             ) : (
-              <div className="text-2xl font-bold">{pendingCount}</div>
+              <div className="text-2xl font-bold text-gray-950 dark:text-white">{pendingCount}</div>
             )}
-            <div className="text-xs text-white/70 mt-0.5">In trial</div>
+            <div className="brand-hero-kicker mt-0.5 text-xs">In trial</div>
           </div>
         </div>
       </div>

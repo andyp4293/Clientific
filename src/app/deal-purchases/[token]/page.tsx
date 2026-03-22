@@ -182,16 +182,15 @@ export default function DealPurchaseReceiptPage() {
           )}
 
           <section className="grid gap-5 xl:grid-cols-[1.14fr,0.86fr]">
-            <div className="relative overflow-hidden rounded-[32px] brand-hero p-6 text-white shadow-[0_36px_90px_-44px_rgba(6,17,24,0.7)] sm:p-8">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_28%)]" />
+            <div className="relative overflow-hidden rounded-[32px] brand-hero p-6 sm:p-8">
               <div className="relative space-y-5">
-                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
+                <div className="brand-hero-kicker flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em]">
                   <span>Deal receipt</span>
-                  <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] text-white">
+                  <span className="brand-hero-chip rounded-full px-3 py-1 text-[11px]">
                     {formatStatusLabel(purchase.status)}
                   </span>
                   {purchase.business.city && (
-                    <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] text-white/85">
+                    <span className="brand-hero-chip rounded-full px-3 py-1 text-[11px]">
                       {purchase.business.city}
                       {purchase.business.state ? `, ${purchase.business.state}` : ''}
                     </span>
@@ -199,31 +198,39 @@ export default function DealPurchaseReceiptPage() {
                 </div>
 
                 <div>
-                  <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{purchase.deal.title}</h1>
-                  <p className="mt-3 max-w-2xl text-sm leading-6 text-white/78 sm:text-base">
+                  <h1 className="text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">
+                    {purchase.deal.title}
+                  </h1>
+                  <p className="brand-hero-muted mt-3 max-w-2xl text-sm leading-6 sm:text-base">
                     Purchased from {purchase.business.name}. Your paid value is secured and your
                     redemption details are ready below.
                   </p>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+                  <div className="brand-hero-card rounded-2xl px-4 py-4">
+                    <p className="brand-hero-soft text-xs font-semibold uppercase tracking-[0.18em]">
                       Total paid
                     </p>
-                    <p className="mt-2 text-lg font-semibold">{formatCents(purchase.totalAmount)}</p>
+                    <p className="mt-2 text-lg font-semibold text-gray-950 dark:text-white">
+                      {formatCents(purchase.totalAmount)}
+                    </p>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+                  <div className="brand-hero-card rounded-2xl px-4 py-4">
+                    <p className="brand-hero-soft text-xs font-semibold uppercase tracking-[0.18em]">
                       Purchased
                     </p>
-                    <p className="mt-2 text-lg font-semibold">{purchasedAt ?? 'Processing'}</p>
+                    <p className="mt-2 text-lg font-semibold text-gray-950 dark:text-white">
+                      {purchasedAt ?? 'Processing'}
+                    </p>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+                  <div className="brand-hero-card rounded-2xl px-4 py-4">
+                    <p className="brand-hero-soft text-xs font-semibold uppercase tracking-[0.18em]">
                       Redemption code
                     </p>
-                    <p className="mt-2 text-lg font-semibold">{purchase.redemptionCode ?? 'Processing'}</p>
+                    <p className="mt-2 text-lg font-semibold text-gray-950 dark:text-white">
+                      {purchase.redemptionCode ?? 'Processing'}
+                    </p>
                   </div>
                 </div>
               </div>

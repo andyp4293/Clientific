@@ -156,7 +156,7 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
             >
             <section
               data-testid="capture-kiosk-hero"
-              className="hidden md:order-1 md:flex md:min-h-[640px] md:flex-col md:justify-between md:rounded-[2rem] md:bg-[linear-gradient(135deg,rgb(var(--color-gray-900))_0%,rgb(var(--color-gray-800))_55%,rgb(var(--color-primary-800))_100%)] md:p-8 md:text-white md:shadow-2xl md:shadow-primary-950/20 lg:p-10"
+              className="brand-hero hidden md:order-1 md:flex md:min-h-[640px] md:flex-col md:justify-between md:rounded-[2rem] md:p-8 md:shadow-2xl md:shadow-primary-950/20 lg:p-10"
             >
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
@@ -166,47 +166,51 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
                       alt={`${config.business.name} logo`}
                       width={88}
                       height={88}
-                      className="h-20 w-20 rounded-3xl border border-white/15 object-cover sm:h-24 sm:w-24"
+                      className="h-20 w-20 rounded-3xl border border-gray-200/80 object-cover sm:h-24 sm:w-24 dark:border-white/15"
                     />
                   ) : (
-                    <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-white/15 bg-white/10 text-3xl font-bold uppercase sm:h-24 sm:w-24">
+                    <div className="brand-hero-card flex h-20 w-20 items-center justify-center rounded-3xl text-3xl font-bold uppercase text-gray-950 dark:text-white sm:h-24 sm:w-24">
                       {config.business.name.charAt(0)}
                     </div>
                   )}
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary-200">
+                    <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">
                       In-Store Signup
                     </p>
-                    <h1 className="mt-2 text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
+                    <h1 className="mt-2 text-3xl font-bold leading-tight text-gray-950 dark:text-white sm:text-4xl lg:text-5xl">
                       {hasSelectedDeal ? "Claim today's service offer." : 'Join the VIP text list.'}
                     </h1>
                   </div>
                 </div>
 
                 <div className="max-w-2xl space-y-4">
-                  <p className="text-lg text-white/92 sm:text-xl">
+                  <p className="text-lg text-gray-800 dark:text-white/92 sm:text-xl">
                     {config.deal
                       ? `${config.deal.discountLabel} on ${config.deal.serviceName ?? 'featured services'} from ${config.business.name}. Enter your info and we'll text your ${config.deal.deliveryType === 'purchase_link' ? 'purchase link' : 'code'} right away.`
                       : `Get first access to specials, last-minute openings, seasonal promos, and client updates from ${config.business.name}.`}
                   </p>
                   {config.business.publicProfileHeadline && (
-                    <p className="text-sm text-white/70 sm:text-base">{config.business.publicProfileHeadline}</p>
+                    <p className="text-sm text-gray-700 dark:text-white/70 sm:text-base">
+                      {config.business.publicProfileHeadline}
+                    </p>
                   )}
                 </div>
               </div>
 
               <div className="pt-2 md:pt-8">
-                <div className="max-w-xl rounded-3xl border border-white/10 bg-white/8 p-5 backdrop-blur-sm sm:p-6">
-                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary-200">
+                <div className="brand-hero-card max-w-xl rounded-3xl p-5 sm:p-6">
+                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">
                     {hasSelectedDeal ? "Today's offer" : 'Why clients join'}
                   </p>
                   {config.deal ? (
                     <>
-                      <p className="mt-3 text-2xl font-semibold">{config.deal.title}</p>
-                      <p className="mt-2 text-sm text-white/80">
+                      <p className="mt-3 text-2xl font-semibold text-gray-950 dark:text-white">
+                        {config.deal.title}
+                      </p>
+                      <p className="mt-2 text-sm text-gray-700 dark:text-white/80">
                         {config.deal.description || 'Claim this service special now and stay on the VIP text list for future offers.'}
                       </p>
-                      <p className="mt-4 text-sm text-white/70">
+                      <p className="mt-4 text-sm text-gray-600 dark:text-white/70">
                         Expires{' '}
                         {new Date(config.deal.expiresAt).toLocaleDateString('en-US', {
                           month: 'short',
@@ -217,8 +221,10 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
                     </>
                   ) : (
                     <>
-                      <p className="mt-3 text-2xl font-semibold">Service-first updates</p>
-                      <ul className="mt-4 space-y-2 text-sm text-white/80">
+                      <p className="mt-3 text-2xl font-semibold text-gray-950 dark:text-white">
+                        Service-first updates
+                      </p>
+                      <ul className="mt-4 space-y-2 text-sm text-gray-700 dark:text-white/80">
                         <li>Early access to member-only specials and seasonal offers</li>
                         <li>Alerts for last-minute openings and slow-day promos</li>
                         <li>Occasional updates from the team, sent by text</li>

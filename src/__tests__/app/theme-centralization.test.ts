@@ -26,7 +26,9 @@ describe('theme centralization', () => {
     expect(tailwind).toContain('success: colorVar("--color-success")');
     expect(tailwind).not.toContain('DEFAULT: "#7B22D4"');
 
-    expect(businessPage).toContain('from-gray-900 via-gray-800 to-primary-900');
+    expect(globals).toContain('.brand-hero {');
+    expect(globals).toContain('.dark .brand-hero {');
+    expect(businessPage).toContain('brand-hero');
     expect(businessPage).not.toContain('emerald-');
     expect(businessPage).not.toContain('slate-');
   });

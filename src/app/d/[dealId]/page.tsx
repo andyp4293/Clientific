@@ -210,16 +210,15 @@ export default function PublicDealClaimPage() {
           )}
 
           <section className="grid gap-5 xl:grid-cols-[1.2fr,0.8fr]">
-            <div className="relative overflow-hidden rounded-[32px] brand-hero p-6 text-white shadow-[0_36px_90px_-44px_rgba(6,17,24,0.7)] sm:p-8">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_28%)]" />
+            <div className="relative overflow-hidden rounded-[32px] brand-hero p-6 sm:p-8">
               <div className="relative space-y-5">
-                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
+                <div className="brand-hero-kicker flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em]">
                   <span>{deal.business.name}</span>
-                  <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] text-white">
+                  <span className="brand-hero-chip rounded-full px-3 py-1 text-[11px]">
                     {discountLabel(deal.discountType, deal.discountValue)}
                   </span>
                   {deal.business.city && (
-                    <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] text-white/85">
+                    <span className="brand-hero-chip rounded-full px-3 py-1 text-[11px]">
                       {deal.business.city}
                       {deal.business.state ? `, ${deal.business.state}` : ''}
                     </span>
@@ -227,22 +226,22 @@ export default function PublicDealClaimPage() {
                 </div>
 
                 <div>
-                  <h1 className="max-w-3xl text-3xl font-bold tracking-tight sm:text-4xl">
+                  <h1 className="max-w-3xl text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">
                     {deal.title}
                   </h1>
                   {deal.description && (
-                    <p className="mt-3 max-w-2xl text-sm leading-6 text-white/78 sm:text-base">
+                    <p className="brand-hero-muted mt-3 max-w-2xl text-sm leading-6 sm:text-base">
                       {deal.description}
                     </p>
                   )}
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+                  <div className="brand-hero-card rounded-2xl px-4 py-4">
+                    <p className="brand-hero-soft text-xs font-semibold uppercase tracking-[0.18em]">
                       Expires
                     </p>
-                    <p className="mt-2 text-lg font-semibold">
+                    <p className="mt-2 text-lg font-semibold text-gray-950 dark:text-white">
                       {new Date(deal.expiresAt).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
@@ -250,28 +249,28 @@ export default function PublicDealClaimPage() {
                       })}
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+                  <div className="brand-hero-card rounded-2xl px-4 py-4">
+                    <p className="brand-hero-soft text-xs font-semibold uppercase tracking-[0.18em]">
                       Discount
                     </p>
-                    <p className="mt-2 text-lg font-semibold">
+                    <p className="mt-2 text-lg font-semibold text-gray-950 dark:text-white">
                       {discountLabel(deal.discountType, deal.discountValue)}
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+                  <div className="brand-hero-card rounded-2xl px-4 py-4">
+                    <p className="brand-hero-soft text-xs font-semibold uppercase tracking-[0.18em]">
                       Delivery
                     </p>
-                    <p className="mt-2 text-lg font-semibold">
+                    <p className="mt-2 text-lg font-semibold text-gray-950 dark:text-white">
                       {isPurchaseFlow ? 'Online checkout' : 'Claim code'}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-white/85">
+                <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold">
                   <Link
                     href={`/business/${deal.business.publicId}`}
-                    className="transition hover:text-white"
+                    className="brand-hero-link transition"
                   >
                     View business profile
                   </Link>
@@ -281,7 +280,7 @@ export default function PublicDealClaimPage() {
                         ? `/explore?location=${encodeURIComponent(deal.business.city)}`
                         : '/explore'
                     }
-                    className="transition hover:text-white"
+                    className="brand-hero-link transition"
                   >
                     Find more deals nearby
                   </Link>
