@@ -11,6 +11,7 @@ import {
   summarizeRequirementGuidance,
   sumBalanceAmounts,
 } from '@/components/payouts/EmbeddedPayoutWorkspace';
+import { FundsStatusPanel } from '@/components/payouts/FundsStatusPanel';
 
 type Transaction = {
   id: string;
@@ -97,6 +98,7 @@ export default function PayoutsPage() {
   const needsSetup = !connectData?.readyForPaidDeals;
   const referralLifetime = connectData?.referralPayouts?.lifetimeEarned ?? 0;
   const referralPending = connectData?.referralPayouts?.pendingTransfer ?? 0;
+  const referralPendingCount = connectData?.referralPayouts?.pendingCount ?? 0;
   const referralTransferred = connectData?.referralPayouts?.transferredToConnect ?? 0;
   const referralLastTransferredAt = connectData?.referralPayouts?.lastTransferredAt ?? null;
   const rawRequirementList = collectOutstandingRequirementKeys(connectData?.requirements);
@@ -232,29 +234,15 @@ export default function PayoutsPage() {
         </div>
 
         <div className="grid gap-4">
-          <div className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-              Available balance
-            </p>
-            <p className="mt-3 text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {connectLoading ? '...' : cents(availableBalance)}
-            </p>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Ready for payout in Stripe
-            </p>
-          </div>
-
-          <div className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-              Pending balance
-            </p>
-            <p className="mt-3 text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {connectLoading ? '...' : cents(pendingBalance)}
-            </p>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Sales still clearing through Stripe
-            </p>
-          </div>
+          <FundsStatusPanel
+            availableAmountCents={availableBalance}
+            stripePendingAmountCents={pendingBalance}
+            referralPendingAmountCents={referralPending}
+            referralPendingCount={referralPendingCount}
+            readyForPaidDeals={Boolean(connectData?.readyForPaidDeals)}
+            isLoading={connectLoading}
+            className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900"
+          />
 
           <div className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">

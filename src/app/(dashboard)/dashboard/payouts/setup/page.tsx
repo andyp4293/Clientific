@@ -14,9 +14,7 @@ import {
   summarizeRequirementGuidance,
   sumBalanceAmounts,
 } from '@/components/payouts/EmbeddedPayoutWorkspace';
-
-const cents = (value: number) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value / 100);
+import { FundsStatusPanel } from '@/components/payouts/FundsStatusPanel';
 
 export default function PayoutsSetupPage() {
   const queryClient = useQueryClient();
@@ -44,6 +42,8 @@ export default function PayoutsSetupPage() {
 
   const availableBalance = sumBalanceAmounts(connectData?.balances?.available);
   const pendingBalance = sumBalanceAmounts(connectData?.balances?.pending);
+  const referralPending = connectData?.referralPayouts?.pendingTransfer ?? 0;
+  const referralPendingCount = connectData?.referralPayouts?.pendingCount ?? 0;
   const rawRequirementList = collectOutstandingRequirementKeys(connectData?.requirements);
   const requirementTasks = summarizeRequirementTasks(rawRequirementList);
   const requirementGuidance = summarizeRequirementGuidance(connectData);
@@ -262,29 +262,28 @@ export default function PayoutsSetupPage() {
             </p>
           </div>
 
-          {!needsSetup && (
-            <>
-              <div className="brand-panel rounded-[24px] p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                  Available balance
-                </p>
-                <p className="mt-3 text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {connectLoading ? '...' : cents(availableBalance)}
-                </p>
-              </div>
+          <FundsStatusPanel
+            availableAmountCents={availableBalance}
+            stripePendingAmountCents={pendingBalance}
+            referralPendingAmountCents={referralPending}
+            referralPendingCount={referralPendingCount}
+            readyForPaidDeals={Boolean(connectData?.readyForPaidDeals)}
+            isLoading={connectLoading}
+            className="brand-panel rounded-[24px] p-5"
+          />
 
-              <div className="brand-panel rounded-[24px] p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                  Payout schedule
-                </p>
-                <p className="mt-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {formatSchedule(connectData?.payoutSchedule ?? null)}
-                </p>
-                <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
-                  Pending balance: {connectLoading ? '...' : cents(pendingBalance)}
-                </p>
-              </div>
-            </>
+          {!needsSetup && (
+            <div className="brand-panel rounded-[24px] p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                Payout schedule
+              </p>
+              <p className="mt-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {formatSchedule(connectData?.payoutSchedule ?? null)}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                Stripe uses this schedule after funds become available.
+              </p>
+            </div>
           )}
         </aside>
       </section>

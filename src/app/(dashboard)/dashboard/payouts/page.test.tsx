@@ -200,6 +200,58 @@ describe('PayoutsPage', () => {
 
     expect(screen.getByText(/referral payouts/i)).toBeInTheDocument();
     expect(screen.getByText(/\$8\.70 is waiting for you to finish stripe payout setup/i)).toBeInTheDocument();
+    expect(screen.getByText(/referral earnings waiting on payout setup/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/finish payout setup so clientific can move them into your stripe payout balance/i)
+    ).toBeInTheDocument();
+  });
+
+  it('explains when recent deal payments are still clearing through Stripe', () => {
+    mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
+      const key = config?.queryKey?.[0];
+
+      if (key === 'deal-earnings') {
+        return {
+          data: {
+            transactions: [],
+            totals: {
+              totalGross: 0,
+              totalFees: 0,
+              totalNet: 0,
+              transactionCount: 0,
+            },
+          },
+          isLoading: false,
+        };
+      }
+
+      if (key === 'connect-payouts') {
+        return {
+          data: buildConnectData({
+            onboardingComplete: true,
+            readyForPaidDeals: true,
+            payoutsEnabled: true,
+            chargesEnabled: true,
+            detailsSubmitted: true,
+            balances: {
+              available: [{ amount: 5000, currency: 'usd' }],
+              pending: [{ amount: 1250, currency: 'usd' }],
+            },
+          }),
+          isLoading: false,
+        };
+      }
+
+      return { data: undefined, isLoading: false };
+    });
+
+    render(<PayoutsPage />);
+
+    expect(screen.getByText(/why funds are pending/i)).toBeInTheDocument();
+    expect(screen.getByText(/recent deal payments/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/these payments are still clearing through stripe before they move into your available balance/i)
+    ).toBeInTheDocument();
   });
 
   it('uses the more professional Stripe disclosure copy', () => {

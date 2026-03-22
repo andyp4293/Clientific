@@ -55,6 +55,14 @@ const buildConnectData = (overrides: Record<string, unknown> = {}) => ({
   },
   balances: null,
   payouts: [],
+  referralPayouts: {
+    lifetimeEarned: 0,
+    pendingTransfer: 0,
+    transferredToConnect: 0,
+    pendingCount: 0,
+    transferredCount: 0,
+    lastTransferredAt: null,
+  },
   ...overrides,
 });
 
@@ -232,5 +240,45 @@ describe('PayoutsSetupPage', () => {
     expect(
       screen.getByText(/stripe still needs the payout terms accepted before paid deals can go live/i)
     ).toBeInTheDocument();
+  });
+
+  it('shows pending fund reasons in the setup sidebar', () => {
+    mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
+      const key = config?.queryKey?.[0];
+
+      if (key === 'connect-payouts') {
+        return {
+          data: buildConnectData({
+            onboardingComplete: false,
+            readyForPaidDeals: false,
+            payoutsEnabled: false,
+            chargesEnabled: false,
+            detailsSubmitted: false,
+            balances: {
+              available: [{ amount: 5000, currency: 'usd' }],
+              pending: [{ amount: 1250, currency: 'usd' }],
+            },
+            referralPayouts: {
+              lifetimeEarned: 3200,
+              pendingTransfer: 870,
+              transferredToConnect: 2330,
+              pendingCount: 1,
+              transferredCount: 2,
+              lastTransferredAt: null,
+            },
+          }),
+          isLoading: false,
+          refetch: vi.fn(),
+        };
+      }
+
+      return { data: undefined, isLoading: false };
+    });
+
+    render(<PayoutsSetupPage />);
+
+    expect(screen.getByText(/funds status/i)).toBeInTheDocument();
+    expect(screen.getByText(/recent deal payments/i)).toBeInTheDocument();
+    expect(screen.getByText(/referral earnings waiting on payout setup/i)).toBeInTheDocument();
   });
 });
