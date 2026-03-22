@@ -12,7 +12,6 @@ import {
   addMinutesToTimeString,
   buildTimeOptions,
   formatScheduleTimeLabel,
-  formatStaffAvailabilitySummary,
   normalizeBusinessHoursRecord,
   normalizeStaffWorkHours,
   type BusinessHoursRecord,
@@ -578,31 +577,20 @@ function StaffTab({
             )}
           </div>
 
-          {member.workDays && member.workDays.length < 7 && (
-            <div className="flex flex-wrap gap-1 mb-3">
-              {DAY_LABELS.map((label, i) => (
-                <span
-                  key={i}
-                  className={`px-1.5 py-0.5 text-xs rounded font-medium ${
-                    member.workDays.includes(i)
-                      ? "bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
-                      : "bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500 line-through"
-                  }`}
-                >
-                  {label}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-            {formatStaffAvailabilitySummary({
-              workDays: member.workDays,
-              workHours: member.workHours,
-              businessHours: businessHoursRecord,
-              weekdayLabels: DAY_LABELS,
-            })}
-          </p>
+          <div className="mb-3 flex flex-wrap gap-1">
+            {DAY_LABELS.map((label, i) => (
+              <span
+                key={i}
+                className={`px-1.5 py-0.5 text-xs rounded font-medium ${
+                  member.workDays.includes(i)
+                    ? "bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
+                    : "bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500 line-through"
+                }`}
+              >
+                {label}
+              </span>
+            ))}
+          </div>
 
           {/* Service assignment indicator */}
           <div className="mb-3">

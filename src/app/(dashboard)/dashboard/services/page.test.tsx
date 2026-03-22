@@ -65,5 +65,10 @@ describe("services page cache sync contract", () => {
     expect(source).not.toContain(
       "Keep this enabled when this staff member should appear",
     );
+    expect(source).not.toContain(
+      "member.workDays && member.workDays.length < 7 &&",
+    );
+    expect(source).not.toContain("formatStaffAvailabilitySummary({");
+    expect(source).toContain("DAY_LABELS.map((label, i) => (");
   });
 });
