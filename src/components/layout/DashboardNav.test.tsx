@@ -2,7 +2,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DashboardNav } from './DashboardNav';
 
 vi.mock('next/navigation', () => ({
@@ -23,6 +23,17 @@ vi.mock('next-auth/react', () => ({
 }));
 
 describe('DashboardNav', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise(() => {})) as unknown as typeof fetch
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('shows the live business name and logo instead of stale session profile text', () => {
     const queryClient = new QueryClient({
       defaultOptions: {
@@ -51,5 +62,30 @@ describe('DashboardNav', () => {
     expect(logo).toBeInTheDocument();
     expect(logo.src).toContain('https://example.com/logo.png');
     expect(screen.getByText('contact@abcnails.com')).toBeInTheDocument();
+  });
+
+  it('does not seed the shared business cache with a partial sidebar snapshot', () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <DashboardNav
+          initialBusiness={{
+            name: 'ABC Nails',
+            email: 'contact@abcnails.com',
+            logoUrl: null,
+          }}
+        />
+      </QueryClientProvider>
+    );
+
+    expect(queryClient.getQueryData(['business-info'])).toBeUndefined();
+    expect(screen.getByText('ABC Nails')).toBeInTheDocument();
   });
 });

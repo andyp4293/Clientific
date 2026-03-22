@@ -34,7 +34,7 @@ export function DashboardNav({ initialBusiness }: DashboardNavProps) {
       return res.json();
     },
     staleTime: 30_000,
-    initialData: {
+    placeholderData: {
       business: initialBusiness,
     },
   });

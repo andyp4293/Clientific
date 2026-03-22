@@ -39,7 +39,7 @@ export function MobileBottomNav({ initialBusiness }: MobileBottomNavProps) {
       return res.json();
     },
     staleTime: 30_000,
-    initialData: {
+    placeholderData: {
       business: initialBusiness,
     },
   });

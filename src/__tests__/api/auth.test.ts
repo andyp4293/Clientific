@@ -171,6 +171,40 @@ describe('POST /api/auth/register', () => {
     expect(body.business.email).toBe('owner@example.com');
   });
 
+  it('persists location fields and timezone during registration', async () => {
+    mockFindUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    mockCreate.mockResolvedValue(MOCK_BUSINESS);
+    mockHoursCreate.mockResolvedValue({});
+
+    await registerPOST(
+      req('/api/auth/register', {
+        ...validBody,
+        street: '779 Williamsburg Drive',
+        city: 'Brick',
+        state: 'New Jersey',
+        zipCode: '08724',
+        country: 'United States',
+        timezone: 'America/New_York',
+      })
+    );
+
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          street: '779 Williamsburg Drive',
+          city: 'Brick',
+          state: 'New Jersey',
+          zipCode: '08724',
+          country: 'United States',
+          timezone: 'America/New_York',
+        }),
+      })
+    );
+  });
+
   it('lowercases the email on create', async () => {
     mockFindUnique.mockResolvedValue(null);
     mockCreate.mockResolvedValue(MOCK_BUSINESS);
