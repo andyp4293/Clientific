@@ -149,7 +149,7 @@ export async function POST(
         return NextResponse.json(
           {
             error:
-              'This business is still finishing Stripe-powered payout setup, so this paid deal is not available yet.',
+              'This business is still finishing payout setup, so this paid deal is not available yet.',
           },
           { status: 409 }
         );

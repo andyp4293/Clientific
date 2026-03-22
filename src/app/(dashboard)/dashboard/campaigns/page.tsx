@@ -154,7 +154,7 @@ export default function DealsPage() {
             <div>
               <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">Set up payouts before publishing paid deals</p>
               <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">
-                Paid purchase-link deals need Stripe-powered payout setup first. Free-service deals can still be created without it.
+                Paid purchase-link deals need payout setup first. Free-service deals can still be created without it.
               </p>
             </div>
             <a href="/dashboard/payouts" className="btn-primary text-sm">

@@ -55,7 +55,7 @@ export function getPaidDealPayoutStatus(
       ready: false,
       code: 'onboarding_incomplete',
       message:
-        'Finish the Stripe-powered payout setup before publishing paid deal purchases.',
+        'Finish the secure payout setup before publishing paid deal purchases.',
     };
   }
 
