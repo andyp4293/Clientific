@@ -55,5 +55,15 @@ describe("services page cache sync contract", () => {
     expect(source).toContain(
       "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3",
     );
+    expect(source).not.toContain(
+      "Set working days, bookable services, and appointment hours",
+    );
+    expect(source).not.toContain("Who will customers see?");
+    expect(source).not.toContain(
+      "Add the core details used across bookings, reminders,",
+    );
+    expect(source).not.toContain(
+      "Keep this enabled when this staff member should appear",
+    );
   });
 });

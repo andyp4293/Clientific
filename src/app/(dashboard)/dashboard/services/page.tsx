@@ -1514,11 +1514,6 @@ export default function ServicesPage() {
                         ? "Edit Staff Member"
                         : "Add New Staff Member"}
                     </h2>
-                    <p className="mt-2 text-sm leading-6 text-white/70">
-                      Set working days, bookable services, and appointment hours
-                      in {businessTimezoneLabel}. The booking engine and AI
-                      receptionist use the same schedule.
-                    </p>
                   </div>
                   <button
                     type="button"
@@ -1551,18 +1546,7 @@ export default function ServicesPage() {
                 <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 xl:gap-5">
                   <div className="space-y-4 xl:contents">
                     <section className="rounded-[1.75rem] border border-gray-200/80 bg-white p-5 shadow-[0_24px_70px_-42px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-gray-900/85">
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary-700 dark:text-primary-300">
-                        Profile
-                      </p>
-                      <h3 className="mt-2 text-lg font-semibold text-gray-950 dark:text-white">
-                        Who will customers see?
-                      </h3>
-                      <p className="mt-1 text-sm leading-6 text-gray-500 dark:text-gray-400">
-                        Add the core details used across bookings, reminders,
-                        and staff selection.
-                      </p>
-
-                      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div className="sm:col-span-2">
                           <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
                             Full Name{" "}
@@ -2218,11 +2202,6 @@ export default function ServicesPage() {
                         <span>
                           <span className="block text-sm font-semibold text-gray-900 dark:text-white">
                             Active and available for appointments
-                          </span>
-                          <span className="mt-1 block text-sm leading-6 text-gray-500 dark:text-gray-400">
-                            Keep this enabled when this staff member should
-                            appear in appointment booking, public scheduling,
-                            and AI receptionist availability.
                           </span>
                         </span>
                       </label>
