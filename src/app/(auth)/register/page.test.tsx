@@ -310,6 +310,6 @@ describe("RegisterPage", () => {
       });
     });
 
-    expect(mockAssign).toHaveBeenCalledWith("/dashboard/payouts/setup");
+    expect(mockAssign).toHaveBeenCalledWith("/dashboard/payouts");
   });
 });

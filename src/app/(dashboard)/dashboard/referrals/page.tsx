@@ -132,7 +132,7 @@ export default function ReferralsPage() {
             </p>
           </div>
           {sharingLocked && (
-            <a href="/dashboard/payouts/setup" className="btn-primary text-sm">
+            <a href="/dashboard/payouts" className="btn-primary text-sm">
               Finish Payout Setup
             </a>
           )}
@@ -147,7 +147,7 @@ export default function ReferralsPage() {
               {payoutSetupMessage}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <a href="/dashboard/payouts/setup" className="btn-primary text-sm">
+              <a href="/dashboard/payouts" className="btn-primary text-sm">
                 Complete secure setup
               </a>
               <a href="/dashboard/payouts" className="btn-outline text-sm">

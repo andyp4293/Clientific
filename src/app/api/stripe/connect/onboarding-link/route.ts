@@ -12,7 +12,7 @@ import {
 function buildHostedOnboardingUrls(appUrl: string) {
   return {
     refreshUrl: `${appUrl}/api/stripe/connect/onboarding-link/refresh`,
-    returnUrl: `${appUrl}/dashboard/payouts/setup?stripe_onboarding=return`,
+    returnUrl: `${appUrl}/dashboard/payouts?stripe_onboarding=return`,
   };
 }
 

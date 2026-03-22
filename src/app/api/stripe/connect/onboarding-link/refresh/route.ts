@@ -12,12 +12,12 @@ import {
 function buildHostedOnboardingUrls(appUrl: string) {
   return {
     refreshUrl: `${appUrl}/api/stripe/connect/onboarding-link/refresh`,
-    returnUrl: `${appUrl}/dashboard/payouts/setup?stripe_onboarding=return`,
+    returnUrl: `${appUrl}/dashboard/payouts?stripe_onboarding=return`,
   };
 }
 
-function redirectToSetup(appUrl: string, searchParam?: [string, string]) {
-  const url = new URL('/dashboard/payouts/setup', appUrl);
+function redirectToPayouts(appUrl: string, searchParam?: [string, string]) {
+  const url = new URL('/dashboard/payouts', appUrl);
   if (searchParam) {
     url.searchParams.set(searchParam[0], searchParam[1]);
   }
@@ -26,7 +26,7 @@ function redirectToSetup(appUrl: string, searchParam?: [string, string]) {
 
 function redirectToLogin(appUrl: string) {
   const url = new URL('/login', appUrl);
-  url.searchParams.set('callbackUrl', '/dashboard/payouts/setup');
+  url.searchParams.set('callbackUrl', '/dashboard/payouts');
   return NextResponse.redirect(url);
 }
 
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
 
     const business = await findBusiness(businessId);
     if (!business) {
-      return redirectToSetup(appUrl, ['stripe_onboarding', 'missing_business']);
+      return redirectToPayouts(appUrl, ['stripe_onboarding', 'missing_business']);
     }
 
     const account = await ensureBusinessConnectAccount(business, appUrl);
@@ -71,6 +71,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(onboardingLink.url);
   } catch (error) {
     console.error('GET /api/stripe/connect/onboarding-link/refresh error:', error);
-    return redirectToSetup(appUrl, ['stripe_onboarding', 'refresh_error']);
+    return redirectToPayouts(appUrl, ['stripe_onboarding', 'refresh_error']);
   }
 }

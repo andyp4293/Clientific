@@ -79,7 +79,7 @@ describe('POST /api/stripe/connect/onboarding-link', () => {
     expect(mockCreateLink).toHaveBeenCalledWith({
       accountId: 'acct_123',
       refreshUrl: 'https://clientific.app/api/stripe/connect/onboarding-link/refresh',
-      returnUrl: 'https://clientific.app/dashboard/payouts/setup?stripe_onboarding=return',
+      returnUrl: 'https://clientific.app/dashboard/payouts?stripe_onboarding=return',
     });
   });
 });

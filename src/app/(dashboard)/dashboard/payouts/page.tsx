@@ -1,14 +1,16 @@
 'use client';
 
-import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import {
   collectOutstandingRequirementKeys,
+  EmbeddedPayoutWorkspace,
   type ConnectData,
   formatRequirementStatus,
   formatSchedule,
-  summarizeRequirementTasks,
   summarizeRequirementGuidance,
+  summarizeRequirementTasks,
   sumBalanceAmounts,
 } from '@/components/payouts/EmbeddedPayoutWorkspace';
 import { FundsStatusPanel } from '@/components/payouts/FundsStatusPanel';
@@ -70,6 +72,11 @@ const statusBadgeClass = (status: string) => {
 };
 
 export default function PayoutsPage() {
+  const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const [isStartingSetup, setIsStartingSetup] = useState(false);
+  const [setupError, setSetupError] = useState<string | null>(null);
+
   const { data: earningsData, isLoading: earningsLoading } = useQuery<EarningsData>({
     queryKey: ['deal-earnings'],
     queryFn: async () => {
@@ -82,6 +89,7 @@ export default function PayoutsPage() {
   const {
     data: connectData,
     isLoading: connectLoading,
+    refetch: refetchConnect,
   } = useQuery<ConnectData>({
     queryKey: ['connect-payouts'],
     queryFn: async () => {
@@ -90,6 +98,34 @@ export default function PayoutsPage() {
       return res.json();
     },
   });
+
+  const refreshConnect = async () => {
+    await refetchConnect();
+    await queryClient.invalidateQueries({ queryKey: ['connect-payouts'] });
+  };
+
+  const handleStartSetup = async () => {
+    if (isStartingSetup) return;
+
+    setIsStartingSetup(true);
+    setSetupError(null);
+
+    try {
+      const res = await fetch('/api/stripe/connect/onboarding-link', {
+        method: 'POST',
+      });
+      const body = await res.json().catch(() => ({}));
+
+      if (!res.ok || !body.url) {
+        throw new Error(body.error || 'Could not start secure Stripe setup.');
+      }
+
+      window.location.assign(body.url as string);
+    } catch (error: any) {
+      setSetupError(error?.message || 'Could not start secure Stripe setup.');
+      setIsStartingSetup(false);
+    }
+  };
 
   const totals = earningsData?.totals;
   const transactions = earningsData?.transactions ?? [];
@@ -107,6 +143,24 @@ export default function PayoutsPage() {
   const requirementTasks = summarizeRequirementTasks(rawRequirementList);
   const requirementGuidance = summarizeRequirementGuidance(connectData);
   const requirementStatus = formatRequirementStatus(connectData?.requirements.disabledReason);
+  const bankAccountSummary = connectData?.externalAccount
+    ? `${connectData.externalAccount.bankName ?? 'Bank account'} ending in ${connectData.externalAccount.last4}`
+    : 'Stripe has not saved a payout bank account yet';
+  const payoutScheduleSummary = formatSchedule(connectData?.payoutSchedule ?? null);
+  const onboardingState = searchParams.get('stripe_onboarding');
+  const startSetupLabel =
+    onboardingState === 'return' ? 'Continue secure setup' : 'Start secure setup';
+
+  const onboardingMessage =
+    onboardingState === 'return' && needsSetup
+      ? 'We rechecked Stripe when you came back. If setup still looks incomplete, Stripe has not saved the remaining payout steps on this account yet.'
+      : onboardingState === 'refresh_error'
+        ? 'Your Stripe setup link expired before it was opened. Start secure setup again to continue.'
+        : onboardingState === 'missing_business'
+          ? 'We could not find this business record while opening Stripe. Refresh the page and try again.'
+          : onboardingState === 'return' && !needsSetup
+            ? 'Stripe setup is complete. Your live payout controls are now ready below.'
+            : null;
 
   return (
     <div data-testid="payouts-page" className="w-full space-y-6 pb-28 md:pb-8">
@@ -118,156 +172,290 @@ export default function PayoutsPage() {
             and payouts to your connected bank account.
           </p>
         </div>
-        <div className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
-          Secure payments and payouts
+        <div className="flex flex-wrap items-center gap-2">
+          {!connectLoading ? (
+            <button type="button" onClick={() => void refreshConnect()} className="btn-outline text-sm">
+              Refresh status
+            </button>
+          ) : null}
+          <div className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+            {needsSetup ? 'Secure payments and payouts' : 'Live Stripe workspace'}
+          </div>
         </div>
       </div>
 
-      <section className="grid gap-4 xl:grid-cols-[1.3fr,0.7fr]">
-        <div className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-                Payout readiness
-              </p>
-              <h2 className="mt-2 text-xl font-semibold text-gray-900 dark:text-gray-100">
-                {connectLoading
-                  ? 'Checking payout setup...'
-                  : needsSetup
-                    ? 'Finish setup before you sell paid deals'
-                    : 'Paid deal payouts are live'}
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-                {connectLoading
-                  ? 'Loading your secure payout status.'
-                  : needsSetup
-                    ? 'Businesses only need this setup before publishing paid purchase-link deals. Free-service deals and code-claim offers can still run without payouts.'
-                    : 'Customer payments route through Stripe Connect, your platform fee is collected automatically, and the rest can be paid out to your connected bank account on your chosen schedule.'}
-              </p>
-            </div>
+      {needsSetup ? (
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr),360px]">
+          <div className="space-y-6">
+            <section className="brand-panel rounded-[32px] p-6 sm:p-7">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="max-w-2xl">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+                    Secure Stripe setup
+                  </p>
+                  <h2 className="mt-3 text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+                    Connect payouts without leaving this page
+                  </h2>
+                  <p className="mt-3 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                    Start with your bank account. Stripe will only ask for the payout-owner
+                    details it still requires before paid deals and referrals can pay out.
+                  </p>
+                </div>
 
-            {!connectLoading && (
-              <Link href="/dashboard/payouts/setup" className="btn-primary text-sm">
-                {connectData?.notConnected ? 'Set up payouts' : 'Manage payout setup'}
-              </Link>
-            )}
-          </div>
-
-          {!connectLoading && connectData && (
-            <div className="mt-5 grid gap-4 md:grid-cols-3">
-              <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                  Bank account
-                </p>
-                <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {connectData.externalAccount
-                    ? `${connectData.externalAccount.bankName ?? 'Bank account'} ending in ${connectData.externalAccount.last4}`
-                    : 'Stripe has not saved a payout bank account yet'}
-                </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  {connectData.externalAccount?.accountHolderName ||
-                    'Keep going in secure setup until Stripe confirms the payout account back to Clientific.'}
-                </p>
+                <button
+                  type="button"
+                  onClick={() => void handleStartSetup()}
+                  disabled={isStartingSetup}
+                  className="btn-primary px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isStartingSetup ? 'Opening secure setup...' : startSetupLabel}
+                </button>
               </div>
 
-              <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                  Payout schedule
-                </p>
-                <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {formatSchedule(connectData.payoutSchedule)}
-                </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Open the secure setup screen to switch between manual and automatic payouts.
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                  Paid deal status
-                </p>
-                <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {connectData.readyForPaidDeals ? 'Ready to publish' : 'Setup still needed'}
-                </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  {connectData.readyForPaidDeals
-                    ? 'Purchase-link deals can be published and sold now.'
-                    : 'Finish onboarding and bank setup before paid purchase links go live.'}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {!connectLoading && connectData && (requirementTasks.length > 0 || requirementStatus) && (
-            <div className="mt-5 rounded-3xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/30 dark:bg-amber-900/20">
-              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-                Finish these setup steps before paid deals go live
-              </p>
-              {requirementTasks.length > 0 ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {requirementTasks.map((item) => (
-                    <span
-                      key={item}
-                      className="rounded-full bg-white px-3 py-1 text-xs font-medium text-amber-800 shadow-sm dark:bg-amber-950/30 dark:text-amber-200"
-                    >
-                      {item}
-                    </span>
-                  ))}
+              {onboardingMessage ? (
+                <div
+                  className={`mt-5 rounded-2xl border px-4 py-3 text-sm ${
+                    onboardingState === 'refresh_error' || onboardingState === 'missing_business'
+                      ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-300'
+                      : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/30 dark:bg-amber-900/20 dark:text-amber-300'
+                  }`}
+                >
+                  {onboardingMessage}
                 </div>
               ) : null}
-              {requirementGuidance.length > 0 ? (
-                <div className="mt-3 space-y-2 text-xs text-amber-700 dark:text-amber-300">
-                  {requirementGuidance.map((item) => (
-                    <p key={item}>{item}</p>
-                  ))}
+
+              {setupError ? (
+                <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-300">
+                  {setupError}
                 </div>
               ) : null}
-              <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
-                Open the secure setup screen and Stripe will guide you through the exact
-                details that still need attention.
+
+              {(requirementTasks.length > 0 || requirementStatus) && (
+                <div className="mt-5 rounded-[28px] border border-gray-200 bg-white/80 p-5 dark:border-white/10 dark:bg-white/5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {connectLoading
+                          ? 'Checking setup requirements...'
+                          : 'Complete these steps to enable payouts'}
+                      </p>
+                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        Stripe shows only the payout steps that are still missing.
+                      </p>
+                    </div>
+                  </div>
+
+                  {requirementTasks.length > 0 ? (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {requirementTasks.map((item) => (
+                        <span
+                          key={item}
+                          className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                        >
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {requirementGuidance.length > 0 ? (
+                    <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/30 dark:bg-amber-900/20">
+                      <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                        What Stripe is still waiting on
+                      </p>
+                      <div className="mt-2 space-y-2 text-sm text-amber-800 dark:text-amber-300">
+                        {requirementGuidance.map((item) => (
+                          <p key={item}>{item}</p>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {requirementStatus ? (
+                    <p className="mt-4 text-sm text-amber-700 dark:text-amber-300">
+                      {requirementStatus}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900 md:p-6">
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                    Payout readiness
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold text-gray-900 dark:text-gray-100">
+                    Finish setup before you publish paid deals
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                    Free-service deals and code-claim offers can still run without payouts. Paid
+                    purchase-link deals start using Stripe payouts once setup is complete.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                    Bank account
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {bankAccountSummary}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    {connectData?.externalAccount?.accountHolderName ||
+                      'Stripe has not synced a payout account back to Clientific yet.'}
+                  </p>
+                </div>
+
+                <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                    Payout schedule
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {payoutScheduleSummary}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Stripe saves your preferred payout timing after setup is complete.
+                  </p>
+                </div>
+
+                <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                    Paid deal status
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Setup still needed
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Finish onboarding and bank setup before paid purchase links go live.
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div className="space-y-4 xl:sticky xl:top-6">
+            <FundsStatusPanel
+              availableAmountCents={availableBalance}
+              stripePendingAmountCents={pendingBalance}
+              dealPendingAmountCents={dealPending}
+              dealPendingCount={dealPendingCount}
+              referralPendingAmountCents={referralPending}
+              referralPendingCount={referralPendingCount}
+              readyForPaidDeals={Boolean(connectData?.readyForPaidDeals)}
+              isLoading={connectLoading}
+              className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900"
+            />
+
+            <div className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                What to expect
               </p>
-              {requirementStatus ? (
-                <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
-                  {requirementStatus}
-                </p>
-              ) : null}
-            </div>
-          )}
-        </div>
-
-        <div className="grid gap-4">
-          <FundsStatusPanel
-            availableAmountCents={availableBalance}
-            stripePendingAmountCents={pendingBalance}
-            dealPendingAmountCents={dealPending}
-            dealPendingCount={dealPendingCount}
-            referralPendingAmountCents={referralPending}
-            referralPendingCount={referralPendingCount}
-            readyForPaidDeals={Boolean(connectData?.readyForPaidDeals)}
-            isLoading={connectLoading}
-            className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900"
-          />
-
-          <div className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-              Next move
-            </p>
-            <p className="mt-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
-              {needsSetup
-                ? 'Finish secure payout setup, then publish paid deals.'
-                : 'Use the payout controls below or create your next deal.'}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link href="/dashboard/payouts/setup" className="btn-primary text-sm">
-                {needsSetup ? 'Open setup' : 'Open payout controls'}
-              </Link>
-              <Link href="/dashboard/campaigns" className="btn-outline text-sm">
-                Go to deals
-              </Link>
+              <div className="mt-4 space-y-3 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                <p>Stripe starts with your bank account and only the payout details it still requires.</p>
+                <p>When Stripe is done, this page becomes your live payout workspace automatically.</p>
+                <p>You can come back here anytime to review balances, payout history, and settings.</p>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : (
+        <section className="space-y-6">
+          <section className="brand-hero rounded-[32px] border border-gray-200/80 p-6 sm:p-7 dark:border-white/10">
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr),320px] xl:items-start">
+              <div className="space-y-5">
+                <div className="inline-flex items-center gap-2 rounded-full border border-gray-200/80 bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-primary dark:border-white/10 dark:bg-white/5">
+                  Live Stripe workspace
+                </div>
+                <div className="space-y-3">
+                  <h2 className="text-3xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+                    Manage payouts right here
+                  </h2>
+                  <p className="max-w-2xl text-sm leading-6 text-gray-600 dark:text-gray-300">
+                    Balances, payout history, bank details, and payout settings now live on this
+                    page. New funds appear here automatically after Stripe finishes settlement.
+                  </p>
+                </div>
+
+                {onboardingMessage ? (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900/30 dark:bg-emerald-900/20 dark:text-emerald-200">
+                    {onboardingMessage}
+                  </div>
+                ) : null}
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="brand-hero-card rounded-[24px] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] brand-hero-kicker">
+                      Account status
+                    </p>
+                    <p className="mt-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      Paid deal payouts are live
+                    </p>
+                  </div>
+
+                  <div className="brand-hero-card rounded-[24px] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] brand-hero-kicker">
+                      Bank account
+                    </p>
+                    <p className="mt-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {bankAccountSummary}
+                    </p>
+                  </div>
+
+                  <div className="brand-hero-card rounded-[24px] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] brand-hero-kicker">
+                      Payout schedule
+                    </p>
+                    <p className="mt-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {payoutScheduleSummary}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="brand-hero-card rounded-[28px] p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] brand-hero-kicker">
+                  Next steps
+                </p>
+                <div className="mt-4 space-y-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                  <p>Review payout history, request payouts, or update payout settings below.</p>
+                  <p>Pending funds move into the available Stripe balance after settlement clears.</p>
+                  <p>Use Refresh status anytime if you just made changes inside Stripe.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="brand-panel rounded-[32px] border border-gray-200/80 p-4 sm:p-5 lg:p-6 dark:border-white/10">
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                  Secure Stripe workspace
+                </p>
+                <h3 className="mt-2 text-xl font-semibold text-gray-900 dark:text-gray-100">
+                  Balances, payouts, and account settings
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                  Everything below is hosted securely by Stripe and synced back to Clientific.
+                </p>
+              </div>
+
+              <div className="rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary dark:bg-primary/15">
+                Live
+              </div>
+            </div>
+
+            <EmbeddedPayoutWorkspace
+              visible
+              onboardingComplete={Boolean(connectData?.onboardingComplete)}
+              onRefresh={refreshConnect}
+            />
+          </section>
+        </section>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900 sm:col-span-3">

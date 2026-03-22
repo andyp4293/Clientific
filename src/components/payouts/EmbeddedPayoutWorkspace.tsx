@@ -404,8 +404,11 @@ export function EmbeddedPayoutWorkspace({
     );
   }
 
+  const workspaceSurfaceClass =
+    'overflow-hidden rounded-[30px] border border-gray-200/80 bg-white/92 shadow-[0_18px_45px_-32px_rgba(15,23,42,0.4)] dark:border-white/10 dark:bg-[#0f1b23]/92';
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {workspaceError && (
         <div className="rounded-3xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-300">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -434,7 +437,7 @@ export function EmbeddedPayoutWorkspace({
         <ConnectComponentsProvider connectInstance={connectInstance}>
           <div className="space-y-4">
             {!onboardingComplete ? (
-              <div className="overflow-hidden rounded-[28px] border border-gray-200/80 bg-white/85 shadow-sm dark:border-white/10 dark:bg-[#0f1b23]/88">
+              <div className={workspaceSurfaceClass}>
                 <ConnectAccountOnboarding
                   collectionOptions={{ fields: 'currently_due' }}
                   onExit={onRefresh}
@@ -442,13 +445,13 @@ export function EmbeddedPayoutWorkspace({
               </div>
             ) : (
               <>
-                <div className="overflow-hidden rounded-[28px] border border-gray-200/80 bg-white/85 shadow-sm dark:border-white/10 dark:bg-[#0f1b23]/88">
+                <div className={workspaceSurfaceClass}>
                   <ConnectBalances />
                 </div>
-                <div className="overflow-hidden rounded-[28px] border border-gray-200/80 bg-white/85 shadow-sm dark:border-white/10 dark:bg-[#0f1b23]/88">
+                <div className={workspaceSurfaceClass}>
                   <ConnectPayouts />
                 </div>
-                <div className="overflow-hidden rounded-[28px] border border-gray-200/80 bg-white/85 shadow-sm dark:border-white/10 dark:bg-[#0f1b23]/88">
+                <div className={workspaceSurfaceClass}>
                   <ConnectAccountManagement
                     collectionOptions={{ fields: 'currently_due', futureRequirements: 'include' }}
                   />

@@ -60,7 +60,7 @@ describe('GET /api/stripe/connect/onboarding-link/refresh', () => {
 
     expect(res.status).toBe(307);
     expect(res.headers.get('location')).toBe(
-      'https://clientific.app/login?callbackUrl=%2Fdashboard%2Fpayouts%2Fsetup'
+      'https://clientific.app/login?callbackUrl=%2Fdashboard%2Fpayouts'
     );
   });
 
@@ -72,7 +72,7 @@ describe('GET /api/stripe/connect/onboarding-link/refresh', () => {
     expect(mockCreateLink).toHaveBeenCalledWith({
       accountId: 'acct_123',
       refreshUrl: 'https://clientific.app/api/stripe/connect/onboarding-link/refresh',
-      returnUrl: 'https://clientific.app/dashboard/payouts/setup?stripe_onboarding=return',
+      returnUrl: 'https://clientific.app/dashboard/payouts?stripe_onboarding=return',
     });
   });
 
@@ -83,7 +83,7 @@ describe('GET /api/stripe/connect/onboarding-link/refresh', () => {
 
     expect(res.status).toBe(307);
     expect(res.headers.get('location')).toBe(
-      'https://clientific.app/dashboard/payouts/setup?stripe_onboarding=refresh_error'
+      'https://clientific.app/dashboard/payouts?stripe_onboarding=refresh_error'
     );
   });
 });

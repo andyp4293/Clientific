@@ -119,7 +119,7 @@ function RegisterForm() {
 
   const selectedPlanLabel = getPublicPlanLabel(formData.plan);
   const verificationRedirectPath = isPartnerSignup
-    ? '/dashboard/payouts/setup'
+    ? '/dashboard/payouts'
     : '/dashboard/onboarding';
   const stepItems = isPartnerSignup
     ? [

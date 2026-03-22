@@ -4,10 +4,39 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
 const mockUseQuery = vi.fn();
+const mockUseSearchParams = vi.fn();
+const mockInvalidateQueries = vi.fn();
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (config: unknown) => mockUseQuery(config),
+  useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
 }));
+
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => mockUseSearchParams(),
+}));
+
+vi.mock('@/components/payouts/EmbeddedPayoutWorkspace', async () => {
+  const actual = await vi.importActual<typeof import('@/components/payouts/EmbeddedPayoutWorkspace')>(
+    '@/components/payouts/EmbeddedPayoutWorkspace'
+  );
+
+  return {
+    ...actual,
+    EmbeddedPayoutWorkspace: ({
+      visible,
+      onboardingComplete,
+    }: {
+      visible: boolean;
+      onboardingComplete: boolean;
+    }) =>
+      visible ? (
+        <div data-testid="embedded-payout-workspace">
+          {onboardingComplete ? 'live payout workspace' : 'setup workspace'}
+        </div>
+      ) : null,
+  };
+});
 
 import PayoutsPage from './page';
 
@@ -53,6 +82,7 @@ const buildConnectData = (overrides: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockUseSearchParams.mockReturnValue(new URLSearchParams());
   mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
     const key = config?.queryKey?.[0];
 
@@ -75,6 +105,7 @@ beforeEach(() => {
       return {
         data: buildConnectData(),
         isLoading: false,
+        refetch: vi.fn(),
       };
     }
 
@@ -91,21 +122,120 @@ describe('PayoutsPage', () => {
     expect(page).not.toHaveClass('max-w-7xl');
   });
 
-  it('sends the primary setup CTA to the dedicated setup page', () => {
+  it('keeps payout setup on the main payouts page when setup is incomplete', () => {
     render(<PayoutsPage />);
 
-    const link = screen.getByRole('link', { name: /set up payouts/i });
-    expect(link).toHaveAttribute('href', '/dashboard/payouts/setup');
+    expect(screen.getByRole('button', { name: /start secure setup/i })).toBeInTheDocument();
+    expect(screen.getByText(/connect payouts without leaving this page/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('embedded-payout-workspace')).not.toBeInTheDocument();
   });
 
-  it('sends the next-step CTA to the dedicated setup page instead of expanding inline', () => {
+  it('shows the live embedded payout workspace directly on the payouts page', () => {
+    mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
+      const key = config?.queryKey?.[0];
+
+      if (key === 'deal-earnings') {
+        return {
+          data: {
+            transactions: [],
+            totals: {
+              totalGross: 0,
+              totalFees: 0,
+              totalNet: 0,
+              transactionCount: 0,
+            },
+          },
+          isLoading: false,
+        };
+      }
+
+      if (key === 'connect-payouts') {
+        return {
+          data: buildConnectData({
+            onboardingComplete: true,
+            readyForPaidDeals: true,
+            payoutsEnabled: true,
+            chargesEnabled: true,
+            detailsSubmitted: true,
+            externalAccount: {
+              id: 'ba_123',
+              bankName: 'Santander',
+              last4: '7290',
+              routingNumberLast4: '0000',
+              accountHolderName: 'ABC Nails',
+              status: 'verified',
+            },
+            payoutSchedule: {
+              interval: 'manual',
+              monthlyPayoutDays: [],
+              weeklyPayoutDays: [],
+              statementDescriptor: null,
+            },
+          }),
+          isLoading: false,
+          refetch: vi.fn(),
+        };
+      }
+
+      return { data: undefined, isLoading: false };
+    });
+
     render(<PayoutsPage />);
 
-    const link = screen.getByRole('link', { name: /open setup/i });
-    expect(link).toHaveAttribute('href', '/dashboard/payouts/setup');
+    expect(screen.getByText(/manage payouts right here/i)).toBeInTheDocument();
+    expect(screen.getByTestId('embedded-payout-workspace')).toBeInTheDocument();
+    expect(screen.queryByText(/funds status/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /start secure setup/i })).not.toBeInTheDocument();
+  });
+
+  it('explains Stripe return state on the main payouts page when setup is still incomplete', () => {
+    mockUseSearchParams.mockReturnValue(new URLSearchParams('stripe_onboarding=return'));
+    mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
+      const key = config?.queryKey?.[0];
+
+      if (key === 'deal-earnings') {
+        return {
+          data: {
+            transactions: [],
+            totals: {
+              totalGross: 0,
+              totalFees: 0,
+              totalNet: 0,
+              transactionCount: 0,
+            },
+          },
+          isLoading: false,
+        };
+      }
+
+      if (key === 'connect-payouts') {
+        return {
+          data: buildConnectData({
+            requirements: {
+              currentlyDue: ['external_account', 'tos_acceptance.date'],
+              eventuallyDue: [],
+              pastDue: ['external_account', 'tos_acceptance.date'],
+              pendingVerification: [],
+              disabledReason: 'requirements.past_due',
+            },
+          }),
+          isLoading: false,
+          refetch: vi.fn(),
+        };
+      }
+
+      return { data: undefined, isLoading: false };
+    });
+
+    render(<PayoutsPage />);
+
+    expect(screen.getByRole('button', { name: /continue secure setup/i })).toBeInTheDocument();
     expect(
-      screen.queryByText(/manage payout setup and payout preferences/i)
-    ).not.toBeInTheDocument();
+      screen.getByText(/we rechecked stripe when you came back/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/stripe still needs the payout terms accepted before payouts can go live/i)
+    ).toBeInTheDocument();
   });
 
   it('shows friendly payout tasks instead of raw Stripe field names', () => {
@@ -144,6 +274,7 @@ describe('PayoutsPage', () => {
             },
           }),
           isLoading: false,
+          refetch: vi.fn(),
         };
       }
 
@@ -156,166 +287,7 @@ describe('PayoutsPage', () => {
     expect(screen.getByText(/add customer support contact details/i)).toBeInTheDocument();
     expect(screen.getByText(/connect a bank account for payouts/i)).toBeInTheDocument();
     expect(screen.getByText(/verify the payout owner identity/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/stripe still does not have a payout bank account saved for this account/i)
-    ).toBeInTheDocument();
-    expect(screen.getByText(/stripe has paused payouts/i)).toBeInTheDocument();
     expect(screen.queryByText(/business profile mcc/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/requirements\.past_due/i)).not.toBeInTheDocument();
-  });
-
-  it('shows that Stripe has not saved a bank account yet when setup is still incomplete', () => {
-    render(<PayoutsPage />);
-
-    expect(
-      screen.getByText(/stripe has not saved a payout bank account yet/i)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/keep going in secure setup until stripe confirms the payout account back to clientific/i)
-    ).toBeInTheDocument();
-  });
-
-  it('explains when referral earnings are waiting on payout setup', () => {
-    mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
-      const key = config?.queryKey?.[0];
-
-      if (key === 'deal-earnings') {
-        return {
-          data: {
-            transactions: [],
-            totals: {
-              totalGross: 0,
-              totalFees: 0,
-              totalNet: 0,
-              transactionCount: 0,
-            },
-          },
-          isLoading: false,
-        };
-      }
-
-      if (key === 'connect-payouts') {
-        return {
-          data: buildConnectData({
-            referralPayouts: {
-              lifetimeEarned: 3240,
-              pendingTransfer: 870,
-              transferredToConnect: 2370,
-              pendingCount: 1,
-              transferredCount: 1,
-              lastTransferredAt: '2026-03-10T12:00:00.000Z',
-            },
-          }),
-          isLoading: false,
-        };
-      }
-
-      return { data: undefined, isLoading: false };
-    });
-
-    render(<PayoutsPage />);
-
-    expect(screen.getByText(/referral payouts/i)).toBeInTheDocument();
-    expect(screen.getByText(/\$8\.70 is waiting for you to finish stripe payout setup/i)).toBeInTheDocument();
-    expect(screen.getByText(/referral earnings waiting on payout setup/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/finish payout setup so clientific can move them into your stripe payout balance/i)
-    ).toBeInTheDocument();
-  });
-
-  it('explains when recent deal payments are still clearing through Stripe', () => {
-    mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
-      const key = config?.queryKey?.[0];
-
-      if (key === 'deal-earnings') {
-        return {
-          data: {
-            transactions: [],
-            totals: {
-              totalGross: 0,
-              totalFees: 0,
-              totalNet: 0,
-              transactionCount: 0,
-            },
-          },
-          isLoading: false,
-        };
-      }
-
-      if (key === 'connect-payouts') {
-        return {
-          data: buildConnectData({
-            onboardingComplete: true,
-            readyForPaidDeals: true,
-            payoutsEnabled: true,
-            chargesEnabled: true,
-            detailsSubmitted: true,
-            balances: {
-              available: [{ amount: 5000, currency: 'usd' }],
-              pending: [{ amount: 1250, currency: 'usd' }],
-            },
-          }),
-          isLoading: false,
-        };
-      }
-
-      return { data: undefined, isLoading: false };
-    });
-
-    render(<PayoutsPage />);
-
-    expect(screen.getByText(/why funds are pending/i)).toBeInTheDocument();
-    expect(screen.getByText(/recent deal payments/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/these payments are still clearing through stripe before they move into your available balance/i)
-    ).toBeInTheDocument();
-  });
-
-  it('explains when older deal earnings are still waiting to move into Stripe', () => {
-    mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
-      const key = config?.queryKey?.[0];
-
-      if (key === 'deal-earnings') {
-        return {
-          data: {
-            transactions: [],
-            totals: {
-              totalGross: 152,
-              totalFees: 24,
-              totalNet: 128,
-              transactionCount: 3,
-            },
-          },
-          isLoading: false,
-        };
-      }
-
-      if (key === 'connect-payouts') {
-        return {
-          data: buildConnectData({
-            dealPayouts: {
-              lifetimeEarned: 128,
-              pendingTransfer: 128,
-              transferredToConnect: 0,
-              pendingCount: 3,
-              transferredCount: 0,
-              automaticCount: 0,
-              lastTransferredAt: null,
-            },
-          }),
-          isLoading: false,
-        };
-      }
-
-      return { data: undefined, isLoading: false };
-    });
-
-    render(<PayoutsPage />);
-
-    expect(screen.getByText(/older deal earnings waiting on payout setup/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/finish payout setup so clientific can move them into your stripe payout balance/i)
-    ).toBeInTheDocument();
   });
 
   it('uses the more professional Stripe disclosure copy', () => {

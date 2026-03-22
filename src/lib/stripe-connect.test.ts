@@ -438,13 +438,13 @@ describe('createConnectOnboardingLink', () => {
     await createConnectOnboardingLink({
       accountId: 'acct_hosted',
       refreshUrl: 'https://clientific.app/api/stripe/connect/onboarding-link/refresh',
-      returnUrl: 'https://clientific.app/dashboard/payouts/setup?stripe_onboarding=return',
+      returnUrl: 'https://clientific.app/dashboard/payouts?stripe_onboarding=return',
     });
 
     expect(mockAccountLinkCreate).toHaveBeenCalledWith({
       account: 'acct_hosted',
       refresh_url: 'https://clientific.app/api/stripe/connect/onboarding-link/refresh',
-      return_url: 'https://clientific.app/dashboard/payouts/setup?stripe_onboarding=return',
+      return_url: 'https://clientific.app/dashboard/payouts?stripe_onboarding=return',
       type: 'account_onboarding',
       collection_options: {
         fields: 'currently_due',
