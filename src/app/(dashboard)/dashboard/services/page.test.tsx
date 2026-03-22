@@ -33,10 +33,10 @@ describe("services page cache sync contract", () => {
     expect(source).toContain(
       "flex h-[100dvh] min-h-[100dvh] w-screen max-w-none flex-col overflow-hidden bg-white shadow-2xl dark:bg-gray-900",
     );
-    expect(source).toContain("sm:max-w-4xl lg:max-w-6xl");
-    expect(source).toContain(
-      "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-6",
-    );
+    expect(source).toContain("sm:max-w-5xl xl:max-w-[1100px]");
+    expect(source).toContain("grid grid-cols-1 gap-4 xl:grid-cols-2 xl:gap-5");
+    expect(source).toContain('className="space-y-4 xl:contents"');
+    expect(source).toContain("xl:col-span-2");
     expect(source).toContain("grid grid-cols-1 gap-4 sm:grid-cols-2");
     expect(source).toContain("pt-[calc(env(safe-area-inset-top)+1rem)]");
     expect(source).toContain("pb-[calc(env(safe-area-inset-bottom)+1rem)]");
@@ -52,6 +52,8 @@ describe("services page cache sync contract", () => {
     expect(source).toContain(
       "Staff hours are set per day below, stay inside business",
     );
-    expect(source).toContain("grid grid-cols-1 gap-4 2xl:grid-cols-2");
+    expect(source).toContain(
+      "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3",
+    );
   });
 });

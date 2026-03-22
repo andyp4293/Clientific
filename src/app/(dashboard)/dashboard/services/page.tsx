@@ -1501,15 +1501,15 @@ export default function ServicesPage() {
           data-mobile-overlay="true"
           className="fixed inset-0 z-[70] overflow-hidden overscroll-none bg-[rgb(var(--color-gray-50))] dark:bg-[rgb(var(--color-gray-950))] sm:flex sm:items-center sm:justify-center sm:bg-black/55 sm:p-4"
         >
-          <div className="flex h-[100dvh] min-h-[100dvh] w-screen max-w-none flex-col overflow-hidden bg-white shadow-2xl dark:bg-gray-900 sm:h-auto sm:min-h-0 sm:max-h-[92vh] sm:max-w-4xl lg:max-w-6xl sm:rounded-[2rem] sm:border sm:border-gray-200/80 dark:sm:border-white/10">
+          <div className="flex h-[100dvh] min-h-[100dvh] w-screen max-w-none flex-col overflow-hidden bg-white shadow-2xl dark:bg-gray-900 sm:h-auto sm:min-h-0 sm:w-full sm:max-h-[88vh] sm:max-w-5xl xl:max-w-[1100px] sm:rounded-[1.5rem] sm:border sm:border-gray-200/80 dark:sm:border-white/10">
             <div className="border-b border-gray-200/80 bg-gray-950 text-white dark:border-white/10">
-              <div className="px-4 pb-5 pt-[calc(env(safe-area-inset-top)+1rem)] sm:px-8 sm:pb-6 sm:pt-6">
+              <div className="px-4 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] sm:px-6 sm:pb-5 sm:pt-5">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="max-w-3xl">
+                  <div className="max-w-2xl">
                     <span className="inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">
                       Staff availability
                     </span>
-                    <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white">
+                    <h2 className="mt-3 text-[2rem] font-semibold tracking-tight text-white sm:text-[2.15rem]">
                       {editingStaff
                         ? "Edit Staff Member"
                         : "Add New Staff Member"}
@@ -1523,7 +1523,7 @@ export default function ServicesPage() {
                   <button
                     type="button"
                     onClick={closeModal}
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
                   >
                     <svg
                       className="h-6 w-6"
@@ -1547,9 +1547,9 @@ export default function ServicesPage() {
               onSubmit={handleStaffSubmit}
               className="flex flex-1 flex-col overflow-hidden"
             >
-              <div className="flex-1 overflow-y-auto overscroll-y-contain bg-gray-50/70 px-4 py-4 dark:bg-gray-950 sm:px-8 sm:py-6">
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-6">
-                  <div className="space-y-4">
+              <div className="flex-1 overflow-y-auto overscroll-y-contain bg-gray-50/70 px-4 py-4 dark:bg-gray-950 sm:px-6 sm:py-5">
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 xl:gap-5">
+                  <div className="space-y-4 xl:contents">
                     <section className="rounded-[1.75rem] border border-gray-200/80 bg-white p-5 shadow-[0_24px_70px_-42px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-gray-900/85">
                       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary-700 dark:text-primary-300">
                         Profile
@@ -1660,7 +1660,7 @@ export default function ServicesPage() {
                     </section>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="space-y-4 xl:contents">
                     <section className="rounded-[1.75rem] border border-gray-200/80 bg-white p-5 shadow-[0_24px_70px_-42px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-gray-900/85">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
@@ -1747,7 +1747,7 @@ export default function ServicesPage() {
                       </div>
                     </section>
 
-                    <section className="rounded-[1.75rem] border border-gray-200/80 bg-white p-5 shadow-[0_24px_70px_-42px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-gray-900/85">
+                    <section className="rounded-[1.75rem] border border-gray-200/80 bg-white p-5 shadow-[0_24px_70px_-42px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-gray-900/85 xl:col-span-2">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary-700 dark:text-primary-300">
@@ -1768,7 +1768,7 @@ export default function ServicesPage() {
                           hours this staff member accepts appointments.
                         </div>
                       ) : (
-                        <div className="mt-5 grid grid-cols-1 gap-4 2xl:grid-cols-2">
+                        <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                           {staffFormData.workDays.map((dayOfWeek) => {
                             const businessDay = businessHoursRecord[dayOfWeek];
                             const dayLabel = DAY_LABELS[dayOfWeek];
@@ -1922,7 +1922,7 @@ export default function ServicesPage() {
                     </section>
 
                     {/* Service Assignments */}
-                    <section className="rounded-[1.75rem] border border-gray-200/80 bg-white p-5 shadow-[0_24px_70px_-42px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-gray-900/85">
+                    <section className="rounded-[1.75rem] border border-gray-200/80 bg-white p-5 shadow-[0_24px_70px_-42px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-gray-900/85 xl:col-span-2">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary-700 dark:text-primary-300">
@@ -1961,9 +1961,9 @@ export default function ServicesPage() {
                         return (
                           <p className="mt-4 text-sm leading-6 text-gray-500 dark:text-gray-400">
                             {allSelected
-                              ? "All services selected — this staff member can be booked for everything."
+                              ? "All services selected - this staff member can be booked for everything."
                               : staffFormData.serviceIds.length === 0
-                                ? "No services selected — deselecting all will prevent this staff member from being booked."
+                                ? "No services selected - deselecting all will prevent this staff member from being booked."
                                 : `Restricted to ${staffFormData.serviceIds.length} service${staffFormData.serviceIds.length !== 1 ? "s" : ""}. Customers can only book this staff member for the selected services.`}
                           </p>
                         );
@@ -2162,7 +2162,7 @@ export default function ServicesPage() {
                           })()}
                         </div>
                       ) : (
-                        /* No groups — flat list */
+                        /* No groups - flat list */
                         <div className="mt-5 flex flex-wrap gap-2">
                           {services
                             .filter((s) => s.isActive)
@@ -2198,7 +2198,7 @@ export default function ServicesPage() {
                       )}
                     </section>
 
-                    <section className="rounded-[1.75rem] border border-gray-200/80 bg-white p-5 shadow-[0_24px_70px_-42px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-gray-900/85">
+                    <section className="rounded-[1.75rem] border border-gray-200/80 bg-white p-5 shadow-[0_24px_70px_-42px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-gray-900/85 xl:col-span-2">
                       <label
                         htmlFor="staffActive"
                         className="flex items-start gap-3"
@@ -2230,7 +2230,7 @@ export default function ServicesPage() {
                   </div>
 
                   {saveStaffMutation.isError && (
-                    <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg lg:col-span-2">
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20 xl:col-span-2">
                       <p className="text-sm text-red-600 dark:text-red-400">
                         {saveStaffMutation.error?.message ||
                           "Failed to save staff member"}
@@ -2240,7 +2240,7 @@ export default function ServicesPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col-reverse gap-3 border-t border-gray-200/80 bg-white/95 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] backdrop-blur dark:border-white/10 dark:bg-gray-900/95 sm:flex-row sm:border-t-0 sm:px-8 sm:pb-6 sm:pt-4">
+              <div className="flex flex-col-reverse gap-3 border-t border-gray-200/80 bg-white/95 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] backdrop-blur dark:border-white/10 dark:bg-gray-900/95 sm:flex-row sm:px-6 sm:py-4 sm:pb-4">
                 <button
                   type="button"
                   onClick={closeModal}
