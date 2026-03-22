@@ -165,6 +165,13 @@ describe('PayoutsSetupPage', () => {
 
     render(<PayoutsSetupPage />);
 
+    expect(screen.getByText(/payouts live/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /manage payouts/i })).toBeInTheDocument();
+    expect(
+      screen.getByText(/your payout account is live\. review balances, payouts, and payout settings below\./i)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/finish payout setup/i)).not.toBeInTheDocument();
+
     await waitFor(() => {
       expect(screen.getByText(/failed to create stripe connect session/i)).toBeInTheDocument();
     });

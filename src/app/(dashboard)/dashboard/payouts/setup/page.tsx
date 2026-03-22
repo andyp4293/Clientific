@@ -52,6 +52,11 @@ export default function PayoutsSetupPage() {
   const requirementStatus = formatRequirementStatus(connectData?.requirements.disabledReason);
   const needsSetup = !connectData?.readyForPaidDeals;
   const onboardingState = searchParams.get('stripe_onboarding');
+  const pageEyebrow = needsSetup ? 'Secure setup' : 'Payouts live';
+  const pageTitle = needsSetup ? 'Finish payout setup' : 'Manage payouts';
+  const pageDescription = needsSetup
+    ? 'Complete the remaining Stripe steps below so payouts and paid deals can go live.'
+    : 'Your payout account is live. Review balances, payouts, and payout settings below.';
 
   const startSetupLabel =
     onboardingState === 'return' ? 'Continue secure setup' : 'Start secure setup';
@@ -92,13 +97,13 @@ export default function PayoutsSetupPage() {
           </Link>
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-              Secure setup
+              {pageEyebrow}
             </p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-              Finish payout setup
+              {pageTitle}
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-500 dark:text-gray-400">
-              Complete the remaining Stripe steps below so payouts and paid deals can go live.
+              {pageDescription}
             </p>
           </div>
         </div>
