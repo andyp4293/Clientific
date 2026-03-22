@@ -1,16 +1,15 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { CallForwardingHelp } from '@/components/operations/CallForwardingHelp';
 import {
   AI_RECEPTIONIST_ACTIVATION_WINDOW_MS,
   getAiReceptionistActivationStorageKey,
   getAiReceptionistSetupState,
   readAiReceptionistActivationUntil,
 } from '@/lib/ai-receptionist-settings';
-import { APP_SUPPORT_PATH } from '@/lib/brand';
 
 interface Business {
   id: string;
@@ -490,154 +489,10 @@ export default function AiReceptionistManager() {
                       Update your Google Business Profile with this number. That is all you
                       need to do.
                     </p>
-                    <div className="mt-4 rounded-2xl border border-green-200 bg-white/90 p-4 shadow-sm dark:border-green-800 dark:bg-gray-900/60">
-                      <p className="text-base font-semibold text-gray-950 dark:text-white">
-                        📞 Want all calls to go straight to your AI receptionist? Follow the
-                        steps for your phone type below.
-                      </p>
-
-                      <div className="mt-4 grid gap-3 lg:grid-cols-3">
-                        <div className="rounded-2xl border border-gray-200 bg-gray-50/90 p-4 dark:border-gray-700 dark:bg-gray-800/70">
-                          <h4 className="text-lg font-semibold text-gray-950 dark:text-white">
-                            iPhone
-                          </h4>
-                          <ol className="mt-3 space-y-3 text-sm leading-6 text-gray-700 dark:text-gray-300">
-                            <li className="flex items-start gap-3">
-                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                                1
-                              </span>
-                              <span>Open your Phone app</span>
-                            </li>
-                            <li className="flex items-start gap-3">
-                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                                2
-                              </span>
-                              <div>
-                                <p>Dial exactly this:</p>
-                                <div className="mt-2 rounded-xl border border-gray-200 bg-white px-3 py-2 font-mono text-sm font-semibold text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
-                                  {iphoneForwardingCode}
-                                </div>
-                              </div>
-                            </li>
-                            <li className="flex items-start gap-3">
-                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                                3
-                              </span>
-                              <span>Press the green call button</span>
-                            </li>
-                            <li className="flex items-start gap-3">
-                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                                4
-                              </span>
-                              <span>You&apos;ll hear a confirmation tone — you&apos;re done!</span>
-                            </li>
-                          </ol>
-                        </div>
-
-                        <div className="rounded-2xl border border-gray-200 bg-gray-50/90 p-4 dark:border-gray-700 dark:bg-gray-800/70">
-                          <h4 className="text-lg font-semibold text-gray-950 dark:text-white">
-                            Android
-                          </h4>
-                          <ol className="mt-3 space-y-3 text-sm leading-6 text-gray-700 dark:text-gray-300">
-                            <li className="flex items-start gap-3">
-                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                                1
-                              </span>
-                              <span>Open your Phone app</span>
-                            </li>
-                            <li className="flex items-start gap-3">
-                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                                2
-                              </span>
-                              <span>Tap the 3 dots (menu) in the top right corner</span>
-                            </li>
-                            <li className="flex items-start gap-3">
-                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                                3
-                              </span>
-                              <span>Tap Settings → Call Forwarding → Always Forward</span>
-                            </li>
-                            <li className="flex items-start gap-3">
-                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                                4
-                              </span>
-                              <div>
-                                <p>Type in <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">{forwardingNumber}</span> and save — you&apos;re done!</p>
-                              </div>
-                            </li>
-                          </ol>
-                        </div>
-
-                        <div className="rounded-2xl border border-gray-200 bg-gray-50/90 p-4 dark:border-gray-700 dark:bg-gray-800/70">
-                          <h4 className="text-lg font-semibold text-gray-950 dark:text-white">
-                            Landline
-                          </h4>
-                          <ol className="mt-3 space-y-3 text-sm leading-6 text-gray-700 dark:text-gray-300">
-                            <li className="flex items-start gap-3">
-                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                                1
-                              </span>
-                              <span>Pick up your phone</span>
-                            </li>
-                            <li className="flex items-start gap-3">
-                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                                2
-                              </span>
-                              <span>Dial <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">*72</span></span>
-                            </li>
-                            <li className="flex items-start gap-3">
-                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                                3
-                              </span>
-                              <span>
-                                Wait for a stutter dial tone, then dial{' '}
-                                <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">
-                                  {forwardingNumber}
-                                </span>
-                              </span>
-                            </li>
-                            <li className="flex items-start gap-3">
-                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                                4
-                              </span>
-                              <span>Wait for a confirmation tone — you&apos;re done!</span>
-                            </li>
-                          </ol>
-                        </div>
-                      </div>
-
-                      <details
-                        data-testid="turn-off-forwarding-details"
-                        className="mt-4 rounded-2xl border border-gray-200 bg-gray-50/70 dark:border-gray-700 dark:bg-gray-800/60"
-                      >
-                        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                          To turn off forwarding
-                        </summary>
-                        <div className="border-t border-gray-200 px-4 py-4 dark:border-gray-700">
-                          <div className="grid gap-3 md:grid-cols-3">
-                            <div className="rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
-                              <p className="font-semibold text-gray-950 dark:text-white">iPhone</p>
-                              <p className="mt-2">Dial <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">##21#</span> and press call</p>
-                            </div>
-                            <div className="rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
-                              <p className="font-semibold text-gray-950 dark:text-white">Android</p>
-                              <p className="mt-2">Go back to Call Forwarding settings and tap &quot;Disable&quot;</p>
-                            </div>
-                            <div className="rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
-                              <p className="font-semibold text-gray-950 dark:text-white">Landline</p>
-                              <p className="mt-2">Dial <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">*73</span></p>
-                            </div>
-                          </div>
-                        </div>
-                      </details>
-
-                      <Link
-                        href={APP_SUPPORT_PATH}
-                        className="mt-4 inline-flex text-xs font-medium text-primary hover:underline"
-                      >
-                        Need help? Contact support
-                      </Link>
-                    </div>
+                    <CallForwardingHelp
+                      forwardingNumber={forwardingNumber}
+                      iphoneForwardingCode={iphoneForwardingCode}
+                    />
                   </div>
                 ) : aiSetupState.state === 'pending' ? (
                   <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center gap-3">

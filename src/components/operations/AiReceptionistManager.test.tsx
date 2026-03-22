@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import AiReceptionistManager from './AiReceptionistManager';
 
@@ -48,8 +48,16 @@ describe('AiReceptionistManager', () => {
     vi.clearAllMocks();
   });
 
-  it('renders beginner-friendly call forwarding instructions with the live AI number', () => {
+  it('keeps forwarding help collapsed until the user opens it', () => {
     render(<AiReceptionistManager />);
+
+    expect(
+      screen.getByRole('button', { name: /How to forward calls to this number/i })
+    ).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('heading', { name: 'iPhone' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Need help\? Contact support/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /How to forward calls to this number/i }));
 
     expect(
       screen.getByText(
@@ -63,12 +71,13 @@ describe('AiReceptionistManager', () => {
     expect(screen.getByText('*21*+19084184377#')).toBeInTheDocument();
     expect(screen.getAllByText(/\+19084184377/).length).toBeGreaterThan(0);
 
-    const turnOffDetails = screen.getByTestId('turn-off-forwarding-details');
-    expect(turnOffDetails).not.toHaveAttribute('open');
-
     expect(screen.getByRole('link', { name: /Need help\? Contact support/i })).toHaveAttribute(
       'href',
       '/support'
     );
+
+    expect(
+      screen.getByRole('button', { name: /How to turn off forwarding/i })
+    ).toHaveAttribute('aria-expanded', 'false');
   });
 });
