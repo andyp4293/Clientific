@@ -46,13 +46,22 @@ export default function AddressAutocomplete({
   const [isLoading, setIsLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
 
   const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
   // Handle client-side mounting
   useEffect(() => {
     setIsMounted(true);
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -76,11 +85,15 @@ export default function AddressAutocomplete({
   }, []);
   const fetchSuggestions = async (query: string) => {
     if (!query || query.length < 3 || !MAPBOX_TOKEN) {
-      setSuggestions([]);
+      if (mountedRef.current) {
+        setSuggestions([]);
+      }
       return;
     }
 
-    setIsLoading(true);
+    if (mountedRef.current) {
+      setIsLoading(true);
+    }
 
     try {
       const response = await fetch(
@@ -88,13 +101,19 @@ export default function AddressAutocomplete({
       );
       
       const data = await response.json();
+      if (!mountedRef.current) return;
+
       setSuggestions(data.features || []);
       setIsOpen(true);
     } catch (error) {
       console.error('Mapbox API error:', error);
-      setSuggestions([]);
+      if (mountedRef.current) {
+        setSuggestions([]);
+      }
     } finally {
-      setIsLoading(false);
+      if (mountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 

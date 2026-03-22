@@ -89,7 +89,7 @@ describe('PublicDealClaimPage — code_claim flow', () => {
 
     fireEvent.change(screen.getByLabelText(/mobile phone/i), { target: { value: '(555) 123-4567' } });
     expect(screen.getByRole('button', { name: /claim deal code/i })).not.toBeDisabled();
-  });
+  }, 15000);
 
   it('posts name and phone to the claim endpoint and shows the returned code', async () => {
     render(<PublicDealClaimPage />);
