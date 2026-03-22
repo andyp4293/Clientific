@@ -54,6 +54,7 @@ const business = {
   id: 'biz-1',
   email: 'owner@example.com',
   name: 'Test Salon',
+  ownerPhone: '(555) 999-0000',
   phone: '(555) 111-2222',
   businessEmail: 'hello@testsalon.com',
   publicId: 'CF-66W551',
@@ -64,6 +65,7 @@ const business = {
 const createdAccount = {
   id: 'acct_new',
   type: 'none',
+  business_type: 'individual',
   charges_enabled: false,
   payouts_enabled: false,
   details_submitted: false,
@@ -142,6 +144,7 @@ describe('ensureBusinessConnectAccount', () => {
           support_phone: '+15551112222',
           url: 'https://clientific.app/business/CF-66W551',
         }),
+        business_type: 'individual',
         controller: expect.objectContaining({
           stripe_dashboard: { type: 'none' },
         }),
@@ -182,6 +185,7 @@ describe('ensureBusinessConnectAccount', () => {
           support_phone: '+15551112222',
           url: 'https://clientific.app/business/CF-66W551',
         }),
+        business_type: 'individual',
         controller: expect.objectContaining({
           stripe_dashboard: { type: 'none' },
         }),
@@ -226,7 +230,7 @@ describe('ensureBusinessConnectAccount', () => {
           transfers: { requested: true },
         },
         metadata: expect.objectContaining({
-          payoutSetupMode: 'currently_due_only',
+          payoutSetupMode: 'individual_currently_due_only',
         }),
       })
     );
@@ -234,10 +238,44 @@ describe('ensureBusinessConnectAccount', () => {
     expect(mockBusinessUpdate).toHaveBeenCalledTimes(2);
   });
 
-  it('reuses stripe-managed incomplete standard accounts without patching restricted fields', async () => {
+  it('recreates unfinished non-individual accounts into the individual-owner flow', async () => {
     const existingAccount = {
       id: 'acct_current',
       type: 'none',
+      business_type: 'company',
+      charges_enabled: false,
+      payouts_enabled: false,
+      details_submitted: false,
+      capabilities: {
+        card_payments: 'inactive',
+        transfers: 'inactive',
+      },
+      controller: {
+        losses: { payments: 'stripe' },
+        requirement_collection: 'stripe',
+        stripe_dashboard: { type: 'none' },
+      },
+    };
+    mockAccountRetrieve.mockResolvedValue(existingAccount);
+
+    const account = await ensureBusinessConnectAccount(business, 'https://clientific.app');
+
+    expect(account).toEqual(createdAccount);
+    expect(mockAccountUpdate).not.toHaveBeenCalled();
+    expect(mockAccountCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        business_type: 'individual',
+      })
+    );
+    expect(mockBankDeleteMany).toHaveBeenCalledWith({ where: { businessId: 'biz-1' } });
+    expect(mockBusinessUpdate).toHaveBeenCalledTimes(2);
+  });
+
+  it('reuses stripe-managed incomplete individual accounts without patching restricted fields', async () => {
+    const existingAccount = {
+      id: 'acct_current',
+      type: 'none',
+      business_type: 'individual',
       charges_enabled: false,
       payouts_enabled: false,
       details_submitted: false,
@@ -284,6 +322,26 @@ describe('ensureBusinessConnectAccount', () => {
     expect(mockAccountCreate).not.toHaveBeenCalled();
     expect(mockBankDeleteMany).not.toHaveBeenCalled();
     expect(mockBusinessUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses the owner phone as a support-phone fallback when no business phone is set', async () => {
+    mockAccountRetrieve.mockRejectedValue({ code: 'account_invalid' });
+
+    await ensureBusinessConnectAccount(
+      {
+        ...business,
+        phone: null,
+      },
+      'https://clientific.app'
+    );
+
+    expect(mockAccountCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        business_profile: expect.objectContaining({
+          support_phone: '+15559990000',
+        }),
+      })
+    );
   });
 });
 

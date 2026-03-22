@@ -108,7 +108,7 @@ describe('PayoutsPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows friendly setup tasks instead of raw Stripe field names', () => {
+  it('shows friendly payout tasks instead of raw Stripe field names', () => {
     mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
       const key = config?.queryKey?.[0];
 
@@ -152,14 +152,14 @@ describe('PayoutsPage', () => {
 
     render(<PayoutsPage />);
 
-    expect(screen.getByText(/complete business details/i)).toBeInTheDocument();
+    expect(screen.getByText(/complete payout profile details/i)).toBeInTheDocument();
     expect(screen.getByText(/add customer support contact details/i)).toBeInTheDocument();
     expect(screen.getByText(/connect a bank account for payouts/i)).toBeInTheDocument();
-    expect(screen.getByText(/verify the account owner identity/i)).toBeInTheDocument();
+    expect(screen.getByText(/verify the payout owner identity/i)).toBeInTheDocument();
     expect(
       screen.getByText(/stripe still does not have a payout bank account saved for this account/i)
     ).toBeInTheDocument();
-    expect(screen.getByText(/stripe has paused paid payouts/i)).toBeInTheDocument();
+    expect(screen.getByText(/stripe has paused payouts/i)).toBeInTheDocument();
     expect(screen.queryByText(/business profile mcc/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/requirements\.past_due/i)).not.toBeInTheDocument();
   });
@@ -322,7 +322,7 @@ describe('PayoutsPage', () => {
     render(<PayoutsPage />);
 
     expect(
-      screen.getByText(/clientific uses stripe to securely handle business verification, subscription billing, and payouts/i)
+      screen.getByText(/clientific uses stripe to securely handle payout verification, subscription billing, and payouts/i)
     ).toBeInTheDocument();
     expect(screen.getByText(/secure payments and payouts/i)).toBeInTheDocument();
     expect(screen.queryByText(/payouts powered by stripe/i)).not.toBeInTheDocument();

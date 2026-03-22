@@ -158,7 +158,7 @@ export function summarizeRequirementTasks(requirements: string[]) {
       normalized.startsWith('person.') ||
       normalized.startsWith('individual.')
     ) {
-      tasks.set('identity', 'Verify the account owner identity');
+      tasks.set('identity', 'Verify the payout owner identity');
       continue;
     }
 
@@ -178,7 +178,7 @@ export function summarizeRequirementTasks(requirements: string[]) {
     }
 
     if (normalized.startsWith('business_profile.') || normalized === 'business_type') {
-      tasks.set('business_details', 'Complete business details');
+      tasks.set('business_details', 'Complete payout profile details');
       continue;
     }
 
@@ -202,7 +202,7 @@ export function summarizeRequirementGuidance(
   }
 
   if (requirements.some((item) => item.startsWith('tos_acceptance.'))) {
-    guidance.set('terms', 'Stripe still needs the payout terms accepted before paid deals can go live.');
+    guidance.set('terms', 'Stripe still needs the payout terms accepted before payouts can go live.');
   }
 
   if (
@@ -215,11 +215,11 @@ export function summarizeRequirementGuidance(
         item.startsWith('individual.')
     )
   ) {
-    guidance.set('identity', 'Stripe still needs to verify the account owner details on this connected account.');
+    guidance.set('identity', 'Stripe still needs to verify the payout owner details on this account.');
   }
 
   if (requirements.some((item) => item.startsWith('business_profile.') || item === 'business_type')) {
-    guidance.set('business_details', 'Stripe still needs the business profile details completed before payouts can be enabled.');
+    guidance.set('business_details', 'Stripe still needs a few payout profile details completed before payouts can be enabled.');
   }
 
   if (requirements.some((item) => item.startsWith('documents.') || item.includes('document'))) {
@@ -235,7 +235,7 @@ export function formatRequirementStatus(reason: string | null | undefined) {
   }
 
   if (reason === 'requirements.past_due') {
-    return 'Stripe has paused paid payouts until the remaining setup items are completed.';
+    return 'Stripe has paused payouts until the remaining setup items are completed.';
   }
 
   if (reason === 'requirements.pending_verification') {
@@ -396,7 +396,7 @@ export function EmbeddedPayoutWorkspace({
             {!onboardingComplete ? (
               <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
                 <ConnectAccountOnboarding
-                  collectionOptions={{ fields: 'eventually_due', futureRequirements: 'include' }}
+                  collectionOptions={{ fields: 'currently_due' }}
                   onExit={onRefresh}
                 />
               </div>

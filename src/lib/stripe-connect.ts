@@ -8,6 +8,7 @@ type BusinessConnectSeed = {
   id: string;
   email: string;
   name: string;
+  ownerPhone?: string | null;
   phone?: string | null;
   businessEmail?: string | null;
   publicId?: string | null;
@@ -114,6 +115,15 @@ function shouldRecreateIncompleteUnsupportedRecipientAccount(account: Stripe.Acc
   );
 }
 
+function shouldRecreateIncompleteNonIndividualAccount(account: Stripe.Account) {
+  return Boolean(
+    !account.details_submitted &&
+      !account.charges_enabled &&
+      !account.payouts_enabled &&
+      account.business_type !== 'individual'
+  );
+}
+
 function canDisableStripeUserAuthentication(
   account:
     | Pick<Stripe.Account, 'type' | 'controller'>
@@ -141,9 +151,11 @@ function buildConnectBusinessProfile(
 ): Stripe.AccountCreateParams.BusinessProfile {
   const supportEmail = business.businessEmail?.trim() || business.email;
   const supportPhone =
-    business.phone && isValidPhoneNumber(business.phone)
+    (business.phone && isValidPhoneNumber(business.phone)
       ? formatPhoneNumber(business.phone)
-      : undefined;
+      : business.ownerPhone && isValidPhoneNumber(business.ownerPhone)
+        ? formatPhoneNumber(business.ownerPhone)
+        : undefined);
   const publicUrl = business.publicId
     ? `${appUrl}/business/${business.publicId}`
     : business.slug
@@ -348,9 +360,10 @@ export async function syncBusinessConnectState(
 }
 
 /**
- * Ensures a lighter Stripe-managed Connect account exists for the business.
- * On US platforms, Stripe still requires a merchant-capable connected account,
- * but we keep onboarding lighter by collecting only currently due requirements.
+ * Ensures a lighter Stripe-managed Connect account exists for the payout recipient.
+ * We default new and unfinished recipients to Stripe's individual profile so the
+ * hosted onboarding flow asks for owner details instead of company-style details
+ * whenever Stripe allows it, while still collecting only currently due requirements.
  */
 export async function ensureBusinessConnectAccount(
   business: BusinessConnectSeed,
@@ -365,6 +378,8 @@ export async function ensureBusinessConnectAccount(
       } else if (shouldRecreateLegacyEmbeddedAccount(existing)) {
         await resetBusinessConnectState(business.id);
       } else if (shouldRecreateIncompleteUnsupportedRecipientAccount(existing)) {
+        await resetBusinessConnectState(business.id);
+      } else if (shouldRecreateIncompleteNonIndividualAccount(existing)) {
         await resetBusinessConnectState(business.id);
       } else {
         if (!isConnectAccountReady(existing) && canRefreshIncompleteConnectAccount(existing)) {
@@ -391,6 +406,7 @@ export async function ensureBusinessConnectAccount(
   const created = await stripe.accounts.create({
     country: 'US',
     email: business.email,
+    business_type: 'individual',
     business_profile: buildConnectBusinessProfile(business, appUrl),
     controller: {
       stripe_dashboard: {
@@ -412,7 +428,7 @@ export async function ensureBusinessConnectAccount(
     metadata: {
       businessId: business.id,
       businessName: business.name,
-      payoutSetupMode: 'currently_due_only',
+      payoutSetupMode: 'individual_currently_due_only',
     },
   });
 

@@ -114,8 +114,8 @@ export default function PayoutsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Payouts</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Clientific uses Stripe to securely handle business verification, subscription
-            billing, and payouts to your connected bank account.
+            Clientific uses Stripe to securely handle payout verification, subscription billing,
+            and payouts to your connected bank account.
           </p>
         </div>
         <div className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">

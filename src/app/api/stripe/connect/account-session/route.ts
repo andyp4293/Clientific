@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
         id: true,
         email: true,
         name: true,
+        ownerPhone: true,
         phone: true,
         businessEmail: true,
         publicId: true,

@@ -173,7 +173,7 @@ describe('PayoutsSetupPage', () => {
     expect(mockLoadConnectAndInitialize).not.toHaveBeenCalled();
   });
 
-  it('shows friendly business tasks instead of raw Stripe requirement keys', () => {
+  it('shows friendly payout tasks instead of raw Stripe requirement keys', () => {
     mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
       const key = config?.queryKey?.[0];
 
@@ -204,14 +204,14 @@ describe('PayoutsSetupPage', () => {
 
     render(<PayoutsSetupPage />);
 
-    expect(screen.getByText(/complete business details/i)).toBeInTheDocument();
+    expect(screen.getByText(/complete payout profile details/i)).toBeInTheDocument();
     expect(screen.getByText(/add customer support contact details/i)).toBeInTheDocument();
     expect(screen.getByText(/connect a bank account for payouts/i)).toBeInTheDocument();
-    expect(screen.getByText(/verify the account owner identity/i)).toBeInTheDocument();
+    expect(screen.getByText(/verify the payout owner identity/i)).toBeInTheDocument();
     expect(
       screen.getByText(/stripe still does not have a payout bank account saved for this account/i)
     ).toBeInTheDocument();
-    expect(screen.getByText(/stripe has paused paid payouts/i)).toBeInTheDocument();
+    expect(screen.getByText(/stripe has paused payouts/i)).toBeInTheDocument();
     expect(screen.queryByText(/business profile mcc/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/requirements\.past_due/i)).not.toBeInTheDocument();
   });
@@ -247,7 +247,7 @@ describe('PayoutsSetupPage', () => {
       screen.getByText(/we rechecked stripe when you came back to clientific/i)
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/stripe still needs the payout terms accepted before paid deals can go live/i)
+      screen.getByText(/stripe still needs the payout terms accepted before payouts can go live/i)
     ).toBeInTheDocument();
   });
 

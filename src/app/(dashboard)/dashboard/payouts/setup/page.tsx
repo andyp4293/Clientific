@@ -193,9 +193,10 @@ export default function PayoutsSetupPage() {
                   Finish setup in Stripe, then come right back here
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
-                  This opens Stripe&apos;s secure payout setup in the same tab. Stripe usually only
-                  asks for the bank account and any payout details that are still missing. When you
-                  finish, Stripe sends you back here and payout controls become available.
+                  This opens Stripe&apos;s secure payout setup in the same tab. Start by connecting
+                  your bank account. Stripe might also ask for the payout owner&apos;s name, address,
+                  or other required payout details it is still missing. When you finish, Stripe
+                  sends you back here and payout controls become available.
                 </p>
                 {onboardingState === 'return' && needsSetup ? (
                   <p className="mt-3 text-sm font-medium text-amber-700 dark:text-amber-300">

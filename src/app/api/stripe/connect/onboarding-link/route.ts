@@ -23,6 +23,7 @@ async function findBusiness(businessId: string) {
       id: true,
       email: true,
       name: true,
+      ownerPhone: true,
       phone: true,
       businessEmail: true,
       publicId: true,
