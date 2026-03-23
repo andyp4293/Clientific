@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { FormEvent, KeyboardEvent as ReactKeyboardEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/DatePicker';
@@ -125,6 +125,16 @@ function formatLastVisit(isoString: string | null | undefined, timezone: string)
     year: 'numeric',
     timeZone: timezone,
   });
+}
+
+function isEditableTarget(target: EventTarget | null) {
+  return (
+    target instanceof HTMLElement &&
+    (target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT' ||
+      target.isContentEditable)
+  );
 }
 
 function KeypadButton({
@@ -373,6 +383,10 @@ export default function CheckInsPage() {
     setQuickLookupError(null);
     setQuickDigits((current) => sanitizePhoneDigits(`${current}${digit}`.slice(0, PHONE_MAX_LENGTH)));
   }, []);
+  const handleQuickPhoneInputChange = useCallback((value: string) => {
+    setQuickLookupError(null);
+    setQuickDigits(sanitizePhoneDigits(value));
+  }, []);
   const backspaceQuickDigit = useCallback(() => {
     setQuickLookupError(null);
     setQuickDigits((current) => current.slice(0, -1));
@@ -385,6 +399,7 @@ export default function CheckInsPage() {
   useEffect(() => {
     if (!showModal || mode !== 'quick' || quickStep !== 'phone') return;
     function handleKeyDown(event: KeyboardEvent) {
+      if (isEditableTarget(event.target)) return;
       if (event.key >= '0' && event.key <= '9') {
         event.preventDefault();
         appendQuickDigit(event.key);
@@ -403,6 +418,16 @@ export default function CheckInsPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [appendQuickDigit, backspaceQuickDigit, handleQuickLookup, mode, quickPhoneReady, quickStep, showModal]);
+
+  const handleQuickPhoneInputKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Enter' && quickPhoneReady) {
+        event.preventDefault();
+        void handleQuickLookup();
+      }
+    },
+    [handleQuickLookup, quickPhoneReady]
+  );
 
   useEffect(() => {
     if (!quickSuccess) return;
@@ -628,39 +653,49 @@ export default function CheckInsPage() {
 
             <div className="min-h-0 flex-1 overflow-y-auto">
               {mode === 'quick' ? (
-                <section className="grid min-h-full gap-0 xl:grid-cols-[0.95fr,1.05fr]">
-                  <div className="brand-hero hidden border-r border-gray-200/80 px-8 py-9 dark:border-white/10 xl:flex xl:flex-col xl:justify-between">
-                    <div className="space-y-6">
-                      <div className="space-y-3">
-                        <p className="brand-hero-kicker text-xs font-semibold uppercase tracking-[0.28em]">Check-in kiosk</p>
-                        <h2 className="text-4xl font-bold leading-tight text-gray-950 dark:text-white">One number in, one customer record out.</h2>
-                        <p className="brand-hero-muted max-w-xl text-base leading-7">This matches the in-store capture flow. Returning guests are found instantly. New guests only add a name once, then they are ready for future visits.</p>
-                      </div>
-                      <div className="space-y-3">
-                        <div className="brand-hero-card rounded-[26px] p-5"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">What happens</p><ul className="mt-4 space-y-3 text-sm leading-6 text-gray-700 dark:text-white/80"><li>1. Enter the guest&apos;s mobile number on the built-in keypad.</li><li>2. Existing numbers check in right away without extra typing.</li><li>3. New numbers save once and become a reusable customer record.</li></ul></div>
-                        <div className="brand-hero-card rounded-[26px] p-5"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Front desk note</p><p className="mt-3 text-sm leading-6 text-gray-700 dark:text-white/80">`+1` and plain 10-digit US numbers are treated as the same customer everywhere, including check-ins, AI bookings, and SMS-driven flows.</p></div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="brand-hero-card rounded-[24px] p-4"><p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-white/60">Guests today</p><p className="mt-3 text-2xl font-bold text-gray-950 dark:text-white">{uniqueGuests}</p></div>
-                      <div className="brand-hero-card rounded-[24px] p-4"><p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-white/60">Check-ins</p><p className="mt-3 text-2xl font-bold text-gray-950 dark:text-white">{checkIns.length}</p></div>
-                    </div>
-                  </div>
-
-                  <div className="flex min-h-full flex-col px-4 py-5 sm:px-6 sm:py-6 xl:px-8 xl:py-9">
+                <section className="flex min-h-full">
+                  <div className="flex min-h-full w-full flex-col px-4 py-5 sm:px-6 sm:py-6 xl:px-8 xl:py-9">
                     {quickStep === 'phone' ? (
-                      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center space-y-6">
-                        <div className="space-y-3 xl:hidden">
+                      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center space-y-6">
+                        <div className="space-y-3">
                           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">Quick check-in</p>
-                          <h2 className="text-3xl font-bold text-gray-950 dark:text-white">Phone-first front desk flow</h2>
-                          <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">Existing guests go straight to a thank-you screen. New numbers only need a name before the visit is saved.</p>
+                          <h2 className="text-3xl font-bold text-gray-950 dark:text-white sm:text-4xl">Check in customer</h2>
+                          <p className="max-w-2xl text-sm leading-6 text-gray-600 dark:text-gray-300">
+                            Type a phone number or use the keypad below. Returning guests check in instantly. New numbers only need a name once.
+                          </p>
                         </div>
                         <div className="rounded-[30px] border border-gray-200/80 bg-white/80 p-5 shadow-[0_24px_60px_-40px_rgba(16,72,56,0.35)] dark:border-white/10 dark:bg-white/[0.04] sm:p-6">
-                          <div className="flex items-center justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Guest number</p><p className="mt-3 text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">{quickFormattedPhone || '(___) ___-____'}</p></div><button type="button" onClick={clearQuickDigits} className="rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:text-gray-950 dark:border-white/10 dark:text-gray-300 dark:hover:text-white">Clear</button></div>
-                          <div className="mt-4 flex flex-wrap gap-2"><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Existing number: instant check-in</span><span className="rounded-full bg-gray-900/6 px-3 py-1 text-xs font-semibold text-gray-600 dark:bg-white/10 dark:text-gray-300">New number: ask for name</span></div>
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0 flex-1">
+                              <label
+                                htmlFor="quick-checkin-phone"
+                                className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400"
+                              >
+                                Customer phone number
+                              </label>
+                              <input
+                                id="quick-checkin-phone"
+                                type="tel"
+                                inputMode="numeric"
+                                autoFocus
+                                value={quickFormattedPhone}
+                                onChange={(event) => handleQuickPhoneInputChange(event.target.value)}
+                                onKeyDown={handleQuickPhoneInputKeyDown}
+                                placeholder="(555) 123-4567"
+                                className="mt-3 min-h-[78px] w-full rounded-[24px] border border-gray-200/80 bg-gray-50/85 px-5 text-3xl font-bold tracking-tight text-gray-950 outline-none transition placeholder:text-gray-400 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:placeholder:text-gray-500"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={clearQuickDigits}
+                              className="mt-7 rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:text-gray-950 dark:border-white/10 dark:text-gray-300 dark:hover:text-white"
+                            >
+                              Clear
+                            </button>
+                          </div>
                         </div>
                         <div className="grid grid-cols-3 gap-3">{KEYPAD_KEYS.map((key) => <KeypadButton key={key} label={key === 'clear' ? 'Clear' : key === 'back' ? 'Delete' : key} hint={key === 'back' ? 'Backspace' : undefined} onClick={() => handleQuickKeypadPress(key)} className={key === 'clear' || key === 'back' ? 'text-primary' : ''} />)}</div>
-                        {quickLookupError ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">{quickLookupError}</div> : <p className="text-sm text-gray-600 dark:text-gray-300">Numbers typed as `8482612613` and `+18482612613` are treated as the same customer.</p>}
+                        {quickLookupError ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">{quickLookupError}</div> : <p className="text-sm text-gray-600 dark:text-gray-300">Type on the keyboard or tap the keypad. `8482612613` and `+18482612613` match the same customer.</p>}
                         <div className="flex flex-col gap-3 sm:flex-row">
                           <button type="button" onClick={closeModal} className="btn-outline min-h-[58px] flex-1">Cancel</button>
                           <button type="button" onClick={() => void handleQuickLookup()} disabled={!quickPhoneReady || quickIsBusy} className="btn-primary min-h-[58px] flex-1 disabled:cursor-not-allowed disabled:opacity-60">{quickIsBusy ? 'Checking number...' : 'Continue'}</button>

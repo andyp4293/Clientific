@@ -157,9 +157,29 @@ describe('CheckInsPage', () => {
 
     const overlay = document.querySelector('[data-mobile-overlay="true"]');
     expect(overlay).not.toBeNull();
-    expect(screen.getByText('Phone-first front desk flow')).toBeInTheDocument();
+    expect(screen.getByText('Check in customer')).toBeInTheDocument();
+    expect(screen.getByLabelText('Customer phone number')).toBeInTheDocument();
     expect(screen.getByText('Delete')).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /^(?:[0-9]|Clear|Delete)$/ })).toHaveLength(12);
+    expect(screen.queryByText('What happens')).not.toBeInTheDocument();
+    expect(screen.queryByText('Guests today')).not.toBeInTheDocument();
+  });
+
+  it('lets the front desk type the number directly from the keyboard field', () => {
+    mockMutations(
+      { mutateAsync: vi.fn(), isPending: false, isError: false },
+      { mutateAsync: vi.fn(), isPending: false }
+    );
+
+    render(<CheckInsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quick check-in' }));
+
+    const input = screen.getByLabelText('Customer phone number');
+    fireEvent.change(input, { target: { value: '8482612613' } });
+
+    expect(input).toHaveValue('(848) 261-2613');
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   });
 
   it('moves a brand new number into the guest-details step', async () => {
