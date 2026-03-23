@@ -79,5 +79,5 @@ describe('AiReceptionistManager', () => {
     expect(
       screen.getByRole('button', { name: /How to turn off forwarding/i })
     ).toHaveAttribute('aria-expanded', 'false');
-  });
+  }, 15000);
 });

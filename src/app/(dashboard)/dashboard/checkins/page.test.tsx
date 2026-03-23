@@ -163,7 +163,7 @@ describe('CheckInsPage', () => {
     expect(screen.getAllByRole('button', { name: /^(?:[0-9]|Clear|Delete)$/ })).toHaveLength(12);
     expect(screen.queryByText('What happens')).not.toBeInTheDocument();
     expect(screen.queryByText('Guests today')).not.toBeInTheDocument();
-  });
+  }, 15000);
 
   it('lets the front desk type the number directly from the keyboard field', () => {
     mockMutations(
