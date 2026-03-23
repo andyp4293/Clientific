@@ -10,8 +10,12 @@ describe('business hours page', () => {
   it('includes a specific closed dates management section', () => {
     const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
 
+    expect(source).toContain('Business Hours & Closures');
+    expect(source).toContain('Weekly Hours');
+    expect(source).toContain('Closed Dates');
     expect(source).toContain('Specific Closed Dates');
     expect(source).toContain('Add Closed Date');
     expect(source).toContain('Online booking and your AI receptionist');
+    expect(source).toContain('Holiday and one-off closures');
   });
 });

@@ -86,7 +86,7 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
   },
   {
     key: 'business-hours',
-    name: 'Business Hours',
+    name: 'Business Hours & Closures',
     href: '/dashboard/business-hours',
     icon: 'clock',
     section: 'operations',

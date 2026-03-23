@@ -195,6 +195,12 @@ describe('navigation config integrity', () => {
     expect(DASHBOARD_SECTION_ORDER).toEqual(['core', 'operations', 'growth', 'account']);
   });
 
+  it('labels the business hours route clearly enough to include closures', () => {
+    const item = DASHBOARD_NAV_ITEMS.find((navItem) => navItem.key === 'business-hours');
+
+    expect(item?.name).toBe('Business Hours & Closures');
+  });
+
   it.each(DASHBOARD_NAV_ITEMS)('keeps a real page behind the %s dashboard link', (item) => {
     expect(existsSync(dashboardHrefToPagePath(item.href))).toBe(true);
   });
