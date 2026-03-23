@@ -1,0 +1,227 @@
+import { prisma } from '@/lib/prisma';
+import {
+  buildCustomerPhoneData,
+  buildCustomerPhoneMatchClauses,
+  formatPhoneForDisplay,
+  normalizeOptionalPhoneNumber,
+} from '@/lib/phone';
+import { updateCustomerSegment } from '@/lib/segment';
+
+export type CheckInCustomerSummary = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  phoneLookupKey?: string | null;
+  lastVisit?: Date | null;
+};
+
+export type CheckInLookupResult =
+  | { status: 'new'; normalizedPhone: string; displayPhone: string }
+  | { status: 'existing'; customer: CheckInCustomerSummary }
+  | { status: 'multiple'; customers: CheckInCustomerSummary[] };
+
+export class CheckInFlowError extends Error {
+  status: number;
+  code?: string;
+  customers?: CheckInCustomerSummary[];
+
+  constructor(
+    message: string,
+    options?: {
+      status?: number;
+      code?: string;
+      customers?: CheckInCustomerSummary[];
+    }
+  ) {
+    super(message);
+    this.name = 'CheckInFlowError';
+    this.status = options?.status ?? 400;
+    this.code = options?.code;
+    this.customers = options?.customers;
+  }
+}
+
+export async function lookupBusinessCheckInCustomerByPhone({
+  businessId,
+  phone,
+}: {
+  businessId: string;
+  phone: string;
+}): Promise<CheckInLookupResult> {
+  const normalizedPhone = normalizeOptionalPhoneNumber(phone);
+  const phoneData = buildCustomerPhoneData(phone);
+
+  if (!normalizedPhone || !phoneData.phoneLookupKey) {
+    throw new CheckInFlowError('Customer phone number required');
+  }
+
+  const matchingCustomers = await prisma.customer.findMany({
+    where: {
+      businessId,
+      OR: buildCustomerPhoneMatchClauses(phone),
+    },
+    orderBy: [{ lastVisit: 'desc' }, { updatedAt: 'desc' }],
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+      phoneLookupKey: true,
+      lastVisit: true,
+    },
+  });
+
+  if (matchingCustomers.length > 1) {
+    return { status: 'multiple', customers: matchingCustomers };
+  }
+
+  if (matchingCustomers.length === 1) {
+    return {
+      status: 'existing',
+      customer: matchingCustomers[0],
+    };
+  }
+
+  return {
+    status: 'new',
+    normalizedPhone,
+    displayPhone: formatPhoneForDisplay(normalizedPhone) || normalizedPhone,
+  };
+}
+
+export async function createBusinessCheckIn({
+  businessId,
+  customerId,
+  serviceId,
+  staffId,
+  amountSpent,
+  phone,
+  customerName,
+  customerEmail,
+}: {
+  businessId: string;
+  customerId?: string | null;
+  serviceId?: string | null;
+  staffId?: string | null;
+  amountSpent?: number;
+  phone?: string | null;
+  customerName?: string | null;
+  customerEmail?: string | null;
+}) {
+  const providedPhoneData = buildCustomerPhoneData(phone);
+  let resolvedCustomerId =
+    typeof customerId === 'string' && customerId.trim().length > 0 ? customerId.trim() : null;
+
+  if (!resolvedCustomerId) {
+    const lookup = await lookupBusinessCheckInCustomerByPhone({
+      businessId,
+      phone: phone ?? '',
+    });
+
+    if (lookup.status === 'multiple') {
+      throw new CheckInFlowError('Multiple customers already use this number', {
+        status: 409,
+        code: 'MULTIPLE_CUSTOMERS_MATCH_PHONE',
+        customers: lookup.customers,
+      });
+    }
+
+    if (lookup.status === 'existing') {
+      resolvedCustomerId = lookup.customer.id;
+
+      if (
+        lookup.customer.phone !== providedPhoneData.phone ||
+        lookup.customer.phoneLookupKey !== providedPhoneData.phoneLookupKey
+      ) {
+        await prisma.customer.update({
+          where: { id: lookup.customer.id },
+          data: {
+            phone: providedPhoneData.phone,
+            phoneLookupKey: providedPhoneData.phoneLookupKey,
+          },
+        });
+      }
+    } else {
+      if (typeof customerName !== 'string' || customerName.trim().length === 0) {
+        throw new CheckInFlowError('Customer details required for a new phone number', {
+          status: 400,
+          code: 'CUSTOMER_DETAILS_REQUIRED',
+        });
+      }
+
+      const createdCustomer = await prisma.customer.create({
+        data: {
+          businessId,
+          name: customerName.trim(),
+          email:
+            typeof customerEmail === 'string' && customerEmail.trim().length > 0
+              ? customerEmail.trim().toLowerCase()
+              : null,
+          phone: providedPhoneData.phone,
+          phoneLookupKey: providedPhoneData.phoneLookupKey,
+          segment: 'NEW',
+          totalSpent: 0,
+        },
+        select: { id: true },
+      });
+
+      resolvedCustomerId = createdCustomer.id;
+    }
+  }
+
+  const customer = await prisma.customer.findFirst({
+    where: {
+      id: resolvedCustomerId,
+      businessId,
+    },
+    select: { id: true, phone: true, phoneLookupKey: true },
+  });
+
+  if (!customer) {
+    throw new CheckInFlowError('Customer not found', { status: 404 });
+  }
+
+  if (
+    providedPhoneData.phone &&
+    (customer.phone !== providedPhoneData.phone ||
+      customer.phoneLookupKey !== providedPhoneData.phoneLookupKey)
+  ) {
+    await prisma.customer.update({
+      where: { id: customer.id },
+      data: {
+        phone: providedPhoneData.phone,
+        phoneLookupKey: providedPhoneData.phoneLookupKey,
+      },
+    });
+  }
+
+  const now = new Date();
+  const checkIn = await prisma.checkIn.create({
+    data: {
+      businessId,
+      customerId: customer.id,
+      serviceId: serviceId || undefined,
+      staffId: staffId || undefined,
+      amountSpent: amountSpent || undefined,
+      checkInTime: now,
+    },
+    include: {
+      customer: true,
+      service: true,
+      staff: true,
+    },
+  });
+
+  await prisma.customer.update({
+    where: { id: customer.id },
+    data: {
+      lastVisit: now,
+      totalSpent: amountSpent ? { increment: amountSpent } : undefined,
+    },
+  });
+
+  updateCustomerSegment(customer.id).catch(console.error);
+
+  return { checkIn };
+}

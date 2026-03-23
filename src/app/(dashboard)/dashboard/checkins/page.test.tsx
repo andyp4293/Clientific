@@ -28,6 +28,14 @@ vi.mock('@/components/ui/CustomSelect', () => ({
   CustomSelect: () => <div data-testid="custom-select" />,
 }));
 
+vi.mock('@/components/checkins/InStoreCheckInPanel', () => ({
+  default: ({ business }: { business: { publicId: string; name: string } | null }) => (
+    <div data-testid="in-store-checkin-panel">
+      {business ? `${business.name}:${business.publicId}` : 'no-business'}
+    </div>
+  ),
+}));
+
 import CheckInsPage from './page';
 
 function mockMutations(createMutation: Record<string, unknown>, lookupMutation: Record<string, unknown>) {
@@ -65,6 +73,18 @@ function setupQueries() {
       return {
         data: {
           services: [],
+        },
+        isLoading: false,
+      };
+    }
+
+    if (key === 'business-info') {
+      return {
+        data: {
+          business: {
+            name: 'Test Salon',
+            publicId: 'pub_123',
+          },
         },
         isLoading: false,
       };
@@ -109,6 +129,20 @@ describe('CheckInsPage', () => {
     const page = screen.getByTestId('checkins-page');
     expect(page).toHaveClass('w-full');
     expect(page).not.toHaveClass('max-w-7xl');
+  });
+
+  it('removes revenue language from the dashboard and shows the in-store check-in link panel', () => {
+    mockMutations(
+      { mutateAsync: vi.fn(), isPending: false, isError: false },
+      { mutateAsync: vi.fn(), isPending: false }
+    );
+
+    render(<CheckInsPage />);
+
+    expect(screen.queryByText('Revenue tracked')).not.toBeInTheDocument();
+    expect(screen.queryByText('Average ticket')).not.toBeInTheDocument();
+    expect(screen.queryByText(/walk-in revenue/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId('in-store-checkin-panel')).toHaveTextContent('Test Salon:pub_123');
   });
 
   it('opens the quick check-in overlay with the built-in keypad', () => {
@@ -252,5 +286,6 @@ describe('CheckInsPage', () => {
 
     expect(screen.getByText('Manual check-in details')).toBeInTheDocument();
     expect(screen.getAllByTestId('custom-select')).toHaveLength(2);
+    expect(screen.queryByText('Amount spent (optional)')).not.toBeInTheDocument();
   });
 });

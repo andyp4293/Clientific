@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { CustomSelect } from '@/components/ui/CustomSelect';
+import InStoreCheckInPanel from '@/components/checkins/InStoreCheckInPanel';
 import { formatPhoneForDisplay } from '@/lib/phone';
 
 type Customer = {
@@ -57,6 +58,13 @@ type StaffResponse = {
   staff: Staff[];
 };
 
+type BusinessInfoResponse = {
+  business: {
+    name: string;
+    publicId: string | null;
+  };
+};
+
 type QuickStep = 'phone' | 'new' | 'multiple' | 'success';
 type CheckInMode = 'quick' | 'detailed';
 
@@ -69,7 +77,7 @@ type QuickSuccessState = {
 
 const PHONE_MAX_LENGTH = 11;
 const SUCCESS_RESET_SECONDS = 8;
-const DEFAULT_FORM_DATA = { customerId: '', serviceId: '', staffId: '', amountSpent: '' };
+const DEFAULT_FORM_DATA = { customerId: '', serviceId: '', staffId: '' };
 const DEFAULT_NEW_CUSTOMER_FORM = { name: '', email: '' };
 const KEYPAD_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clear', '0', 'back'] as const;
 
@@ -178,6 +186,15 @@ export default function CheckInsPage() {
     },
   });
 
+  const { data: businessInfoData } = useQuery<BusinessInfoResponse>({
+    queryKey: ['business-info'],
+    queryFn: async () => {
+      const res = await fetch('/api/business');
+      if (!res.ok) throw new Error('Failed to fetch business info');
+      return res.json();
+    },
+  });
+
   const { data: customersData } = useQuery<CustomersResponse>({
     queryKey: ['customers', searchTerm],
     queryFn: async () => {
@@ -213,13 +230,14 @@ export default function CheckInsPage() {
   const customers = customersData?.customers ?? [];
   const services = servicesData?.services ?? [];
   const staff = staffData?.staff ?? [];
-
-  const totalSpent = useMemo(
-    () => checkIns.reduce((sum, checkIn) => sum + (checkIn.amountSpent || 0), 0),
-    [checkIns]
-  );
-  const averageTicket = checkIns.length > 0 ? totalSpent / checkIns.length : 0;
   const uniqueGuests = useMemo(() => new Set(checkIns.map((checkIn) => checkIn.customer.id)).size, [checkIns]);
+  const inStoreBusiness =
+    businessInfoData?.business?.publicId && businessInfoData.business.name
+      ? {
+          name: businessInfoData.business.name,
+          publicId: businessInfoData.business.publicId,
+        }
+      : null;
 
   const resetQuickFlow = useCallback(() => {
     setQuickStep('phone');
@@ -459,7 +477,6 @@ export default function CheckInsPage() {
         customerId: formData.customerId,
         serviceId: formData.serviceId || undefined,
         staffId: formData.staffId || undefined,
-        amountSpent: formData.amountSpent ? Number.parseFloat(formData.amountSpent) : undefined,
       });
       await invalidateCheckInQueries();
       toast.success('Customer checked in');
@@ -491,38 +508,44 @@ export default function CheckInsPage() {
         </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.2fr),minmax(320px,0.8fr)]">
-        <section className="card rounded-[30px] p-5 sm:p-6">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-[24px] border border-gray-200/70 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Today&apos;s check-ins</p><p className="mt-3 text-3xl font-bold text-gray-950 dark:text-white">{checkIns.length}</p></div>
-            <div className="rounded-[24px] border border-gray-200/70 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Unique guests</p><p className="mt-3 text-3xl font-bold text-gray-950 dark:text-white">{uniqueGuests}</p></div>
-            <div className="rounded-[24px] border border-gray-200/70 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Revenue tracked</p><p className="mt-3 text-3xl font-bold text-gray-950 dark:text-white">${totalSpent.toFixed(2)}</p></div>
-            <div className="rounded-[24px] border border-gray-200/70 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Average ticket</p><p className="mt-3 text-3xl font-bold text-gray-950 dark:text-white">${averageTicket.toFixed(2)}</p></div>
-          </div>
-        </section>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(300px,0.72fr),minmax(0,1.28fr)]">
         <section className="card rounded-[30px] p-5 sm:p-6">
           <div className="space-y-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Daily view</p>
-              <h2 className="mt-2 text-xl font-semibold text-gray-950 dark:text-white">Check-in history</h2>
-              <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">Filter by day to review guests, service activity, and walk-in revenue from the front desk.</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Today&apos;s front desk view</p>
+              <h2 className="mt-2 text-xl font-semibold text-gray-950 dark:text-white">Quick glance</h2>
+              <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">Track how many guests came through today, then launch the in-store link on any front-desk device.</p>
             </div>
-            <div className="rounded-[24px] border border-gray-200/70 bg-white/70 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Date</label>
-              <DatePicker value={selectedDate} onChange={setSelectedDate} />
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-[24px] border border-gray-200/70 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Today&apos;s check-ins</p><p className="mt-3 text-3xl font-bold text-gray-950 dark:text-white">{checkIns.length}</p></div>
+              <div className="rounded-[24px] border border-gray-200/70 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Unique guests</p><p className="mt-3 text-3xl font-bold text-gray-950 dark:text-white">{uniqueGuests}</p></div>
+            </div>
+            <div className="rounded-[24px] border border-gray-200/70 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Front desk note</p>
+              <p className="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                Check-ins stay phone-first, and Clientific treats plain US numbers and the same number with <span className="font-semibold">+1</span> as the same guest record.
+              </p>
             </div>
           </div>
         </section>
+        <InStoreCheckInPanel business={inStoreBusiness} />
       </div>
 
       <section className="card overflow-hidden rounded-[30px]">
         <div className="border-b border-gray-200 px-5 py-5 dark:border-gray-800 sm:px-6">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Daily view</p>
               <h2 className="text-lg font-semibold text-gray-950 dark:text-white">Check-ins for {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</h2>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">Numbers stay in the familiar US format so the front desk can scan them quickly.</p>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">Filter by day to review guests, attached services, and staff assignments from the front desk.</p>
             </div>
-            <button type="button" onClick={openQuickModal} className="btn-outline text-sm">Start next check-in</button>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="rounded-[24px] border border-gray-200/70 bg-white/70 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Date</label>
+                <DatePicker value={selectedDate} onChange={setSelectedDate} />
+              </div>
+              <button type="button" onClick={openQuickModal} className="btn-outline text-sm">Start next check-in</button>
+            </div>
           </div>
         </div>
 
@@ -555,7 +578,6 @@ export default function CheckInsPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-2xl border border-gray-200/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Service</p><p className="mt-2 text-sm font-medium text-gray-950 dark:text-white">{checkIn.service?.name || 'Not tracked'}</p></div>
                     <div className="rounded-2xl border border-gray-200/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Staff</p><p className="mt-2 text-sm font-medium text-gray-950 dark:text-white">{checkIn.staff?.fullName || 'Open front desk'}</p></div>
-                    <div className="col-span-2 rounded-2xl border border-gray-200/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Amount</p><p className="mt-2 text-sm font-medium text-gray-950 dark:text-white">{checkIn.amountSpent != null ? `$${checkIn.amountSpent.toFixed(2)}` : 'Not tracked'}</p></div>
                   </div>
                 </article>
               ))}
@@ -570,7 +592,6 @@ export default function CheckInsPage() {
                     <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Phone</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Service</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Staff</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Amount</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
@@ -581,7 +602,6 @@ export default function CheckInsPage() {
                       <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{checkIn.customer.phone ? formatPhoneForDisplay(checkIn.customer.phone) : '-'}</td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{checkIn.service?.name || '-'}</td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{checkIn.staff?.fullName || '-'}</td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-950 dark:text-white">{checkIn.amountSpent != null ? `$${checkIn.amountSpent.toFixed(2)}` : '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -621,10 +641,9 @@ export default function CheckInsPage() {
                         <div className="brand-hero-card rounded-[26px] p-5"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Front desk note</p><p className="mt-3 text-sm leading-6 text-gray-700 dark:text-white/80">`+1` and plain 10-digit US numbers are treated as the same customer everywhere, including check-ins, AI bookings, and SMS-driven flows.</p></div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 gap-3">
                       <div className="brand-hero-card rounded-[24px] p-4"><p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-white/60">Guests today</p><p className="mt-3 text-2xl font-bold text-gray-950 dark:text-white">{uniqueGuests}</p></div>
-                      <div className="brand-hero-card rounded-[24px] p-4"><p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-white/60">Revenue</p><p className="mt-3 text-2xl font-bold text-gray-950 dark:text-white">${totalSpent.toFixed(2)}</p></div>
-                      <div className="brand-hero-card rounded-[24px] p-4"><p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-white/60">Avg ticket</p><p className="mt-3 text-2xl font-bold text-gray-950 dark:text-white">${averageTicket.toFixed(2)}</p></div>
+                      <div className="brand-hero-card rounded-[24px] p-4"><p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-white/60">Check-ins</p><p className="mt-3 text-2xl font-bold text-gray-950 dark:text-white">{checkIns.length}</p></div>
                     </div>
                   </div>
 
@@ -722,10 +741,10 @@ export default function CheckInsPage() {
                     <div className="space-y-5">
                       <div className="space-y-3">
                         <p className="brand-hero-kicker text-xs font-semibold uppercase tracking-[0.28em]">Manual front desk entry</p>
-                        <h2 className="text-4xl font-bold leading-tight text-gray-950 dark:text-white">Add service, staff, and spend details in one pass.</h2>
+                        <h2 className="text-4xl font-bold leading-tight text-gray-950 dark:text-white">Add service and staff details in one pass.</h2>
                         <p className="brand-hero-muted max-w-xl text-base leading-7">Use this mode when the front desk wants more detail than the fast keypad flow, while keeping the same clean visit history.</p>
                       </div>
-                      <div className="brand-hero-card rounded-[26px] p-5"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Best for</p><ul className="mt-4 space-y-3 text-sm leading-6 text-gray-700 dark:text-white/80"><li>Walk-ins who already need a service attached.</li><li>Visits where staff assignment matters right away.</li><li>Revenue tracking at the same moment as check-in.</li></ul></div>
+                      <div className="brand-hero-card rounded-[26px] p-5"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Best for</p><ul className="mt-4 space-y-3 text-sm leading-6 text-gray-700 dark:text-white/80"><li>Walk-ins who already need a service attached.</li><li>Visits where staff assignment matters right away.</li><li>Front desks that want cleaner visit notes beyond the fast keypad flow.</li></ul></div>
                     </div>
                     <div className="brand-hero-card rounded-[26px] p-5"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Tip</p><p className="mt-3 text-sm leading-6 text-gray-700 dark:text-white/80">Search by either name or phone. The same normalized phone matching is used here too.</p></div>
                   </div>
@@ -734,7 +753,7 @@ export default function CheckInsPage() {
                       <div className="space-y-2 xl:hidden">
                         <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">Detailed entry</p>
                         <h2 className="text-3xl font-bold text-gray-950 dark:text-white">Manual check-in details</h2>
-                        <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">Use this when the front desk needs to attach service, staff, or spend details at the same time.</p>
+                        <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">Use this when the front desk needs to attach service or staff details at the same time.</p>
                       </div>
                       <form onSubmit={handleDetailedSubmit} className="mt-6 space-y-5">
                         <div>
@@ -751,12 +770,8 @@ export default function CheckInsPage() {
                           ) : null}
                         </div>
                         <div className="grid gap-5 sm:grid-cols-2">
-                          <div><label className="label" htmlFor="detailed-service">Service (optional)</label><CustomSelect id="detailed-service" value={formData.serviceId} onChange={(serviceId) => { const selectedService = services.find((service) => service.id === serviceId); setFormData((current) => ({ ...current, serviceId, amountSpent: selectedService?.price != null && selectedService.price > 0 ? selectedService.price.toString() : current.amountSpent })); }} placeholder="No service" options={services.map((service) => ({ value: service.id, label: service.name + (service.price != null ? ` - $${service.price.toFixed(2)}` : '') }))} /></div>
+                          <div><label className="label" htmlFor="detailed-service">Service (optional)</label><CustomSelect id="detailed-service" value={formData.serviceId} onChange={(serviceId) => { setFormData((current) => ({ ...current, serviceId })); }} placeholder="No service" options={services.map((service) => ({ value: service.id, label: service.name }))} /></div>
                           <div><label className="label" htmlFor="detailed-staff">Staff (optional)</label><CustomSelect id="detailed-staff" value={formData.staffId} onChange={(value) => setFormData((current) => ({ ...current, staffId: value }))} placeholder="No staff" options={staff.map((member) => ({ value: member.id, label: member.fullName }))} /></div>
-                        </div>
-                        <div>
-                          <label className="label" htmlFor="detailed-amount">Amount spent (optional)</label>
-                          <div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span><input id="detailed-amount" type="number" min="0" step="0.01" value={formData.amountSpent} onChange={(event) => setFormData((current) => ({ ...current, amountSpent: event.target.value }))} className="input pl-8" placeholder="0.00" /></div>
                         </div>
                         {createCheckIn.isError ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">{createCheckIn.error instanceof Error ? createCheckIn.error.message : 'Failed to create check-in'}</div> : null}
                         <div className="flex flex-col-reverse gap-3 sm:flex-row">
