@@ -25,6 +25,15 @@ interface ReferralsData {
   payoutSetupMessage: string | null;
 }
 
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
 export default function ReferralsPage() {
   const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -94,7 +103,7 @@ export default function ReferralsPage() {
               <div className="mx-auto mb-1 h-8 w-10 animate-pulse rounded bg-gray-200 dark:bg-white/20" />
             ) : (
               <div className="text-2xl font-bold text-gray-950 dark:text-white">
-                ${totalCredits.toFixed(0)}
+                {formatCurrency(totalCredits)}
               </div>
             )}
             <div className="brand-hero-kicker mt-0.5 text-xs">Earned</div>

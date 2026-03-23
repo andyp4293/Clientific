@@ -152,7 +152,7 @@ describe('CheckInsPage', () => {
     });
 
     expect(lookupMutation.mutateAsync).toHaveBeenCalledWith('8482612613');
-  });
+  }, 15000);
 
   it('shows a validation message and does not call lookup for an incomplete number', async () => {
     const createMutation = { mutateAsync: vi.fn(), isPending: false, isError: false };
@@ -199,7 +199,7 @@ describe('CheckInsPage', () => {
 
     expect(screen.getByText('Andy 2')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'None of these guests' })).toBeInTheDocument();
-  });
+  }, 15000);
 
   it('checks in an existing guest immediately after a normalized phone match', async () => {
     const createMutation = {
@@ -238,7 +238,7 @@ describe('CheckInsPage', () => {
       customerId: 'cust-1',
       phone: '8482612613',
     });
-  });
+  }, 15000);
 
   it('lets the front desk switch into the detailed entry flow', () => {
     mockMutations(

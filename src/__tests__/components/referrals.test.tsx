@@ -102,13 +102,13 @@ describe('ReferralsPage', () => {
     expect(pulses.length).toBeGreaterThan(0);
   });
 
-  it('shows total credits earned', () => {
+  it('shows total credits earned without rounding away cents', () => {
     mockUseQuery.mockReturnValue({
-      data: makeData({ referralCode: 'ABC12345', totalCredits: 30 }),
+      data: makeData({ referralCode: 'ABC12345', totalCredits: 14.7 }),
       isLoading: false,
     } as any);
     render(<ReferralsPage />);
-    expect(screen.getByText('$30')).toBeInTheDocument();
+    expect(screen.getByText('$14.70')).toBeInTheDocument();
   });
 
   it('shows correct active count (includes credited for backward compat)', () => {
