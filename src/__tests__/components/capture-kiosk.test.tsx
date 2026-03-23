@@ -118,7 +118,7 @@ describe('CaptureKiosk', () => {
 
     expect(screen.getByText(/you're all set, jane\./i)).toBeInTheDocument();
     expect(screen.getByText('ABCD1234')).toBeInTheDocument();
-    expect(screen.getByText(/resets for the next guest in 15 seconds/i)).toBeInTheDocument();
+    expect(screen.getByText(/resets for the next customer in 15 seconds/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /reset now/i })).toBeInTheDocument();
 
     await act(async () => {

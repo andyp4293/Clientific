@@ -112,7 +112,7 @@ describe('public check-in route', () => {
     expect(body.customers).toHaveLength(2);
   });
 
-  it('creates a new guest record and check-in for an unknown phone number', async () => {
+  it('creates a new customer record and check-in for an unknown phone number', async () => {
     mockCustomerFindMany.mockResolvedValue([]);
     mockCustomerCreate.mockResolvedValue({ id: 'cust-new' });
     mockCustomerFindFirst.mockResolvedValue({
@@ -132,8 +132,8 @@ describe('public check-in route', () => {
     const res = await POST(
       makePostRequest({
         phone: '8482612613',
-        customerName: 'New Guest',
-        customerEmail: 'guest@example.com',
+        customerName: 'New Customer',
+        customerEmail: 'customer@example.com',
       }),
       makeParams()
     );
@@ -145,8 +145,8 @@ describe('public check-in route', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           businessId: 'biz-1',
-          name: 'New Guest',
-          email: 'guest@example.com',
+          name: 'New Customer',
+          email: 'customer@example.com',
           phone: '8482612613',
           phoneLookupKey: '8482612613',
         }),

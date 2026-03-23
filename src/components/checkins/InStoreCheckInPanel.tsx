@@ -52,8 +52,8 @@ export default function InStoreCheckInPanel({ business }: InStoreCheckInPanelPro
             Launch a front-desk check-in link on any device
           </h2>
           <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
-            Guests type just their phone number on the device. Existing customers move straight to a thank-you screen,
-            and new guests only add their name once.
+            Customers type just their phone number on the device. Existing customers move straight to a thank-you screen,
+            and new customers only add their name once.
           </p>
         </div>
       </div>

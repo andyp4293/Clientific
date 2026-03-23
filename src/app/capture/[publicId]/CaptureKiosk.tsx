@@ -288,7 +288,7 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
                         : "You're signed up. If a text does not arrive shortly, the front desk can help."}
                       </p>
                       <p className="text-sm text-gray-700 dark:text-gray-200">
-                        This screen resets for the next guest in {resetCountdown} second{resetCountdown === 1 ? '' : 's'}.
+                        This screen resets for the next customer in {resetCountdown} second{resetCountdown === 1 ? '' : 's'}.
                       </p>
                     </div>
 

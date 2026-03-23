@@ -183,7 +183,7 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(body.error || 'Failed to check in guest');
+        throw new Error(body.error || 'Failed to check in customer');
       }
 
       setQuickStep('success');
@@ -195,7 +195,7 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
       });
       setQuickLookupError(null);
     } catch (error) {
-      setQuickLookupError(error instanceof Error ? error.message : 'Failed to check in guest');
+      setQuickLookupError(error instanceof Error ? error.message : 'Failed to check in customer');
     } finally {
       setIsSubmitting(false);
     }
@@ -216,7 +216,7 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
       );
       const body = (await response.json().catch(() => ({}))) as LookupResponse & { error?: string };
       if (!response.ok) {
-        throw new Error(body.error || 'Failed to look up guest');
+        throw new Error(body.error || 'Failed to look up customer');
       }
 
       if (body.status === 'new') {
@@ -241,7 +241,7 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
         }
       );
     } catch (error) {
-      setQuickLookupError(error instanceof Error ? error.message : 'Failed to look up guest');
+      setQuickLookupError(error instanceof Error ? error.message : 'Failed to look up customer');
       setIsSubmitting(false);
     } finally {
       if (!quickSuccess) {
@@ -305,22 +305,27 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
           <PublicOwnerBackButton fallbackHref="/dashboard/checkins" label="Back to dashboard" />
         ) : null}
 
-        <section className="brand-panel rounded-[2rem] p-5 sm:p-6 md:min-h-[680px] md:p-8 lg:p-10">
-          <div className="mx-auto flex w-full max-w-2xl flex-col space-y-5 border-b border-gray-200/80 pb-5 dark:border-gray-800">
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">{business.name}</p>
-              <h1 className="text-3xl font-bold tracking-tight text-gray-950 dark:text-gray-50 sm:text-4xl">
+        <section className="brand-panel relative overflow-hidden rounded-[2.25rem] border border-gray-200/70 bg-[radial-gradient(circle_at_top,_rgba(16,138,99,0.18),_transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.92),rgba(247,250,249,0.9))] p-5 shadow-[0_32px_120px_-64px_rgba(12,40,32,0.48)] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top,_rgba(16,138,99,0.16),_transparent_38%),linear-gradient(180deg,rgba(14,26,30,0.96),rgba(12,22,28,0.98))] sm:p-6 md:min-h-[680px] md:p-8 lg:p-10">
+          <div className="pointer-events-none absolute -right-20 top-0 h-56 w-56 rounded-full bg-primary/10 blur-3xl dark:bg-primary/18" />
+          <div className="pointer-events-none absolute -left-16 bottom-0 h-48 w-48 rounded-full bg-white/50 blur-3xl dark:bg-primary/8" />
+
+          <div className="relative mx-auto flex w-full max-w-2xl flex-col space-y-5 border-b border-gray-200/80 pb-6 dark:border-white/10">
+            <div className="space-y-3">
+              <span className="inline-flex w-fit rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.32em] text-primary dark:border-primary/25 dark:bg-primary/12">
                 Check in
+              </span>
+              <h1 className="text-4xl font-bold tracking-[-0.03em] text-gray-950 dark:text-white sm:text-5xl">
+                {business.name}
               </h1>
-              <p className="text-sm leading-6 text-gray-700 dark:text-gray-200 sm:text-base">
-                Enter the guest&apos;s 10-digit mobile number. The +1 is already built in.
+              <p className="text-base font-medium text-gray-700 dark:text-gray-200 sm:text-lg">
+                Enter your number
               </p>
             </div>
           </div>
 
           {quickStep === 'phone' ? (
-            <div className="mx-auto flex w-full max-w-2xl flex-col justify-center space-y-6 pt-6 md:min-h-[580px]">
-              <div className="rounded-[30px] border border-gray-200/80 bg-white/80 p-5 shadow-[0_24px_60px_-40px_rgba(16,72,56,0.35)] dark:border-white/10 dark:bg-white/[0.04] sm:p-6">
+            <div className="relative mx-auto flex w-full max-w-2xl flex-col justify-center space-y-6 pt-6 md:min-h-[580px]">
+              <div className="rounded-[2rem] border border-gray-200/80 bg-white/90 p-5 shadow-[0_28px_80px_-48px_rgba(16,72,56,0.42)] backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.05] sm:p-6">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">
@@ -328,7 +333,7 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
                     </p>
                     <div className="mt-3 flex items-baseline gap-3">
                       <span className="text-lg font-semibold text-gray-500 dark:text-gray-400 sm:text-xl">+1</span>
-                      <p className="text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">
+                      <p className="text-4xl font-bold tracking-[-0.04em] text-gray-950 dark:text-white sm:text-5xl">
                         {quickFormattedPhone || '(___) ___-____'}
                       </p>
                     </div>
@@ -359,7 +364,11 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
                 <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">
                   {quickLookupError}
                 </div>
-              ) : null}
+              ) : (
+                <p className="text-center text-sm font-medium text-gray-500 dark:text-gray-400">
+                  Type from the keyboard or use the keypad below.
+                </p>
+              )}
 
               <button
                 type="button"
@@ -375,12 +384,12 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
             {quickStep === 'new' ? (
               <div className="mx-auto flex w-full max-w-2xl flex-col justify-center space-y-6 md:min-h-[580px]">
                 <div className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">New guest</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">New customer</p>
                   <h2 className="text-3xl font-bold text-gray-950 dark:text-white sm:text-4xl">
                     Save this number once and move on
                   </h2>
                   <p className="text-sm leading-6 text-gray-700 dark:text-gray-200 sm:text-base">
-                    We could not find {quickPhoneDisplay}. Add a name so this guest checks in faster next time.
+                    We could not find {quickPhoneDisplay}. Add a name so this customer checks in faster next time.
                   </p>
                 </div>
 
@@ -423,7 +432,7 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
                           setNewCustomerForm((current) => ({ ...current, email: event.target.value }))
                         }
                         className="input min-h-[56px] text-base"
-                        placeholder="guest@example.com"
+                        placeholder="customer@example.com"
                       />
                     </div>
                   </div>
@@ -443,7 +452,7 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
                       disabled={isSubmitting}
                       className="btn-primary min-h-[58px] flex-1 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {isSubmitting ? 'Saving guest...' : 'Save and check in'}
+                      {isSubmitting ? 'Saving customer...' : 'Save and check in'}
                     </button>
                   </div>
                 </form>
@@ -453,12 +462,12 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
             {quickStep === 'multiple' ? (
               <div className="mx-auto flex w-full max-w-3xl flex-col justify-center space-y-6 md:min-h-[580px]">
                 <div className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">Pick the right guest</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">Pick the right customer</p>
                   <h2 className="text-3xl font-bold text-gray-950 dark:text-white sm:text-4xl">
                     We found more than one record for {quickPhoneDisplay}
                   </h2>
                   <p className="text-sm leading-6 text-gray-700 dark:text-gray-200 sm:text-base">
-                    Choose the correct guest and we will finish the check-in right away.
+                    Choose the correct customer and we will finish the check-in right away.
                   </p>
                 </div>
 
@@ -511,7 +520,7 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
                     }}
                     className="btn-secondary min-h-[58px] flex-1"
                   >
-                    None of these guests
+                    None of these customers
                   </button>
                 </div>
               </div>
@@ -534,13 +543,13 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-300">
                     {quickSuccess.createdCustomer
-                      ? 'This was a brand new guest record, so the front desk will be faster next time.'
+                      ? 'This was a brand new customer record, so the front desk will be faster next time.'
                       : 'We found the existing customer record and moved the visit through instantly.'}
                   </p>
                 </div>
                 <div className="rounded-[28px] border border-primary/20 bg-primary/8 p-5 text-left">
                   <p className="text-sm font-semibold text-gray-950 dark:text-white">
-                    Ready for the next guest in {successCountdown} second{successCountdown === 1 ? '' : 's'}.
+                    Ready for the next customer in {successCountdown} second{successCountdown === 1 ? '' : 's'}.
                   </p>
                   <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-200/80 dark:bg-gray-800">
                     <div
@@ -549,7 +558,7 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
                     />
                   </div>
                   <button type="button" onClick={resetFlow} className="btn-primary mt-4 min-h-[52px] w-full">
-                    Check in another guest
+                    Check in another customer
                   </button>
                 </div>
               </div>

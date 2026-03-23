@@ -176,8 +176,8 @@ describe('POST /api/checkins', () => {
     const res = await POST(
       makeRequest({
         phone: '8482612613',
-        customerName: 'New Guest',
-        customerEmail: 'guest@example.com',
+        customerName: 'New Customer',
+        customerEmail: 'customer@example.com',
       })
     );
 
@@ -185,8 +185,8 @@ describe('POST /api/checkins', () => {
     expect(mockCustomerCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          name: 'New Guest',
-          email: 'guest@example.com',
+          name: 'New Customer',
+          email: 'customer@example.com',
           phone: '8482612613',
           phoneLookupKey: '8482612613',
         }),

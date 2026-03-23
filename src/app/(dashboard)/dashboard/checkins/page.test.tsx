@@ -182,7 +182,7 @@ describe('CheckInsPage', () => {
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   });
 
-  it('moves a brand new number into the guest-details step', async () => {
+  it('moves a brand new number into the customer-details step', async () => {
     const createMutation = { mutateAsync: vi.fn(), isPending: false, isError: false };
     const lookupMutation = {
       mutateAsync: vi.fn().mockResolvedValue({
@@ -248,14 +248,14 @@ describe('CheckInsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Pick the right guest')).toBeInTheDocument();
+      expect(screen.getByText('Pick the right customer')).toBeInTheDocument();
     });
 
     expect(screen.getByText('Andy 2')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'None of these guests' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'None of these customers' })).toBeInTheDocument();
   }, 15000);
 
-  it('checks in an existing guest immediately after a normalized phone match', async () => {
+  it('checks in an existing customer immediately after a normalized phone match', async () => {
     const createMutation = {
       mutateAsync: vi.fn().mockResolvedValue({
         checkIn: { checkInTime: '2026-03-22T14:30:00.000Z' },

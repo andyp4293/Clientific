@@ -103,6 +103,6 @@ export async function POST(
     }
 
     console.error('POST /api/public/business-by-id/[publicId]/check-in error:', error);
-    return NextResponse.json({ error: 'Failed to check in guest' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to check in customer' }, { status: 500 });
   }
 }

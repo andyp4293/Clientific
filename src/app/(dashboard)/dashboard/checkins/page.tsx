@@ -522,8 +522,8 @@ export default function CheckInsPage() {
           <div className="max-w-3xl space-y-3">
             <p className="brand-hero-kicker text-xs font-semibold uppercase tracking-[0.28em]">Front desk flow</p>
             <div className="space-y-2">
-              <h1 className="text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">Check guests in with just a phone number</h1>
-              <p className="brand-hero-muted max-w-2xl text-sm leading-6 sm:text-base">Built for a fast front desk. Existing guests move straight to a thank-you screen. New numbers only need a name and optional email before they are saved.</p>
+              <h1 className="text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">Check customers in with just a phone number</h1>
+              <p className="brand-hero-muted max-w-2xl text-sm leading-6 sm:text-base">Built for a fast front desk. Existing customers move straight to a thank-you screen. New numbers only need a name and optional email before they are saved.</p>
             </div>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -539,11 +539,11 @@ export default function CheckInsPage() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Today&apos;s front desk view</p>
               <h2 className="mt-2 text-xl font-semibold text-gray-950 dark:text-white">Quick glance</h2>
-              <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">Track how many guests came through today, then launch the in-store link on any front-desk device.</p>
+              <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">Track how many customers came through today, then launch the in-store link on any front-desk device.</p>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-[24px] border border-gray-200/70 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Today&apos;s check-ins</p><p className="mt-3 text-3xl font-bold text-gray-950 dark:text-white">{checkIns.length}</p></div>
-              <div className="rounded-[24px] border border-gray-200/70 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Unique guests</p><p className="mt-3 text-3xl font-bold text-gray-950 dark:text-white">{uniqueGuests}</p></div>
+              <div className="rounded-[24px] border border-gray-200/70 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Unique customers</p><p className="mt-3 text-3xl font-bold text-gray-950 dark:text-white">{uniqueGuests}</p></div>
             </div>
             <div className="rounded-[24px] border border-gray-200/70 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Front desk note</p>
@@ -562,7 +562,7 @@ export default function CheckInsPage() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Daily view</p>
               <h2 className="text-lg font-semibold text-gray-950 dark:text-white">Check-ins for {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</h2>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">Filter by day to review guests, attached services, and staff assignments from the front desk.</p>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">Filter by day to review customers, attached services, and staff assignments from the front desk.</p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="rounded-[24px] border border-gray-200/70 bg-white/70 p-4 dark:border-white/10 dark:bg-white/[0.04]">
@@ -586,7 +586,7 @@ export default function CheckInsPage() {
               </svg>
             </div>
             <p className="mt-4 text-base font-medium text-gray-950 dark:text-white">No check-ins for this date yet</p>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">Use the quick keypad flow when the next guest arrives.</p>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">Use the quick keypad flow when the next customer arrives.</p>
           </div>
         ) : (
           <>
@@ -661,7 +661,7 @@ export default function CheckInsPage() {
                           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">Quick check-in</p>
                           <h2 className="text-3xl font-bold text-gray-950 dark:text-white sm:text-4xl">Check in customer</h2>
                           <p className="max-w-2xl text-sm leading-6 text-gray-600 dark:text-gray-300">
-                            Type a phone number or use the keypad below. Returning guests check in instantly. New numbers only need a name once.
+                            Type a phone number or use the keypad below. Returning customers check in instantly. New numbers only need a name once.
                           </p>
                         </div>
                         <div className="rounded-[30px] border border-gray-200/80 bg-white/80 p-5 shadow-[0_24px_60px_-40px_rgba(16,72,56,0.35)] dark:border-white/10 dark:bg-white/[0.04] sm:p-6">
@@ -710,19 +710,19 @@ export default function CheckInsPage() {
 
                     {quickStep === 'new' ? (
                       <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center space-y-6">
-                        <div className="space-y-3"><p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">New guest</p><h2 className="text-3xl font-bold text-gray-950 dark:text-white">Save this number once and move on</h2><p className="text-sm leading-6 text-gray-600 dark:text-gray-300">We could not find {quickPhoneDisplay}. Add a name so this guest can be checked in faster next time.</p></div>
+                        <div className="space-y-3"><p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">New customer</p><h2 className="text-3xl font-bold text-gray-950 dark:text-white">Save this number once and move on</h2><p className="text-sm leading-6 text-gray-600 dark:text-gray-300">We could not find {quickPhoneDisplay}. Add a name so this customer can be checked in faster next time.</p></div>
                         <form onSubmit={handleQuickCreateCustomer} className="space-y-5">
                           <div className="rounded-[28px] border border-gray-200/80 bg-white/80 p-5 dark:border-white/10 dark:bg-white/[0.04]">
                             <div className="grid gap-5 sm:grid-cols-2">
                               <div><label className="label" htmlFor="quick-customer-name">Full name <span className="text-red-500">*</span></label><input id="quick-customer-name" type="text" value={newCustomerForm.name} onChange={(event) => setNewCustomerForm((current) => ({ ...current, name: event.target.value }))} className="input min-h-[56px] text-base" placeholder="Jane Smith" autoFocus /></div>
                               <div><label className="label" htmlFor="quick-customer-phone">Mobile number</label><input id="quick-customer-phone" value={quickPhoneDisplay || quickFormattedPhone} readOnly className="input min-h-[56px] cursor-default bg-gray-100/80 dark:bg-white/[0.06]" /></div>
                             </div>
-                            <div className="mt-5"><label className="label" htmlFor="quick-customer-email">Email (optional)</label><input id="quick-customer-email" type="email" value={newCustomerForm.email} onChange={(event) => setNewCustomerForm((current) => ({ ...current, email: event.target.value }))} className="input min-h-[56px] text-base" placeholder="guest@example.com" /></div>
+                            <div className="mt-5"><label className="label" htmlFor="quick-customer-email">Email (optional)</label><input id="quick-customer-email" type="email" value={newCustomerForm.email} onChange={(event) => setNewCustomerForm((current) => ({ ...current, email: event.target.value }))} className="input min-h-[56px] text-base" placeholder="customer@example.com" /></div>
                           </div>
                           {quickLookupError ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">{quickLookupError}</div> : null}
                           <div className="flex flex-col-reverse gap-3 sm:flex-row">
                             <button type="button" onClick={resetQuickFlow} className="btn-outline min-h-[58px] flex-1">Back</button>
-                            <button type="submit" disabled={quickIsBusy} className="btn-primary min-h-[58px] flex-1 disabled:cursor-not-allowed disabled:opacity-60">{quickIsBusy ? 'Saving guest...' : 'Save and check in'}</button>
+                            <button type="submit" disabled={quickIsBusy} className="btn-primary min-h-[58px] flex-1 disabled:cursor-not-allowed disabled:opacity-60">{quickIsBusy ? 'Saving customer...' : 'Save and check in'}</button>
                           </div>
                         </form>
                       </div>
@@ -730,7 +730,7 @@ export default function CheckInsPage() {
 
                     {quickStep === 'multiple' ? (
                       <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center space-y-6">
-                        <div className="space-y-3"><p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">Pick the right guest</p><h2 className="text-3xl font-bold text-gray-950 dark:text-white">We found more than one record for {quickPhoneDisplay}</h2><p className="text-sm leading-6 text-gray-600 dark:text-gray-300">Choose the correct guest and we will finish the check-in right away.</p></div>
+                        <div className="space-y-3"><p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">Pick the right customer</p><h2 className="text-3xl font-bold text-gray-950 dark:text-white">We found more than one record for {quickPhoneDisplay}</h2><p className="text-sm leading-6 text-gray-600 dark:text-gray-300">Choose the correct customer and we will finish the check-in right away.</p></div>
                         <div className="grid gap-3">
                           {quickMatchedCustomers.map((customer) => (
                             <button key={customer.id} type="button" onClick={() => void handleQuickMatchSelect(customer)} className="rounded-[26px] border border-gray-200/80 bg-white/80 px-5 py-4 text-left shadow-[0_20px_50px_-36px_rgba(16,72,56,0.4)] transition hover:border-primary/30 hover:bg-primary/5 dark:border-white/10 dark:bg-white/[0.04] dark:hover:border-primary/40">
@@ -748,7 +748,7 @@ export default function CheckInsPage() {
                         {quickLookupError ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">{quickLookupError}</div> : null}
                         <div className="flex flex-col gap-3 sm:flex-row">
                           <button type="button" onClick={resetQuickFlow} className="btn-outline min-h-[58px] flex-1">Back to keypad</button>
-                          <button type="button" onClick={() => { setQuickMatchedCustomers([]); setQuickStep('new'); }} className="btn-secondary min-h-[58px] flex-1">None of these guests</button>
+                          <button type="button" onClick={() => { setQuickMatchedCustomers([]); setQuickStep('new'); }} className="btn-secondary min-h-[58px] flex-1">None of these customers</button>
                         </div>
                       </div>
                     ) : null}
@@ -764,12 +764,12 @@ export default function CheckInsPage() {
                           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">Check-in complete</p>
                           <h2 className="text-4xl font-bold tracking-tight text-gray-950 dark:text-white">Thanks, {quickSuccess.customerName.split(/\s+/)[0]}.</h2>
                           <p className="text-base leading-7 text-gray-600 dark:text-gray-300">Checked in at {formatSuccessTime(quickSuccess.checkInTime, timezone)} using {quickSuccess.phoneDisplay}.</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-300">{quickSuccess.createdCustomer ? 'This was a brand new guest record, so the front desk will be faster next time.' : 'We found the existing customer record and moved the visit through instantly.'}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-300">{quickSuccess.createdCustomer ? 'This was a brand new customer record, so the front desk will be faster next time.' : 'We found the existing customer record and moved the visit through instantly.'}</p>
                         </div>
                         <div className="rounded-[28px] border border-primary/20 bg-primary/8 p-5 text-left">
-                          <p className="text-sm font-semibold text-gray-950 dark:text-white">Ready for the next guest in {successCountdown} second{successCountdown === 1 ? '' : 's'}.</p>
+                          <p className="text-sm font-semibold text-gray-950 dark:text-white">Ready for the next customer in {successCountdown} second{successCountdown === 1 ? '' : 's'}.</p>
                           <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-200/80 dark:bg-gray-800"><div className="h-full rounded-full bg-primary transition-[width] duration-700 ease-linear" style={{ width: successProgressPercent }} /></div>
-                          <button type="button" onClick={resetQuickFlow} className="btn-primary mt-4 min-h-[52px] w-full">Check in another guest</button>
+                          <button type="button" onClick={resetQuickFlow} className="btn-primary mt-4 min-h-[52px] w-full">Check in another customer</button>
                         </div>
                       </div>
                     ) : null}
