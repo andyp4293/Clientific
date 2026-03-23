@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { TimePicker } from '@/components/ui/TimePicker';
 
 interface BusinessHour {
@@ -47,6 +48,21 @@ function formatClosureDate(date: string, timezone: string): string {
     year: 'numeric',
     timeZone: timezone || 'America/New_York',
   });
+}
+
+function parseDateOnly(value: string): Date | null {
+  if (!value) return null;
+
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return null;
+
+  return new Date(year, month - 1, day);
+}
+
+function formatDateOnly(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate()
+  ).padStart(2, '0')}`;
 }
 
 export default function BusinessHoursPage() {
@@ -97,6 +113,7 @@ export default function BusinessHoursPage() {
   const timezoneLabel = timezone.replace(/_/g, ' ');
   const openDayCount = localHours.filter((hour) => hour.isOpen).length;
   const closureCount = localClosures.length;
+  const newClosureDateValue = useMemo(() => parseDateOnly(newClosureDate), [newClosureDate]);
   const showActionBar = localHours.length > 0 || localClosures.length > 0 || hasChanges;
   const shouldHighlightFirstHoursSave = hasNoSavedHours && localHours.length > 0;
   const todayDateKey = useMemo(
@@ -109,6 +126,7 @@ export default function BusinessHoursPage() {
       }).format(new Date()),
     [timezone]
   );
+  const minClosureDate = useMemo(() => parseDateOnly(todayDateKey), [todayDateKey]);
 
   const updateMutation = useMutation({
     mutationFn: async ({
@@ -553,15 +571,19 @@ export default function BusinessHoursPage() {
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">
                     Closed Date
                   </label>
-                  <input
-                    type="date"
-                    value={newClosureDate}
-                    min={todayDateKey}
-                    onChange={(event) => {
-                      setNewClosureDate(event.target.value);
+                  <DatePicker
+                    value={newClosureDateValue}
+                    onChange={(date) => {
+                      setNewClosureDate(formatDateOnly(date));
                       setClosureError(null);
                     }}
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                    onClear={() => {
+                      setNewClosureDate('');
+                      setClosureError(null);
+                    }}
+                    allowClear
+                    minDate={minClosureDate ?? undefined}
+                    placeholder="Select closed date"
                   />
                 </div>
                 <div>

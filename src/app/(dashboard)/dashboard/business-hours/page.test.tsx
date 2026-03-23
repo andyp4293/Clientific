@@ -17,5 +17,7 @@ describe('business hours page', () => {
     expect(source).toContain('Add Closed Date');
     expect(source).toContain('Online booking and your AI receptionist');
     expect(source).toContain('Holiday and one-off closures');
+    expect(source).toContain('<DatePicker');
+    expect(source).not.toContain('type="date"');
   });
 });
