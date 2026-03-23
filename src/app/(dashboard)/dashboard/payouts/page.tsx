@@ -526,17 +526,17 @@ export default function PayoutsPage() {
             </div>
           </section>
 
-          <section className="brand-panel rounded-[32px] border border-gray-200/80 p-4 sm:p-5 lg:p-6 dark:border-white/10">
-            <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+          <section className="space-y-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                  Secure Stripe workspace
+                  Stripe payout controls
                 </p>
                 <h3 className="mt-2 text-xl font-semibold text-gray-900 dark:text-gray-100">
-                  Balances, payouts, and account settings
+                  Request payouts, review history, and update payout settings here
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
-                  Everything below is hosted securely by Stripe and synced back to Clientific.
+                  Stripe hosts the controls below securely, and Clientific keeps the surrounding payout totals in sync.
                 </p>
               </div>
 

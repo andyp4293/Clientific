@@ -13,7 +13,6 @@ vi.mock('@stripe/connect-js/pure', () => ({
 vi.mock('@stripe/react-connect-js', () => ({
   ConnectAccountManagement: () => <div data-testid="connect-account-management" />,
   ConnectAccountOnboarding: () => <div data-testid="connect-account-onboarding" />,
-  ConnectBalances: () => <div data-testid="connect-balances" />,
   ConnectComponentsProvider: ({ children }: { children: ReactNode }) => (
     <div data-testid="connect-provider">{children}</div>
   ),
@@ -54,12 +53,38 @@ describe('EmbeddedPayoutWorkspace', () => {
     });
 
     const config = mockLoadConnectAndInitialize.mock.calls[0][0];
-    expect(config.appearance.variables.colorBackground).toBe('#FCFEFD');
-    expect(config.appearance.variables.formBackgroundColor).toBe('#FFFFFF');
+    expect(config.appearance.variables.colorBackground).toBe('#F3F8F7');
+    expect(config.appearance.variables.formBackgroundColor).toBe('#F8FCFB');
     expect(screen.getByTestId('connect-account-onboarding')).toBeInTheDocument();
   });
 
-  it('switches the embedded workspace to dark appearance tokens and removes the empty banner slot', async () => {
+  it('shows a loading state while secure Stripe controls initialize', async () => {
+    let resolveFetch: ((value: unknown) => void) | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        () =>
+          new Promise((resolve) => {
+            resolveFetch = resolve;
+          })
+      )
+    );
+
+    render(<EmbeddedPayoutWorkspace visible onboardingComplete onRefresh={vi.fn()} />);
+
+    expect(screen.getByText(/loading secure stripe controls/i)).toBeInTheDocument();
+
+    resolveFetch?.({
+      ok: true,
+      json: async () => ({ clientSecret: 'seti_123_secret_456' }),
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('connect-provider')).toBeInTheDocument();
+    });
+  });
+
+  it('switches the embedded workspace to dark appearance tokens and removes the redundant balances embed', async () => {
     document.documentElement.classList.add('dark');
 
     await act(async () => {
@@ -74,11 +99,10 @@ describe('EmbeddedPayoutWorkspace', () => {
     });
 
     const config = mockLoadConnectAndInitialize.mock.calls[0][0];
-    expect(config.appearance.variables.colorBackground).toBe('#12202A');
-    expect(config.appearance.variables.formBackgroundColor).toBe('#0D1820');
-    expect(screen.getByTestId('connect-balances')).toBeInTheDocument();
+    expect(config.appearance.variables.colorBackground).toBe('#0C1720');
+    expect(config.appearance.variables.formBackgroundColor).toBe('#0C1720');
     expect(screen.getByTestId('connect-payouts')).toBeInTheDocument();
     expect(screen.getByTestId('connect-account-management')).toBeInTheDocument();
-    expect(screen.queryByTestId('connect-notification-banner')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('connect-balances')).not.toBeInTheDocument();
   });
 });

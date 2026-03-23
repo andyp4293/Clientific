@@ -6,7 +6,6 @@ import { loadConnectAndInitialize } from '@stripe/connect-js/pure';
 import {
   ConnectAccountManagement,
   ConnectAccountOnboarding,
-  ConnectBalances,
   ConnectComponentsProvider,
   ConnectPayouts,
 } from '@stripe/react-connect-js';
@@ -91,19 +90,19 @@ function buildConnectAppearance(isDark: boolean) {
     overlays: 'dialog' as const,
     variables: {
       colorPrimary: '#0F8A63',
-      colorBackground: isDark ? '#12202A' : '#FCFEFD',
+      colorBackground: isDark ? '#0C1720' : '#F3F8F7',
       colorText: isDark ? '#F3F8F7' : '#102026',
       colorSecondaryText: isDark ? '#B8CAC5' : '#546A67',
       colorDanger: '#DC2626',
-      colorBorder: isDark ? 'rgba(184, 202, 197, 0.18)' : '#D7E2E0',
+      colorBorder: isDark ? 'rgba(184, 202, 197, 0.12)' : 'rgba(123, 150, 144, 0.2)',
       buttonPrimaryColorBackground: '#0F8A63',
       buttonPrimaryColorBorder: '#0F8A63',
       buttonPrimaryColorText: '#F8FFFC',
-      buttonSecondaryColorBackground: isDark ? '#182A34' : '#F3F8F7',
-      buttonSecondaryColorBorder: isDark ? '#31505B' : '#D7E2E0',
+      buttonSecondaryColorBackground: isDark ? '#13222C' : '#EEF5F3',
+      buttonSecondaryColorBorder: isDark ? '#2B4550' : '#D7E2E0',
       buttonSecondaryColorText: isDark ? '#F3F8F7' : '#102026',
-      badgeNeutralColorBackground: isDark ? '#1A2C36' : '#F3F8F7',
-      badgeNeutralColorBorder: isDark ? '#31505B' : '#D7E2E0',
+      badgeNeutralColorBackground: isDark ? '#13222C' : '#EEF5F3',
+      badgeNeutralColorBorder: isDark ? '#2B4550' : '#D7E2E0',
       badgeNeutralColorText: isDark ? '#D9E7E3' : '#385059',
       badgeSuccessColorBackground: isDark ? 'rgba(15, 138, 99, 0.18)' : 'rgba(15, 138, 99, 0.10)',
       badgeSuccessColorBorder: isDark ? 'rgba(103, 223, 178, 0.24)' : 'rgba(15, 138, 99, 0.18)',
@@ -114,8 +113,8 @@ function buildConnectAppearance(isDark: boolean) {
       badgeDangerColorBackground: isDark ? 'rgba(220, 38, 38, 0.18)' : 'rgba(220, 38, 38, 0.10)',
       badgeDangerColorBorder: isDark ? 'rgba(248, 113, 113, 0.24)' : 'rgba(220, 38, 38, 0.18)',
       badgeDangerColorText: isDark ? '#FCA5A5' : '#B91C1C',
-      offsetBackgroundColor: isDark ? '#182A34' : '#F3F8F7',
-      formBackgroundColor: isDark ? '#0D1820' : '#FFFFFF',
+      offsetBackgroundColor: isDark ? '#101C25' : '#EEF5F3',
+      formBackgroundColor: isDark ? '#0C1720' : '#F8FCFB',
       formHighlightColorBorder: '#0F8A63',
       formAccentColor: '#0F8A63',
       actionPrimaryColorText: isDark ? '#82E7BF' : '#0F8A63',
@@ -406,8 +405,7 @@ export function EmbeddedPayoutWorkspace({
     );
   }
 
-  const workspaceSurfaceClass =
-    'overflow-hidden rounded-[30px] border border-gray-200/80 bg-white/92 shadow-[0_18px_45px_-32px_rgba(15,23,42,0.4)] dark:border-white/10 dark:bg-[#0f1b23]/92';
+  const embedFrameClass = 'overflow-x-auto overflow-y-visible px-1';
 
   return (
     <div className="space-y-5">
@@ -429,17 +427,25 @@ export function EmbeddedPayoutWorkspace({
       )}
 
       {isInitializing ? (
-        <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-700 dark:bg-gray-900">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
-          <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-            Opening secure Stripe setup...
-          </p>
+        <div className="space-y-4 rounded-[28px] bg-gray-50/80 p-4 dark:bg-white/5 sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="space-y-2">
+              <div className="h-3 w-32 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+              <div className="h-4 w-56 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+            </div>
+            <div className="h-9 w-28 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+          </div>
+          <div className="space-y-3">
+            <div className="h-40 animate-pulse rounded-[24px] bg-white/80 shadow-sm dark:bg-[#101c25]" />
+            <div className="h-72 animate-pulse rounded-[24px] bg-white/80 shadow-sm dark:bg-[#101c25]" />
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading secure Stripe controls...</p>
         </div>
       ) : connectInstance ? (
         <ConnectComponentsProvider connectInstance={connectInstance}>
           <div className="space-y-4">
             {!onboardingComplete ? (
-              <div className={workspaceSurfaceClass}>
+              <div className={embedFrameClass}>
                 <ConnectAccountOnboarding
                   collectionOptions={{ fields: 'currently_due' }}
                   onExit={onRefresh}
@@ -447,13 +453,10 @@ export function EmbeddedPayoutWorkspace({
               </div>
             ) : (
               <>
-                <div className={workspaceSurfaceClass}>
-                  <ConnectBalances />
-                </div>
-                <div className={workspaceSurfaceClass}>
+                <div className={embedFrameClass}>
                   <ConnectPayouts />
                 </div>
-                <div className={workspaceSurfaceClass}>
+                <div className={embedFrameClass}>
                   <ConnectAccountManagement
                     collectionOptions={{ fields: 'currently_due', futureRequirements: 'include' }}
                   />
