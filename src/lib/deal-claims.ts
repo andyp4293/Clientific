@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { formatPhoneNumber } from '@/lib/twilio';
+import { buildCustomerPhoneData, buildCustomerPhoneMatchClauses } from '@/lib/phone';
 
 const DEAL_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -80,7 +81,7 @@ async function findExistingCustomer(
   const customer = await prisma.customer.findFirst({
     where: {
       businessId,
-      OR: [{ phone: normalizedPhone }, { phone: rawPhone }],
+      OR: buildCustomerPhoneMatchClauses(rawPhone),
     },
     select: { id: true, name: true },
   });
@@ -112,11 +113,13 @@ async function createCustomerForDealClaim(
   customerPhone: string,
   customerName: string
 ): Promise<string> {
+  const customerPhoneData = buildCustomerPhoneData(customerPhone);
   const customer = await prisma.customer.create({
     data: {
       businessId,
       name: customerName,
-      phone: customerPhone,
+      phone: customerPhoneData.phone,
+      phoneLookupKey: customerPhoneData.phoneLookupKey,
       smsConsent: true,
       smsMarketingConsent: false,
     },

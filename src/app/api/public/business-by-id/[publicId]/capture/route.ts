@@ -8,6 +8,7 @@ import {
   isValidPhoneNumber,
   sendSMS,
 } from '@/lib/twilio';
+import { buildCustomerPhoneData, buildCustomerPhoneMatchClauses } from '@/lib/phone';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { claimDealForCustomer, DealClaimError } from '@/lib/deal-claims';
 import { getAppBaseUrlFromRequest } from '@/lib/app-url';
@@ -106,17 +107,19 @@ export async function POST(
     }
 
     const normalizedPhone = formatPhoneNumber(phoneRaw);
+    const customerPhoneData = buildCustomerPhoneData(phoneRaw);
     const now = new Date();
 
     const existingCustomer = await prisma.customer.findFirst({
       where: {
         businessId: business.id,
-        OR: [{ phone: normalizedPhone }, { phone: phoneRaw }],
+        OR: buildCustomerPhoneMatchClauses(phoneRaw),
       },
       select: {
         id: true,
         name: true,
         phone: true,
+        phoneLookupKey: true,
         email: true,
         smsOptedOut: true,
       },
@@ -126,10 +129,12 @@ export async function POST(
       ? await prisma.customer.update({
           where: { id: existingCustomer.id },
           data: {
-            name,
-            email: emailRaw || existingCustomer.email,
-            smsConsent: true,
-            smsMarketingConsent: true,
+          name,
+          email: emailRaw || existingCustomer.email,
+          phone: customerPhoneData.phone ?? existingCustomer.phone,
+          phoneLookupKey: customerPhoneData.phoneLookupKey ?? existingCustomer.phoneLookupKey,
+          smsConsent: true,
+          smsMarketingConsent: true,
             smsMarketingConsentAt: now,
             smsOptedOut: false,
             smsOptedOutAt: null,
@@ -145,7 +150,8 @@ export async function POST(
           data: {
             businessId: business.id,
             name,
-            phone: normalizedPhone,
+            phone: customerPhoneData.phone,
+            phoneLookupKey: customerPhoneData.phoneLookupKey,
             email: emailRaw || null,
             smsConsent: true,
             smsMarketingConsent: true,

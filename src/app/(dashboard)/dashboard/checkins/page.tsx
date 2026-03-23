@@ -1,96 +1,274 @@
 'use client';
 
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { CustomSelect } from '@/components/ui/CustomSelect';
+import { formatPhoneForDisplay } from '@/lib/phone';
 
-interface Customer {
+type Customer = {
   id: string;
   name: string;
   phone: string | null;
   email: string | null;
-}
+  lastVisit?: string | null;
+};
 
-interface Service {
+type Service = {
   id: string;
   name: string;
   price: number | null;
-}
+};
 
-interface Staff {
+type Staff = {
   id: string;
   fullName: string;
-}
+};
 
-interface CheckIn {
+type CheckIn = {
   id: string;
   checkInTime: string;
   amountSpent: number | null;
   customer: Customer;
   service: Service | null;
   staff: Staff | null;
+};
+
+type LookupResponse =
+  | { status: 'new'; normalizedPhone: string; displayPhone: string }
+  | { status: 'existing'; customer: Customer }
+  | { status: 'multiple'; customers: Customer[] };
+
+type CheckInsResponse = {
+  checkIns: CheckIn[];
+  timezone: string;
+};
+
+type CustomersResponse = {
+  customers: Customer[];
+};
+
+type ServicesResponse = {
+  services: Service[];
+};
+
+type StaffResponse = {
+  staff: Staff[];
+};
+
+type QuickStep = 'phone' | 'new' | 'multiple' | 'success';
+type CheckInMode = 'quick' | 'detailed';
+
+type QuickSuccessState = {
+  customerName: string;
+  phoneDisplay: string;
+  checkInTime: string;
+  createdCustomer: boolean;
+};
+
+const PHONE_MAX_LENGTH = 11;
+const SUCCESS_RESET_SECONDS = 8;
+const DEFAULT_FORM_DATA = { customerId: '', serviceId: '', staffId: '', amountSpent: '' };
+const DEFAULT_NEW_CUSTOMER_FORM = { name: '', email: '' };
+const KEYPAD_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clear', '0', 'back'] as const;
+
+function formatDateLocal(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate()
+  ).padStart(2, '0')}`;
+}
+
+function sanitizePhoneDigits(value: string) {
+  const digits = value.replace(/\D/g, '');
+  if (digits.length <= 10) return digits;
+  if (digits.length === 11 && digits.startsWith('1')) return digits;
+  if (digits.length > 11 && digits.startsWith('1')) return digits.slice(0, 11);
+  return digits.slice(0, 10);
+}
+
+function formatPhoneEntry(value: string) {
+  const digits = sanitizePhoneDigits(value);
+  const normalized = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
+  if (!normalized) return '';
+  if (normalized.length <= 3) return normalized;
+  if (normalized.length <= 6) return `(${normalized.slice(0, 3)}) ${normalized.slice(3)}`;
+  return `(${normalized.slice(0, 3)}) ${normalized.slice(3, 6)}-${normalized.slice(6, 10)}`;
+}
+
+function canLookupPhone(value: string) {
+  const digits = sanitizePhoneDigits(value);
+  return digits.length === 10 || (digits.length === 11 && digits.startsWith('1'));
+}
+
+function formatSuccessTime(isoString: string, timezone: string) {
+  return new Date(isoString).toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: timezone,
+  });
+}
+
+function formatLastVisit(isoString: string | null | undefined, timezone: string) {
+  if (!isoString) return 'No previous visit yet';
+  return new Date(isoString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: timezone,
+  });
+}
+
+function KeypadButton({
+  label,
+  hint,
+  onClick,
+  className = '',
+}: {
+  label: string;
+  hint?: string;
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group relative min-h-[84px] overflow-hidden rounded-[1.65rem] border border-gray-200 bg-white/80 text-left shadow-[0_18px_45px_-28px_rgba(16,72,56,0.42)] transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_24px_50px_-28px_rgba(16,72,56,0.55)] dark:border-white/10 dark:bg-white/[0.06] dark:hover:border-primary/40 ${className}`}
+    >
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent opacity-0 transition group-hover:opacity-100" />
+      <div className="flex h-full flex-col items-center justify-center gap-1 px-3 py-4">
+        <span className="text-2xl font-semibold text-gray-950 dark:text-white">{label}</span>
+        {hint ? (
+          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+            {hint}
+          </span>
+        ) : null}
+      </div>
+    </button>
+  );
 }
 
 export default function CheckInsPage() {
   const queryClient = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [mode, setMode] = useState<CheckInMode>('quick');
+  const [quickStep, setQuickStep] = useState<QuickStep>('phone');
+  const [quickDigits, setQuickDigits] = useState('');
+  const [quickPhoneDisplay, setQuickPhoneDisplay] = useState('');
+  const [quickMatchedCustomers, setQuickMatchedCustomers] = useState<Customer[]>([]);
+  const [quickLookupError, setQuickLookupError] = useState<string | null>(null);
+  const [quickSuccess, setQuickSuccess] = useState<QuickSuccessState | null>(null);
+  const [successCountdown, setSuccessCountdown] = useState(SUCCESS_RESET_SECONDS);
+  const [newCustomerForm, setNewCustomerForm] = useState(DEFAULT_NEW_CUSTOMER_FORM);
   const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState({
-    customerId: '',
-    serviceId: '',
-    staffId: '',
-    amountSpent: '',
-  });
+  const [formData, setFormData] = useState(DEFAULT_FORM_DATA);
 
-  const formatDateLocal = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-      d.getDate()
-    ).padStart(2, '0')}`;
+  const selectedDateKey = useMemo(() => formatDateLocal(selectedDate), [selectedDate]);
+  const quickFormattedPhone = useMemo(() => formatPhoneEntry(quickDigits), [quickDigits]);
+  const quickPhoneReady = useMemo(() => canLookupPhone(quickDigits), [quickDigits]);
 
-  const { data: checkInsData, isLoading: isLoadingCheckIns } = useQuery({
-    queryKey: ['checkins', formatDateLocal(selectedDate)],
+  const { data: checkInsData, isLoading: isLoadingCheckIns } = useQuery<CheckInsResponse>({
+    queryKey: ['checkins', selectedDateKey],
     queryFn: async () => {
-      const res = await fetch(`/api/checkins?date=${formatDateLocal(selectedDate)}`);
+      const res = await fetch(`/api/checkins?date=${selectedDateKey}`);
       if (!res.ok) throw new Error('Failed to fetch check-ins');
       return res.json();
     },
   });
 
-  const { data: customersData } = useQuery({
+  const { data: customersData } = useQuery<CustomersResponse>({
     queryKey: ['customers', searchTerm],
     queryFn: async () => {
-      const res = await fetch(`/api/customers?search=${searchTerm}`);
+      const res = await fetch(`/api/customers?search=${encodeURIComponent(searchTerm)}`);
       if (!res.ok) throw new Error('Failed to fetch customers');
       return res.json();
     },
-    enabled: showModal && searchTerm.length >= 2,
+    enabled: showModal && mode === 'detailed' && searchTerm.trim().length >= 2,
   });
 
-  const { data: servicesData } = useQuery({
+  const { data: servicesData } = useQuery<ServicesResponse>({
     queryKey: ['services'],
     queryFn: async () => {
       const res = await fetch('/api/services');
       if (!res.ok) throw new Error('Failed to fetch services');
       return res.json();
     },
-    enabled: showModal,
+    enabled: showModal && mode === 'detailed',
   });
 
-  const { data: staffData } = useQuery({
+  const { data: staffData } = useQuery<StaffResponse>({
     queryKey: ['staff'],
     queryFn: async () => {
       const res = await fetch('/api/staff');
       if (!res.ok) throw new Error('Failed to fetch staff');
       return res.json();
     },
-    enabled: showModal,
+    enabled: showModal && mode === 'detailed',
   });
 
+  const checkIns = checkInsData?.checkIns ?? [];
+  const timezone = checkInsData?.timezone ?? 'America/New_York';
+  const customers = customersData?.customers ?? [];
+  const services = servicesData?.services ?? [];
+  const staff = staffData?.staff ?? [];
+
+  const totalSpent = useMemo(
+    () => checkIns.reduce((sum, checkIn) => sum + (checkIn.amountSpent || 0), 0),
+    [checkIns]
+  );
+  const averageTicket = checkIns.length > 0 ? totalSpent / checkIns.length : 0;
+  const uniqueGuests = useMemo(() => new Set(checkIns.map((checkIn) => checkIn.customer.id)).size, [checkIns]);
+
+  const resetQuickFlow = useCallback(() => {
+    setQuickStep('phone');
+    setQuickDigits('');
+    setQuickPhoneDisplay('');
+    setQuickMatchedCustomers([]);
+    setQuickLookupError(null);
+    setQuickSuccess(null);
+    setSuccessCountdown(SUCCESS_RESET_SECONDS);
+    setNewCustomerForm(DEFAULT_NEW_CUSTOMER_FORM);
+  }, []);
+
+  const resetDetailedFlow = useCallback(() => {
+    setSearchTerm('');
+    setFormData(DEFAULT_FORM_DATA);
+  }, []);
+
+  const openQuickModal = useCallback(() => {
+    resetQuickFlow();
+    setMode('quick');
+    setShowModal(true);
+  }, [resetQuickFlow]);
+
+  const openDetailedModal = useCallback(() => {
+    resetDetailedFlow();
+    setMode('detailed');
+    setShowModal(true);
+  }, [resetDetailedFlow]);
+
+  const closeModal = useCallback(() => {
+    setShowModal(false);
+    setMode('quick');
+    resetQuickFlow();
+    resetDetailedFlow();
+  }, [resetDetailedFlow, resetQuickFlow]);
+
+  const invalidateCheckInQueries = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['checkins'] }),
+      queryClient.invalidateQueries({ queryKey: ['customers'] }),
+    ]);
+  }, [queryClient]);
+
   const createCheckIn = useMutation({
-    mutationFn: async (data: {
-      customerId: string;
+    mutationFn: async (payload: {
+      customerId?: string;
+      phone?: string;
+      customerName?: string;
+      customerEmail?: string;
       serviceId?: string;
       staffId?: string;
       amountSpent?: number;
@@ -98,223 +276,312 @@ export default function CheckInsPage() {
       const res = await fetch('/api/checkins', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
+      const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to create check-in');
+        const error = new Error(body.error || 'Failed to create check-in');
+        (error as Error & { code?: string; customers?: Customer[] }).code = body.code;
+        (error as Error & { code?: string; customers?: Customer[] }).customers = body.customers;
+        throw error;
       }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['checkins'] });
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
-      setShowModal(false);
-      setFormData({ customerId: '', serviceId: '', staffId: '', amountSpent: '' });
-      setSearchTerm('');
+      return body as { checkIn: CheckIn };
     },
   });
 
-  const checkIns: CheckIn[] = checkInsData?.checkIns || [];
-  const timezone: string = checkInsData?.timezone || 'America/New_York';
-  const customers: Customer[] = customersData?.customers || [];
-  const services: Service[] = servicesData?.services || [];
-  const staff: Staff[] = staffData?.staff || [];
+  const lookupCustomer = useMutation({
+    mutationFn: async (phone: string) => {
+      const res = await fetch(`/api/checkins/lookup?phone=${encodeURIComponent(phone)}`);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Failed to look up customer');
+      return body as LookupResponse;
+    },
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.customerId) return;
+  const finalizeQuickCheckIn = useCallback(
+    async (
+      payload: { customerId?: string; phone?: string; customerName?: string; customerEmail?: string },
+      meta: { customerName: string; phoneDisplay: string; createdCustomer: boolean }
+    ) => {
+      const result = await createCheckIn.mutateAsync(payload);
+      await invalidateCheckInQueries();
+      setQuickStep('success');
+      setQuickSuccess({
+        customerName: meta.customerName,
+        phoneDisplay: meta.phoneDisplay,
+        createdCustomer: meta.createdCustomer,
+        checkInTime: result.checkIn.checkInTime,
+      });
+      setQuickLookupError(null);
+      toast.success('Customer checked in');
+    },
+    [createCheckIn, invalidateCheckInQueries]
+  );
 
-    createCheckIn.mutate({
-      customerId: formData.customerId,
-      serviceId: formData.serviceId || undefined,
-      staffId: formData.staffId || undefined,
-      amountSpent: formData.amountSpent ? parseFloat(formData.amountSpent) : undefined,
-    });
+  const handleQuickLookup = useCallback(async () => {
+    if (!quickPhoneReady) {
+      setQuickLookupError('Enter a valid 10-digit US phone number to continue.');
+      return;
+    }
+    setQuickLookupError(null);
+    setQuickMatchedCustomers([]);
+    try {
+      const response = await lookupCustomer.mutateAsync(quickDigits);
+      if (response.status === 'new') {
+        setQuickPhoneDisplay(response.displayPhone || quickFormattedPhone);
+        setQuickStep('new');
+        return;
+      }
+      if (response.status === 'multiple') {
+        setQuickPhoneDisplay(quickFormattedPhone);
+        setQuickMatchedCustomers(response.customers);
+        setQuickStep('multiple');
+        return;
+      }
+      await finalizeQuickCheckIn(
+        { customerId: response.customer.id, phone: quickDigits },
+        {
+          customerName: response.customer.name,
+          phoneDisplay: formatPhoneForDisplay(response.customer.phone) || quickFormattedPhone,
+          createdCustomer: false,
+        }
+      );
+    } catch (error) {
+      setQuickLookupError(error instanceof Error ? error.message : 'Failed to look up customer');
+    }
+  }, [finalizeQuickCheckIn, lookupCustomer, quickDigits, quickFormattedPhone, quickPhoneReady]);
+
+  const appendQuickDigit = useCallback((digit: string) => {
+    setQuickLookupError(null);
+    setQuickDigits((current) => sanitizePhoneDigits(`${current}${digit}`.slice(0, PHONE_MAX_LENGTH)));
+  }, []);
+  const backspaceQuickDigit = useCallback(() => {
+    setQuickLookupError(null);
+    setQuickDigits((current) => current.slice(0, -1));
+  }, []);
+  const clearQuickDigits = useCallback(() => {
+    setQuickLookupError(null);
+    setQuickDigits('');
+  }, []);
+
+  useEffect(() => {
+    if (!showModal || mode !== 'quick' || quickStep !== 'phone') return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key >= '0' && event.key <= '9') {
+        event.preventDefault();
+        appendQuickDigit(event.key);
+        return;
+      }
+      if (event.key === 'Backspace' || event.key === 'Delete') {
+        event.preventDefault();
+        backspaceQuickDigit();
+        return;
+      }
+      if (event.key === 'Enter' && quickPhoneReady) {
+        event.preventDefault();
+        void handleQuickLookup();
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [appendQuickDigit, backspaceQuickDigit, handleQuickLookup, mode, quickPhoneReady, quickStep, showModal]);
+
+  useEffect(() => {
+    if (!quickSuccess) return;
+    setSuccessCountdown(SUCCESS_RESET_SECONDS);
+    const interval = window.setInterval(() => setSuccessCountdown((current) => Math.max(current - 1, 0)), 1000);
+    return () => window.clearInterval(interval);
+  }, [quickSuccess]);
+
+  useEffect(() => {
+    if (quickSuccess && successCountdown === 0) {
+      resetQuickFlow();
+    }
+  }, [quickSuccess, resetQuickFlow, successCountdown]);
+
+  const handleQuickKeypadPress = useCallback(
+    (key: (typeof KEYPAD_KEYS)[number]) => {
+      if (key === 'clear') return clearQuickDigits();
+      if (key === 'back') return backspaceQuickDigit();
+      appendQuickDigit(key);
+    },
+    [appendQuickDigit, backspaceQuickDigit, clearQuickDigits]
+  );
+
+  const handleQuickCreateCustomer = useCallback(async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedName = newCustomerForm.name.trim();
+    if (!trimmedName) {
+      setQuickLookupError('Customer name is required for a new phone number.');
+      return;
+    }
+    try {
+      await finalizeQuickCheckIn(
+        {
+          phone: quickDigits,
+          customerName: trimmedName,
+          customerEmail: newCustomerForm.email.trim() || undefined,
+        },
+        {
+          customerName: trimmedName,
+          phoneDisplay: quickPhoneDisplay || quickFormattedPhone,
+          createdCustomer: true,
+        }
+      );
+    } catch (error) {
+      setQuickLookupError(error instanceof Error ? error.message : 'Failed to check in customer');
+    }
+  }, [finalizeQuickCheckIn, newCustomerForm.email, newCustomerForm.name, quickDigits, quickFormattedPhone, quickPhoneDisplay]);
+
+  const handleQuickMatchSelect = useCallback(async (customer: Customer) => {
+    try {
+      await finalizeQuickCheckIn(
+        { customerId: customer.id, phone: quickDigits },
+        {
+          customerName: customer.name,
+          phoneDisplay: formatPhoneForDisplay(customer.phone) || quickPhoneDisplay,
+          createdCustomer: false,
+        }
+      );
+    } catch (error) {
+      setQuickLookupError(error instanceof Error ? error.message : 'Failed to check in customer');
+    }
+  }, [finalizeQuickCheckIn, quickDigits, quickPhoneDisplay]);
+
+  const handleDetailedSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!formData.customerId) {
+      toast.error('Choose a customer first');
+      return;
+    }
+    try {
+      await createCheckIn.mutateAsync({
+        customerId: formData.customerId,
+        serviceId: formData.serviceId || undefined,
+        staffId: formData.staffId || undefined,
+        amountSpent: formData.amountSpent ? Number.parseFloat(formData.amountSpent) : undefined,
+      });
+      await invalidateCheckInQueries();
+      toast.success('Customer checked in');
+      closeModal();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create check-in');
+    }
   };
 
-  const totalSpent = checkIns.reduce((sum, ci) => sum + (ci.amountSpent || 0), 0);
-  const averageTicket = checkIns.length > 0 ? totalSpent / checkIns.length : 0;
+  const quickIsBusy = lookupCustomer.isPending || createCheckIn.isPending;
+  const detailedIsBusy = createCheckIn.isPending && mode === 'detailed';
+  const successProgressPercent = `${(successCountdown / SUCCESS_RESET_SECONDS) * 100}%`;
 
   return (
     <div data-testid="checkins-page" className="w-full space-y-4 sm:space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">
-            Check-Ins
-          </h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 sm:text-base">
-            Track customer visits, services, staff coverage, and in-person revenue
-          </p>
+      <section className="brand-hero rounded-[32px] border border-gray-200/80 p-5 shadow-[0_32px_90px_-50px_rgba(16,72,56,0.22)] dark:border-white/10 sm:p-7">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-3xl space-y-3">
+            <p className="brand-hero-kicker text-xs font-semibold uppercase tracking-[0.28em]">Front desk flow</p>
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">Check guests in with just a phone number</h1>
+              <p className="brand-hero-muted max-w-2xl text-sm leading-6 sm:text-base">Built for a fast front desk. Existing guests move straight to a thank-you screen. New numbers only need a name and optional email before they are saved.</p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button type="button" onClick={openQuickModal} className="btn-primary min-h-[52px] px-5 text-sm sm:text-base">Quick check-in</button>
+            <button type="button" onClick={openDetailedModal} className="btn-secondary min-h-[52px] px-5 text-sm sm:text-base">Detailed entry</button>
+          </div>
         </div>
-        <button onClick={() => setShowModal(true)} className="btn-primary w-full text-sm sm:w-auto">
-          <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          New Check-In
-        </button>
+      </section>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.2fr),minmax(320px,0.8fr)]">
+        <section className="card rounded-[30px] p-5 sm:p-6">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-[24px] border border-gray-200/70 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Today&apos;s check-ins</p><p className="mt-3 text-3xl font-bold text-gray-950 dark:text-white">{checkIns.length}</p></div>
+            <div className="rounded-[24px] border border-gray-200/70 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Unique guests</p><p className="mt-3 text-3xl font-bold text-gray-950 dark:text-white">{uniqueGuests}</p></div>
+            <div className="rounded-[24px] border border-gray-200/70 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Revenue tracked</p><p className="mt-3 text-3xl font-bold text-gray-950 dark:text-white">${totalSpent.toFixed(2)}</p></div>
+            <div className="rounded-[24px] border border-gray-200/70 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Average ticket</p><p className="mt-3 text-3xl font-bold text-gray-950 dark:text-white">${averageTicket.toFixed(2)}</p></div>
+          </div>
+        </section>
+        <section className="card rounded-[30px] p-5 sm:p-6">
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Daily view</p>
+              <h2 className="mt-2 text-xl font-semibold text-gray-950 dark:text-white">Check-in history</h2>
+              <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">Filter by day to review guests, service activity, and walk-in revenue from the front desk.</p>
+            </div>
+            <div className="rounded-[24px] border border-gray-200/70 bg-white/70 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Date</label>
+              <DatePicker value={selectedDate} onChange={setSelectedDate} />
+            </div>
+          </div>
+        </section>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="card p-4 sm:p-6">
-          <p className="mb-1 text-sm font-medium text-gray-600 dark:text-gray-400">Today's Check-Ins</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">
-            {checkIns.length}
-          </p>
-        </div>
-        <div className="card p-4 sm:p-6">
-          <p className="mb-1 text-sm font-medium text-gray-600 dark:text-gray-400">Revenue</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">
-            ${totalSpent.toFixed(2)}
-          </p>
-        </div>
-        <div className="card p-4 sm:p-6">
-          <p className="mb-1 text-sm font-medium text-gray-600 dark:text-gray-400">Average Ticket</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">
-            ${averageTicket.toFixed(2)}
-          </p>
-        </div>
-      </div>
-
-      <div className="card p-4 sm:p-6">
-        <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Filter by Date
-        </label>
-        <DatePicker value={selectedDate} onChange={setSelectedDate} />
-      </div>
-
-      <div className="card">
-        <div className="border-b border-gray-200 p-4 dark:border-gray-700 sm:p-6">
-          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 sm:text-lg">
-            Check-Ins for{' '}
-            {selectedDate.toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric',
-            })}
-          </h2>
+      <section className="card overflow-hidden rounded-[30px]">
+        <div className="border-b border-gray-200 px-5 py-5 dark:border-gray-800 sm:px-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-950 dark:text-white">Check-ins for {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</h2>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">Numbers stay in the familiar US format so the front desk can scan them quickly.</p>
+            </div>
+            <button type="button" onClick={openQuickModal} className="btn-outline text-sm">Start next check-in</button>
+          </div>
         </div>
 
         {isLoadingCheckIns ? (
-          <div className="p-8 text-center sm:p-12">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+          <div className="p-10 text-center sm:p-14">
+            <div className="inline-block h-9 w-9 animate-spin rounded-full border-b-2 border-primary" />
           </div>
         ) : checkIns.length === 0 ? (
-          <div className="p-8 text-center sm:p-12">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-              />
-            </svg>
-            <p className="mt-4 text-gray-600 dark:text-gray-400">No check-ins for this date</p>
-            <button onClick={() => setShowModal(true)} className="btn-primary mt-4">
-              Create First Check-In
-            </button>
+          <div className="p-10 text-center sm:p-14">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
+            <p className="mt-4 text-base font-medium text-gray-950 dark:text-white">No check-ins for this date yet</p>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">Use the quick keypad flow when the next guest arrives.</p>
           </div>
         ) : (
           <>
-            <div className="divide-y divide-gray-200 dark:divide-gray-700 sm:hidden">
+            <div className="divide-y divide-gray-200 dark:divide-gray-800 sm:hidden">
               {checkIns.map((checkIn) => (
-                <div key={checkIn.id} className="space-y-2 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      {new Date(checkIn.checkInTime).toLocaleTimeString('en-US', {
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        timeZone: timezone,
-                      })}
-                    </p>
+                <article key={checkIn.id} className="space-y-3 p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-base font-semibold text-gray-950 dark:text-white">{checkIn.customer.name}</p>
+                      {checkIn.customer.phone ? <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{formatPhoneForDisplay(checkIn.customer.phone)}</p> : null}
+                    </div>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-200">{new Date(checkIn.checkInTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: timezone })}</p>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {checkIn.customer.name}
-                    </p>
-                    {checkIn.customer.phone && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {checkIn.customer.phone}
-                      </p>
-                    )}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl border border-gray-200/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Service</p><p className="mt-2 text-sm font-medium text-gray-950 dark:text-white">{checkIn.service?.name || 'Not tracked'}</p></div>
+                    <div className="rounded-2xl border border-gray-200/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Staff</p><p className="mt-2 text-sm font-medium text-gray-950 dark:text-white">{checkIn.staff?.fullName || 'Open front desk'}</p></div>
+                    <div className="col-span-2 rounded-2xl border border-gray-200/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Amount</p><p className="mt-2 text-sm font-medium text-gray-950 dark:text-white">{checkIn.amountSpent != null ? `$${checkIn.amountSpent.toFixed(2)}` : 'Not tracked'}</p></div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
-                    <p>
-                      Service:{' '}
-                      <span className="text-gray-900 dark:text-gray-100">
-                        {checkIn.service?.name || '-'}
-                      </span>
-                    </p>
-                    <p>
-                      Staff:{' '}
-                      <span className="text-gray-900 dark:text-gray-100">
-                        {checkIn.staff?.fullName || '-'}
-                      </span>
-                    </p>
-                    <p className="col-span-2">
-                      Amount:{' '}
-                      <span className="text-gray-900 dark:text-gray-100">
-                        {checkIn.amountSpent ? `$${checkIn.amountSpent.toFixed(2)}` : '-'}
-                      </span>
-                    </p>
-                  </div>
-                </div>
+                </article>
               ))}
             </div>
+
             <div className="hidden overflow-x-auto sm:block">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-700">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+                <thead className="bg-gray-50/85 dark:bg-gray-900/70">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                      Time
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                      Customer
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                      Service
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                      Staff
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                      Amount
-                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Time</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Customer</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Phone</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Service</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Staff</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Amount</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                   {checkIns.map((checkIn) => (
-                    <tr key={checkIn.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                        {new Date(checkIn.checkInTime).toLocaleTimeString('en-US', {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          timeZone: timezone,
-                        })}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          {checkIn.customer.name}
-                        </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {checkIn.customer.phone}
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                        {checkIn.service?.name || '-'}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                        {checkIn.staff?.fullName || '-'}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                        {checkIn.amountSpent ? `$${checkIn.amountSpent.toFixed(2)}` : '-'}
-                      </td>
+                    <tr key={checkIn.id} className="hover:bg-white/60 dark:hover:bg-white/[0.03]">
+                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-950 dark:text-white">{new Date(checkIn.checkInTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: timezone })}</td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-950 dark:text-white">{checkIn.customer.name}</td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{checkIn.customer.phone ? formatPhoneForDisplay(checkIn.customer.phone) : '-'}</td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{checkIn.service?.name || '-'}</td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{checkIn.staff?.fullName || '-'}</td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-950 dark:text-white">{checkIn.amountSpent != null ? `$${checkIn.amountSpent.toFixed(2)}` : '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -322,154 +589,189 @@ export default function CheckInsPage() {
             </div>
           </>
         )}
-      </div>
+      </section>
 
-      {showModal && (
-        <div data-mobile-overlay="true" className="fixed inset-0 z-[70] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4">
-          <div className="max-h-[calc(100dvh-1rem)] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-4 dark:bg-gray-800 sm:max-h-[90vh] sm:rounded-2xl sm:p-6">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 sm:text-xl">
-                New Check-In
-              </h2>
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  setFormData({ customerId: '', serviceId: '', staffId: '', amountSpent: '' });
-                  setSearchTerm('');
-                }}
-                className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-              >
+      {showModal ? (
+        <div data-mobile-overlay="true" className="fixed inset-0 z-[70] bg-black/55 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
+          <div className="relative flex h-full w-full flex-col overflow-hidden bg-[rgb(var(--color-gray-50))] text-gray-950 dark:bg-[rgb(var(--color-gray-900))] dark:text-gray-50 sm:max-h-[92vh] sm:max-w-6xl sm:rounded-[32px] sm:border sm:border-gray-200/80 sm:shadow-[0_36px_90px_-48px_rgba(6,17,24,0.55)] dark:border-white/10">
+            <div className="flex items-center justify-between border-b border-gray-200/80 px-4 py-4 dark:border-white/10 sm:px-6">
+              <div className="inline-flex rounded-full border border-gray-200/80 bg-white/70 p-1 text-sm shadow-sm dark:border-white/10 dark:bg-white/[0.05]">
+                <button type="button" onClick={() => { resetQuickFlow(); setMode('quick'); }} className={`rounded-full px-4 py-2 font-medium transition ${mode === 'quick' ? 'bg-primary text-white shadow-sm' : 'text-gray-600 hover:text-gray-950 dark:text-gray-300 dark:hover:text-white'}`}>Quick check-in</button>
+                <button type="button" onClick={() => { resetDetailedFlow(); setMode('detailed'); }} className={`rounded-full px-4 py-2 font-medium transition ${mode === 'detailed' ? 'bg-primary text-white shadow-sm' : 'text-gray-600 hover:text-gray-950 dark:text-gray-300 dark:hover:text-white'}`}>Detailed entry</button>
+              </div>
+              <button type="button" onClick={closeModal} className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white/80 text-gray-500 transition hover:text-gray-950 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300 dark:hover:text-white" aria-label="Close check-in modal">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Customer <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Search by name or phone..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="input"
-                />
-                {searchTerm.length >= 2 && customers.length > 0 && (
-                  <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-700">
-                    {customers.map((customer) => (
-                      <button
-                        key={customer.id}
-                        type="button"
-                        onClick={() => {
-                          setFormData({ ...formData, customerId: customer.id });
-                          setSearchTerm(customer.name);
-                        }}
-                        className="w-full border-b border-gray-100 px-4 py-3 text-left hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-600 last:border-0"
-                      >
-                        <div className="font-medium text-gray-900 dark:text-gray-100">
-                          {customer.name}
-                        </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {customer.phone || customer.email || 'No contact info'}
-                        </div>
-                      </button>
-                    ))}
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {mode === 'quick' ? (
+                <section className="grid min-h-full gap-0 xl:grid-cols-[0.95fr,1.05fr]">
+                  <div className="brand-hero hidden border-r border-gray-200/80 px-8 py-9 dark:border-white/10 xl:flex xl:flex-col xl:justify-between">
+                    <div className="space-y-6">
+                      <div className="space-y-3">
+                        <p className="brand-hero-kicker text-xs font-semibold uppercase tracking-[0.28em]">Check-in kiosk</p>
+                        <h2 className="text-4xl font-bold leading-tight text-gray-950 dark:text-white">One number in, one customer record out.</h2>
+                        <p className="brand-hero-muted max-w-xl text-base leading-7">This matches the in-store capture flow. Returning guests are found instantly. New guests only add a name once, then they are ready for future visits.</p>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="brand-hero-card rounded-[26px] p-5"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">What happens</p><ul className="mt-4 space-y-3 text-sm leading-6 text-gray-700 dark:text-white/80"><li>1. Enter the guest&apos;s mobile number on the built-in keypad.</li><li>2. Existing numbers check in right away without extra typing.</li><li>3. New numbers save once and become a reusable customer record.</li></ul></div>
+                        <div className="brand-hero-card rounded-[26px] p-5"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Front desk note</p><p className="mt-3 text-sm leading-6 text-gray-700 dark:text-white/80">`+1` and plain 10-digit US numbers are treated as the same customer everywhere, including check-ins, AI bookings, and SMS-driven flows.</p></div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="brand-hero-card rounded-[24px] p-4"><p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-white/60">Guests today</p><p className="mt-3 text-2xl font-bold text-gray-950 dark:text-white">{uniqueGuests}</p></div>
+                      <div className="brand-hero-card rounded-[24px] p-4"><p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-white/60">Revenue</p><p className="mt-3 text-2xl font-bold text-gray-950 dark:text-white">${totalSpent.toFixed(2)}</p></div>
+                      <div className="brand-hero-card rounded-[24px] p-4"><p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-white/60">Avg ticket</p><p className="mt-3 text-2xl font-bold text-gray-950 dark:text-white">${averageTicket.toFixed(2)}</p></div>
+                    </div>
                   </div>
-                )}
-              </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Service (Optional)
-                </label>
-                <CustomSelect
-                  value={formData.serviceId}
-                  onChange={(serviceId) => {
-                    setFormData({ ...formData, serviceId });
-                    const service = services.find((item) => item.id === serviceId);
-                    if (service?.price && service.price > 0) {
-                      setFormData((prev) => ({
-                        ...prev,
-                        serviceId,
-                        amountSpent: service.price!.toString(),
-                      }));
-                    }
-                  }}
-                  placeholder="No service"
-                  options={services.map((service) => ({
-                    value: service.id,
-                    label: service.name + (service.price ? ` - $${service.price.toFixed(2)}` : ''),
-                  }))}
-                />
-              </div>
+                  <div className="flex min-h-full flex-col px-4 py-5 sm:px-6 sm:py-6 xl:px-8 xl:py-9">
+                    {quickStep === 'phone' ? (
+                      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center space-y-6">
+                        <div className="space-y-3 xl:hidden">
+                          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">Quick check-in</p>
+                          <h2 className="text-3xl font-bold text-gray-950 dark:text-white">Phone-first front desk flow</h2>
+                          <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">Existing guests go straight to a thank-you screen. New numbers only need a name before the visit is saved.</p>
+                        </div>
+                        <div className="rounded-[30px] border border-gray-200/80 bg-white/80 p-5 shadow-[0_24px_60px_-40px_rgba(16,72,56,0.35)] dark:border-white/10 dark:bg-white/[0.04] sm:p-6">
+                          <div className="flex items-center justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Guest number</p><p className="mt-3 text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">{quickFormattedPhone || '(___) ___-____'}</p></div><button type="button" onClick={clearQuickDigits} className="rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:text-gray-950 dark:border-white/10 dark:text-gray-300 dark:hover:text-white">Clear</button></div>
+                          <div className="mt-4 flex flex-wrap gap-2"><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Existing number: instant check-in</span><span className="rounded-full bg-gray-900/6 px-3 py-1 text-xs font-semibold text-gray-600 dark:bg-white/10 dark:text-gray-300">New number: ask for name</span></div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">{KEYPAD_KEYS.map((key) => <KeypadButton key={key} label={key === 'clear' ? 'Clear' : key === 'back' ? 'Delete' : key} hint={key === 'back' ? 'Backspace' : undefined} onClick={() => handleQuickKeypadPress(key)} className={key === 'clear' || key === 'back' ? 'text-primary' : ''} />)}</div>
+                        {quickLookupError ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">{quickLookupError}</div> : <p className="text-sm text-gray-600 dark:text-gray-300">Numbers typed as `8482612613` and `+18482612613` are treated as the same customer.</p>}
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                          <button type="button" onClick={closeModal} className="btn-outline min-h-[58px] flex-1">Cancel</button>
+                          <button type="button" onClick={() => void handleQuickLookup()} disabled={!quickPhoneReady || quickIsBusy} className="btn-primary min-h-[58px] flex-1 disabled:cursor-not-allowed disabled:opacity-60">{quickIsBusy ? 'Checking number...' : 'Continue'}</button>
+                        </div>
+                      </div>
+                    ) : null}
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Staff (Optional)
-                </label>
-                <CustomSelect
-                  value={formData.staffId}
-                  onChange={(value) => setFormData({ ...formData, staffId: value })}
-                  placeholder="No staff"
-                  options={staff.map((member) => ({ value: member.id, label: member.fullName }))}
-                />
-              </div>
+                    {quickStep === 'new' ? (
+                      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center space-y-6">
+                        <div className="space-y-3"><p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">New guest</p><h2 className="text-3xl font-bold text-gray-950 dark:text-white">Save this number once and move on</h2><p className="text-sm leading-6 text-gray-600 dark:text-gray-300">We could not find {quickPhoneDisplay}. Add a name so this guest can be checked in faster next time.</p></div>
+                        <form onSubmit={handleQuickCreateCustomer} className="space-y-5">
+                          <div className="rounded-[28px] border border-gray-200/80 bg-white/80 p-5 dark:border-white/10 dark:bg-white/[0.04]">
+                            <div className="grid gap-5 sm:grid-cols-2">
+                              <div><label className="label" htmlFor="quick-customer-name">Full name <span className="text-red-500">*</span></label><input id="quick-customer-name" type="text" value={newCustomerForm.name} onChange={(event) => setNewCustomerForm((current) => ({ ...current, name: event.target.value }))} className="input min-h-[56px] text-base" placeholder="Jane Smith" autoFocus /></div>
+                              <div><label className="label" htmlFor="quick-customer-phone">Mobile number</label><input id="quick-customer-phone" value={quickPhoneDisplay || quickFormattedPhone} readOnly className="input min-h-[56px] cursor-default bg-gray-100/80 dark:bg-white/[0.06]" /></div>
+                            </div>
+                            <div className="mt-5"><label className="label" htmlFor="quick-customer-email">Email (optional)</label><input id="quick-customer-email" type="email" value={newCustomerForm.email} onChange={(event) => setNewCustomerForm((current) => ({ ...current, email: event.target.value }))} className="input min-h-[56px] text-base" placeholder="guest@example.com" /></div>
+                          </div>
+                          {quickLookupError ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">{quickLookupError}</div> : null}
+                          <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                            <button type="button" onClick={resetQuickFlow} className="btn-outline min-h-[58px] flex-1">Back</button>
+                            <button type="submit" disabled={quickIsBusy} className="btn-primary min-h-[58px] flex-1 disabled:cursor-not-allowed disabled:opacity-60">{quickIsBusy ? 'Saving guest...' : 'Save and check in'}</button>
+                          </div>
+                        </form>
+                      </div>
+                    ) : null}
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Amount Spent (Optional)
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-2.5 text-gray-500 dark:text-gray-400">$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.amountSpent}
-                    onChange={(e) => setFormData({ ...formData, amountSpent: e.target.value })}
-                    className="input pl-8"
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
+                    {quickStep === 'multiple' ? (
+                      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center space-y-6">
+                        <div className="space-y-3"><p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">Pick the right guest</p><h2 className="text-3xl font-bold text-gray-950 dark:text-white">We found more than one record for {quickPhoneDisplay}</h2><p className="text-sm leading-6 text-gray-600 dark:text-gray-300">Choose the correct guest and we will finish the check-in right away.</p></div>
+                        <div className="grid gap-3">
+                          {quickMatchedCustomers.map((customer) => (
+                            <button key={customer.id} type="button" onClick={() => void handleQuickMatchSelect(customer)} className="rounded-[26px] border border-gray-200/80 bg-white/80 px-5 py-4 text-left shadow-[0_20px_50px_-36px_rgba(16,72,56,0.4)] transition hover:border-primary/30 hover:bg-primary/5 dark:border-white/10 dark:bg-white/[0.04] dark:hover:border-primary/40">
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                  <p className="text-lg font-semibold text-gray-950 dark:text-white">{customer.name}</p>
+                                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{formatPhoneForDisplay(customer.phone) || quickPhoneDisplay}</p>
+                                  {customer.email ? <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{customer.email}</p> : null}
+                                </div>
+                                <div className="text-sm text-gray-600 dark:text-gray-300"><span className="block text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Last visit</span><span className="mt-2 block font-medium text-gray-950 dark:text-white">{formatLastVisit(customer.lastVisit, timezone)}</span></div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                        {quickLookupError ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">{quickLookupError}</div> : null}
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                          <button type="button" onClick={resetQuickFlow} className="btn-outline min-h-[58px] flex-1">Back to keypad</button>
+                          <button type="button" onClick={() => { setQuickMatchedCustomers([]); setQuickStep('new'); }} className="btn-secondary min-h-[58px] flex-1">None of these guests</button>
+                        </div>
+                      </div>
+                    ) : null}
 
-              {createCheckIn.isError && (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
-                  <p className="text-sm text-red-800 dark:text-red-400">
-                    {createCheckIn.error instanceof Error
-                      ? createCheckIn.error.message
-                      : 'Failed to create check-in'}
-                  </p>
-                </div>
+                    {quickStep === 'success' && quickSuccess ? (
+                      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center space-y-6 text-center">
+                        <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-primary/12 text-primary">
+                          <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                        <div className="space-y-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">Check-in complete</p>
+                          <h2 className="text-4xl font-bold tracking-tight text-gray-950 dark:text-white">Thanks, {quickSuccess.customerName.split(/\s+/)[0]}.</h2>
+                          <p className="text-base leading-7 text-gray-600 dark:text-gray-300">Checked in at {formatSuccessTime(quickSuccess.checkInTime, timezone)} using {quickSuccess.phoneDisplay}.</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-300">{quickSuccess.createdCustomer ? 'This was a brand new guest record, so the front desk will be faster next time.' : 'We found the existing customer record and moved the visit through instantly.'}</p>
+                        </div>
+                        <div className="rounded-[28px] border border-primary/20 bg-primary/8 p-5 text-left">
+                          <p className="text-sm font-semibold text-gray-950 dark:text-white">Ready for the next guest in {successCountdown} second{successCountdown === 1 ? '' : 's'}.</p>
+                          <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-200/80 dark:bg-gray-800"><div className="h-full rounded-full bg-primary transition-[width] duration-700 ease-linear" style={{ width: successProgressPercent }} /></div>
+                          <button type="button" onClick={resetQuickFlow} className="btn-primary mt-4 min-h-[52px] w-full">Check in another guest</button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </section>
+              ) : (
+                <section className="grid min-h-full gap-0 xl:grid-cols-[0.88fr,1.12fr]">
+                  <div className="brand-hero hidden border-r border-gray-200/80 px-8 py-9 dark:border-white/10 xl:flex xl:flex-col xl:justify-between">
+                    <div className="space-y-5">
+                      <div className="space-y-3">
+                        <p className="brand-hero-kicker text-xs font-semibold uppercase tracking-[0.28em]">Manual front desk entry</p>
+                        <h2 className="text-4xl font-bold leading-tight text-gray-950 dark:text-white">Add service, staff, and spend details in one pass.</h2>
+                        <p className="brand-hero-muted max-w-xl text-base leading-7">Use this mode when the front desk wants more detail than the fast keypad flow, while keeping the same clean visit history.</p>
+                      </div>
+                      <div className="brand-hero-card rounded-[26px] p-5"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Best for</p><ul className="mt-4 space-y-3 text-sm leading-6 text-gray-700 dark:text-white/80"><li>Walk-ins who already need a service attached.</li><li>Visits where staff assignment matters right away.</li><li>Revenue tracking at the same moment as check-in.</li></ul></div>
+                    </div>
+                    <div className="brand-hero-card rounded-[26px] p-5"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Tip</p><p className="mt-3 text-sm leading-6 text-gray-700 dark:text-white/80">Search by either name or phone. The same normalized phone matching is used here too.</p></div>
+                  </div>
+                  <div className="px-4 py-5 sm:px-6 sm:py-6 xl:px-8 xl:py-9">
+                    <div className="mx-auto max-w-3xl">
+                      <div className="space-y-2 xl:hidden">
+                        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">Detailed entry</p>
+                        <h2 className="text-3xl font-bold text-gray-950 dark:text-white">Manual check-in details</h2>
+                        <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">Use this when the front desk needs to attach service, staff, or spend details at the same time.</p>
+                      </div>
+                      <form onSubmit={handleDetailedSubmit} className="mt-6 space-y-5">
+                        <div>
+                          <label className="label" htmlFor="detailed-search">Customer <span className="text-red-500">*</span></label>
+                          <input id="detailed-search" type="text" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} className="input" placeholder="Search by name or phone..." autoComplete="off" />
+                          {searchTerm.trim().length > 0 && searchTerm.trim().length < 2 ? <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">Type at least 2 characters to search.</p> : null}
+                          {searchTerm.trim().length >= 2 ? (
+                            <div className="mt-3 max-h-64 overflow-y-auto rounded-[24px] border border-gray-200/80 bg-white/80 dark:border-white/10 dark:bg-white/[0.04]">
+                              {customers.length > 0 ? customers.map((customer) => {
+                                const selected = formData.customerId === customer.id;
+                                return <button key={customer.id} type="button" onClick={() => { setFormData((current) => ({ ...current, customerId: customer.id })); setSearchTerm(customer.name); }} className={`w-full border-b border-gray-200/70 px-4 py-4 text-left transition last:border-b-0 dark:border-white/10 ${selected ? 'bg-primary/10' : 'hover:bg-gray-50/80 dark:hover:bg-white/[0.04]'}`}><p className="text-sm font-semibold text-gray-950 dark:text-white">{customer.name}</p><p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{customer.phone ? formatPhoneForDisplay(customer.phone) : customer.email || 'No contact info'}</p></button>;
+                              }) : <div className="px-4 py-5 text-sm text-gray-600 dark:text-gray-300">No customers match that search yet.</div>}
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="grid gap-5 sm:grid-cols-2">
+                          <div><label className="label" htmlFor="detailed-service">Service (optional)</label><CustomSelect id="detailed-service" value={formData.serviceId} onChange={(serviceId) => { const selectedService = services.find((service) => service.id === serviceId); setFormData((current) => ({ ...current, serviceId, amountSpent: selectedService?.price != null && selectedService.price > 0 ? selectedService.price.toString() : current.amountSpent })); }} placeholder="No service" options={services.map((service) => ({ value: service.id, label: service.name + (service.price != null ? ` - $${service.price.toFixed(2)}` : '') }))} /></div>
+                          <div><label className="label" htmlFor="detailed-staff">Staff (optional)</label><CustomSelect id="detailed-staff" value={formData.staffId} onChange={(value) => setFormData((current) => ({ ...current, staffId: value }))} placeholder="No staff" options={staff.map((member) => ({ value: member.id, label: member.fullName }))} /></div>
+                        </div>
+                        <div>
+                          <label className="label" htmlFor="detailed-amount">Amount spent (optional)</label>
+                          <div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span><input id="detailed-amount" type="number" min="0" step="0.01" value={formData.amountSpent} onChange={(event) => setFormData((current) => ({ ...current, amountSpent: event.target.value }))} className="input pl-8" placeholder="0.00" /></div>
+                        </div>
+                        {createCheckIn.isError ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">{createCheckIn.error instanceof Error ? createCheckIn.error.message : 'Failed to create check-in'}</div> : null}
+                        <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                          <button type="button" onClick={closeModal} className="btn-outline min-h-[56px] flex-1">Cancel</button>
+                          <button type="submit" disabled={!formData.customerId || detailedIsBusy} className="btn-primary min-h-[56px] flex-1 font-semibold disabled:cursor-not-allowed disabled:opacity-60">{detailedIsBusy ? 'Saving check-in...' : 'Save check-in'}</button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </section>
               )}
-
-              <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setFormData({ customerId: '', serviceId: '', staffId: '', amountSpent: '' });
-                    setSearchTerm('');
-                  }}
-                  className="btn-outline flex-1"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!formData.customerId || createCheckIn.isPending}
-                  className="btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {createCheckIn.isPending ? 'Creating...' : 'Check In'}
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

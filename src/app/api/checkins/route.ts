@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import {
+  buildCustomerPhoneData,
+  buildCustomerPhoneMatchClauses,
+  normalizeOptionalPhoneNumber,
+} from '@/lib/phone';
 import { updateCustomerSegment } from '@/lib/segment';
 import { businessDayStart } from '@/lib/timezone';
 import { requireActiveSubscription } from '@/lib/subscription';
@@ -58,17 +63,131 @@ export async function POST(req: Request) {
     if (subscriptionError) return subscriptionError;
 
     const body = await req.json();
-    const { customerId, serviceId, staffId, amountSpent } = body;
+    const {
+      customerId,
+      serviceId,
+      staffId,
+      amountSpent,
+      phone,
+      customerName,
+      customerEmail,
+    } = body;
 
-    if (!customerId) {
-      return NextResponse.json({ error: 'Customer ID required' }, { status: 400 });
+    const providedPhoneData = buildCustomerPhoneData(phone);
+
+    let resolvedCustomerId = typeof customerId === 'string' && customerId.trim().length > 0
+      ? customerId.trim()
+      : null;
+
+    if (!resolvedCustomerId) {
+      const normalizedPhone = normalizeOptionalPhoneNumber(phone);
+      const phoneData = buildCustomerPhoneData(phone);
+
+      if (!normalizedPhone || !phoneData.phoneLookupKey) {
+        return NextResponse.json({ error: 'Customer phone number required' }, { status: 400 });
+      }
+
+      const matchingCustomers = await prisma.customer.findMany({
+        where: {
+          businessId: session.user.businessId,
+          OR: buildCustomerPhoneMatchClauses(phone),
+        },
+        orderBy: [{ lastVisit: 'desc' }, { updatedAt: 'desc' }],
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          phoneLookupKey: true,
+        },
+      });
+
+      if (matchingCustomers.length > 1) {
+        return NextResponse.json(
+          {
+            error: 'Multiple customers already use this number',
+            code: 'MULTIPLE_CUSTOMERS_MATCH_PHONE',
+            customers: matchingCustomers,
+          },
+          { status: 409 }
+        );
+      }
+
+      if (matchingCustomers.length === 1) {
+        const match = matchingCustomers[0];
+        resolvedCustomerId = match.id;
+
+        if (match.phone !== phoneData.phone || match.phoneLookupKey !== phoneData.phoneLookupKey) {
+          await prisma.customer.update({
+            where: { id: match.id },
+            data: {
+              phone: phoneData.phone,
+              phoneLookupKey: phoneData.phoneLookupKey,
+            },
+          });
+        }
+      } else {
+        if (typeof customerName !== 'string' || customerName.trim().length === 0) {
+          return NextResponse.json(
+            {
+              error: 'Customer details required for a new phone number',
+              code: 'CUSTOMER_DETAILS_REQUIRED',
+            },
+            { status: 400 }
+          );
+        }
+
+        const createdCustomer = await prisma.customer.create({
+          data: {
+            businessId: session.user.businessId,
+            name: customerName.trim(),
+            email:
+              typeof customerEmail === 'string' && customerEmail.trim().length > 0
+                ? customerEmail.trim().toLowerCase()
+                : null,
+            phone: phoneData.phone,
+            phoneLookupKey: phoneData.phoneLookupKey,
+            segment: 'NEW',
+            totalSpent: 0,
+          },
+          select: { id: true },
+        });
+
+        resolvedCustomerId = createdCustomer.id;
+      }
+    }
+
+    const customer = await prisma.customer.findFirst({
+      where: {
+        id: resolvedCustomerId,
+        businessId: session.user.businessId,
+      },
+      select: { id: true, phone: true, phoneLookupKey: true },
+    });
+
+    if (!customer) {
+      return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
+    }
+
+    if (
+      providedPhoneData.phone &&
+      (customer.phone !== providedPhoneData.phone ||
+        customer.phoneLookupKey !== providedPhoneData.phoneLookupKey)
+    ) {
+      await prisma.customer.update({
+        where: { id: customer.id },
+        data: {
+          phone: providedPhoneData.phone,
+          phoneLookupKey: providedPhoneData.phoneLookupKey,
+        },
+      });
     }
 
     // Create check-in
     const checkIn = await prisma.checkIn.create({
       data: {
         businessId: session.user.businessId,
-        customerId,
+        customerId: customer.id,
         serviceId: serviceId || undefined,
         staffId: staffId || undefined,
         amountSpent: amountSpent || undefined,
@@ -83,7 +202,7 @@ export async function POST(req: Request) {
 
     // Keep customer visit and spend history in sync with the new check-in.
     await prisma.customer.update({
-      where: { id: customerId },
+      where: { id: customer.id },
       data: {
         lastVisit: new Date(),
         totalSpent: amountSpent ? { increment: amountSpent } : undefined,
@@ -91,7 +210,7 @@ export async function POST(req: Request) {
     });
 
     // Update customer segment based on new visit/spend data
-    updateCustomerSegment(customerId).catch(console.error);
+    updateCustomerSegment(customer.id).catch(console.error);
 
     return NextResponse.json({ checkIn });
   } catch (error) {

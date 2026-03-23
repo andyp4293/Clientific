@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 const mockUseQuery = vi.fn();
 const mockUseMutation = vi.fn();
@@ -11,6 +11,13 @@ vi.mock('@tanstack/react-query', () => ({
   useQuery: (config: unknown) => mockUseQuery(config),
   useMutation: (config: unknown) => mockUseMutation(config),
   useQueryClient: () => mockUseQueryClient(),
+}));
+
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
 }));
 
 vi.mock('@/components/ui/DatePicker', () => ({
@@ -23,64 +30,227 @@ vi.mock('@/components/ui/CustomSelect', () => ({
 
 import CheckInsPage from './page';
 
+function mockMutations(createMutation: Record<string, unknown>, lookupMutation: Record<string, unknown>) {
+  let callCount = 0;
+  mockUseMutation.mockImplementation(() => {
+    callCount += 1;
+    return callCount % 2 === 1 ? createMutation : lookupMutation;
+  });
+}
+
+function setupQueries() {
+  mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
+    const key = config?.queryKey?.[0];
+
+    if (key === 'checkins') {
+      return {
+        data: {
+          checkIns: [],
+          timezone: 'America/New_York',
+        },
+        isLoading: false,
+      };
+    }
+
+    if (key === 'customers') {
+      return {
+        data: {
+          customers: [],
+        },
+        isLoading: false,
+      };
+    }
+
+    if (key === 'services') {
+      return {
+        data: {
+          services: [],
+        },
+        isLoading: false,
+      };
+    }
+
+    if (key === 'staff') {
+      return {
+        data: {
+          staff: [],
+        },
+        isLoading: false,
+      };
+    }
+
+    return { data: undefined, isLoading: false };
+  });
+}
+
+function pressDigits(digits: string) {
+  for (const digit of digits) {
+    fireEvent.click(screen.getAllByRole('button', { name: digit })[0]);
+  }
+}
+
 describe('CheckInsPage', () => {
-  it('uses the full desktop page shell', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
     mockUseQueryClient.mockReturnValue({
       invalidateQueries: vi.fn(),
     });
+    setupQueries();
+  });
 
-    mockUseMutation.mockReturnValue({
-      mutate: vi.fn(),
-      isPending: false,
-    });
-
-    mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
-      const key = config?.queryKey?.[0];
-
-      if (key === 'checkins') {
-        return {
-          data: {
-            checkIns: [],
-            timezone: 'America/New_York',
-          },
-          isLoading: false,
-        };
-      }
-
-      if (key === 'customers') {
-        return {
-          data: {
-            customers: [],
-          },
-          isLoading: false,
-        };
-      }
-
-      if (key === 'services') {
-        return {
-          data: {
-            services: [],
-          },
-          isLoading: false,
-        };
-      }
-
-      if (key === 'staff') {
-        return {
-          data: {
-            staff: [],
-          },
-          isLoading: false,
-        };
-      }
-
-      return { data: undefined, isLoading: false };
-    });
+  it('uses the full desktop page shell', () => {
+    mockMutations(
+      { mutateAsync: vi.fn(), isPending: false, isError: false },
+      { mutateAsync: vi.fn(), isPending: false }
+    );
 
     render(<CheckInsPage />);
 
     const page = screen.getByTestId('checkins-page');
     expect(page).toHaveClass('w-full');
     expect(page).not.toHaveClass('max-w-7xl');
+  });
+
+  it('opens the quick check-in overlay with the built-in keypad', () => {
+    mockMutations(
+      { mutateAsync: vi.fn(), isPending: false, isError: false },
+      { mutateAsync: vi.fn(), isPending: false }
+    );
+
+    render(<CheckInsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quick check-in' }));
+
+    const overlay = document.querySelector('[data-mobile-overlay="true"]');
+    expect(overlay).not.toBeNull();
+    expect(screen.getByText('Phone-first front desk flow')).toBeInTheDocument();
+    expect(screen.getByText('Delete')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^(?:[0-9]|Clear|Delete)$/ })).toHaveLength(12);
+  });
+
+  it('moves a brand new number into the guest-details step', async () => {
+    const createMutation = { mutateAsync: vi.fn(), isPending: false, isError: false };
+    const lookupMutation = {
+      mutateAsync: vi.fn().mockResolvedValue({
+        status: 'new',
+        normalizedPhone: '+18482612613',
+        displayPhone: '(848) 261-2613',
+      }),
+      isPending: false,
+    };
+
+    mockMutations(createMutation, lookupMutation);
+
+    render(<CheckInsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quick check-in' }));
+    pressDigits('8482612613');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Save this number once and move on')).toBeInTheDocument();
+    });
+
+    expect(lookupMutation.mutateAsync).toHaveBeenCalledWith('8482612613');
+  });
+
+  it('shows a validation message and does not call lookup for an incomplete number', async () => {
+    const createMutation = { mutateAsync: vi.fn(), isPending: false, isError: false };
+    const lookupMutation = {
+      mutateAsync: vi.fn(),
+      isPending: false,
+    };
+
+    mockMutations(createMutation, lookupMutation);
+
+    render(<CheckInsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quick check-in' }));
+    fireEvent.click(screen.getByRole('button', { name: '8' }));
+    fireEvent.click(screen.getByRole('button', { name: '4' }));
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(lookupMutation.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('shows a selector when multiple customers share the same normalized phone number', async () => {
+    const createMutation = { mutateAsync: vi.fn(), isPending: false, isError: false };
+    const lookupMutation = {
+      mutateAsync: vi.fn().mockResolvedValue({
+        status: 'multiple',
+        customers: [
+          { id: 'cust-1', name: 'Andy', phone: '+18482612613', email: null, lastVisit: '2026-03-20T16:00:00.000Z' },
+          { id: 'cust-2', name: 'Andy 2', phone: '8482612613', email: 'alt@example.com', lastVisit: null },
+        ],
+      }),
+      isPending: false,
+    };
+
+    mockMutations(createMutation, lookupMutation);
+
+    render(<CheckInsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quick check-in' }));
+    pressDigits('8482612613');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Pick the right guest')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Andy 2')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'None of these guests' })).toBeInTheDocument();
+  });
+
+  it('checks in an existing guest immediately after a normalized phone match', async () => {
+    const createMutation = {
+      mutateAsync: vi.fn().mockResolvedValue({
+        checkIn: { checkInTime: '2026-03-22T14:30:00.000Z' },
+      }),
+      isPending: false,
+      isError: false,
+    };
+    const lookupMutation = {
+      mutateAsync: vi.fn().mockResolvedValue({
+        status: 'existing',
+        customer: {
+          id: 'cust-1',
+          name: 'Andy',
+          phone: '+18482612613',
+          email: null,
+        },
+      }),
+      isPending: false,
+    };
+
+    mockMutations(createMutation, lookupMutation);
+
+    render(<CheckInsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quick check-in' }));
+    pressDigits('8482612613');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Check-in complete')).toBeInTheDocument();
+    });
+
+    expect(createMutation.mutateAsync).toHaveBeenCalledWith({
+      customerId: 'cust-1',
+      phone: '8482612613',
+    });
+  });
+
+  it('lets the front desk switch into the detailed entry flow', () => {
+    mockMutations(
+      { mutateAsync: vi.fn(), isPending: false, isError: false },
+      { mutateAsync: vi.fn(), isPending: false }
+    );
+
+    render(<CheckInsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Detailed entry' }));
+
+    expect(screen.getByText('Manual check-in details')).toBeInTheDocument();
+    expect(screen.getAllByTestId('custom-select')).toHaveLength(2);
   });
 });

@@ -24,10 +24,9 @@ describe('mobile modal layering contract', () => {
   });
 
   it('keeps long mobile dialogs either constrained or fully fullscreen so actions stay reachable', () => {
-    const constrainedFiles = [
-      ['src', 'app', '(dashboard)', 'dashboard', 'checkins', 'page.tsx'],
-    ];
+    const constrainedFiles = [];
     const fullscreenFiles = [
+      ['src', 'app', '(dashboard)', 'dashboard', 'checkins', 'page.tsx'],
       ['src', 'components', 'customers', 'AddCustomerModal.tsx'],
       ['src', 'components', 'customers', 'EditCustomerModal.tsx'],
       ['src', 'components', 'customers', 'SendCustomerMessageModal.tsx'],
@@ -42,7 +41,7 @@ describe('mobile modal layering contract', () => {
 
     for (const segments of fullscreenFiles) {
       const source = readFileSync(join(process.cwd(), ...segments), 'utf8');
-      expect(source).toContain('h-[100dvh] w-full flex-col');
+      expect(source.includes('h-[100dvh] w-full flex-col') || source.includes('h-full w-full flex-col')).toBe(true);
     }
   });
 

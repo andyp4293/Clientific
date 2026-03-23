@@ -5,6 +5,7 @@ import type {
   CustomerSmsFilter,
   CustomerVisitFilter,
 } from "@/lib/customer-filter-options";
+import { buildPhoneLookupKey } from "@/lib/phone";
 
 type CustomerFilterParams = {
   businessId: string;
@@ -27,11 +28,16 @@ export function buildCustomerWhereClause({
   const andClauses: Prisma.CustomerWhereInput[] = [];
 
   if (search?.trim()) {
+    const trimmedSearch = search.trim();
+    const phoneLookupSearch = buildPhoneLookupKey(trimmedSearch);
     andClauses.push({
       OR: [
-        { name: { contains: search.trim(), mode: "insensitive" } },
-        { email: { contains: search.trim(), mode: "insensitive" } },
-        { phone: { contains: search.trim(), mode: "insensitive" } },
+        { name: { contains: trimmedSearch, mode: "insensitive" } },
+        { email: { contains: trimmedSearch, mode: "insensitive" } },
+        { phone: { contains: trimmedSearch, mode: "insensitive" } },
+        ...(phoneLookupSearch
+          ? [{ phoneLookupKey: { contains: phoneLookupSearch, mode: "insensitive" as const } }]
+          : []),
       ],
     });
   }

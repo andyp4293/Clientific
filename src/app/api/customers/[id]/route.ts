@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { formatPhoneNumber } from "@/lib/utils";
+import { buildCustomerPhoneData, buildCustomerPhoneMatchClauses } from "@/lib/phone";
 import { requireActiveSubscription } from "@/lib/subscription";
 import { blockedContentError, getBlockedFieldLabel } from "@/lib/moderation";
 
@@ -113,7 +114,9 @@ export async function PUT(
     }
 
     // Format phone number if provided
-    const formattedPhone = phone ? formatPhoneNumber(phone) : null;    // Check for duplicate email or phone (excluding current customer)
+    const formattedPhone = phone ? formatPhoneNumber(phone) : null;
+    const phoneData = buildCustomerPhoneData(phone);
+    // Check for duplicate email or phone (excluding current customer)
     if (email || formattedPhone) {
       const duplicate = await prisma.customer.findFirst({
         where: {
@@ -121,7 +124,7 @@ export async function PUT(
           id: { not: id },
           OR: [
             email ? { email: email.toLowerCase() } : {},
-            formattedPhone ? { phone: formattedPhone } : {},
+            ...(formattedPhone ? buildCustomerPhoneMatchClauses(formattedPhone) : []),
           ].filter((obj) => Object.keys(obj).length > 0),
         },
       });
@@ -139,7 +142,8 @@ export async function PUT(
       data: {
         name: name.trim(),
         email: email ? email.toLowerCase() : null,
-        phone: formattedPhone,
+        phone: phoneData.phone,
+        phoneLookupKey: phoneData.phoneLookupKey,
         birthday: birthday ? new Date(birthday) : null,
         notes: notes || null,
       },

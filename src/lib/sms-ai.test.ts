@@ -115,4 +115,63 @@ describe('handleSmsAiInbound', () => {
       })
     );
   });
+
+  it('matches stored customers by lookup key and refreshes the normalized phone on booking', async () => {
+    vi.mocked(prisma.smsAiSession.upsert).mockResolvedValue({
+      ...baseSession,
+      state: 'booking_confirm',
+      serviceId: 'svc-1',
+      selectedSlotTime: new Date('2026-03-23T14:00:00.000Z'),
+      customerName: 'Jane',
+    } as any);
+    vi.mocked(prisma.service.findFirst).mockResolvedValue({
+      id: 'svc-1',
+      name: 'Classic Manicure',
+      duration: 60,
+    } as any);
+    vi.mocked(prisma.customer.findMany).mockResolvedValue([{ id: 'cust-1' }] as any);
+    vi.mocked(prisma.customer.findUnique).mockResolvedValue({
+      id: 'cust-1',
+      name: 'Old Jane',
+      phone: '5551234567',
+      phoneLookupKey: null,
+    } as any);
+    vi.mocked(prisma.customer.update).mockResolvedValue({
+      id: 'cust-1',
+      name: 'Jane',
+      phone: '+15551234567',
+      phoneLookupKey: '5551234567',
+    } as any);
+    vi.mocked(prisma.appointment.count).mockResolvedValue(0);
+    vi.mocked(prisma.appointment.create).mockResolvedValue({ id: 'appt-1' } as any);
+    vi.mocked(prisma.notification.create).mockResolvedValue({ id: 'notif-1' } as any);
+
+    const result = await handleSmsAiInbound({
+      fromPhoneRaw: '+15551234567',
+      toPhoneRaw: '+18557654989',
+      messageBody: 'yes',
+    });
+
+    expect(result?.handled).toBe(true);
+    expect(result?.eventType).toBe('AI_BOOKED');
+    expect(prisma.customer.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([
+            { phoneLookupKey: '5551234567' },
+            { phone: '+15551234567' },
+          ]),
+        }),
+      })
+    );
+    expect(prisma.customer.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'cust-1' },
+        data: expect.objectContaining({
+          phone: '+15551234567',
+          phoneLookupKey: '5551234567',
+        }),
+      })
+    );
+  });
 });

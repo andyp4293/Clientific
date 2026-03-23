@@ -143,6 +143,7 @@ model Customer {
   businessId            String
   name                  String
   phone                 String?
+  phoneLookupKey        String?
   email                 String?
   birthday              DateTime?
   segment               String                 @default("NEW")
@@ -166,6 +167,7 @@ model Customer {
 
   @@index([businessId, segment])
   @@index([businessId, lastVisit])
+  @@index([businessId, phoneLookupKey])
 }
 
 model CheckIn {

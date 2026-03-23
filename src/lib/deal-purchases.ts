@@ -7,6 +7,7 @@ import {
   formatPhoneNumber,
   sendSMS,
 } from '@/lib/twilio';
+import { buildCustomerPhoneData, buildCustomerPhoneMatchClauses } from '@/lib/phone';
 import { sendDealPurchaseReceiptEmail } from '@/lib/email';
 import type { DealPurchaseTotals } from '@/lib/deal-purchase-pricing';
 import { syncDealPurchasePayoutTracking } from '@/lib/deal-payouts';
@@ -63,10 +64,11 @@ async function resolveCustomerForPurchase({
   customerPhone: string;
 }) {
   const normalizedPhone = formatPhoneNumber(customerPhone);
+  const customerPhoneData = buildCustomerPhoneData(customerPhone);
   const existingCustomer = await prisma.customer.findFirst({
     where: {
       businessId,
-      OR: [{ phone: normalizedPhone }, { phone: customerPhone }],
+      OR: buildCustomerPhoneMatchClauses(customerPhone),
     },
     select: {
       id: true,
@@ -80,7 +82,8 @@ async function resolveCustomerForPurchase({
       where: { id: existingCustomer.id },
       data: {
         name: customerName,
-        phone: normalizedPhone,
+        phone: customerPhoneData.phone,
+        phoneLookupKey: customerPhoneData.phoneLookupKey,
       },
       select: {
         id: true,
@@ -95,7 +98,8 @@ async function resolveCustomerForPurchase({
     data: {
       businessId,
       name: customerName,
-      phone: normalizedPhone,
+      phone: customerPhoneData.phone,
+      phoneLookupKey: customerPhoneData.phoneLookupKey,
       smsConsent: true,
     },
     select: {

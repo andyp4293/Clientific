@@ -7,7 +7,7 @@ vi.mock('@/lib/prisma', () => ({
     service: { findMany: vi.fn() },
     staff: { findFirst: vi.fn() },
     appointment: { findMany: vi.fn(), count: vi.fn(), create: vi.fn() },
-    customer: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
+    customer: { findFirst: vi.fn(), findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     notification: { create: vi.fn() },
     aiCallSession: { upsert: vi.fn(), findUnique: vi.fn(), deleteMany: vi.fn() },
     $transaction: vi.fn(),
@@ -104,16 +104,20 @@ describe('POST /api/webhooks/vapi', () => {
     vi.mocked(prisma.appointment.findMany).mockResolvedValue([]);
     vi.mocked(prisma.appointment.count).mockResolvedValue(0);
     vi.mocked(prisma.appointment.create).mockResolvedValue({ id: 'appt-1' } as any);
+    vi.mocked(prisma.customer.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.customer.findUnique).mockResolvedValue(null);
     vi.mocked(prisma.customer.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.customer.create).mockResolvedValue({
       id: 'cust-1',
       name: 'Jane',
       phone: '+15551234567',
+      phoneLookupKey: '5551234567',
     } as any);
     vi.mocked(prisma.customer.update).mockResolvedValue({
       id: 'cust-1',
       name: 'Jane',
       phone: '+15551234567',
+      phoneLookupKey: '5551234567',
     } as any);
     vi.mocked(prisma.notification.create).mockResolvedValue({ id: 'notif-1' } as any);
     vi.mocked(prisma.aiCallSession.upsert).mockResolvedValue({ id: 'call-session-1' } as any);
@@ -635,6 +639,52 @@ describe('POST /api/webhooks/vapi', () => {
       })
     );
     expect(body.results[0].result).toContain('Gel Manicure and Pedicure');
+  });
+
+  it('matches existing AI callers even when the stored customer phone omits +1', async () => {
+    vi.mocked(prisma.customer.findMany).mockResolvedValue([{ id: 'cust-1' }] as any);
+    vi.mocked(prisma.appointment.findMany).mockResolvedValue([] as any);
+
+    const res = await POST(
+      req({
+        message: {
+          type: 'tool-calls',
+          phoneNumber: { id: 'phone-1' },
+          call: { customer: { number: '+15551234567' } },
+          toolCallList: [
+            {
+              id: 'tool-1',
+              function: {
+                name: 'manage_booking',
+                arguments: {
+                  action: 'getAppointments',
+                },
+              },
+            },
+          ],
+        },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(prisma.customer.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([
+            { phoneLookupKey: '5551234567' },
+            { phone: '+15551234567' },
+            { phone: '15551234567' },
+          ]),
+        }),
+      })
+    );
+    expect(prisma.appointment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          customerId: { in: ['cust-1'] },
+        }),
+      })
+    );
   });
 
   it('caps AI phone appointments at five services during availability checks', async () => {

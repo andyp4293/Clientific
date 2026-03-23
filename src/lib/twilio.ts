@@ -1,5 +1,13 @@
 import twilio from 'twilio';
 import { PLATFORM_SMS_NUMBER } from '@/lib/sms-config';
+import {
+  isE164PhoneNumber,
+  isValidPhoneNumber,
+  normalizeOptionalPhoneNumber,
+  normalizePhoneNumber,
+} from '@/lib/phone';
+
+export { isE164PhoneNumber, isValidPhoneNumber, normalizeOptionalPhoneNumber } from '@/lib/phone';
 
 interface SendSMSParams {
   to: string;
@@ -124,8 +132,6 @@ interface DirectCustomerMessageDetails {
 }
 
 const SMS_COMPLIANCE_FOOTER = 'Reply STOP to opt out, HELP for help.';
-const E164_PHONE_REGEX = /^\+[1-9]\d{9,14}$/;
-
 export function appendSmsComplianceFooter(message: string): string {
   const trimmed = message.trim();
   const alreadyHasFooter =
@@ -137,39 +143,7 @@ export function appendSmsComplianceFooter(message: string): string {
 }
 
 export function formatPhoneNumber(phone: string): string {
-  const cleaned = phone.replace(/\D/g, '');
-
-  if (cleaned.length === 10) {
-    return `+1${cleaned}`;
-  }
-
-  if (cleaned.length === 11 && cleaned.startsWith('1')) {
-    return `+${cleaned}`;
-  }
-
-  return phone.startsWith('+') ? phone : `+${cleaned}`;
-}
-
-export function isE164PhoneNumber(phone: string): boolean {
-  if (!phone) return false;
-  return E164_PHONE_REGEX.test(phone.trim());
-}
-
-export function isValidPhoneNumber(phone: string): boolean {
-  if (!phone) return false;
-  const cleaned = phone.replace(/\D/g, '');
-  return cleaned.length >= 10 && cleaned.length <= 15;
-}
-
-export function normalizeOptionalPhoneNumber(phone: unknown): string | null {
-  if (typeof phone !== 'string') return null;
-
-  const trimmed = phone.trim();
-  if (!trimmed) return null;
-  if (!isValidPhoneNumber(trimmed)) return null;
-
-  const formatted = formatPhoneNumber(trimmed);
-  return isE164PhoneNumber(formatted) ? formatted : null;
+  return normalizePhoneNumber(phone);
 }
 
 function formatTime(date: Date, timezone?: string): string {

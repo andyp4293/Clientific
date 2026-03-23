@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { buildCustomerPhoneData, buildCustomerPhoneMatchClauses } from '@/lib/phone';
 import { normalizeOptionalPhoneNumber, sendAppointmentConfirmation } from '@/lib/twilio';
 import { validateBusinessHoursForAppointment } from '@/lib/business-hours-validation';
 import { describeBusinessClosure, findBusinessClosureForDate } from '@/lib/business-closures';
@@ -338,6 +339,21 @@ function formatServiceList(names: string[]): string {
   if (names.length === 1) return names[0];
   if (names.length === 2) return `${names[0]} and ${names[1]}`;
   return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+}
+
+async function findCustomerIdsForPhone(businessId: string, phone: string): Promise<string[]> {
+  const matchClauses = buildCustomerPhoneMatchClauses(phone);
+  if (matchClauses.length === 0) return [];
+
+  const customers = await prisma.customer.findMany({
+    where: {
+      businessId,
+      OR: matchClauses,
+    },
+    select: { id: true },
+  });
+
+  return customers.map((customer) => customer.id);
 }
 
 async function resolveRequestedServices(
@@ -957,23 +973,35 @@ async function handleCreateBooking(
 
   // Find or create customer first (outside the booking transaction — not race-sensitive)
   const phone = callerPhone || null;
-  let customer = phone
-    ? await prisma.customer.findFirst({ where: { businessId: business.id, phone } })
-    : null;
+  const phoneData = buildCustomerPhoneData(phone);
+  const matchingCustomerIds = phone ? await findCustomerIdsForPhone(business.id, phone) : [];
+  let customer =
+    matchingCustomerIds.length > 0
+      ? await prisma.customer.findUnique({ where: { id: matchingCustomerIds[0] } })
+      : null;
 
   if (!customer) {
     customer = await prisma.customer.create({
       data: {
         businessId: business.id,
         name: customerName,
-        phone: phone || undefined,
+        phone: phoneData.phone || undefined,
+        phoneLookupKey: phoneData.phoneLookupKey || undefined,
         smsConsent: !!phone, // caller provided phone to AI receptionist — implied consent
       },
     });
   } else {
     customer = await prisma.customer.update({
       where: { id: customer.id },
-      data: { name: customerName },
+      data: {
+        name: customerName,
+        ...(phoneData.phone
+          ? {
+              phone: phoneData.phone,
+              phoneLookupKey: phoneData.phoneLookupKey,
+            }
+          : {}),
+      },
     });
   }
 
@@ -1076,11 +1104,13 @@ async function handleCreateBooking(
 
 async function handleGetAppointments(business: BusinessData, callerPhone: string): Promise<string> {
   if (!callerPhone) return 'I need your phone number to look up your appointments.';
+  const customerIds = await findCustomerIdsForPhone(business.id, callerPhone);
+  if (customerIds.length === 0) return 'I don\'t see any upcoming appointments for your number.';
 
   const appointments = await prisma.appointment.findMany({
     where: {
       businessId: business.id,
-      customer: { phone: callerPhone },
+      customerId: { in: customerIds },
       status: { in: ['pending', 'scheduled', 'confirmed'] },
       startTime: { gte: new Date() },
     },
@@ -1112,12 +1142,14 @@ async function handleUpdateAppointment(business: BusinessData, args: any, caller
   const { appointmentId, customerName, notes } = args;
   if (!appointmentId) return 'Which appointment would you like to update?';
   if (!customerName && notes === undefined) return 'What would you like to change?';
+  const customerIds = await findCustomerIdsForPhone(business.id, callerPhone);
+  if (customerIds.length === 0) return "I couldn't find that appointment on your account.";
 
   const appointment = await prisma.appointment.findFirst({
     where: {
       id: appointmentId,
       businessId: business.id,
-      customer: { phone: callerPhone },
+      customerId: { in: customerIds },
       status: { in: ['pending', 'scheduled', 'confirmed'] },
     },
     include: { service: { select: { name: true } }, customer: { select: { id: true } } },
@@ -1151,12 +1183,14 @@ async function handleUpdateAppointment(business: BusinessData, args: any, caller
 async function handleCancelAppointment(business: BusinessData, args: any, callerPhone: string): Promise<string> {
   const { appointmentId } = args;
   if (!appointmentId) return 'Which appointment would you like to cancel?';
+  const customerIds = await findCustomerIdsForPhone(business.id, callerPhone);
+  if (customerIds.length === 0) return 'I couldn\'t find that appointment on your account.';
 
   const appointment = await prisma.appointment.findFirst({
     where: {
       id: appointmentId,
       businessId: business.id,
-      customer: { phone: callerPhone },
+      customerId: { in: customerIds },
       status: { in: ['pending', 'scheduled', 'confirmed'] },
     },
     include: { service: { select: { name: true } } },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendAppointmentConfirmation, formatPhoneNumber } from '@/lib/twilio';
+import { buildCustomerPhoneData, buildCustomerPhoneMatchClauses } from '@/lib/phone';
 import { sendNewBookingEmail } from '@/lib/email';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { validateBusinessHoursForAppointment } from '@/lib/business-hours-validation';
@@ -202,10 +203,12 @@ export async function POST(
     }
 
     // Find or create customer
+    const customerPhoneData = buildCustomerPhoneData(customerPhone);
+
     let customer = await prisma.customer.findFirst({
       where: {
         businessId: business.id,
-        OR: [{ phone: normalizedCustomerPhone }, { phone: customerPhone }],
+        OR: buildCustomerPhoneMatchClauses(customerPhone),
       },
     });
 
@@ -214,7 +217,8 @@ export async function POST(
         data: {
           businessId: business.id,
           name: customerName,
-          phone: normalizedCustomerPhone,
+          phone: customerPhoneData.phone,
+          phoneLookupKey: customerPhoneData.phoneLookupKey,
           email: customerEmail || null,
           smsConsent: transactionalConsent,
           smsMarketingConsent: marketingConsent,
@@ -226,6 +230,8 @@ export async function POST(
         where: { id: customer.id },
         data: {
           name: customerName,
+          phone: customerPhoneData.phone ?? customer.phone,
+          phoneLookupKey: customerPhoneData.phoneLookupKey ?? customer.phoneLookupKey,
           ...(customerEmail && { email: customerEmail }),
           ...(transactionalConsent && !customer.smsOptedOut && { smsConsent: true }),
           ...(marketingConsent && !customer.smsOptedOut

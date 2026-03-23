@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { buildCustomerPhoneData, buildCustomerPhoneMatchClauses } from '@/lib/phone';
 import { localToUTC } from '@/lib/timezone';
 
 const ACTIVE_APPOINTMENT_STATUSES = ['pending', 'scheduled', 'confirmed'] as const;
@@ -317,12 +318,13 @@ async function findMatchingCustomerIdsForBusiness(
   normalizedPhone: string
 ): Promise<string[]> {
   const customers = await prisma.customer.findMany({
-    where: { businessId, phone: { not: null } },
-    select: { id: true, phone: true },
+    where: {
+      businessId,
+      OR: buildCustomerPhoneMatchClauses(normalizedPhone),
+    },
+    select: { id: true },
   });
-  return customers
-    .filter((customer) => normalizePhone(customer.phone) === normalizedPhone)
-    .map((customer) => customer.id);
+  return customers.map((customer) => customer.id);
 }
 async function getAvailability(
   business: BusinessForSmsAi,
@@ -477,6 +479,7 @@ async function createBookingFromSession(
   }
 
   const customerIds = await findMatchingCustomerIdsForBusiness(business.id, normalizedPhone);
+  const phoneData = buildCustomerPhoneData(normalizedPhone);
   let customer =
     customerIds.length > 0
       ? await prisma.customer.findUnique({ where: { id: customerIds[0] } })
@@ -486,7 +489,8 @@ async function createBookingFromSession(
     customer = await prisma.customer.create({
       data: {
         businessId: business.id,
-        phone: normalizedPhone,
+        phone: phoneData.phone,
+        phoneLookupKey: phoneData.phoneLookupKey,
         name: session.customerName || 'Customer',
         smsConsent: true,
         smsMarketingConsent: false,
@@ -495,7 +499,16 @@ async function createBookingFromSession(
   } else if (session.customerName && session.customerName !== customer.name) {
     customer = await prisma.customer.update({
       where: { id: customer.id },
-      data: { name: session.customerName, smsConsent: true },
+      data: {
+        name: session.customerName,
+        smsConsent: true,
+        ...(phoneData.phone
+          ? {
+              phone: phoneData.phone,
+              phoneLookupKey: phoneData.phoneLookupKey,
+            }
+          : {}),
+      },
     });
   }
 
