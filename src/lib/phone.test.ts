@@ -44,7 +44,7 @@ describe('phone helpers', () => {
 
   it('returns normalized phone data for storage', () => {
     expect(buildCustomerPhoneData('(848) 261-2613')).toEqual({
-      phone: '+18482612613',
+      phone: '8482612613',
       phoneLookupKey: '8482612613',
     });
   });

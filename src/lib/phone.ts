@@ -9,15 +9,21 @@ function uniqueStrings(values: Array<string | null | undefined>): string[] {
 }
 
 export function buildPhoneLookupKey(phone: string | null | undefined): string | null {
-  const digits = digitsOnly(phone);
+  const digits = normalizeStoredPhoneNumber(phone);
   if (!digits) return null;
+
+  return digits;
+}
+
+export function normalizeStoredPhoneNumber(phone: string | null | undefined): string {
+  const digits = digitsOnly(phone);
+
+  if (!digits) {
+    return '';
+  }
 
   if (digits.length === 11 && digits.startsWith('1')) {
     return digits.slice(1);
-  }
-
-  if (digits.length === 10) {
-    return digits;
   }
 
   return digits;
@@ -25,21 +31,22 @@ export function buildPhoneLookupKey(phone: string | null | undefined): string | 
 
 export function normalizePhoneNumber(phone: string): string {
   const trimmed = phone.trim();
-  const digits = digitsOnly(trimmed);
+  const storedDigits = normalizeStoredPhoneNumber(trimmed);
+  const rawDigits = digitsOnly(trimmed);
 
-  if (!digits) {
+  if (!storedDigits && !rawDigits) {
     return trimmed;
   }
 
-  if (digits.length === 10) {
-    return `+1${digits}`;
+  if (storedDigits.length === 10) {
+    return `+1${storedDigits}`;
   }
 
-  if (digits.length === 11 && digits.startsWith('1')) {
-    return `+${digits}`;
+  if (rawDigits.length === 11 && rawDigits.startsWith('1')) {
+    return `+${rawDigits}`;
   }
 
-  return trimmed.startsWith('+') ? `+${digits}` : `+${digits}`;
+  return `+${rawDigits || storedDigits}`;
 }
 
 export function isE164PhoneNumber(phone: string): boolean {
@@ -62,6 +69,17 @@ export function normalizeOptionalPhoneNumber(phone: unknown): string | null {
 
   const normalized = normalizePhoneNumber(trimmed);
   return isE164PhoneNumber(normalized) ? normalized : null;
+}
+
+export function normalizeOptionalStoredPhoneNumber(phone: unknown): string | null {
+  if (typeof phone !== 'string') return null;
+
+  const trimmed = phone.trim();
+  if (!trimmed) return null;
+  if (!isValidPhoneNumber(trimmed)) return null;
+
+  const normalized = normalizeStoredPhoneNumber(trimmed);
+  return normalized || null;
 }
 
 export function formatPhoneForDisplay(phone: string | null | undefined): string {
@@ -87,10 +105,12 @@ export function buildCustomerPhoneMatchClauses(
 
   const trimmed = phone.trim();
   const normalized = normalizeOptionalPhoneNumber(trimmed);
+  const stored = normalizeOptionalStoredPhoneNumber(trimmed);
   const lookupKey = buildPhoneLookupKey(trimmed);
   const rawDigits = digitsOnly(trimmed);
+  const elevenDigit = rawDigits.length === 11 && rawDigits.startsWith('1') ? rawDigits : null;
 
-  return uniqueStrings([normalized, trimmed, rawDigits]).reduce<
+  return uniqueStrings([stored, normalized, trimmed, rawDigits, elevenDigit]).reduce<
     Array<{ phoneLookupKey?: string; phone?: string }>
   >((clauses, value) => {
     clauses.push({ phone: value });
@@ -103,7 +123,7 @@ export function buildCustomerPhoneData(phone: string | null | undefined): {
   phoneLookupKey: string | null;
 } {
   return {
-    phone: normalizeOptionalPhoneNumber(phone),
+    phone: normalizeOptionalStoredPhoneNumber(phone),
     phoneLookupKey: buildPhoneLookupKey(phone),
   };
 }

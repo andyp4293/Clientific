@@ -6,6 +6,7 @@ import { authOptions } from '../../auth/[...nextauth]/route';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { normalizeStaffWorkHours, sanitizeStaffWorkHoursForSave } from '@/lib/staff-schedule';
+import { normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
 
 const STAFF_SELECT = {
   id: true,
@@ -40,6 +41,12 @@ export async function PATCH(
     const { id } = await params;
     const body = await req.json();
     const { fullName, email, phone, role, bio, isActive, workDays, workHours, serviceIds } = body;
+    const normalizedPhone =
+      typeof phone === 'string' && phone.trim().length > 0
+        ? normalizeOptionalStoredPhoneNumber(phone)
+        : typeof phone === 'string'
+          ? null
+          : phone;
 
     const blockedField = getBlockedFieldLabel([
       { label: 'Staff name', value: fullName },
@@ -76,7 +83,7 @@ export async function PATCH(
         data: {
           fullName,
           email,
-          phone,
+          phone: normalizedPhone,
           role,
           active: isActive,
           ...(Array.isArray(workDays) && { workDays: normalizedWorkDays }),

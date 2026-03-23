@@ -187,7 +187,7 @@ describe('CheckInsPage', () => {
     const lookupMutation = {
       mutateAsync: vi.fn().mockResolvedValue({
         status: 'new',
-        normalizedPhone: '+18482612613',
+        normalizedPhone: '8482612613',
         displayPhone: '(848) 261-2613',
       }),
       isPending: false,
@@ -232,7 +232,7 @@ describe('CheckInsPage', () => {
       mutateAsync: vi.fn().mockResolvedValue({
         status: 'multiple',
         customers: [
-          { id: 'cust-1', name: 'Andy', phone: '+18482612613', email: null, lastVisit: '2026-03-20T16:00:00.000Z' },
+          { id: 'cust-1', name: 'Andy', phone: '8482612613', email: null, lastVisit: '2026-03-20T16:00:00.000Z' },
           { id: 'cust-2', name: 'Andy 2', phone: '8482612613', email: 'alt@example.com', lastVisit: null },
         ],
       }),
@@ -269,7 +269,7 @@ describe('CheckInsPage', () => {
         customer: {
           id: 'cust-1',
           name: 'Andy',
-          phone: '+18482612613',
+          phone: '8482612613',
           email: null,
         },
       }),

@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 import {
   buildCustomerPhoneMatchClauses,
   formatPhoneForDisplay,
-  normalizeOptionalPhoneNumber,
+  normalizeOptionalStoredPhoneNumber,
 } from '@/lib/phone';
 
 export async function GET(request: NextRequest) {
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     const phone = request.nextUrl.searchParams.get('phone');
-    const normalizedPhone = normalizeOptionalPhoneNumber(phone);
+    const normalizedPhone = normalizeOptionalStoredPhoneNumber(phone);
     const matchClauses = buildCustomerPhoneMatchClauses(phone);
 
     if (!normalizedPhone || matchClauses.length === 0) {

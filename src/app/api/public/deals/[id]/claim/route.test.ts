@@ -152,7 +152,7 @@ describe('POST /api/public/deals/[id]/claim', () => {
         data: expect.objectContaining({
           businessId: 'biz-1',
           name: 'Jane Doe',
-          phone: '+15551234567',
+          phone: '5551234567',
           smsConsent: true,
           smsMarketingConsent: false,
         }),

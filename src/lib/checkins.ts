@@ -3,7 +3,7 @@ import {
   buildCustomerPhoneData,
   buildCustomerPhoneMatchClauses,
   formatPhoneForDisplay,
-  normalizeOptionalPhoneNumber,
+  normalizeOptionalStoredPhoneNumber,
 } from '@/lib/phone';
 import { updateCustomerSegment } from '@/lib/segment';
 
@@ -49,7 +49,7 @@ export async function lookupBusinessCheckInCustomerByPhone({
   businessId: string;
   phone: string;
 }): Promise<CheckInLookupResult> {
-  const normalizedPhone = normalizeOptionalPhoneNumber(phone);
+  const normalizedPhone = normalizeOptionalStoredPhoneNumber(phone);
   const phoneData = buildCustomerPhoneData(phone);
 
   if (!normalizedPhone || !phoneData.phoneLookupKey) {

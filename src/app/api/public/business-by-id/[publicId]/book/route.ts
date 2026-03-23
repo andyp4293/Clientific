@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sendAppointmentConfirmation, formatPhoneNumber } from '@/lib/twilio';
-import { buildCustomerPhoneData, buildCustomerPhoneMatchClauses } from '@/lib/phone';
+import { sendAppointmentConfirmation } from '@/lib/twilio';
+import {
+  buildCustomerPhoneData,
+  buildCustomerPhoneMatchClauses,
+  normalizeStoredPhoneNumber,
+} from '@/lib/phone';
 import { sendNewBookingEmail } from '@/lib/email';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { validateBusinessHoursForAppointment } from '@/lib/business-hours-validation';
@@ -108,7 +112,7 @@ export async function POST(
       return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
     }
 
-    const normalizedCustomerPhone = formatPhoneNumber(customerPhone);
+    const normalizedCustomerPhone = normalizeStoredPhoneNumber(customerPhone) || customerPhone.trim();
 
     // Verify all services belong to this business
     const services = await prisma.service.findMany({

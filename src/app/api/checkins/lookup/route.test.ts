@@ -97,7 +97,7 @@ describe('GET /api/checkins/lookup', () => {
 
     expect(res.status).toBe(200);
     expect(body.status).toBe('new');
-    expect(body.normalizedPhone).toBe('+18482612613');
+    expect(body.normalizedPhone).toBe('8482612613');
     expect(body.displayPhone).toBe('(848) 261-2613');
   });
 });

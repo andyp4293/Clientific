@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
-import { normalizeOptionalPhoneNumber } from '@/lib/twilio';
+import { normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
 import twilio from 'twilio';
 
 type TwilioProvisionedNumber = {
@@ -400,11 +400,13 @@ export async function PATCH(req: NextRequest) {
     const normalizedAiReceptionistPhone =
       aiReceptionistPhone === undefined
         ? undefined
-        : normalizeOptionalPhoneNumber(aiReceptionistPhone);
+        : normalizeOptionalStoredPhoneNumber(aiReceptionistPhone);
     const normalizedOwnerPhone =
       ownerPhone === undefined
         ? undefined
-        : normalizeOptionalPhoneNumber(ownerPhone);
+        : normalizeOptionalStoredPhoneNumber(ownerPhone);
+    const normalizedBusinessPhone =
+      phone === undefined ? undefined : normalizeOptionalStoredPhoneNumber(phone);
 
     if (
       typeof aiReceptionistPhone === 'string' &&
@@ -429,6 +431,20 @@ export async function PATCH(req: NextRequest) {
         {
           error:
             'Personal phone must be a valid phone number with country code or 10-digit US format',
+        },
+        { status: 400 }
+      );
+    }
+
+    if (
+      typeof phone === 'string' &&
+      phone.trim().length > 0 &&
+      !normalizedBusinessPhone
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Business phone must be a valid phone number with country code or 10-digit US format',
         },
         { status: 400 }
       );
@@ -702,7 +718,7 @@ export async function PATCH(req: NextRequest) {
         ...(name && { name }),
         ...(businessType && { businessType }),
         ...(normalizedOwnerPhone !== undefined && { ownerPhone: normalizedOwnerPhone }),
-        ...(phone && { phone }),
+        ...(normalizedBusinessPhone !== undefined && { phone: normalizedBusinessPhone }),
         ...(businessEmail !== undefined && { businessEmail }),
         ...(street !== undefined && { street }),
         ...(city !== undefined && { city }),

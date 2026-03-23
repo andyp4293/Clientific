@@ -3,6 +3,10 @@ import twilio from 'twilio';
 import { prisma } from '@/lib/prisma';
 import { handleSmsAiInbound } from '@/lib/sms-ai';
 import { sendSMS } from '@/lib/twilio';
+import {
+  normalizeOptionalPhoneNumber,
+  normalizeOptionalStoredPhoneNumber,
+} from '@/lib/phone';
 
 const STOP_KEYWORDS = new Set(['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT']);
 const START_KEYWORDS = new Set(['START', 'UNSTOP', 'YES']);
@@ -29,23 +33,13 @@ function twimlEmpty(): NextResponse {
   });
 }
 
-function normalizePhone(phone: string | null | undefined): string | null {
-  if (!phone) return null;
-  const digits = phone.replace(/\D/g, '');
-  if (!digits) return null;
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
-  if (digits.length >= 10 && digits.length <= 15) return `+${digits}`;
-  return null;
-}
-
 function keywordFromBody(body: string | null | undefined): string {
   const first = (body || '').trim().split(/\s+/)[0] || '';
   return first.toUpperCase();
 }
 
 function isLikelyTollFree(phone: string | null | undefined): boolean {
-  const normalized = normalizePhone(phone);
+  const normalized = normalizeOptionalPhoneNumber(phone);
   if (!normalized || !normalized.startsWith('+1') || normalized.length < 5) return false;
   const areaCode = normalized.slice(2, 5);
   return TOLL_FREE_AREA_CODES.has(areaCode);
@@ -56,7 +50,7 @@ function getPreferredAiReplySender(toPhoneRaw: string | null): string | null {
     return toPhoneRaw;
   }
 
-  const sharedSender = normalizePhone(process.env.TWILIO_PHONE_NUMBER || null);
+  const sharedSender = normalizeOptionalPhoneNumber(process.env.TWILIO_PHONE_NUMBER || null);
   return sharedSender || toPhoneRaw;
 }
 
@@ -101,7 +95,8 @@ export async function POST(req: NextRequest) {
     const messageBody = (form.get('Body') as string | null) || null;
     const messageSid = (form.get('MessageSid') as string | null) || null;
     const keyword = keywordFromBody(messageBody);
-    const normalizedFrom = normalizePhone(fromPhoneRaw);
+    const normalizedFrom = normalizeOptionalPhoneNumber(fromPhoneRaw);
+    const storedFrom = normalizeOptionalStoredPhoneNumber(fromPhoneRaw);
     const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null;
     const userAgent = req.headers.get('user-agent');
 
@@ -111,7 +106,9 @@ export async function POST(req: NextRequest) {
     });
 
     const matchingCustomers = normalizedFrom
-      ? allCustomers.filter((customer) => normalizePhone(customer.phone) === normalizedFrom)
+      ? allCustomers.filter(
+          (customer) => normalizeOptionalPhoneNumber(customer.phone) === normalizedFrom
+        )
       : [];
 
     const customerIds = matchingCustomers.map((customer) => customer.id);
@@ -187,7 +184,7 @@ export async function POST(req: NextRequest) {
         data: matchingCustomers.map((customer) => ({
           businessId: customer.businessId,
           customerId: customer.id,
-          phone: normalizedFrom || customer.phone || '',
+          phone: storedFrom || customer.phone || '',
           eventType,
           source: 'twilio_inbound',
           messageSid,
@@ -206,7 +203,7 @@ export async function POST(req: NextRequest) {
     } else {
       await prisma.smsConsentEvent.create({
         data: {
-          phone: normalizedFrom || fromPhoneRaw || 'unknown',
+          phone: storedFrom || fromPhoneRaw || 'unknown',
           eventType,
           source: 'twilio_inbound',
           messageSid,

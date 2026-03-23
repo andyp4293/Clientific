@@ -206,7 +206,7 @@ describe('POST /api/webhooks/vapi', () => {
         create: expect.objectContaining({
           businessId: 'biz-1',
           callId: 'call-1',
-          callerPhone: '+15551234567',
+          callerPhone: '5551234567',
           requestedStaffId: 'staff-1',
           requestedStaffName: 'Andy',
         }),
@@ -632,7 +632,7 @@ describe('POST /api/webhooks/vapi', () => {
       })
     );
     expect(sendAppointmentConfirmation).toHaveBeenCalledWith(
-      '+15551234567',
+      '5551234567',
       expect.objectContaining({
         serviceName: 'Gel Manicure and Pedicure',
         duration: 105,
@@ -672,8 +672,8 @@ describe('POST /api/webhooks/vapi', () => {
         where: expect.objectContaining({
           OR: expect.arrayContaining([
             { phoneLookupKey: '5551234567' },
+            { phone: '5551234567' },
             { phone: '+15551234567' },
-            { phone: '15551234567' },
           ]),
         }),
       })

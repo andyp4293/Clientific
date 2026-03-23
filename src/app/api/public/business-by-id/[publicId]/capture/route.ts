@@ -8,7 +8,11 @@ import {
   isValidPhoneNumber,
   sendSMS,
 } from '@/lib/twilio';
-import { buildCustomerPhoneData, buildCustomerPhoneMatchClauses } from '@/lib/phone';
+import {
+  buildCustomerPhoneData,
+  buildCustomerPhoneMatchClauses,
+  normalizeStoredPhoneNumber,
+} from '@/lib/phone';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { claimDealForCustomer, DealClaimError } from '@/lib/deal-claims';
 import { getAppBaseUrlFromRequest } from '@/lib/app-url';
@@ -106,7 +110,7 @@ export async function POST(
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
-    const normalizedPhone = formatPhoneNumber(phoneRaw);
+    const normalizedPhone = normalizeStoredPhoneNumber(phoneRaw) || phoneRaw.trim();
     const customerPhoneData = buildCustomerPhoneData(phoneRaw);
     const now = new Date();
 

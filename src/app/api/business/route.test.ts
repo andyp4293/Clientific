@@ -181,7 +181,7 @@ describe('PATCH /api/business', () => {
     expect(mockBusinessUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          aiReceptionistPhone: '+19087272437',
+          aiReceptionistPhone: '9087272437',
         }),
       })
     );
@@ -203,7 +203,7 @@ describe('PATCH /api/business', () => {
     expect(mockBusinessUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          ownerPhone: '+19087272437',
+          ownerPhone: '9087272437',
         }),
       })
     );

@@ -87,7 +87,7 @@ describe('public check-in route', () => {
         id: 'cust-1',
         name: 'Andy',
         email: null,
-        phone: '+18482612613',
+        phone: '8482612613',
         phoneLookupKey: '8482612613',
         lastVisit: null,
       },
@@ -117,7 +117,7 @@ describe('public check-in route', () => {
     mockCustomerCreate.mockResolvedValue({ id: 'cust-new' });
     mockCustomerFindFirst.mockResolvedValue({
       id: 'cust-new',
-      phone: '+18482612613',
+      phone: '8482612613',
       phoneLookupKey: '8482612613',
     });
     mockCheckInCreate.mockResolvedValue({
@@ -147,7 +147,7 @@ describe('public check-in route', () => {
           businessId: 'biz-1',
           name: 'New Guest',
           email: 'guest@example.com',
-          phone: '+18482612613',
+          phone: '8482612613',
           phoneLookupKey: '8482612613',
         }),
       })

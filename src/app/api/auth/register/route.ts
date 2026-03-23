@@ -17,6 +17,7 @@ import {
   getReferralSharingStatus,
   resolveReferralSharingStatus,
 } from '@/lib/referral-sharing';
+import { normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
 
 export async function POST(request: Request) {
   try {
@@ -46,7 +47,10 @@ export async function POST(request: Request) {
     const normalizedEmail = typeof email === 'string' ? normalizeEmail(email) : '';
     const normalizedBusinessName =
       typeof businessName === 'string' ? businessName.trim() : '';
-    const normalizedPhone = typeof phone === 'string' ? phone.trim() : '';
+    const normalizedPhone =
+      typeof phone === 'string' && phone.trim().length > 0
+        ? normalizeOptionalStoredPhoneNumber(phone) ?? ''
+        : '';
     const normalizedBusinessType =
       typeof businessType === 'string' ? businessType.trim() : '';
     const normalizedBusinessEmail =

@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { PublicOwnerBackButton } from '@/components/public/PublicOwnerBackButton';
 import { formatPhoneForDisplay } from '@/lib/phone';
@@ -36,15 +35,14 @@ type SuccessState = {
   createdCustomer: boolean;
 };
 
-const PHONE_MAX_LENGTH = 11;
+const PHONE_MAX_LENGTH = 10;
 const SUCCESS_RESET_SECONDS = 8;
 const KEYPAD_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clear', '0', 'back'] as const;
 
 function sanitizePhoneDigits(value: string) {
   const digits = value.replace(/\D/g, '');
   if (digits.length <= 10) return digits;
-  if (digits.length === 11 && digits.startsWith('1')) return digits;
-  if (digits.length > 11 && digits.startsWith('1')) return digits.slice(0, 11);
+  if (digits.length >= 11 && digits.startsWith('1')) return digits.slice(1, 11);
   return digits.slice(0, 10);
 }
 
@@ -59,7 +57,7 @@ function formatPhoneEntry(value: string) {
 
 function canLookupPhone(value: string) {
   const digits = sanitizePhoneDigits(value);
-  return digits.length === 10 || (digits.length === 11 && digits.startsWith('1'));
+  return digits.length === 10;
 }
 
 function formatSuccessTime(isoString: string) {
@@ -302,153 +300,77 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
 
   return (
     <div className="page-shell min-h-screen px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
-      <div className="mx-auto max-w-6xl space-y-3 sm:space-y-4">
+      <div className="mx-auto max-w-4xl space-y-3 sm:space-y-4">
         {viewerCanManage ? (
           <PublicOwnerBackButton fallbackHref="/dashboard/checkins" label="Back to dashboard" />
         ) : null}
 
-        <div className="grid gap-5 md:grid-cols-[1fr,0.95fr] md:gap-6">
-          <section className="brand-hero hidden min-h-[680px] flex-col justify-between rounded-[2rem] p-8 shadow-2xl shadow-primary-950/20 md:flex lg:p-10">
-            <div className="space-y-6">
-              <div className="flex items-center gap-4">
-                {business.logoUrl ? (
-                  <Image
-                    src={business.logoUrl}
-                    alt={`${business.name} logo`}
-                    width={88}
-                    height={88}
-                    className="h-20 w-20 rounded-3xl border border-gray-200/80 object-cover dark:border-white/15"
-                  />
-                ) : (
-                  <div className="brand-hero-card flex h-20 w-20 items-center justify-center rounded-3xl text-3xl font-bold uppercase text-gray-950 dark:text-white">
-                    {business.name.charAt(0)}
-                  </div>
-                )}
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">In-store check-in</p>
-                  <h1 className="mt-2 text-4xl font-bold leading-tight text-gray-950 dark:text-white">
-                    Guests check in with one phone number.
-                  </h1>
-                </div>
-              </div>
-
-              <div className="max-w-2xl space-y-4">
-                <p className="text-lg text-gray-800 dark:text-white/92">
-                  Existing guests go straight to a thank-you screen. New numbers only add a name once, then they are ready
-                  for future visits at {business.name}.
-                </p>
-                <p className="text-sm text-gray-700 dark:text-white/70">
-                  Clientific treats <span className="font-semibold">8482612613</span> and <span className="font-semibold">+18482612613</span> as
-                  the same guest record, so front-desk lookup stays consistent.
-                </p>
-              </div>
-            </div>
-
-            <div className="brand-hero-card max-w-xl rounded-3xl p-5 sm:p-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">How it works</p>
-              <ol className="mt-4 space-y-2 text-sm leading-6 text-gray-700 dark:text-white/80">
-                <li>1. Enter the guest&apos;s mobile number on the keypad.</li>
-                <li>2. Existing numbers check in instantly.</li>
-                <li>3. New numbers ask for a name and optional email once.</li>
-              </ol>
-            </div>
-          </section>
-
-          <section className="brand-panel rounded-[2rem] p-5 sm:p-6 md:min-h-[680px] md:p-8 lg:p-10">
-            <div className="space-y-4 border-b border-gray-200/80 pb-5 dark:border-gray-800 md:hidden">
-              <div className="flex items-center gap-3">
-                {business.logoUrl ? (
-                  <Image
-                    src={business.logoUrl}
-                    alt={`${business.name} logo`}
-                    width={56}
-                    height={56}
-                    className="h-14 w-14 rounded-2xl border border-primary/10 object-cover"
-                  />
-                ) : (
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-lg font-bold uppercase text-white shadow-sm">
-                    {business.name.charAt(0)}
-                  </div>
-                )}
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">In-store check-in</p>
-                  <h2 className="mt-1 text-2xl font-bold text-gray-950 dark:text-gray-50">{business.name}</h2>
-                </div>
-              </div>
-              <p className="text-sm leading-6 text-gray-800 dark:text-gray-100">
-                Existing guests move straight through. New guests only need a name once.
+        <section className="brand-panel rounded-[2rem] p-5 sm:p-6 md:min-h-[680px] md:p-8 lg:p-10">
+          <div className="mx-auto flex w-full max-w-2xl flex-col space-y-5 border-b border-gray-200/80 pb-5 dark:border-gray-800">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">{business.name}</p>
+              <h1 className="text-3xl font-bold tracking-tight text-gray-950 dark:text-gray-50 sm:text-4xl">
+                Check in
+              </h1>
+              <p className="text-sm leading-6 text-gray-700 dark:text-gray-200 sm:text-base">
+                Enter the guest&apos;s 10-digit mobile number. The +1 is already built in.
               </p>
             </div>
+          </div>
 
-            {quickStep === 'phone' ? (
-              <div className="mx-auto flex w-full max-w-2xl flex-col justify-center space-y-6 md:min-h-[580px]">
-                <div className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">Phone-first front desk flow</p>
-                  <h2 className="text-3xl font-bold text-gray-950 dark:text-gray-50 sm:text-4xl">Start with the guest&apos;s mobile number</h2>
-                  <p className="text-sm leading-6 text-gray-700 dark:text-gray-200 sm:text-base">
-                    Guests type only their number here. If it is already in Clientific, they are checked in right away.
-                  </p>
-                </div>
-
-                <div className="rounded-[30px] border border-gray-200/80 bg-white/80 p-5 shadow-[0_24px_60px_-40px_rgba(16,72,56,0.35)] dark:border-white/10 dark:bg-white/[0.04] sm:p-6">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Guest number</p>
-                      <p className="mt-3 text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">
+          {quickStep === 'phone' ? (
+            <div className="mx-auto flex w-full max-w-2xl flex-col justify-center space-y-6 pt-6 md:min-h-[580px]">
+              <div className="rounded-[30px] border border-gray-200/80 bg-white/80 p-5 shadow-[0_24px_60px_-40px_rgba(16,72,56,0.35)] dark:border-white/10 dark:bg-white/[0.04] sm:p-6">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">
+                      Phone number
+                    </p>
+                    <div className="mt-3 flex items-baseline gap-3">
+                      <span className="text-lg font-semibold text-gray-500 dark:text-gray-400 sm:text-xl">+1</span>
+                      <p className="text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">
                         {quickFormattedPhone || '(___) ___-____'}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={resetFlow}
-                      className="rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:text-gray-950 dark:border-white/10 dark:text-gray-300 dark:hover:text-white"
-                    >
-                      Clear
-                    </button>
                   </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                      Existing number: instant check-in
-                    </span>
-                    <span className="rounded-full bg-gray-900/6 px-3 py-1 text-xs font-semibold text-gray-600 dark:bg-white/10 dark:text-gray-300">
-                      New number: ask for name
-                    </span>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={resetFlow}
+                    className="rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:text-gray-950 dark:border-white/10 dark:text-gray-300 dark:hover:text-white"
+                  >
+                    Clear
+                  </button>
                 </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  {KEYPAD_KEYS.map((key) => (
-                    <KeypadButton
-                      key={key}
-                      label={key === 'clear' ? 'Clear' : key === 'back' ? 'Delete' : key}
-                      hint={key === 'back' ? 'Backspace' : undefined}
-                      onClick={() => handleKeypadPress(key)}
-                      className={key === 'clear' || key === 'back' ? 'text-primary' : ''}
-                    />
-                  ))}
-                </div>
-
-                {quickLookupError ? (
-                  <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">
-                    {quickLookupError}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
-                    Numbers typed as <span className="font-semibold">8482612613</span> and{' '}
-                    <span className="font-semibold">+18482612613</span> are treated as the same guest.
-                  </p>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => void handleLookup()}
-                  disabled={!quickPhoneReady || isSubmitting}
-                  className="btn-primary min-h-[60px] w-full text-base font-semibold disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isSubmitting ? 'Checking number...' : 'Continue'}
-                </button>
               </div>
-            ) : null}
+
+              <div className="grid grid-cols-3 gap-3">
+                {KEYPAD_KEYS.map((key) => (
+                  <KeypadButton
+                    key={key}
+                    label={key === 'clear' ? 'Clear' : key === 'back' ? 'Delete' : key}
+                    hint={key === 'back' ? 'Backspace' : undefined}
+                    onClick={() => handleKeypadPress(key)}
+                    className={key === 'clear' || key === 'back' ? 'text-primary' : ''}
+                  />
+                ))}
+              </div>
+
+              {quickLookupError ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">
+                  {quickLookupError}
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={() => void handleLookup()}
+                disabled={!quickPhoneReady || isSubmitting}
+                className="btn-primary min-h-[60px] w-full text-base font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSubmitting ? 'Checking number...' : 'Continue'}
+              </button>
+            </div>
+          ) : null}
 
             {quickStep === 'new' ? (
               <div className="mx-auto flex w-full max-w-2xl flex-col justify-center space-y-6 md:min-h-[580px]">
@@ -632,8 +554,7 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
                 </div>
               </div>
             ) : null}
-          </section>
-        </div>
+        </section>
       </div>
     </div>
   );

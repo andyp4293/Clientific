@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { formatPhoneNumber } from '@/lib/twilio';
-import { buildCustomerPhoneData, buildCustomerPhoneMatchClauses } from '@/lib/phone';
+import { buildCustomerPhoneData, buildCustomerPhoneMatchClauses, normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
 
 const DEAL_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -67,7 +66,7 @@ type ResolvedCustomer = {
 function normalizeCustomerPhone(customerPhone: string | null | undefined): string | null {
   const rawPhone = customerPhone?.trim();
   if (!rawPhone) return null;
-  return formatPhoneNumber(rawPhone);
+  return normalizeOptionalStoredPhoneNumber(rawPhone);
 }
 
 async function findExistingCustomer(
@@ -77,7 +76,6 @@ async function findExistingCustomer(
   const rawPhone = customerPhone?.trim();
   if (!rawPhone) return null;
 
-  const normalizedPhone = formatPhoneNumber(rawPhone);
   const customer = await prisma.customer.findFirst({
     where: {
       businessId,

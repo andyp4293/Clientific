@@ -5,6 +5,7 @@ import { authOptions } from '../auth/[...nextauth]/route';
 import { requireActiveSubscription, checkPlanLimit } from '@/lib/subscription';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { normalizeStaffWorkHours, sanitizeStaffWorkHoursForSave } from '@/lib/staff-schedule';
+import { normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
 
 const STAFF_SELECT = {
   id: true,
@@ -94,6 +95,10 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { fullName, email, phone, role, bio, workDays, workHours, serviceIds } = body;
+    const normalizedPhone =
+      typeof phone === 'string' && phone.trim().length > 0
+        ? normalizeOptionalStoredPhoneNumber(phone)
+        : null;
 
     if (!fullName) {
       return NextResponse.json({ error: 'Full name is required' }, { status: 400 });
@@ -126,7 +131,7 @@ export async function POST(req: NextRequest) {
           businessId: session.user.id,
           fullName,
           email: email || null,
-          phone: phone || null,
+          phone: normalizedPhone,
           role: role || undefined,
           active: true,
           workDays: normalizedWorkDays,

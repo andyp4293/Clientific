@@ -63,7 +63,6 @@ async function resolveCustomerForPurchase({
   customerName: string;
   customerPhone: string;
 }) {
-  const normalizedPhone = formatPhoneNumber(customerPhone);
   const customerPhoneData = buildCustomerPhoneData(customerPhone);
   const existingCustomer = await prisma.customer.findFirst({
     where: {
@@ -142,6 +141,7 @@ export async function createPendingDealPurchase({
     totals.totalAmount * (deal.platformFeePercent / 100)
   );
   const businessNetAmount = Math.max(0, totals.totalAmount - applicationFeeAmount);
+  const customerPhoneData = buildCustomerPhoneData(customerPhone);
 
   return prisma.dealPurchase.create({
     data: {
@@ -151,7 +151,7 @@ export async function createPendingDealPurchase({
       token,
       customerName,
       customerEmail: customerEmail || null,
-      customerPhone: formatPhoneNumber(customerPhone),
+      customerPhone: customerPhoneData.phone ?? customerPhone,
       subtotalAmount: totals.subtotalAmount,
       discountAmount: totals.discountAmount,
       totalAmount: totals.totalAmount,
@@ -288,6 +288,7 @@ export async function createDealPurchaseFromPaymentIntent(
     receiptMeta.stripeReceiptUrl ?? `${appBaseUrl}/deal-purchases/${purchaseToken}`;
 
   const customer = await resolveCustomerForPurchase({ businessId, customerName, customerPhone });
+  const customerPhoneData = buildCustomerPhoneData(customerPhone);
 
   const purchase = await prisma.$transaction(async (tx) => {
     const created = await tx.dealPurchase.create({
@@ -299,7 +300,7 @@ export async function createDealPurchaseFromPaymentIntent(
         status: 'paid',
         customerName,
         customerEmail: customerEmail || null,
-        customerPhone: formatPhoneNumber(customerPhone),
+        customerPhone: customerPhoneData.phone ?? customerPhone,
         subtotalAmount: totals.subtotalAmount,
         discountAmount: totals.discountAmount,
         totalAmount: totals.totalAmount,

@@ -75,7 +75,7 @@ type QuickSuccessState = {
   createdCustomer: boolean;
 };
 
-const PHONE_MAX_LENGTH = 11;
+const PHONE_MAX_LENGTH = 10;
 const SUCCESS_RESET_SECONDS = 8;
 const DEFAULT_FORM_DATA = { customerId: '', serviceId: '', staffId: '' };
 const DEFAULT_NEW_CUSTOMER_FORM = { name: '', email: '' };
@@ -89,9 +89,10 @@ function formatDateLocal(date: Date) {
 
 function sanitizePhoneDigits(value: string) {
   const digits = value.replace(/\D/g, '');
-  if (digits.length <= 10) return digits;
-  if (digits.length === 11 && digits.startsWith('1')) return digits;
-  if (digits.length > 11 && digits.startsWith('1')) return digits.slice(0, 11);
+  if (digits.length === 0) return '';
+  if (digits.startsWith('1') && digits.length > 10) {
+    return digits.slice(1, 11);
+  }
   return digits.slice(0, 10);
 }
 
@@ -105,8 +106,7 @@ function formatPhoneEntry(value: string) {
 }
 
 function canLookupPhone(value: string) {
-  const digits = sanitizePhoneDigits(value);
-  return digits.length === 10 || (digits.length === 11 && digits.startsWith('1'));
+  return sanitizePhoneDigits(value).length === 10;
 }
 
 function formatSuccessTime(isoString: string, timezone: string) {
@@ -548,7 +548,7 @@ export default function CheckInsPage() {
             <div className="rounded-[24px] border border-gray-200/70 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Front desk note</p>
               <p className="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                Check-ins stay phone-first, and Clientific treats plain US numbers and the same number with <span className="font-semibold">+1</span> as the same guest record.
+                Check-ins stay phone-first, with the U.S. country code shown automatically so the front desk can focus on the 10-digit mobile number.
               </p>
             </div>
           </div>
@@ -673,17 +673,22 @@ export default function CheckInsPage() {
                               >
                                 Customer phone number
                               </label>
-                              <input
-                                id="quick-checkin-phone"
-                                type="tel"
-                                inputMode="numeric"
-                                autoFocus
-                                value={quickFormattedPhone}
-                                onChange={(event) => handleQuickPhoneInputChange(event.target.value)}
-                                onKeyDown={handleQuickPhoneInputKeyDown}
-                                placeholder="(555) 123-4567"
-                                className="mt-3 min-h-[78px] w-full rounded-[24px] border border-gray-200/80 bg-gray-50/85 px-5 text-3xl font-bold tracking-tight text-gray-950 outline-none transition placeholder:text-gray-400 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:placeholder:text-gray-500"
-                              />
+                              <div className="mt-3 flex min-h-[78px] items-center gap-3 rounded-[24px] border border-gray-200/80 bg-gray-50/85 px-5 transition focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 dark:border-white/10 dark:bg-white/[0.06]">
+                                <span className="shrink-0 text-2xl font-semibold tracking-tight text-gray-500 dark:text-gray-300">
+                                  +1
+                                </span>
+                                <input
+                                  id="quick-checkin-phone"
+                                  type="tel"
+                                  inputMode="numeric"
+                                  autoFocus
+                                  value={quickFormattedPhone}
+                                  onChange={(event) => handleQuickPhoneInputChange(event.target.value)}
+                                  onKeyDown={handleQuickPhoneInputKeyDown}
+                                  placeholder="(555) 123-4567"
+                                  className="w-full border-0 bg-transparent px-0 text-3xl font-bold tracking-tight text-gray-950 outline-none placeholder:text-gray-400 focus:ring-0 dark:text-white dark:placeholder:text-gray-500"
+                                />
+                              </div>
                             </div>
                             <button
                               type="button"
@@ -695,7 +700,7 @@ export default function CheckInsPage() {
                           </div>
                         </div>
                         <div className="grid grid-cols-3 gap-3">{KEYPAD_KEYS.map((key) => <KeypadButton key={key} label={key === 'clear' ? 'Clear' : key === 'back' ? 'Delete' : key} hint={key === 'back' ? 'Backspace' : undefined} onClick={() => handleQuickKeypadPress(key)} className={key === 'clear' || key === 'back' ? 'text-primary' : ''} />)}</div>
-                        {quickLookupError ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">{quickLookupError}</div> : <p className="text-sm text-gray-600 dark:text-gray-300">Type on the keyboard or tap the keypad. `8482612613` and `+18482612613` match the same customer.</p>}
+                        {quickLookupError ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">{quickLookupError}</div> : <p className="text-sm text-gray-600 dark:text-gray-300">Type on the keyboard or tap the keypad to enter the customer&apos;s 10-digit mobile number.</p>}
                         <div className="flex flex-col gap-3 sm:flex-row">
                           <button type="button" onClick={closeModal} className="btn-outline min-h-[58px] flex-1">Cancel</button>
                           <button type="button" onClick={() => void handleQuickLookup()} disabled={!quickPhoneReady || quickIsBusy} className="btn-primary min-h-[58px] flex-1 disabled:cursor-not-allowed disabled:opacity-60">{quickIsBusy ? 'Checking number...' : 'Continue'}</button>

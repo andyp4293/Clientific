@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { buildCustomerPhoneData, buildCustomerPhoneMatchClauses } from '@/lib/phone';
+import {
+  buildCustomerPhoneData,
+  buildCustomerPhoneMatchClauses,
+  normalizeOptionalStoredPhoneNumber,
+} from '@/lib/phone';
 import { normalizeOptionalPhoneNumber, sendAppointmentConfirmation } from '@/lib/twilio';
 import { validateBusinessHoursForAppointment } from '@/lib/business-hours-validation';
 import { describeBusinessClosure, findBusinessClosureForDate } from '@/lib/business-closures';
@@ -620,7 +624,7 @@ async function syncCallSessionFromConversationUpdate(body: any): Promise<void> {
 
   const callerPhone =
     typeof body?.message?.call?.customer?.number === 'string'
-      ? body.message.call.customer.number
+      ? normalizeOptionalStoredPhoneNumber(body.message.call.customer.number)
       : null;
 
   const data =
@@ -1230,8 +1234,8 @@ async function handleToolCalls(body: any): Promise<NextResponse> {
   const phoneNumberId =
     body?.message?.phoneNumber?.id ?? body?.message?.call?.phoneNumberId;
   const callId: string | null = body?.message?.call?.id ?? null;
-  const callerPhone: string =
-    body?.message?.call?.customer?.number ?? '';
+  const callerPhone =
+    normalizeOptionalStoredPhoneNumber(body?.message?.call?.customer?.number ?? '') ?? '';
 
   const business = phoneNumberId ? await findAiBusinessByPhoneNumberId(phoneNumberId) : null;
 

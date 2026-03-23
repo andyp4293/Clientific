@@ -174,7 +174,7 @@ describe('Public in-store capture route', () => {
         data: expect.objectContaining({
           businessId: 'biz-1',
           name: 'Jane',
-          phone: '+15551234567',
+          phone: '5551234567',
           smsConsent: true,
           smsMarketingConsent: true,
           smsOptedOut: false,

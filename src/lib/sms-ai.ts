@@ -1,6 +1,11 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { buildCustomerPhoneData, buildCustomerPhoneMatchClauses } from '@/lib/phone';
+import {
+  buildCustomerPhoneData,
+  buildCustomerPhoneMatchClauses,
+  normalizeOptionalPhoneNumber,
+  normalizeOptionalStoredPhoneNumber,
+} from '@/lib/phone';
 import { localToUTC } from '@/lib/timezone';
 
 const ACTIVE_APPOINTMENT_STATUSES = ['pending', 'scheduled', 'confirmed'] as const;
@@ -63,16 +68,6 @@ export type SmsAiResult = {
   eventType: string;
   metadata?: Record<string, unknown>;
 };
-
-function normalizePhone(phone: string | null | undefined): string | null {
-  if (!phone) return null;
-  const digits = phone.replace(/\D/g, '');
-  if (!digits) return null;
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
-  if (digits.length >= 10 && digits.length <= 15) return `+${digits}`;
-  return null;
-}
 
 function toIsoDateInTimezone(date: Date, timezone: string): string {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -271,7 +266,7 @@ async function findBusinessForInbound(toPhoneRaw: string | null): Promise<{
   business: BusinessForSmsAi | null;
   reason: 'ok' | 'no_business' | 'ambiguous';
 }> {
-  const toPhone = normalizePhone(toPhoneRaw);
+  const toPhone = normalizeOptionalPhoneNumber(toPhoneRaw);
   const businesses = await prisma.business.findMany({
     where: { smsAiEnabled: true },
     select: {
@@ -302,7 +297,9 @@ async function findBusinessForInbound(toPhoneRaw: string | null): Promise<{
 
   if (toPhone) {
     const exactMatches = businesses.filter((business) => {
-      const number = normalizePhone(business.smsAiPhoneNumber || business.vapiPhoneNumber);
+      const number = normalizeOptionalPhoneNumber(
+        business.smsAiPhoneNumber || business.vapiPhoneNumber
+      );
       return number === toPhone;
     });
     if (exactMatches.length === 1) return { business: exactMatches[0], reason: 'ok' };
@@ -667,7 +664,7 @@ export async function handleSmsAiInbound(args: {
   toPhoneRaw: string | null;
   messageBody: string | null;
 }): Promise<SmsAiResult | null> {
-  const normalizedFrom = normalizePhone(args.fromPhoneRaw);
+  const normalizedFrom = normalizeOptionalStoredPhoneNumber(args.fromPhoneRaw);
   const messageText = (args.messageBody || '').trim();
   if (!normalizedFrom || !messageText) return null;
 

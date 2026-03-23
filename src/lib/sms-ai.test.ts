@@ -49,7 +49,7 @@ const baseBusiness = {
 const baseSession = {
   id: 'sess-1',
   businessId: 'biz-1',
-  phone: '+15551234567',
+  phone: '5551234567',
   state: 'idle',
   turns: 1,
   serviceId: null,
@@ -139,7 +139,7 @@ describe('handleSmsAiInbound', () => {
     vi.mocked(prisma.customer.update).mockResolvedValue({
       id: 'cust-1',
       name: 'Jane',
-      phone: '+15551234567',
+      phone: '5551234567',
       phoneLookupKey: '5551234567',
     } as any);
     vi.mocked(prisma.appointment.count).mockResolvedValue(0);
@@ -159,6 +159,7 @@ describe('handleSmsAiInbound', () => {
         where: expect.objectContaining({
           OR: expect.arrayContaining([
             { phoneLookupKey: '5551234567' },
+            { phone: '5551234567' },
             { phone: '+15551234567' },
           ]),
         }),
@@ -168,7 +169,7 @@ describe('handleSmsAiInbound', () => {
       expect.objectContaining({
         where: { id: 'cust-1' },
         data: expect.objectContaining({
-          phone: '+15551234567',
+          phone: '5551234567',
           phoneLookupKey: '5551234567',
         }),
       })
