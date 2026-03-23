@@ -1,5 +1,8 @@
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getSessionBusinessId } from '@/lib/session-business';
 
 export async function GET(
   _req: NextRequest,
@@ -47,7 +50,11 @@ export async function GET(
       return NextResponse.json({ error: 'Purchase not found' }, { status: 404 });
     }
 
+    const session = await getServerSession(authOptions);
+    const sessionBusinessId = getSessionBusinessId(session);
+
     return NextResponse.json({
+      viewerCanManage: sessionBusinessId === purchase.businessId,
       purchase: {
         id: purchase.id,
         token: purchase.token,

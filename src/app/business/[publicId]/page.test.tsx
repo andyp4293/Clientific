@@ -35,4 +35,12 @@ describe('public business profile page source', () => {
     expect(source).toContain('className="btn-primary px-5 py-3 font-semibold"');
     expect(source).not.toContain('bg-white text-gray-900 font-semibold hover:bg-primary-50');
   });
+
+  it('uses the shared owner back button with viewer-aware access', () => {
+    const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('PublicOwnerBackButton');
+    expect(source).toContain('const viewerCanManage = businessData?.viewerCanManage === true;');
+    expect(source).not.toContain('useSession');
+  });
 });

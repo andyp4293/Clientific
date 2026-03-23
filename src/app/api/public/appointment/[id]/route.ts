@@ -1,5 +1,8 @@
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getSessionBusinessId } from '@/lib/session-business';
 import { sendAppointmentCancellation, sendAppointmentRescheduled } from '@/lib/twilio';
 
 export async function GET(
@@ -23,6 +26,7 @@ export async function GET(
       staff: { select: { fullName: true } },
       business: {
         select: {
+          id: true,
           name: true,
           phone: true,
           timezone: true,
@@ -49,7 +53,14 @@ export async function GET(
   }
   const totalPrice = services.reduce((sum, s) => sum + (s.price ?? 0), 0);
 
-  return NextResponse.json({ appointment: { ...appointment, services, totalPrice } });
+  const session = await getServerSession(authOptions);
+  const sessionBusinessId = getSessionBusinessId(session);
+  const { id: businessId, ...publicBusiness } = appointment.business;
+
+  return NextResponse.json({
+    appointment: { ...appointment, business: publicBusiness, services, totalPrice },
+    viewerCanManage: sessionBusinessId === businessId,
+  });
 }
 
 export async function PATCH(

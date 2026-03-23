@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { PublicOwnerBackButton } from '@/components/public/PublicOwnerBackButton';
 import type { InStoreCaptureConfig } from '@/lib/in-store-capture';
 
 type CaptureKioskProps = {
@@ -136,13 +137,7 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
     <div className="page-shell min-h-screen px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
       <div className="mx-auto max-w-6xl space-y-3 sm:space-y-4">
         {config.viewerCanManage && (
-          <Link
-            href="/dashboard/campaigns"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
-          >
-            <span aria-hidden="true">&larr;</span>
-            Back to dashboard
-          </Link>
+          <PublicOwnerBackButton fallbackHref="/dashboard/campaigns" label="Back to dashboard" />
         )}
 
         <div className="flex min-h-[calc(100vh-2rem)] items-stretch sm:min-h-[calc(100vh-3rem)]">

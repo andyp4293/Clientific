@@ -111,7 +111,7 @@ describe('PublicDealClaimPage — code_claim flow', () => {
   it('shows a back link to the deals dashboard for the owning business', () => {
     mockUseQuery.mockReturnValue({ isLoading: false, isError: false, data: makeCodeClaimDeal(true) });
     render(<PublicDealClaimPage />);
-    expect(screen.getByRole('link', { name: /back to deals/i })).toHaveAttribute('href', '/dashboard/campaigns');
+    expect(screen.getByRole('button', { name: /back to deals/i })).toBeInTheDocument();
   });
 });
 

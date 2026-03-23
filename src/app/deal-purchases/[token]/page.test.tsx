@@ -5,7 +5,6 @@ import { render, screen } from '@testing-library/react';
 import DealPurchaseReceiptPage from './page';
 
 const mockUseQuery = vi.fn();
-const mockUseSession = vi.fn();
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
@@ -13,10 +12,10 @@ vi.mock('@tanstack/react-query', () => ({
 
 vi.mock('next/navigation', () => ({
   useParams: () => ({ token: 'tok_123' }),
-}));
-
-vi.mock('next-auth/react', () => ({
-  useSession: () => mockUseSession(),
+  useRouter: () => ({
+    back: vi.fn(),
+    push: vi.fn(),
+  }),
 }));
 
 vi.mock('next/link', () => ({
@@ -28,6 +27,7 @@ vi.mock('next/link', () => ({
 }));
 
 const basePurchase = {
+  viewerCanManage: false,
   purchase: {
     id: 'purchase-1',
     token: 'tok_123',
@@ -74,7 +74,6 @@ const basePurchase = {
 describe('DealPurchaseReceiptPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseSession.mockReturnValue({ data: null });
     mockUseQuery.mockReturnValue({
       data: basePurchase,
       isLoading: false,
@@ -99,15 +98,19 @@ describe('DealPurchaseReceiptPage', () => {
     );
   });
 
-  it('shows dashboard back link when a signed-in session exists', () => {
-    mockUseSession.mockReturnValue({ data: { user: { id: 'user-1' } } });
+  it('shows dashboard back link when the viewer owns the business', () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        ...basePurchase,
+        viewerCanManage: true,
+      },
+      isLoading: false,
+      isError: false,
+    });
 
     render(<DealPurchaseReceiptPage />);
 
-    expect(screen.getByRole('link', { name: /back to deals/i })).toHaveAttribute(
-      'href',
-      '/dashboard/campaigns'
-    );
+    expect(screen.getByRole('button', { name: /back to deals/i })).toBeInTheDocument();
   });
 
   it('shows a loading state while the receipt is being confirmed', () => {
@@ -136,5 +139,11 @@ describe('DealPurchaseReceiptPage', () => {
       'href',
       '/explore'
     );
+  });
+
+  it('hides the dashboard back link for non-owners', () => {
+    render(<DealPurchaseReceiptPage />);
+
+    expect(screen.queryByRole('button', { name: /back to deals/i })).not.toBeInTheDocument();
   });
 });

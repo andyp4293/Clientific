@@ -1,6 +1,9 @@
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sanitizePublicBusiness } from '@/lib/public-business';
+import { getSessionBusinessId } from '@/lib/session-business';
 
 // GET - Get public business info by slug
 export async function GET(
@@ -61,7 +64,13 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ business: sanitizePublicBusiness(business) });
+    const session = await getServerSession(authOptions);
+    const sessionBusinessId = getSessionBusinessId(session);
+
+    return NextResponse.json({
+      business: sanitizePublicBusiness(business),
+      viewerCanManage: sessionBusinessId === business.id,
+    });
   } catch (error: any) {
     console.error('Fetch business error:', error);
     return NextResponse.json(

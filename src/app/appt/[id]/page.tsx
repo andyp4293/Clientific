@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { PublicOwnerBackButton } from '@/components/public/PublicOwnerBackButton';
 
 interface Appointment {
   id: string;
@@ -26,6 +27,11 @@ interface Appointment {
   };
 }
 
+interface AppointmentResponse {
+  appointment: Appointment;
+  viewerCanManage: boolean;
+}
+
 export default function AppointmentPage() {
   const params = useParams();
   const id = params.id as string;
@@ -40,7 +46,7 @@ export default function AppointmentPage() {
   const [rescheduleSlot, setRescheduleSlot] = useState<string | null>(null);
   const [rescheduleDone, setRescheduleDone] = useState(false);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<AppointmentResponse>({
     queryKey: ['appointment', id],
     queryFn: async () => {
       const res = await fetch(`/api/public/appointment/${id}`);
@@ -58,6 +64,10 @@ export default function AppointmentPage() {
   const { data: slotsData, isLoading: slotsLoading } = useQuery({
     queryKey: ['reschedule-slots', data?.appointment?.business?.publicId, rescheduleDateStr],
     queryFn: async () => {
+      if (!data?.appointment) {
+        return { slots: [] };
+      }
+
       const appt: Appointment = data.appointment;
       const serviceId = appt.serviceIds?.[0];
       if (!serviceId) return { slots: [] };
@@ -177,7 +187,12 @@ export default function AppointmentPage() {
 
   return (
     <div className="page-shell min-h-screen flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 text-center">
+      <div className="max-w-md w-full space-y-3">
+        {data?.viewerCanManage && (
+          <PublicOwnerBackButton fallbackHref="/dashboard/appointments" label="Back to appointments" />
+        )}
+
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 text-center">
 
         {/* Success banner after reschedule */}
         {rescheduleDone && (
@@ -439,6 +454,7 @@ export default function AppointmentPage() {
           )}
         </div>
 
+      </div>
       </div>
     </div>
   );

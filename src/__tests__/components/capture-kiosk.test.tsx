@@ -6,6 +6,13 @@ vi.mock('next/image', () => ({
   default: (props: Record<string, unknown>) => <img {...props} alt={String(props.alt ?? '')} />,
 }));
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    back: vi.fn(),
+    push: vi.fn(),
+  }),
+}));
+
 const baseConfig = {
   business: {
     name: 'Test Salon',
@@ -87,10 +94,7 @@ describe('CaptureKiosk', () => {
       />
     );
 
-    expect(screen.getByRole('link', { name: /back to dashboard/i })).toHaveAttribute(
-      'href',
-      '/dashboard/campaigns'
-    );
+    expect(screen.getByRole('button', { name: /back to dashboard/i })).toBeInTheDocument();
   });
 
   it('supports immediate reset and auto-resets the success screen after 15 seconds', async () => {

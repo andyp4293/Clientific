@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { useSession } from 'next-auth/react';
+import { PublicOwnerBackButton } from '@/components/public/PublicOwnerBackButton';
 
 interface DealPurchaseResponse {
+  viewerCanManage: boolean;
   purchase: {
     id: string;
     token: string;
@@ -84,7 +85,6 @@ function formatStatusLabel(status: string) {
 export default function DealPurchaseReceiptPage() {
   const params = useParams();
   const token = params.token as string;
-  const { data: session } = useSession();
 
   const { data, isLoading, isError } = useQuery<DealPurchaseResponse>({
     queryKey: ['deal-purchase', token],
@@ -171,14 +171,11 @@ export default function DealPurchaseReceiptPage() {
 
       <main className="mx-auto max-w-6xl px-4 py-8 pb-20 lg:px-8 lg:pb-12">
         <div className="space-y-6">
-          {session && (
-            <Link
-              href="/dashboard/campaigns"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
-            >
-              <span aria-hidden="true">&larr;</span>
-              Back to deals
-            </Link>
+          {data?.viewerCanManage && (
+            <PublicOwnerBackButton
+              fallbackHref="/dashboard/campaigns"
+              label="Back to deals"
+            />
           )}
 
           <section className="grid gap-5 xl:grid-cols-[1.14fr,0.86fr]">

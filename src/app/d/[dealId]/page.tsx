@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
+import { PublicOwnerBackButton } from '@/components/public/PublicOwnerBackButton';
 
 interface DealService {
   id: string;
@@ -200,13 +201,7 @@ export default function PublicDealClaimPage() {
       <div className="px-4 py-8 sm:py-10">
         <div className="mx-auto max-w-6xl space-y-6">
           {deal.viewerCanManage && (
-            <Link
-              href="/dashboard/campaigns"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
-            >
-              <span aria-hidden="true">&larr;</span>
-              Back to deals
-            </Link>
+            <PublicOwnerBackButton fallbackHref="/dashboard/campaigns" label="Back to deals" />
           )}
 
           <section className="grid gap-5 xl:grid-cols-[1.2fr,0.8fr]">

@@ -1,8 +1,14 @@
-﻿import { describe, it, expect } from 'vitest';
-import * as pageModule from './page';
+import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
-describe('page module smoke test', () => {
-  it('exports a default page component', () => {
-    expect(typeof pageModule.default).toBe('function');
+describe('Appointment public page source', () => {
+  it('shows the shared owner back button when the viewer can manage the appointment', () => {
+    const filePath = path.join(process.cwd(), 'src/app/appt/[id]/page.tsx');
+    const source = readFileSync(filePath, 'utf8');
+
+    expect(source).toContain('PublicOwnerBackButton');
+    expect(source).toContain('data?.viewerCanManage');
+    expect(source).toContain('fallbackHref="/dashboard/appointments"');
   });
 });

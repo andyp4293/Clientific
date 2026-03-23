@@ -18,4 +18,12 @@ describe('public booking page source', () => {
     expect(source).toContain("availabilityMessage: slotsData?.message");
     expect(source).toContain('selectedStaffName');
   });
+
+  it('uses owner-aware back navigation instead of any signed-in session', () => {
+    const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('PublicOwnerBackButton');
+    expect(source).toContain('const viewerCanManage = businessData?.viewerCanManage === true;');
+    expect(source).not.toContain('useSession');
+  });
 });

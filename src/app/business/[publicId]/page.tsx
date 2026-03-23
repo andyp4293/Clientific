@@ -3,7 +3,6 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Clock3,
@@ -12,6 +11,7 @@ import {
   Sparkles,
   Users,
 } from 'lucide-react';
+import { PublicOwnerBackButton } from '@/components/public/PublicOwnerBackButton';
 import { groupServicesForDisplay } from '@/lib/service-grouping';
 import { getPublicProfileVisibility } from '@/lib/public-profile-visibility';
 
@@ -75,7 +75,6 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 export default function BusinessInfoPage() {
   const params = useParams();
   const publicId = params.publicId as string;
-  const { data: session } = useSession();
   const apiBase = `/api/public/business-by-id/${publicId}`;
 
   const { data: businessData, isLoading } = useQuery({
@@ -88,6 +87,7 @@ export default function BusinessInfoPage() {
   });
 
   const business: Business | null = businessData?.business ?? null;
+  const viewerCanManage = businessData?.viewerCanManage === true;
 
   const shouldFetchServices = Boolean(business && business.publicProfileShowServices);
   const shouldFetchTeam = Boolean(business && business.publicProfileShowTeam);
@@ -163,12 +163,10 @@ export default function BusinessInfoPage() {
 
   return (
     <div className="page-shell min-h-screen">
-      {session && (
+      {viewerCanManage && (
         <div className="bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-800 px-4 py-2">
           <div className="max-w-6xl mx-auto">
-            <Link href="/dashboard/preview" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
-              <span aria-hidden="true">&larr;</span> Back to preview
-            </Link>
+            <PublicOwnerBackButton fallbackHref="/dashboard/preview" label="Back to preview" />
           </div>
         </div>
       )}
