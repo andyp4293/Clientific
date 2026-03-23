@@ -22,11 +22,16 @@ import {
 function emptyResponse(
   notConnected: boolean,
   referralPayouts = emptyReferralPayoutSummary(),
-  dealPayouts = emptyDealPayoutSummary()
+  dealPayouts = emptyDealPayoutSummary(),
+  businessType: string | null = null
 ) {
+  const isReferralOnly = businessType === 'Referral Partner';
+
   return {
     notConnected,
     accountId: null,
+    businessType,
+    isReferralOnly,
     chargesEnabled: false,
     payoutsEnabled: false,
     detailsSubmitted: false,
@@ -80,6 +85,7 @@ export async function GET(_req: NextRequest) {
       where: { id: businessId },
       select: {
         id: true,
+        businessType: true,
         stripeConnectAccountId: true,
       },
     });
@@ -94,7 +100,9 @@ export async function GET(_req: NextRequest) {
     ]);
 
     if (!business.stripeConnectAccountId) {
-      return NextResponse.json(emptyResponse(true, referralPayouts, dealPayouts));
+      return NextResponse.json(
+        emptyResponse(true, referralPayouts, dealPayouts, business.businessType)
+      );
     }
 
     try {
@@ -124,6 +132,8 @@ export async function GET(_req: NextRequest) {
       return NextResponse.json({
         notConnected: false,
         accountId: status.accountId,
+        businessType: business.businessType,
+        isReferralOnly: business.businessType === 'Referral Partner',
         chargesEnabled: status.chargesEnabled,
         payoutsEnabled: status.payoutsEnabled,
         detailsSubmitted: status.detailsSubmitted,
@@ -146,7 +156,9 @@ export async function GET(_req: NextRequest) {
     } catch (error: any) {
       if (isRecoverableConnectAccountError(error)) {
         await clearStaleConnectState(business.id);
-        return NextResponse.json(emptyResponse(true, referralPayouts, dealPayouts));
+        return NextResponse.json(
+          emptyResponse(true, referralPayouts, dealPayouts, business.businessType)
+        );
       }
 
       throw error;
