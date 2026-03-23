@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
+    invoice: {
+      findMany: vi.fn(),
+    },
     referralCommission: {
       findUnique: vi.fn(),
       create: vi.fn(),
@@ -47,6 +50,7 @@ import {
 const mockFindUnique = prisma.referralCommission.findUnique as ReturnType<typeof vi.fn>;
 const mockCreate = prisma.referralCommission.create as ReturnType<typeof vi.fn>;
 const mockFindMany = prisma.referralCommission.findMany as ReturnType<typeof vi.fn>;
+const mockInvoiceFindMany = prisma.invoice.findMany as ReturnType<typeof vi.fn>;
 const mockUpdateCommission = prisma.referralCommission.update as ReturnType<typeof vi.fn>;
 const mockReferralFindMany = prisma.referral.findMany as ReturnType<typeof vi.fn>;
 const mockUpdateReferral = prisma.referral.update as ReturnType<typeof vi.fn>;
@@ -62,6 +66,7 @@ beforeEach(() => {
   mockUpdateReferral.mockResolvedValue({});
   mockUpdateBusiness.mockResolvedValue({});
   mockUpdateCommission.mockResolvedValue({});
+  mockInvoiceFindMany.mockResolvedValue([]);
   mockReferralFindMany.mockResolvedValue([]);
   mockBusinessFindMany.mockResolvedValue([]);
   mockInvoiceList.mockResolvedValue({
@@ -296,6 +301,47 @@ describe('reconcileReferralCommissions', () => {
         referralId: 'ref_1',
         stripeInvoiceId: 'inv_1',
         amountDollars: 8.7,
+      },
+    });
+  });
+
+  it('backfills missed commissions from the local invoice ledger when Stripe history is unavailable', async () => {
+    mockInvoiceList.mockResolvedValue({
+      data: [],
+      has_more: false,
+    });
+    mockInvoiceFindMany.mockResolvedValue([
+      {
+        stripeInvoiceId: 'inv_local_1',
+        amount: 4900,
+        businessId: 'biz_referee_1',
+      },
+    ]);
+    mockReferralFindMany.mockResolvedValue([
+      {
+        id: 'ref_1',
+        referrerId: 'biz_1',
+        refereeId: 'biz_referee_1',
+        referee: {
+          stripeCustomerId: 'cus_referee',
+        },
+      },
+    ]);
+    mockFindUnique.mockResolvedValue(null);
+
+    const result = await reconcileReferralCommissions({ lookbackDays: 45 });
+
+    expect(result).toMatchObject({
+      scannedInvoices: 1,
+      matchedReferralInvoices: 1,
+      createdCommissions: 1,
+      skippedWithoutReferral: 0,
+    });
+    expect(mockCreate).toHaveBeenCalledWith({
+      data: {
+        referralId: 'ref_1',
+        stripeInvoiceId: 'inv_local_1',
+        amountDollars: 14.7,
       },
     });
   });

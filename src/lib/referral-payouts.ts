@@ -29,6 +29,14 @@ export type ReferralReconciliationSummary = {
   skippedNonSubscription: number;
 };
 
+type ReferralInvoiceCandidate = {
+  id: string;
+  amountPaid: number;
+  customerId: string | null;
+  refereeBusinessId: string | null;
+  hasSubscription: boolean;
+};
+
 export type ReferralTransferRetrySummary = {
   eligibleBusinesses: number;
   transferredAmount: number;
@@ -73,7 +81,10 @@ function emptyReferralReconciliationSummary(since: Date): ReferralReconciliation
   };
 }
 
-async function listPaidInvoicesSince(since: Date) {
+async function listPaidInvoicesSince(
+  since: Date,
+  customerId?: string | null
+) {
   const invoices: Stripe.Invoice[] = [];
   let startingAfter: string | undefined;
 
@@ -84,6 +95,7 @@ async function listPaidInvoicesSince(since: Date) {
       created: {
         gte: Math.floor(since.getTime() / 1000),
       },
+      ...(customerId ? { customer: customerId } : {}),
       ...(startingAfter ? { starting_after: startingAfter } : {}),
     });
 
@@ -97,6 +109,34 @@ async function listPaidInvoicesSince(since: Date) {
   } while (startingAfter);
 
   return invoices;
+}
+
+async function listPaidDatabaseInvoicesSince(
+  since: Date,
+  businessId?: string | null
+): Promise<ReferralInvoiceCandidate[]> {
+  const invoices = await prisma.invoice.findMany({
+    where: {
+      status: 'paid',
+      createdAt: {
+        gte: since,
+      },
+      ...(businessId ? { businessId } : {}),
+    },
+    select: {
+      stripeInvoiceId: true,
+      amount: true,
+      businessId: true,
+    },
+  });
+
+  return invoices.map(invoice => ({
+    id: invoice.stripeInvoiceId,
+    amountPaid: invoice.amount,
+    customerId: null,
+    refereeBusinessId: invoice.businessId,
+    hasSubscription: true,
+  }));
 }
 
 function getInvoiceSubscriptionReference(invoice: Stripe.Invoice) {
@@ -258,12 +298,55 @@ export async function settlePendingReferralCommissions(params: {
 
 export async function reconcileReferralCommissions(params?: {
   lookbackDays?: number;
+  businessId?: string;
 }): Promise<ReferralReconciliationSummary> {
   const lookbackDays =
     params?.lookbackDays ?? DEFAULT_REFERRAL_RECONCILIATION_LOOKBACK_DAYS;
   const since = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000);
   const summary = emptyReferralReconciliationSummary(since);
-  const invoices = await listPaidInvoicesSince(since);
+  const targetBusiness = params?.businessId
+    ? await prisma.business.findUnique({
+        where: { id: params.businessId },
+        select: {
+          id: true,
+          stripeCustomerId: true,
+        },
+      })
+    : null;
+  const stripeInvoices = await listPaidInvoicesSince(
+    since,
+    targetBusiness?.stripeCustomerId ?? null
+  );
+  const databaseInvoices = await listPaidDatabaseInvoicesSince(
+    since,
+    targetBusiness?.id ?? null
+  );
+  const candidateMap = new Map<string, ReferralInvoiceCandidate>();
+
+  for (const invoice of stripeInvoices) {
+    const existing = candidateMap.get(invoice.id);
+    candidateMap.set(invoice.id, {
+      id: invoice.id,
+      amountPaid: invoice.amount_paid,
+      customerId: typeof invoice.customer === 'string' ? invoice.customer : null,
+      refereeBusinessId: existing?.refereeBusinessId ?? null,
+      hasSubscription:
+        Boolean(getInvoiceSubscriptionReference(invoice)) || existing?.hasSubscription || false,
+    });
+  }
+
+  for (const invoice of databaseInvoices) {
+    const existing = candidateMap.get(invoice.id);
+    candidateMap.set(invoice.id, {
+      id: invoice.id,
+      amountPaid: existing?.amountPaid ?? invoice.amountPaid,
+      customerId: existing?.customerId ?? invoice.customerId,
+      refereeBusinessId: invoice.refereeBusinessId,
+      hasSubscription: existing?.hasSubscription ?? invoice.hasSubscription,
+    });
+  }
+
+  const invoices = Array.from(candidateMap.values());
 
   if (!invoices.length) {
     return summary;
@@ -272,17 +355,17 @@ export async function reconcileReferralCommissions(params?: {
   summary.scannedInvoices = invoices.length;
 
   const candidateInvoices = invoices.filter(invoice => {
-    if (typeof invoice.customer !== 'string') {
+    if (!invoice.customerId && !invoice.refereeBusinessId) {
       summary.skippedWithoutCustomer += 1;
       return false;
     }
 
-    if (invoice.amount_paid <= 0) {
+    if (invoice.amountPaid <= 0) {
       summary.skippedZeroAmount += 1;
       return false;
     }
 
-    if (!getInvoiceSubscriptionReference(invoice)) {
+    if (!invoice.hasSubscription) {
       summary.skippedNonSubscription += 1;
       return false;
     }
@@ -295,7 +378,18 @@ export async function reconcileReferralCommissions(params?: {
   }
 
   const customerIds = Array.from(
-    new Set(candidateInvoices.map(invoice => invoice.customer as string))
+    new Set(
+      candidateInvoices
+        .map(invoice => invoice.customerId)
+        .filter((customerId): customerId is string => Boolean(customerId))
+    )
+  );
+  const refereeBusinessIds = Array.from(
+    new Set(
+      candidateInvoices
+        .map(invoice => invoice.refereeBusinessId)
+        .filter((refereeBusinessId): refereeBusinessId is string => Boolean(refereeBusinessId))
+    )
   );
 
   const referrals = await prisma.referral.findMany({
@@ -303,15 +397,29 @@ export async function reconcileReferralCommissions(params?: {
       status: {
         in: ['pending', 'active', 'credited'],
       },
-      referee: {
-        stripeCustomerId: {
-          in: customerIds,
-        },
-      },
+      OR: [
+        customerIds.length
+          ? {
+              referee: {
+                stripeCustomerId: {
+                  in: customerIds,
+                },
+              },
+            }
+          : undefined,
+        refereeBusinessIds.length
+          ? {
+              refereeId: {
+                in: refereeBusinessIds,
+              },
+            }
+          : undefined,
+      ].filter(Boolean) as any,
     },
     select: {
       id: true,
       referrerId: true,
+      refereeId: true,
       referee: {
         select: {
           stripeCustomerId: true,
@@ -325,10 +433,14 @@ export async function reconcileReferralCommissions(params?: {
       .filter(referral => referral.referee.stripeCustomerId)
       .map(referral => [referral.referee.stripeCustomerId as string, referral])
   );
+  const referralByBusinessId = new Map(
+    referrals.map(referral => [referral.refereeId, referral])
+  );
 
   for (const invoice of candidateInvoices) {
-    const customerId = invoice.customer as string;
-    const referral = referralByCustomerId.get(customerId);
+    const referral =
+      (invoice.customerId ? referralByCustomerId.get(invoice.customerId) : null) ??
+      (invoice.refereeBusinessId ? referralByBusinessId.get(invoice.refereeBusinessId) : null);
 
     if (!referral) {
       summary.skippedWithoutReferral += 1;
@@ -341,7 +453,7 @@ export async function reconcileReferralCommissions(params?: {
       referralId: referral.id,
       referrerId: referral.referrerId,
       stripeInvoiceId: invoice.id,
-      commissionCents: Math.round(invoice.amount_paid * REFERRAL_COMMISSION_PERCENT),
+      commissionCents: Math.round(invoice.amountPaid * REFERRAL_COMMISSION_PERCENT),
     });
 
     if (result.created) {

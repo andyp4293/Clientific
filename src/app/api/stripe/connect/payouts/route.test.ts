@@ -20,6 +20,7 @@ vi.mock('@/lib/referral-payouts', () => ({
     lastTransferredAt: null,
   })),
   getReferralPayoutSummary: vi.fn(),
+  reconcileReferralCommissions: vi.fn(),
   settlePendingReferralCommissions: vi.fn(),
 }));
 vi.mock('@/lib/deal-payouts', () => ({
@@ -50,6 +51,7 @@ import {
 } from '@/lib/deal-payouts';
 import {
   getReferralPayoutSummary,
+  reconcileReferralCommissions,
   settlePendingReferralCommissions,
 } from '@/lib/referral-payouts';
 import {
@@ -68,6 +70,8 @@ const mockGetDealSummary = getDealPayoutSummary as ReturnType<typeof vi.fn>;
 const mockSettleDealPurchases =
   settlePendingDealPurchasePayouts as ReturnType<typeof vi.fn>;
 const mockGetReferralSummary = getReferralPayoutSummary as ReturnType<typeof vi.fn>;
+const mockReconcileReferralCommissions =
+  reconcileReferralCommissions as ReturnType<typeof vi.fn>;
 const mockSettleReferralCommissions =
   settlePendingReferralCommissions as ReturnType<typeof vi.fn>;
 const mockSyncStatus = syncBusinessConnectState as ReturnType<typeof vi.fn>;
@@ -158,6 +162,17 @@ beforeEach(() => {
   mockDeleteMany.mockResolvedValue({});
   mockIsRecoverable.mockReturnValue(false);
   mockGetDealSummary.mockResolvedValue(dealSummary);
+  mockReconcileReferralCommissions.mockResolvedValue({
+    since: '2026-01-01T00:00:00.000Z',
+    scannedInvoices: 0,
+    matchedReferralInvoices: 0,
+    createdCommissions: 0,
+    duplicateInvoices: 0,
+    skippedWithoutCustomer: 0,
+    skippedWithoutReferral: 0,
+    skippedZeroAmount: 0,
+    skippedNonSubscription: 0,
+  });
   mockSettleDealPurchases.mockResolvedValue({
     transferredAmount: 128,
     transferredCount: 1,
@@ -215,6 +230,10 @@ describe('GET /api/stripe/connect/payouts', () => {
     expect(body.dealPayouts).toEqual(dealSummary);
     expect(body.referralPayouts).toEqual(referralSummary);
     expect(mockSyncStatus).toHaveBeenCalledWith('biz-1', 'acct_test123');
+    expect(mockReconcileReferralCommissions).toHaveBeenCalledWith({
+      businessId: 'biz-1',
+      lookbackDays: 90,
+    });
     expect(mockSettleDealPurchases).toHaveBeenCalledWith({
       businessId: 'biz-1',
       connectAccountId: 'acct_test123',

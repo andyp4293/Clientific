@@ -246,7 +246,6 @@ describe('GET /api/referrals', () => {
     vi.mocked(prisma.business.findUnique).mockResolvedValue({
       id: 'biz-1',
       referralCode: 'MYCODE12',
-      referralCredits: 30,
       stripeConnectAccountId: 'acct_referrer',
       stripeConnectChargesEnabled: true,
       stripeConnectPayoutsEnabled: true,
@@ -256,16 +255,16 @@ describe('GET /api/referrals', () => {
           id: 'ref-1',
           createdAt: new Date('2026-03-01'),
           status: 'credited',
-          creditAmount: 15,
           creditedAt: new Date('2026-03-15'),
+          commissions: [{ amountDollars: 15 }],
           referee: { name: 'Janes Salon', createdAt: new Date('2026-03-01') },
         },
         {
           id: 'ref-2',
           createdAt: new Date('2026-03-05'),
           status: 'pending',
-          creditAmount: 15,
           creditedAt: null,
+          commissions: [{ amountDollars: 15 }],
           referee: { name: 'Cut & Color', createdAt: new Date('2026-03-05') },
         },
       ],
@@ -288,7 +287,6 @@ describe('GET /api/referrals', () => {
     vi.mocked(prisma.business.findUnique).mockResolvedValue({
       id: 'biz-1',
       referralCode: 'MYCODE12',
-      referralCredits: 30,
       stripeConnectAccountId: null,
       stripeConnectChargesEnabled: false,
       stripeConnectPayoutsEnabled: false,
@@ -298,8 +296,8 @@ describe('GET /api/referrals', () => {
           id: 'ref-1',
           createdAt: new Date('2026-03-01'),
           status: 'credited',
-          creditAmount: 15,
           creditedAt: new Date('2026-03-15'),
+          commissions: [{ amountDollars: 15 }],
           referee: { name: 'Janes Salon', createdAt: new Date('2026-03-01') },
         },
       ],
@@ -314,6 +312,42 @@ describe('GET /api/referrals', () => {
     expect(body.payoutStatusCode).toBe('not_connected');
     expect(body.payoutSetupMessage).toMatch(/finish payout setup/i);
     expect(body.referrals).toHaveLength(1);
+  });
+
+  it('derives referral totals from commission rows instead of stale cached totals', async () => {
+    vi.mocked(getServerSession).mockResolvedValue(SESSION as any);
+    vi.mocked(prisma.business.findUnique).mockResolvedValue({
+      id: 'biz-1',
+      referralCode: 'MYCODE12',
+      stripeConnectAccountId: 'acct_referrer',
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+      stripeConnectDetailsSubmitted: true,
+      referralsMade: [
+        {
+          id: 'ref-1',
+          createdAt: new Date('2026-03-01'),
+          status: 'active',
+          creditedAt: new Date('2026-03-15'),
+          commissions: [{ amountDollars: 14.7 }],
+          referee: { name: 'Jackson Nails', createdAt: new Date('2026-03-01') },
+        },
+      ],
+    } as any);
+
+    const res = await referralsGET();
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    expect(body.totalCredits).toBeCloseTo(14.7, 5);
+    expect(body.referrals).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'ref-1',
+          creditAmount: 14.7,
+        }),
+      ])
+    );
   });
 
   it('returns 404 when the business cannot be found', async () => {

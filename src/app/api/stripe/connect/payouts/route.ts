@@ -11,6 +11,7 @@ import {
 import {
   emptyReferralPayoutSummary,
   getReferralPayoutSummary,
+  reconcileReferralCommissions,
   settlePendingReferralCommissions,
 } from '@/lib/referral-payouts';
 import {
@@ -93,6 +94,11 @@ export async function GET(_req: NextRequest) {
     if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
+
+    await reconcileReferralCommissions({
+      businessId: business.id,
+      lookbackDays: 90,
+    });
 
     const [referralPayouts, dealPayouts] = await Promise.all([
       getReferralPayoutSummary(business.id),

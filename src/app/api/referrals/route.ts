@@ -20,7 +20,6 @@ export async function GET() {
       select: {
         id: true,
         referralCode: true,
-        referralCredits: true,
         stripeConnectAccountId: true,
         stripeConnectChargesEnabled: true,
         stripeConnectPayoutsEnabled: true,
@@ -30,8 +29,12 @@ export async function GET() {
             id: true,
             createdAt: true,
             status: true,
-            creditAmount: true,
             creditedAt: true,
+            commissions: {
+              select: {
+                amountDollars: true,
+              },
+            },
             referee: {
               select: { name: true, createdAt: true },
             },
@@ -68,10 +71,28 @@ export async function GET() {
       business = { ...business, referralCode: code };
     }
 
+    const referrals = business.referralsMade.map(referral => {
+      const creditAmount = referral.commissions.reduce(
+        (sum, commission) => sum + commission.amountDollars,
+        0
+      );
+
+      return {
+        id: referral.id,
+        createdAt: referral.createdAt,
+        status: referral.status,
+        creditAmount,
+        creditedAt: referral.creditedAt,
+        referee: referral.referee,
+      };
+    });
+
+    const totalCredits = referrals.reduce((sum, referral) => sum + referral.creditAmount, 0);
+
     return NextResponse.json({
       referralCode: sharingStatus.ready ? business.referralCode : null,
-      totalCredits: business.referralCredits,
-      referrals: business.referralsMade,
+      totalCredits,
+      referrals,
       payoutReady: sharingStatus.ready,
       payoutStatusCode: sharingStatus.code,
       payoutSetupMessage: sharingStatus.ready ? null : sharingStatus.message,
