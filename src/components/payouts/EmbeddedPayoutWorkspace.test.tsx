@@ -72,7 +72,7 @@ describe('EmbeddedPayoutWorkspace', () => {
 
     render(<EmbeddedPayoutWorkspace visible onboardingComplete onRefresh={vi.fn()} />);
 
-    expect(screen.getByText(/loading secure stripe controls/i)).toBeInTheDocument();
+    expect(screen.getByText(/loading secure stripe payout controls/i)).toBeInTheDocument();
 
     resolveFetch?.({
       ok: true,
@@ -104,5 +104,31 @@ describe('EmbeddedPayoutWorkspace', () => {
     expect(screen.getByTestId('connect-payouts')).toBeInTheDocument();
     expect(screen.getByTestId('connect-account-management')).toBeInTheDocument();
     expect(screen.queryByTestId('connect-balances')).not.toBeInTheDocument();
+  });
+
+  it('uses setup-specific loading copy while onboarding is incomplete', async () => {
+    let resolveFetch: ((value: unknown) => void) | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        () =>
+          new Promise((resolve) => {
+            resolveFetch = resolve;
+          })
+      )
+    );
+
+    render(<EmbeddedPayoutWorkspace visible onboardingComplete={false} onRefresh={vi.fn()} />);
+
+    expect(screen.getByText(/loading secure stripe verification/i)).toBeInTheDocument();
+
+    resolveFetch?.({
+      ok: true,
+      json: async () => ({ clientSecret: 'seti_123_secret_456' }),
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('connect-provider')).toBeInTheDocument();
+    });
   });
 });

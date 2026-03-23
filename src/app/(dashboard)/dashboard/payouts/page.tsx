@@ -2,7 +2,6 @@
 
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
 import {
   collectOutstandingRequirementKeys,
   EmbeddedPayoutWorkspace,
@@ -75,8 +74,6 @@ const statusBadgeClass = (status: string) => {
 export default function PayoutsPage() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
-  const [isStartingSetup, setIsStartingSetup] = useState(false);
-  const [setupError, setSetupError] = useState<string | null>(null);
 
   const { data: earningsData, isLoading: earningsLoading } = useQuery<EarningsData>({
     queryKey: ['deal-earnings'],
@@ -105,29 +102,6 @@ export default function PayoutsPage() {
     await queryClient.invalidateQueries({ queryKey: ['connect-payouts'] });
   };
 
-  const handleStartSetup = async () => {
-    if (isStartingSetup) return;
-
-    setIsStartingSetup(true);
-    setSetupError(null);
-
-    try {
-      const res = await fetch('/api/stripe/connect/onboarding-link', {
-        method: 'POST',
-      });
-      const body = await res.json().catch(() => ({}));
-
-      if (!res.ok || !body.url) {
-        throw new Error(body.error || 'Could not start secure Stripe setup.');
-      }
-
-      window.location.assign(body.url as string);
-    } catch (error: any) {
-      setSetupError(error?.message || 'Could not start secure Stripe setup.');
-      setIsStartingSetup(false);
-    }
-  };
-
   const totals = earningsData?.totals;
   const transactions = earningsData?.transactions ?? [];
   const availableBalance = sumBalanceAmounts(connectData?.balances?.available);
@@ -135,6 +109,7 @@ export default function PayoutsPage() {
   const dealPending = connectData?.dealPayouts?.pendingTransfer ?? 0;
   const dealPendingCount = connectData?.dealPayouts?.pendingCount ?? 0;
   const needsSetup = !connectData?.readyForPaidDeals;
+  const setupAlreadyStarted = Boolean(connectData?.accountId && !connectData?.notConnected);
   const isReferralOnly = Boolean(connectData?.isReferralOnly);
   const referralLifetime = connectData?.referralPayouts?.lifetimeEarned ?? 0;
   const referralPending = connectData?.referralPayouts?.pendingTransfer ?? 0;
@@ -151,14 +126,12 @@ export default function PayoutsPage() {
     : 'Stripe has not saved a payout bank account yet';
   const payoutScheduleSummary = formatSchedule(connectData?.payoutSchedule ?? null);
   const onboardingState = searchParams.get('stripe_onboarding');
-  const startSetupLabel =
-    onboardingState === 'return' ? 'Continue secure setup' : 'Start secure setup';
 
   const onboardingMessage =
     onboardingState === 'return' && needsSetup
-      ? 'We rechecked Stripe when you came back. If setup still looks incomplete, Stripe has not saved the remaining payout steps on this account yet.'
+      ? 'We rechecked Stripe when you came back. If setup still looks incomplete, Stripe still has a few payout details to finish on this account.'
       : onboardingState === 'refresh_error'
-        ? 'Your Stripe setup link expired before it was opened. Start secure setup again to continue.'
+        ? 'Your previous Stripe setup session expired before it was opened. Reload this page and continue below.'
         : onboardingState === 'missing_business'
           ? 'We could not find this business record while opening Stripe. Refresh the page and try again.'
           : onboardingState === 'return' && !needsSetup
@@ -224,28 +197,20 @@ export default function PayoutsPage() {
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr),360px]">
           <div className="space-y-6">
             <section className="brand-panel rounded-[32px] p-6 sm:p-7">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="max-w-2xl">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-                    Secure Stripe setup
-                  </p>
-                  <h2 className="mt-3 text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
-                    Connect payouts without leaving this page
-                  </h2>
-                  <p className="mt-3 text-sm leading-6 text-gray-500 dark:text-gray-400">
-                    Start with your bank account. Stripe will only ask for the payout-owner
-                    details it still requires before {isReferralOnly ? 'referral payouts' : 'paid deals and referrals'} can pay out.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => void handleStartSetup()}
-                  disabled={isStartingSetup}
-                  className="btn-primary px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isStartingSetup ? 'Opening secure setup...' : startSetupLabel}
-                </button>
+              <div className="max-w-2xl">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+                  {setupAlreadyStarted ? 'Continue secure Stripe verification' : 'Secure Stripe setup'}
+                </p>
+                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+                  {setupAlreadyStarted
+                    ? 'Finish the payout steps already in progress'
+                    : 'Start your payout verification here'}
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                  {setupAlreadyStarted
+                    ? `Stripe already has this payout account in progress. Continue below. Stripe can ask you to verify again before showing bank or payout details, and that security check does not mean your setup was lost.`
+                    : `Stripe will start with your bank account and only ask for the payout-owner details it still requires before ${isReferralOnly ? 'referral payouts' : 'paid deals and referrals'} can pay out.`}
+                </p>
               </div>
 
               {onboardingMessage ? (
@@ -257,12 +222,6 @@ export default function PayoutsPage() {
                   }`}
                 >
                   {onboardingMessage}
-                </div>
-              ) : null}
-
-              {setupError ? (
-                <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-300">
-                  {setupError}
                 </div>
               ) : null}
 
@@ -314,6 +273,28 @@ export default function PayoutsPage() {
                   ) : null}
                 </div>
               )}
+            </section>
+
+            <section className="space-y-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                  Stripe verification
+                </p>
+                <h3 className="mt-2 text-xl font-semibold text-gray-900 dark:text-gray-100">
+                  Continue securely below
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                  Stripe hosts this section securely inside Clientific. If Stripe asks the business
+                  owner to verify again, it is protecting payout and bank changes, not restarting
+                  the setup from scratch.
+                </p>
+              </div>
+
+              <EmbeddedPayoutWorkspace
+                visible={!connectLoading}
+                onboardingComplete={Boolean(connectData?.onboardingComplete)}
+                onRefresh={refreshConnect}
+              />
             </section>
 
             <section className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900 md:p-6">
@@ -396,8 +377,8 @@ export default function PayoutsPage() {
                 What to expect
               </p>
               <div className="mt-4 space-y-3 text-sm leading-6 text-gray-500 dark:text-gray-400">
-                <p>Stripe starts with your bank account and only the payout details it still requires.</p>
-                <p>When Stripe is done, this page becomes your live payout workspace automatically.</p>
+                <p>Stripe keeps payout setup and payout controls in the same secure area on this page.</p>
+                <p>If Stripe asks the owner to sign in again, that is a normal security check for payout changes.</p>
                 <p>You can come back here anytime to review balances, payout history, and settings.</p>
               </div>
             </div>

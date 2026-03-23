@@ -406,6 +406,17 @@ export function EmbeddedPayoutWorkspace({
   }
 
   const embedFrameClass = 'overflow-x-auto overflow-y-visible px-1';
+  const loadingLabel = onboardingComplete
+    ? 'Loading secure Stripe payout controls...'
+    : 'Loading secure Stripe verification...';
+  const fallbackMessage =
+    workspaceError?.retryable === false
+      ? onboardingComplete
+        ? 'Secure Stripe payout controls are temporarily unavailable while live payout access is being finalized.'
+        : 'Secure Stripe verification is temporarily unavailable while live payout access is being finalized.'
+      : onboardingComplete
+        ? 'Secure Stripe payout controls could not be opened yet. Try again to create a fresh secure session.'
+        : 'Secure Stripe verification could not be opened yet. Refresh and try again to continue setup.';
 
   return (
     <div className="space-y-5">
@@ -439,7 +450,7 @@ export function EmbeddedPayoutWorkspace({
             <div className="h-40 animate-pulse rounded-[24px] bg-white/80 shadow-sm dark:bg-[#101c25]" />
             <div className="h-72 animate-pulse rounded-[24px] bg-white/80 shadow-sm dark:bg-[#101c25]" />
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Loading secure Stripe controls...</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{loadingLabel}</p>
         </div>
       ) : connectInstance ? (
         <ConnectComponentsProvider connectInstance={connectInstance}>
@@ -467,9 +478,7 @@ export function EmbeddedPayoutWorkspace({
         </ConnectComponentsProvider>
       ) : (
         <div className="rounded-3xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400">
-          {workspaceError?.retryable === false
-            ? 'Secure Stripe setup is temporarily unavailable while live payout access is being finalized.'
-            : 'Secure Stripe setup could not be opened yet. Try again to create a fresh setup session.'}
+          {fallbackMessage}
         </div>
       )}
     </div>

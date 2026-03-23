@@ -124,12 +124,13 @@ describe('PayoutsPage', () => {
     expect(page).not.toHaveClass('max-w-7xl');
   });
 
-  it('keeps payout setup on the main payouts page when setup is incomplete', () => {
+  it('keeps payout setup embedded on the main payouts page when setup is incomplete', () => {
     render(<PayoutsPage />);
 
-    expect(screen.getByRole('button', { name: /start secure setup/i })).toBeInTheDocument();
-    expect(screen.getByText(/connect payouts without leaving this page/i)).toBeInTheDocument();
-    expect(screen.queryByTestId('embedded-payout-workspace')).not.toBeInTheDocument();
+    expect(screen.getByText(/start your payout verification here/i)).toBeInTheDocument();
+    expect(screen.getByText(/continue securely below/i)).toBeInTheDocument();
+    expect(screen.getByTestId('embedded-payout-workspace')).toBeInTheDocument();
+    expect(screen.getByText('setup workspace')).toBeInTheDocument();
   });
 
   it('shows the live embedded payout workspace directly on the payouts page', () => {
@@ -188,7 +189,7 @@ describe('PayoutsPage', () => {
     expect(screen.getByRole('heading', { name: /keep your deal revenue and payout progress in one place/i })).toBeInTheDocument();
     expect(screen.getByTestId('embedded-payout-workspace')).toBeInTheDocument();
     expect(screen.queryByText(/funds status/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /start secure setup/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/continue securely below/i)).not.toBeInTheDocument();
   });
 
   it('keeps businesses focused on deal payouts before referral details', () => {
@@ -328,6 +329,8 @@ describe('PayoutsPage', () => {
       if (key === 'connect-payouts') {
         return {
           data: buildConnectData({
+            notConnected: false,
+            accountId: 'acct_123',
             requirements: {
               currentlyDue: ['external_account', 'tos_acceptance.date'],
               eventuallyDue: [],
@@ -346,9 +349,12 @@ describe('PayoutsPage', () => {
 
     render(<PayoutsPage />);
 
-    expect(screen.getByRole('button', { name: /continue secure setup/i })).toBeInTheDocument();
+    expect(screen.getByText(/finish the payout steps already in progress/i)).toBeInTheDocument();
     expect(
       screen.getByText(/we rechecked stripe when you came back/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/does not mean your setup was lost/i)
     ).toBeInTheDocument();
     expect(
       screen.getByText(/stripe still needs the payout terms accepted before payouts can go live/i)
