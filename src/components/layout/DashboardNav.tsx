@@ -5,9 +5,9 @@ import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  DASHBOARD_DESKTOP_NAV,
   DASHBOARD_SECTION_ORDER,
   DASHBOARD_SECTION_LABELS,
+  getVisibleDashboardNavItems,
   isDashboardRouteActive,
 } from '@/lib/navigation';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -17,6 +17,7 @@ type DashboardNavBusiness = {
   name: string;
   email: string;
   logoUrl: string | null;
+  subscriptionPlan?: string | null;
 };
 
 type DashboardNavProps = {
@@ -43,12 +44,13 @@ export function DashboardNav({ initialBusiness }: DashboardNavProps) {
   const businessName = business?.name?.trim() || session?.user?.name || 'User';
   const businessEmail = business?.email?.trim() || session?.user?.email || '';
   const businessInitial = businessName.charAt(0).toUpperCase() || 'U';
+  const navItems = getVisibleDashboardNavItems(business?.subscriptionPlan);
 
   return (
     <div className="brand-panel flex h-full flex-col rounded-none border-y-0 border-l-0 border-r">
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-3">
         {DASHBOARD_SECTION_ORDER.map((section) => {
-          const items = DASHBOARD_DESKTOP_NAV.filter((item) => item.section === section);
+          const items = navItems.filter((item) => item.section === section);
           if (items.length === 0) return null;
 
           return (

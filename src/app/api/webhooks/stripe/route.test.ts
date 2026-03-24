@@ -203,6 +203,28 @@ describe('Stripe webhook — customer.subscription.updated', () => {
     );
   });
 
+  it('syncs the plan to Pro when the subscription price switches to the Pro Stripe price', async () => {
+    mockBusinessFindUnique.mockResolvedValue(baseBusiness);
+    mockBusinessUpdate.mockResolvedValue({});
+
+    await POST(
+      makeSignedRequest(
+        makeSubscriptionEvent({
+          items: { data: [{ price: { id: 'price_pro' } }] },
+        })
+      )
+    );
+
+    expect(mockBusinessUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          subscriptionPlan: 'pro',
+          stripePriceId: 'price_pro',
+        }),
+      })
+    );
+  });
+
   it('skips update when business not found', async () => {
     mockBusinessFindUnique.mockResolvedValue(null);
 

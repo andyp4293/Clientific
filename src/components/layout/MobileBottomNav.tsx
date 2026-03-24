@@ -6,10 +6,9 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSession, signOut } from 'next-auth/react';
 import {
-  DASHBOARD_MOBILE_MORE_NAV,
-  DASHBOARD_MOBILE_PRIMARY_NAV,
   DASHBOARD_SECTION_ORDER,
   DASHBOARD_SECTION_LABELS,
+  getVisibleDashboardNavItems,
   isDashboardRouteActive,
 } from '@/lib/navigation';
 import { DashboardIcon } from '@/components/layout/nav-icons';
@@ -21,6 +20,7 @@ type MobileBottomNavBusiness = {
   name: string;
   email: string;
   logoUrl: string | null;
+  subscriptionPlan?: string | null;
 };
 
 type MobileBottomNavProps = {
@@ -48,8 +48,11 @@ export function MobileBottomNav({ initialBusiness }: MobileBottomNavProps) {
   const businessName = business?.name?.trim() || session?.user?.name || 'User';
   const businessEmail = business?.email?.trim() || session?.user?.email || '';
   const businessInitial = businessName.charAt(0).toUpperCase() || 'U';
+  const visibleNavItems = getVisibleDashboardNavItems(business?.subscriptionPlan);
+  const primaryNav = visibleNavItems.filter((item) => item.mobilePrimary);
+  const moreNav = visibleNavItems.filter((item) => !item.mobilePrimary);
 
-  const isOnMorePage = DASHBOARD_MOBILE_MORE_NAV.some((item) =>
+  const isOnMorePage = moreNav.some((item) =>
     isDashboardRouteActive(pathname, item)
   );
 
@@ -103,7 +106,7 @@ export function MobileBottomNav({ initialBusiness }: MobileBottomNavProps) {
             {/* Nav sections */}
             <div className="py-2">
               {DASHBOARD_SECTION_ORDER.map((section) => {
-                const pages = DASHBOARD_MOBILE_MORE_NAV.filter((page) => page.section === section);
+                const pages = moreNav.filter((page) => page.section === section);
                 if (pages.length === 0) return null;
 
                 return (
@@ -160,7 +163,7 @@ export function MobileBottomNav({ initialBusiness }: MobileBottomNavProps) {
         className="grid grid-cols-5 items-stretch"
         style={{ height: `${NAV_HEIGHT}px` }}
       >
-        {DASHBOARD_MOBILE_PRIMARY_NAV.map((item) => {
+        {primaryNav.map((item) => {
           const isActive = isDashboardRouteActive(pathname, item);
           return (
             <Link

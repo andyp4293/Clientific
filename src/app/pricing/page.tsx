@@ -74,7 +74,7 @@ function PricingContent() {
           </h1>
           <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-6 sm:mb-8">
             Regularly priced up to $149/month. Today, launch pricing starts at ${lowestMonthlyPrice}/month
-            while Starter, Pro, and Premium still include the same full Clientific workflow.
+            with Starter for the core workflow and AI receptionist starting on Pro.
           </p>
           <div className="mx-auto grid max-w-4xl grid-cols-1 gap-3 min-[520px]:grid-cols-3">
             {[
@@ -93,9 +93,8 @@ function PricingContent() {
         </div>
 
         <div className="mx-auto mb-6 max-w-4xl rounded-[28px] border border-primary/15 bg-primary/[0.06] px-5 py-4 text-left text-sm leading-6 text-gray-700 dark:border-primary/20 dark:bg-primary/[0.08] dark:text-gray-200">
-          Every plan below unlocks the same booking, CRM, AI receptionist, deals, referrals, and
-          payouts experience right now. The pricing tiers are live first so you can choose the
-          launch point you want before we split features later.
+          Starter includes booking, CRM, deals, referrals, and payouts. Pro and Premium add the
+          AI receptionist experience on top of that core workflow.
         </div>
 
         <div className="grid max-w-6xl mx-auto gap-6 lg:grid-cols-3">
@@ -168,11 +167,12 @@ function PricingContent() {
                     That is ${yearlySavings}/year below the regular monthly rate.
                   </p>
                   <p className="mt-2 text-xs font-medium uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-                    Same full feature set right now
+                    {key === 'STARTER' ? 'Core workflow' : 'AI receptionist included'}
                   </p>
                   <div className="mt-4 rounded-2xl border border-gray-200/80 bg-gray-50/80 px-4 py-3 text-sm text-gray-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300">
-                    Booking, CRM, marketing, referrals, and payouts are identical across all three
-                    plans for now.
+                    {key === 'STARTER'
+                      ? 'Booking, CRM, marketing, referrals, and payouts are included here.'
+                      : 'Includes the full core workflow plus AI receptionist phone coverage.'}
                   </div>
                 </div>
 

@@ -81,9 +81,8 @@ export function UpgradePricingCards({ status, hasStripeCustomer, trialExpired = 
   return (
     <div className="mt-8 w-full max-w-3xl mx-auto">
       <div className="mb-5 rounded-[24px] border border-primary/15 bg-primary/[0.06] px-5 py-4 text-sm leading-6 text-gray-700 dark:border-primary/20 dark:bg-primary/[0.08] dark:text-gray-200">
-        Starter, Pro, and Premium currently unlock the same full feature set. The launch pricing
-        is live now so you can choose the Stripe subscription tier you want before the packaging
-        changes later.
+        Starter includes the core Clientific workflow. Pro and Premium add AI receptionist on top
+        of booking, CRM, deals, referrals, and payouts.
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -154,7 +153,7 @@ export function UpgradePricingCards({ status, hasStripeCustomer, trialExpired = 
                   That is ${yearlySavings}/year below the regular monthly rate.
                 </p>
                 <p className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                  Same feature access right now
+                  {key === 'STARTER' ? 'Core workflow' : 'AI receptionist included'}
                 </p>
               </div>
               <ul className="space-y-2 flex-1 mb-6">

@@ -43,7 +43,7 @@ describe('stripe billing config', () => {
     expect(PRICING_PLANS.PREMIUM.yearlyPriceId).toBe('price_premium_yearly');
   });
 
-  it('exposes the three launch self-serve plans with shared access and launch pricing', async () => {
+  it('exposes the three launch self-serve plans with Pro+ AI receptionist access and launch pricing', async () => {
     const { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } = await loadStripeModule();
 
     expect(VISIBLE_SELF_SERVE_PLAN_KEYS).toEqual(['STARTER', 'PRO', 'PREMIUM']);
@@ -54,8 +54,13 @@ describe('stripe billing config', () => {
     expect(PRICING_PLANS.PRO.compareAtPrice).toBe(99);
     expect(PRICING_PLANS.PREMIUM.price).toBe(99);
     expect(PRICING_PLANS.PREMIUM.compareAtPrice).toBe(149);
-    expect(PRICING_PLANS.STARTER.features).toEqual(PRICING_PLANS.PRO.features);
     expect(PRICING_PLANS.PRO.features).toEqual(PRICING_PLANS.PREMIUM.features);
+    expect(
+      PRICING_PLANS.STARTER.features.some((feature) => /ai receptionist/i.test(feature))
+    ).toBe(false);
+    expect(
+      PRICING_PLANS.PRO.features.some((feature) => /ai receptionist/i.test(feature))
+    ).toBe(true);
     expect(PRICING_PLANS.STARTER.limits).toEqual(PRICING_PLANS.PRO.limits);
     expect(PRICING_PLANS.PRO.limits).toEqual(PRICING_PLANS.PREMIUM.limits);
     expect(PRICING_PLANS.STARTER.selfServe).toBe(true);

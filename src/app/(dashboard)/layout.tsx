@@ -27,6 +27,7 @@ type DashboardBusinessSnapshot = {
   state: string | null;
   zipCode: string | null;
   country: string | null;
+  subscriptionPlan: string | null;
   subscriptionStatus: string | null;
   trialEndsAt: Date | null;
 };
@@ -49,6 +50,7 @@ async function loadDashboardBusiness(
         state: true,
         zipCode: true,
         country: true,
+        subscriptionPlan: true,
         subscriptionStatus: true,
         trialEndsAt: true,
       },
@@ -71,6 +73,7 @@ async function loadDashboardBusiness(
         state: true,
         zipCode: true,
         country: true,
+        subscriptionPlan: true,
         subscriptionStatus: true,
         trialEndsAt: true,
       },
@@ -274,6 +277,7 @@ export default async function DashboardLayout({
             name: business!.name,
             email: business!.email,
             logoUrl: business!.logoUrl,
+            subscriptionPlan: business!.subscriptionPlan,
           }}
         />
       </div>
@@ -294,6 +298,7 @@ export default async function DashboardLayout({
             name: business!.name,
             email: business!.email,
             logoUrl: business!.logoUrl,
+            subscriptionPlan: business!.subscriptionPlan,
           }}
         />
       </div>

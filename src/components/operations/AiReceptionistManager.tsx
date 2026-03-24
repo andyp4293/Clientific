@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -10,10 +11,12 @@ import {
   getAiReceptionistSetupState,
   readAiReceptionistActivationUntil,
 } from '@/lib/ai-receptionist-settings';
+import { canAccessAiReceptionist } from '@/lib/plan-access';
 
 interface Business {
   id: string;
   name: string;
+  subscriptionPlan: string | null;
   aiReceptionistEnabled: boolean;
   aiReceptionistPhone: string | null;
   aiReceptionistGreeting: string | null;
@@ -194,6 +197,9 @@ export default function AiReceptionistManager() {
     aiToggleMutation.isPending,
     aiToggleMutation.isError
   );
+  const hasAiReceptionistAccess = canAccessAiReceptionist(
+    formData.subscriptionPlan ?? business?.subscriptionPlan
+  );
   const unifiedBusinessAiNumber = aiSetupState.unifiedNumber;
   const forwardingNumber = unifiedBusinessAiNumber || '[YOUR AI NUMBER]';
   const iphoneForwardingCode = `*21*${forwardingNumber}#`;
@@ -202,6 +208,45 @@ export default function AiReceptionistManager() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!hasAiReceptionistAccess) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
+            AI Receptionist
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            AI phone coverage is available on Pro and Premium.
+          </p>
+        </div>
+
+        <div className="card p-6 sm:p-8">
+          <div className="rounded-3xl border border-primary/15 bg-primary/[0.06] p-5 dark:border-primary/20 dark:bg-primary/[0.08]">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+              Pro Feature
+            </p>
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+              Upgrade to turn on AI phone coverage
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-600 dark:text-gray-300">
+              Starter keeps the booking, CRM, deals, referrals, and payouts workflow. Pro and
+              Premium add the AI receptionist number, live call handling, SMS booking support,
+              and FAQ automation.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link href="/pricing" className="btn-primary">
+                View Pro Pricing
+              </Link>
+              <Link href="/dashboard/settings/billing" className="btn-outline">
+                Manage Subscription
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

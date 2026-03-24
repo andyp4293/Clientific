@@ -3,6 +3,10 @@ import { prisma } from './prisma';
 import { PRICING_PLANS } from './stripe';
 import { unstable_cache } from 'next/cache';
 import { getPricingPlanKey, normalizeSubscriptionPlan } from './plan-utils';
+import {
+  canAccessAiReceptionist,
+  requiresPlanUpgrade,
+} from './plan-access';
 
 export type SubscriptionStatus = 
   | 'trialing'
@@ -154,13 +158,4 @@ export async function getSubscriptionInfo(businessId: string) {
 /**
  * Check if business needs to upgrade to access a feature
  */
-export function requiresPlanUpgrade(
-  currentPlan: SubscriptionPlan,
-  requiredPlan: 'starter' | 'pro' | 'premium'
-): boolean {
-  const planHierarchy: SubscriptionPlan[] = ['trial', 'starter', 'pro', 'premium'];
-  const currentIndex = planHierarchy.indexOf(normalizeSubscriptionPlan(currentPlan) as SubscriptionPlan);
-  const requiredIndex = planHierarchy.indexOf(normalizeSubscriptionPlan(requiredPlan) as SubscriptionPlan);
-  
-  return currentIndex < requiredIndex;
-}
+export { requiresPlanUpgrade, canAccessAiReceptionist };

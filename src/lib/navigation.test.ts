@@ -7,6 +7,7 @@ import {
   DASHBOARD_NAV_ITEMS,
   DASHBOARD_SECTION_ORDER,
   DashboardNavItem,
+  getVisibleDashboardNavItems,
   getActiveDashboardRoute,
   isDashboardRouteActive,
   normalizePathname,
@@ -199,6 +200,15 @@ describe('navigation config integrity', () => {
     const item = DASHBOARD_NAV_ITEMS.find((navItem) => navItem.key === 'business-hours');
 
     expect(item?.name).toBe('Business Hours & Closures');
+  });
+
+  it('removes AI Receptionist from visible nav items below Pro', () => {
+    expect(
+      getVisibleDashboardNavItems('starter').some((item) => item.key === 'ai-receptionist')
+    ).toBe(false);
+    expect(
+      getVisibleDashboardNavItems('pro').some((item) => item.key === 'ai-receptionist')
+    ).toBe(true);
   });
 
   it.each(DASHBOARD_NAV_ITEMS)('keeps a real page behind the %s dashboard link', (item) => {

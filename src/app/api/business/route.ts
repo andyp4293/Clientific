@@ -6,6 +6,7 @@ import { requireActiveSubscription } from '@/lib/subscription';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
+import { canAccessAiReceptionist } from '@/lib/plan-access';
 import twilio from 'twilio';
 
 type TwilioProvisionedNumber = {
@@ -385,6 +386,7 @@ export async function PATCH(req: NextRequest) {
       select: {
         name: true,
         phone: true,
+        subscriptionPlan: true,
         aiReceptionistEnabled: true,
         vapiPhoneNumberId: true,
         vapiPhoneNumber: true,
@@ -395,6 +397,28 @@ export async function PATCH(req: NextRequest) {
 
     if (!current) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
+    }
+
+    const touchesAiReceptionistSettings =
+      aiReceptionistEnabled !== undefined ||
+      aiReceptionistPhone !== undefined ||
+      aiReceptionistGreeting !== undefined ||
+      aiReceptionistFaq !== undefined ||
+      smsAiEnabled !== undefined ||
+      smsAiPhoneNumber !== undefined ||
+      smsAiGreeting !== undefined;
+
+    if (
+      touchesAiReceptionistSettings &&
+      !canAccessAiReceptionist(current.subscriptionPlan)
+    ) {
+      return NextResponse.json(
+        {
+          error: 'AI receptionist is available on Pro and Premium plans.',
+          code: 'PLAN_UPGRADE_REQUIRED',
+        },
+        { status: 403 }
+      );
     }
 
     const normalizedAiReceptionistPhone =

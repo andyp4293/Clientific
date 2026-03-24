@@ -18,7 +18,7 @@ export interface PublicPricingPlan {
   legacy: boolean;
 }
 
-const SHARED_PLAN_FEATURES = [
+const CORE_PLAN_FEATURES = [
   'Online booking and calendar management',
   'Customer CRM and visit history',
   'SMS confirmations and reminders',
@@ -26,7 +26,22 @@ const SHARED_PLAN_FEATURES = [
   'Walk-in check-in',
   'Business analytics and reporting',
   'Paid deals and secure payouts',
-  'Optional AI receptionist setup',
+  'Referral program and earnings tracking',
+];
+
+const AI_RECEPTIONIST_FEATURES = [
+  'AI receptionist phone coverage',
+  'SMS AI booking and FAQ automation',
+];
+
+const STARTER_PLAN_FEATURES = [
+  ...CORE_PLAN_FEATURES,
+  '14-day free trial',
+];
+
+const PRO_AND_PREMIUM_FEATURES = [
+  ...CORE_PLAN_FEATURES,
+  ...AI_RECEPTIONIST_FEATURES,
   '14-day free trial',
 ];
 
@@ -39,11 +54,11 @@ const SHARED_PLAN_LIMITS = {
 export const PRICING_PLANS: Record<PricingPlanKey, PublicPricingPlan> = {
   STARTER: {
     name: 'Starter',
-    summary: 'Launch pricing for the full Clientific workflow.',
+    summary: 'Core Clientific workflow without AI phone coverage.',
     price: 39,
     compareAtPrice: 59,
     yearlyPrice: 39,
-    features: SHARED_PLAN_FEATURES,
+    features: STARTER_PLAN_FEATURES,
     limits: SHARED_PLAN_LIMITS,
     popular: false,
     selfServe: true,
@@ -52,11 +67,11 @@ export const PRICING_PLANS: Record<PricingPlanKey, PublicPricingPlan> = {
   },
   PRO: {
     name: 'Pro',
-    summary: 'Our most popular launch price for the same full feature set.',
+    summary: 'Adds AI receptionist to the booking, growth, and payouts workflow.',
     price: 69,
     compareAtPrice: 99,
     yearlyPrice: 69,
-    features: SHARED_PLAN_FEATURES,
+    features: PRO_AND_PREMIUM_FEATURES,
     limits: SHARED_PLAN_LIMITS,
     popular: true,
     selfServe: true,
@@ -65,11 +80,11 @@ export const PRICING_PLANS: Record<PricingPlanKey, PublicPricingPlan> = {
   },
   PREMIUM: {
     name: 'Premium',
-    summary: 'Highest launch tier, with the same current feature access while packaging evolves.',
+    summary: 'Highest launch tier with AI receptionist included.',
     price: 99,
     compareAtPrice: 149,
     yearlyPrice: 99,
-    features: SHARED_PLAN_FEATURES,
+    features: PRO_AND_PREMIUM_FEATURES,
     limits: SHARED_PLAN_LIMITS,
     popular: false,
     selfServe: true,

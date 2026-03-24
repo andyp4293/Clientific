@@ -1,3 +1,5 @@
+import { canAccessAiReceptionist } from './plan-access';
+
 export type DashboardNavSection = 'core' | 'growth' | 'operations' | 'account';
 
 export type DashboardNavIcon =
@@ -163,6 +165,16 @@ export const DASHBOARD_MOBILE_PRIMARY_NAV = DASHBOARD_NAV_ITEMS.filter(
 export const DASHBOARD_MOBILE_MORE_NAV = DASHBOARD_NAV_ITEMS.filter(
   (item) => !item.mobilePrimary
 );
+
+export function getVisibleDashboardNavItems(subscriptionPlan: string | null | undefined) {
+  return DASHBOARD_NAV_ITEMS.filter((item) => {
+    if (item.key === 'ai-receptionist') {
+      return canAccessAiReceptionist(subscriptionPlan);
+    }
+
+    return true;
+  });
+}
 
 export const DASHBOARD_SECTION_ORDER: DashboardNavSection[] = [
   'core',

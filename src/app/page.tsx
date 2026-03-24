@@ -39,7 +39,7 @@ const faqs = [
   },
   {
     q: 'What is different between Starter, Pro, and Premium right now?',
-    a: 'Right now the three launch plans share the same feature set and limits. The tier names and prices are live first, and plan packaging can be split out later without changing the workflow today.',
+    a: 'Starter includes the core booking, CRM, marketing, and payouts workflow. Pro and Premium add AI receptionist coverage on top of that core setup.',
   },
 ];
 
@@ -52,7 +52,7 @@ const platformFacts = [
   {
     eyebrow: 'Pricing',
     title: 'Three launch prices',
-    body: 'Starter, Pro, and Premium are all live now, and each tier currently includes the same core workflow.',
+    body: 'Starter covers the core workflow, while Pro and Premium add AI receptionist coverage.',
   },
   {
     eyebrow: 'Booking',
@@ -556,8 +556,7 @@ export default function HomePage() {
               </h2>
               <p className="mt-4 max-w-xl text-lg text-gray-700 dark:text-gray-300">
                 Regularly priced up to $149/month. Today, Starter, Pro, and Premium start at
-                ${lowestMonthlyPrice}/month while all three still unlock the same booking,
-                customer management, growth tools, and payouts workflow.
+                ${lowestMonthlyPrice}/month with AI receptionist starting on Pro.
               </p>
               <div className="mt-8 space-y-3">
                 {platformFacts.map((fact) => (

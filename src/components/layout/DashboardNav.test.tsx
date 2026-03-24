@@ -50,6 +50,7 @@ describe('DashboardNav', () => {
             name: 'ABC Nails',
             email: 'contact@abcnails.com',
             logoUrl: 'https://example.com/logo.png',
+            subscriptionPlan: 'pro',
           }}
         />
       </QueryClientProvider>
@@ -80,6 +81,7 @@ describe('DashboardNav', () => {
             name: 'ABC Nails',
             email: 'contact@abcnails.com',
             logoUrl: null,
+            subscriptionPlan: 'pro',
           }}
         />
       </QueryClientProvider>
@@ -87,5 +89,30 @@ describe('DashboardNav', () => {
 
     expect(queryClient.getQueryData(['business-info'])).toBeUndefined();
     expect(screen.getByText('ABC Nails')).toBeInTheDocument();
+  });
+
+  it('hides AI Receptionist from the nav for Starter accounts', () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <DashboardNav
+          initialBusiness={{
+            name: 'ABC Nails',
+            email: 'contact@abcnails.com',
+            logoUrl: null,
+            subscriptionPlan: 'starter',
+          }}
+        />
+      </QueryClientProvider>
+    );
+
+    expect(screen.queryByText('AI Receptionist')).not.toBeInTheDocument();
   });
 });

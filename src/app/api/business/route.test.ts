@@ -64,6 +64,7 @@ const fakeBusiness = {
   name: 'Test Salon',
   slug: 'test-salon',
   email: 'owner@test.com',
+  subscriptionPlan: 'pro',
   ownerPhone: null,
   subscriptionStatus: 'active',
   trialEndsAt: null,
@@ -163,6 +164,21 @@ describe('PATCH /api/business', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.business.name).toBe('Updated Salon');
+  });
+
+  it('returns 403 when a Starter account tries to update AI receptionist settings', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({ ...fakeBusiness, subscriptionPlan: 'starter' });
+
+    const res = await PATCH(makePatchRequest({ aiReceptionistEnabled: true }));
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({
+      code: 'PLAN_UPGRADE_REQUIRED',
+    });
+    expect(mockBusinessUpdate).not.toHaveBeenCalled();
   });
 
   it('normalizes the transfer-to phone number before saving settings', async () => {
