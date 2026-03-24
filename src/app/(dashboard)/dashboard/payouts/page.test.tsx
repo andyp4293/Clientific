@@ -84,6 +84,21 @@ const buildConnectData = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const buildEarningsData = (overrides: Record<string, unknown> = {}) => ({
+  entries: [],
+  totals: {
+    dealGross: 0,
+    dealFees: 0,
+    dealNet: 0,
+    dealCount: 0,
+    referralNet: 0,
+    referralCount: 0,
+    totalNet: 0,
+    entryCount: 0,
+  },
+  ...overrides,
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockUseSearchParams.mockReturnValue(new URLSearchParams());
@@ -92,15 +107,7 @@ beforeEach(() => {
 
     if (key === 'deal-earnings') {
       return {
-        data: {
-          transactions: [],
-          totals: {
-            totalGross: 0,
-            totalFees: 0,
-            totalNet: 0,
-            transactionCount: 0,
-          },
-        },
+        data: buildEarningsData(),
         isLoading: false,
       };
     }
@@ -133,8 +140,7 @@ describe('PayoutsPage', () => {
     expect(screen.getByText(/finish payout setup/i)).toBeInTheDocument();
     expect(screen.getByText(/current business:/i)).toBeInTheDocument();
     expect(screen.getByText(/abc nails/i)).toBeInTheDocument();
-    expect(screen.getByText(/^after setup$/i)).toBeInTheDocument();
-    expect(screen.getByText(/balances, payout history, and payout settings appear here after approval/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^after setup$/i)).not.toBeInTheDocument();
     expect(screen.queryByText('$0.00')).not.toBeInTheDocument();
     expect(screen.queryByText(/^available now$/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^still pending$/i)).not.toBeInTheDocument();
@@ -147,15 +153,7 @@ describe('PayoutsPage', () => {
 
       if (key === 'deal-earnings') {
         return {
-          data: {
-            transactions: [],
-            totals: {
-              totalGross: 0,
-              totalFees: 0,
-              totalNet: 0,
-              transactionCount: 0,
-            },
-          },
+          data: buildEarningsData(),
           isLoading: false,
         };
       }
@@ -168,6 +166,10 @@ describe('PayoutsPage', () => {
             payoutsEnabled: true,
             chargesEnabled: true,
             detailsSubmitted: true,
+            balances: {
+              available: [{ amount: 128, currency: 'usd' }],
+              pending: [{ amount: 500, currency: 'usd' }],
+            },
             externalAccount: {
               id: 'ba_123',
               bankName: 'Santander',
@@ -193,28 +195,61 @@ describe('PayoutsPage', () => {
 
     render(<PayoutsPage />);
 
-    expect(screen.getByText(/see what can pay out from your deal sales first/i)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /keep your deal revenue and payout progress in one place/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /manage payouts immediately/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /payout balances and schedule/i })
+    ).toBeInTheDocument();
     expect(screen.getByTestId('embedded-payout-workspace')).toBeInTheDocument();
-    expect(screen.queryByText(/funds status/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/earnings history/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /start secure setup/i })).not.toBeInTheDocument();
   });
 
-  it('keeps businesses focused on deal payouts before referral details', () => {
+  it('shows combined earnings totals and history for deals and referrals', () => {
     mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
       const key = config?.queryKey?.[0];
 
       if (key === 'deal-earnings') {
         return {
-          data: {
-            transactions: [],
+          data: buildEarningsData({
+            entries: [
+              {
+                id: 'deal_1',
+                kind: 'deal',
+                sourceName: 'Spring Facial',
+                detailLabel: 'Jane Doe',
+                detailPhone: '+15551234567',
+                occurredAt: '2026-03-20T10:00:00.000Z',
+                grossAmount: 4000,
+                feeAmount: 600,
+                netAmount: 3400,
+                status: 'paid',
+              },
+              {
+                id: 'ref_1',
+                kind: 'referral',
+                sourceName: 'Glow Spa',
+                detailLabel: 'billing@glowspa.com',
+                detailPhone: null,
+                occurredAt: '2026-03-21T10:00:00.000Z',
+                grossAmount: 1250,
+                feeAmount: 0,
+                netAmount: 1250,
+                status: 'transferred',
+              },
+            ],
             totals: {
-              totalGross: 152,
-              totalFees: 24,
-              totalNet: 128,
-              transactionCount: 2,
+              dealGross: 4000,
+              dealFees: 600,
+              dealNet: 3400,
+              dealCount: 1,
+              referralNet: 1250,
+              referralCount: 1,
+              totalNet: 4650,
+              entryCount: 2,
             },
-          },
+          }),
           isLoading: false,
         };
       }
@@ -227,23 +262,6 @@ describe('PayoutsPage', () => {
             payoutsEnabled: true,
             chargesEnabled: true,
             detailsSubmitted: true,
-            dealPayouts: {
-              lifetimeEarned: 128,
-              pendingTransfer: 0,
-              transferredToConnect: 128,
-              pendingCount: 0,
-              transferredCount: 2,
-              automaticCount: 2,
-              lastTransferredAt: null,
-            },
-            referralPayouts: {
-              lifetimeEarned: 0,
-              pendingTransfer: 0,
-              transferredToConnect: 0,
-              pendingCount: 0,
-              transferredCount: 0,
-              lastTransferredAt: null,
-            },
           }),
           isLoading: false,
           refetch: vi.fn(),
@@ -255,26 +273,34 @@ describe('PayoutsPage', () => {
 
     render(<PayoutsPage />);
 
-    expect(screen.getByRole('heading', { name: /keep your deal revenue and payout progress in one place/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /deal transaction history/i })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: /recurring referral earnings move into your stripe payout balance here/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/deal earnings/i)).toBeInTheDocument();
+    expect(screen.getByText(/referral earnings/i)).toBeInTheDocument();
+    expect(screen.getByText(/total earnings/i)).toBeInTheDocument();
+    expect(screen.getByText(/spring facial/i)).toBeInTheDocument();
+    expect(screen.getByText(/glow spa/i)).toBeInTheDocument();
+    expect(screen.getByText(/^deal$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^referral$/i)).toBeInTheDocument();
+    expect(screen.getByText(/moved to stripe/i)).toBeInTheDocument();
   });
 
-  it('hides deal-only sections for referral-only accounts', () => {
+  it('keeps the combined earnings view for referral-only accounts', () => {
     mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
       const key = config?.queryKey?.[0];
 
       if (key === 'deal-earnings') {
         return {
-          data: {
-            transactions: [],
+          data: buildEarningsData({
             totals: {
-              totalGross: 0,
-              totalFees: 0,
-              totalNet: 0,
-              transactionCount: 0,
+              dealGross: 0,
+              dealFees: 0,
+              dealNet: 0,
+              dealCount: 0,
+              referralNet: 4800,
+              referralCount: 3,
+              totalNet: 4800,
+              entryCount: 3,
             },
-          },
+          }),
           isLoading: false,
         };
       }
@@ -308,10 +334,10 @@ describe('PayoutsPage', () => {
 
     render(<PayoutsPage />);
 
-    expect(screen.getByText(/see what can pay out from referral earnings next/i)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /recurring referral earnings move into your stripe payout balance here/i })).toBeInTheDocument();
+    expect(screen.getByText(/track recorded referral commissions in one place/i)).toBeInTheDocument();
+    expect(screen.getByText(/earnings history/i)).toBeInTheDocument();
+    expect(screen.queryByText(/deal transaction history/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/deal payouts/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: /deal transaction history/i })).not.toBeInTheDocument();
   });
 
   it('explains Stripe return state on the main payouts page when setup is still incomplete', () => {
@@ -321,15 +347,7 @@ describe('PayoutsPage', () => {
 
       if (key === 'deal-earnings') {
         return {
-          data: {
-            transactions: [],
-            totals: {
-              totalGross: 0,
-              totalFees: 0,
-              totalNet: 0,
-              transactionCount: 0,
-            },
-          },
+          data: buildEarningsData(),
           isLoading: false,
         };
       }
@@ -356,9 +374,7 @@ describe('PayoutsPage', () => {
     render(<PayoutsPage />);
 
     expect(screen.getByRole('button', { name: /continue secure setup/i })).toBeInTheDocument();
-    expect(
-      screen.getByText(/we rechecked stripe when you came back/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/we rechecked stripe when you came back/i)).toBeInTheDocument();
     expect(
       screen.getByText(/stripe still needs the payout terms accepted before payouts can go live/i)
     ).toBeInTheDocument();
@@ -371,15 +387,7 @@ describe('PayoutsPage', () => {
 
       if (key === 'deal-earnings') {
         return {
-          data: {
-            transactions: [],
-            totals: {
-              totalGross: 0,
-              totalFees: 0,
-              totalNet: 0,
-              transactionCount: 0,
-            },
-          },
+          data: buildEarningsData(),
           isLoading: false,
         };
       }
@@ -420,10 +428,14 @@ describe('PayoutsPage', () => {
       screen.getByRole('heading', { name: /finish stripe's final confirmation/i })
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/stripe saved your bank account, but the final stripe agreement was not submitted yet/i)
+      screen.getByText(
+        /stripe saved your bank account, but the final stripe agreement was not submitted yet/i
+      )
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/the last step is accepting stripe's connected account agreement on the final review screen/i)
+      screen.getByText(
+        /the last step is accepting stripe's connected account agreement on the final review screen/i
+      )
     ).toBeInTheDocument();
   });
 
@@ -433,15 +445,7 @@ describe('PayoutsPage', () => {
 
       if (key === 'deal-earnings') {
         return {
-          data: {
-            transactions: [],
-            totals: {
-              totalGross: 0,
-              totalFees: 0,
-              totalNet: 0,
-              transactionCount: 0,
-            },
-          },
+          data: buildEarningsData(),
           isLoading: false,
         };
       }
@@ -483,7 +487,9 @@ describe('PayoutsPage', () => {
     render(<PayoutsPage />);
 
     expect(
-      screen.getByText(/clientific uses stripe to securely handle payout verification, deal payouts, subscription billing, and payouts/i)
+      screen.getByText(
+        /clientific uses stripe to securely handle payout verification, deal payouts, subscription billing, and payouts/i
+      )
     ).toBeInTheDocument();
     expect(screen.getByText(/secure payments and payouts/i)).toBeInTheDocument();
     expect(screen.queryByText(/payouts powered by stripe/i)).not.toBeInTheDocument();
@@ -495,15 +501,7 @@ describe('PayoutsPage', () => {
 
       if (key === 'deal-earnings') {
         return {
-          data: {
-            transactions: [],
-            totals: {
-              totalGross: 0,
-              totalFees: 0,
-              totalNet: 0,
-              transactionCount: 0,
-            },
-          },
+          data: buildEarningsData(),
           isLoading: false,
         };
       }
@@ -527,9 +525,7 @@ describe('PayoutsPage', () => {
         name: /clientific could not verify the live stripe payout status just now/i,
       })
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: /retry payout status/i })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /retry payout status/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /start secure setup/i })).not.toBeInTheDocument();
   });
 });

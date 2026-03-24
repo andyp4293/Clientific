@@ -16,27 +16,30 @@ import {
 } from '@/components/payouts/EmbeddedPayoutWorkspace';
 import { buildPayoutFundsBreakdown } from '@/lib/payout-funds';
 
-type Transaction = {
+type EarningsEntry = {
   id: string;
-  dealTitle: string;
-  customerName: string;
-  customerPhone: string;
-  purchasedAt: string | null;
-  totalAmount: number;
-  applicationFeeAmount: number;
-  businessNetAmount: number;
+  kind: 'deal' | 'referral';
+  sourceName: string;
+  detailLabel: string | null;
+  detailPhone: string | null;
+  occurredAt: string | null;
+  grossAmount: number;
+  feeAmount: number;
+  netAmount: number;
   status: string;
-  redeemedAt: string | null;
-  redemptionCode: string | null;
 };
 
 type EarningsData = {
-  transactions: Transaction[];
+  entries: EarningsEntry[];
   totals: {
-    totalGross: number;
-    totalFees: number;
+    dealGross: number;
+    dealFees: number;
+    dealNet: number;
+    dealCount: number;
+    referralNet: number;
+    referralCount: number;
     totalNet: number;
-    transactionCount: number;
+    entryCount: number;
   };
 };
 
@@ -62,14 +65,63 @@ const phone = (value: string) => {
 };
 
 const statusBadgeClass = (status: string) => {
-  switch (status) {
+  switch (status.toLowerCase()) {
     case 'paid':
+    case 'transferred':
       return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300';
     case 'redeemed':
       return 'bg-primary/10 text-primary';
+    case 'pending':
+      return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300';
+    case 'failed':
+      return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300';
     default:
       return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
   }
+};
+
+const formatStatusLabel = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'paid':
+      return 'Paid';
+    case 'redeemed':
+      return 'Redeemed';
+    case 'transferred':
+      return 'Moved to Stripe';
+    case 'pending':
+      return 'Waiting to move';
+    case 'failed':
+      return 'Transfer failed';
+    default:
+      return status
+        .split('_')
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+  }
+};
+
+const kindBadgeClass = (kind: EarningsEntry['kind']) =>
+  kind === 'referral'
+    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+    : 'bg-primary/10 text-primary';
+
+const kindLabel = (kind: EarningsEntry['kind']) => (kind === 'referral' ? 'Referral' : 'Deal');
+
+const earningsDetail = (entry: EarningsEntry) => {
+  if (entry.detailLabel && entry.detailPhone) {
+    return `${entry.detailLabel} - ${phone(entry.detailPhone)}`;
+  }
+
+  if (entry.detailLabel) {
+    return entry.detailLabel;
+  }
+
+  if (entry.detailPhone) {
+    return phone(entry.detailPhone);
+  }
+
+  return null;
 };
 
 export default function PayoutsPage() {
@@ -134,8 +186,8 @@ export default function PayoutsPage() {
     }
   };
 
-  const totals = earningsData?.totals;
-  const transactions = earningsData?.transactions ?? [];
+  const earningsTotals = earningsData?.totals;
+  const earningsEntries = earningsData?.entries ?? [];
   const availableBalance = sumBalanceAmounts(connectData?.balances?.available);
   const pendingBalance = sumBalanceAmounts(connectData?.balances?.pending);
   const dealPending = connectData?.dealPayouts?.pendingTransfer ?? 0;
@@ -143,12 +195,8 @@ export default function PayoutsPage() {
   const hasConnectStatusError = Boolean(connectError);
   const needsSetup = !hasConnectStatusError && !connectData?.readyForPaidDeals;
   const isReferralOnly = Boolean(connectData?.isReferralOnly);
-  const referralLifetime = connectData?.referralPayouts?.lifetimeEarned ?? 0;
   const referralPending = connectData?.referralPayouts?.pendingTransfer ?? 0;
   const referralPendingCount = connectData?.referralPayouts?.pendingCount ?? 0;
-  const referralTransferred = connectData?.referralPayouts?.transferredToConnect ?? 0;
-  const referralLastTransferredAt = connectData?.referralPayouts?.lastTransferredAt ?? null;
-  const dealTransferred = connectData?.dealPayouts?.transferredToConnect ?? 0;
   const rawRequirementList = collectOutstandingRequirementKeys(connectData?.requirements);
   const requirementTasks = summarizeRequirementTasks(rawRequirementList);
   const requirementGuidance = summarizeRequirementGuidance(connectData);
@@ -193,29 +241,12 @@ export default function PayoutsPage() {
     referralPendingCount,
     readyForPaidDeals: Boolean(connectData?.readyForPaidDeals),
   });
-  const hasReferralActivity =
-    referralLifetime > 0 || referralPending > 0 || referralTransferred > 0;
-  const primaryKicker = isReferralOnly ? 'Referral payouts' : 'Deal payouts';
-  const primaryHeadline = isReferralOnly
-    ? 'See what can pay out from referral earnings next'
-    : 'See what can pay out from your deal sales first';
-  const primaryDescription = isReferralOnly
-    ? 'Track what is already in Stripe, what is still waiting, and when your referral earnings are ready to request.'
-    : 'Lead with the numbers that matter most for paid deals, then use the embedded Stripe controls below for balances, payout history, and settings.';
-  const primaryThirdMetricLabel = isReferralOnly ? 'Lifetime earned' : 'Total earned (net)';
-  const primaryThirdMetricValue = isReferralOnly ? referralLifetime : totals?.totalNet ?? 0;
-  const primaryThirdMetricDescription = isReferralOnly
-    ? 'All recorded referral subscription commissions'
-    : 'After Clientific platform fees';
-  const primaryFourthMetricLabel = isReferralOnly ? 'Moved to Stripe' : 'Gross sales';
-  const primaryFourthMetricValue = isReferralOnly ? referralTransferred : totals?.totalGross ?? 0;
-  const primaryFourthMetricDescription = isReferralOnly
-    ? 'Already transferred into your Stripe payout balance'
-    : 'All paid deal purchases collected so far';
-  const topStatusLabel = isReferralOnly ? 'Referral payouts are live' : 'Paid deal payouts are live';
-  const topStatusDescription = isReferralOnly
-    ? 'Stripe is ready to send referral earnings to your connected bank account.'
-    : 'Paid deals can keep selling and the Stripe payout workspace below stays in sync automatically.';
+  const liveSummaryDescription = isReferralOnly
+    ? 'See your live payout balances while Stripe handles referral payouts and account settings.'
+    : 'See your live payout balances while Stripe handles deals, referrals, and account settings.';
+  const earningsSummaryDescription = isReferralOnly
+    ? 'Track recorded referral commissions in one place.'
+    : 'Track deal purchases and referral commissions in one place.';
 
   return (
     <div data-testid="payouts-page" className="w-full space-y-6 pb-28 md:pb-8">
@@ -283,8 +314,7 @@ export default function PayoutsPage() {
       ) : null}
 
       {!hasConnectStatusError && needsSetup ? (
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr),360px]">
-          <div className="space-y-6">
+        <div className="space-y-6">
             <section className="brand-panel rounded-[32px] p-6 sm:p-7">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="max-w-2xl">
@@ -441,433 +471,276 @@ export default function PayoutsPage() {
                 </div>
               </div>
             </section>
-          </div>
-
-          <div className="space-y-4 xl:sticky xl:top-6">
-            <div className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                After setup
-              </p>
-              <div className="mt-4 space-y-3 text-sm leading-6 text-gray-500 dark:text-gray-400">
-                <p>
-                  {hasSavedBankButMissingTerms
-                    ? 'If Stripe shows a final review screen, submit the agreement before returning here.'
-                    : 'This page switches to the live payout workspace automatically when setup is complete.'}
-                </p>
-                <p>Balances, payout history, and payout settings appear here after approval.</p>
-              </div>
-            </div>
-          </div>
-        </section>
+        </div>
       ) : !hasConnectStatusError ? (
-        <section className="space-y-6">
-          <section className="brand-hero rounded-[32px] border border-gray-200/80 p-6 sm:p-7 dark:border-white/10">
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr),340px] xl:items-start">
-              <div className="space-y-6">
-                <div className="inline-flex items-center gap-2 rounded-full border border-gray-200/80 bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-primary dark:border-white/10 dark:bg-white/5">
-                  {primaryKicker}
-                </div>
-                <div className="space-y-3">
-                  <h2 className="text-3xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
-                    {primaryHeadline}
-                  </h2>
-                  <p className="max-w-2xl text-sm leading-6 text-gray-600 dark:text-gray-300">
-                    {primaryDescription}
-                  </p>
-                </div>
-
-                {onboardingMessage ? (
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900/30 dark:bg-emerald-900/20 dark:text-emerald-200">
-                    {onboardingMessage}
-                  </div>
-                ) : null}
-
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  <div className="brand-hero-card rounded-[24px] p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] brand-hero-kicker">
-                      Available now
-                    </p>
-                    <p className="mt-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      {connectLoading ? '...' : cents(fundsBreakdown.availableAmountCents)}
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                      {connectLoading
-                        ? 'Checking cleared payout funds...'
-                        : fundsBreakdown.availableDescription}
-                    </p>
-                  </div>
-
-                  <div className="brand-hero-card rounded-[24px] p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] brand-hero-kicker">
-                      Still pending
-                    </p>
-                    <p className="mt-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      {connectLoading ? '...' : cents(fundsBreakdown.pendingAmountCents)}
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                      {connectLoading
-                        ? 'Checking pending payout funds...'
-                        : fundsBreakdown.pendingDescription}
-                    </p>
-                  </div>
-
-                  <div className="brand-hero-card rounded-[24px] p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] brand-hero-kicker">
-                      {primaryThirdMetricLabel}
-                    </p>
-                    <p className="mt-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      {earningsLoading && !isReferralOnly ? '...' : cents(primaryThirdMetricValue)}
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                      {primaryThirdMetricDescription}
-                    </p>
-                  </div>
-
-                  <div className="brand-hero-card rounded-[24px] p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] brand-hero-kicker">
-                      {primaryFourthMetricLabel}
-                    </p>
-                    <p className="mt-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      {earningsLoading && !isReferralOnly ? '...' : cents(primaryFourthMetricValue)}
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                      {primaryFourthMetricDescription}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="brand-hero-card rounded-[28px] p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] brand-hero-kicker">
-                  Payout workspace
-                </p>
-                <div className="mt-4 space-y-4">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      {topStatusLabel}
-                    </p>
-                    <p className="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                      {topStatusDescription}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-gray-200/80 bg-white/65 p-4 dark:border-white/10 dark:bg-white/5">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                      Bank account
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      {bankAccountSummary}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-gray-200/80 bg-white/65 p-4 dark:border-white/10 dark:bg-white/5">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                      Payout schedule
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      {payoutScheduleSummary}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-gray-200/80 bg-white/65 p-4 dark:border-white/10 dark:bg-white/5">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                      Use the Stripe controls below
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                      Review payout history, request payouts, or update payout settings without leaving this page.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="brand-panel rounded-[32px] border border-gray-200/80 p-4 sm:p-5 lg:p-6 dark:border-white/10">
-            <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                  Secure Stripe workspace
-                </p>
-                <h3 className="mt-2 text-xl font-semibold text-gray-900 dark:text-gray-100">
-                  Balances, payouts, and account settings
-                </h3>
-                <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
-                  Everything below is hosted securely by Stripe and synced back to Clientific.
-                </p>
-              </div>
-
-              <div className="rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary dark:bg-primary/15">
-                Live
-              </div>
-            </div>
-
-            <EmbeddedPayoutWorkspace
-              visible
-              onboardingComplete={Boolean(connectData?.onboardingComplete)}
-              onRefresh={refreshConnect}
-            />
-          </section>
-        </section>
-      ) : null}
-
-      {!hasConnectStatusError && !needsSetup && !isReferralOnly ? (
         <>
-          <section className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900 sm:p-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-                  Deal payouts
-                </p>
-                <h2 className="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">
-                  Keep your deal revenue and payout progress in one place
-                </h2>
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                  Total earned (net)
-                </p>
-                <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {earningsLoading ? '...' : cents(totals?.totalNet ?? 0)}
-                </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  After platform fees
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                  Gross sales
-                </p>
-                <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {earningsLoading ? '...' : cents(totals?.totalGross ?? 0)}
-                </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  All customer payments collected so far
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                  Moved to Stripe
-                </p>
-                <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {connectLoading ? '...' : cents(dealTransferred)}
-                </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Already sitting in your Stripe payout balance
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                  Waiting to move
-                </p>
-                <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {connectLoading ? '...' : cents(dealPending)}
-                </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  {dealPending > 0
-                    ? 'Clientific keeps retrying older deal transfers automatically.'
-                    : 'Everything that can move into Stripe is already there.'}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
-              <div className="flex flex-wrap items-start justify-between gap-3">
+          <section className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr),minmax(340px,0.85fr)] xl:items-start">
+            <section className="brand-panel rounded-[32px] border border-gray-200/80 p-4 sm:p-5 lg:p-6 dark:border-white/10">
+              <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    Deal payout status
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                    Secure Stripe workspace
                   </p>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    {dealPending > 0
-                      ? `${cents(dealPending)} is still moving into your Stripe payout balance${dealPendingCount > 0 ? ` from ${dealPendingCount} older deal ${dealPendingCount === 1 ? 'purchase' : 'purchases'}` : ''}.`
-                      : totals && totals.transactionCount > 0
-                        ? 'Your recorded deal earnings are already flowing through Stripe payouts.'
-                        : 'Paid deal sales will appear here after customers start purchasing your offers.'}
+                  <h2 className="mt-2 text-xl font-semibold text-gray-900 dark:text-gray-100">
+                    Manage payouts immediately
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                    Request payouts and manage account settings without leaving Clientific.
                   </p>
                 </div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                  Platform fees to date:{' '}
-                  <span className="font-semibold text-gray-900 dark:text-gray-100">
-                    {earningsLoading ? '...' : cents(totals?.totalFees ?? 0)}
-                  </span>
+
+                <div className="rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary dark:bg-primary/15">
+                  Live
                 </div>
               </div>
-            </div>
+
+              <EmbeddedPayoutWorkspace
+                visible
+                onboardingComplete={Boolean(connectData?.onboardingComplete)}
+                onRefresh={refreshConnect}
+              />
+            </section>
+
+            <aside className="brand-hero rounded-[32px] border border-gray-200/80 p-6 sm:p-7 dark:border-white/10 xl:sticky xl:top-6">
+              <p className="inline-flex items-center gap-2 rounded-full border border-gray-200/80 bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-primary dark:border-white/10 dark:bg-white/5">
+                Live payout summary
+              </p>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+                Payout balances and schedule
+              </h2>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-gray-600 dark:text-gray-300">
+                {liveSummaryDescription}
+              </p>
+
+              {onboardingMessage ? (
+                <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900/30 dark:bg-emerald-900/20 dark:text-emerald-200">
+                  {onboardingMessage}
+                </div>
+              ) : null}
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <div className="brand-hero-card rounded-[24px] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] brand-hero-kicker">
+                    Available now
+                  </p>
+                  <p className="mt-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    {connectLoading ? '...' : cents(fundsBreakdown.availableAmountCents)}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                    {connectLoading
+                      ? 'Checking cleared payout funds...'
+                      : fundsBreakdown.availableDescription}
+                  </p>
+                </div>
+
+                <div className="brand-hero-card rounded-[24px] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] brand-hero-kicker">
+                    Still pending
+                  </p>
+                  <p className="mt-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    {connectLoading ? '...' : cents(fundsBreakdown.pendingAmountCents)}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                    {connectLoading
+                      ? 'Checking pending payout funds...'
+                      : fundsBreakdown.pendingDescription}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="brand-hero-card rounded-[24px] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] brand-hero-kicker">
+                    Bank account
+                  </p>
+                  <p className="mt-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {bankAccountSummary}
+                  </p>
+                  {connectData?.externalAccount?.accountHolderName ? (
+                    <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">
+                      {connectData.externalAccount.accountHolderName}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="brand-hero-card rounded-[24px] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] brand-hero-kicker">
+                    Payout schedule
+                  </p>
+                  <p className="mt-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {payoutScheduleSummary}
+                  </p>
+                </div>
+              </div>
+            </aside>
           </section>
 
           <section className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900 md:p-6">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
                   Earnings
                 </p>
                 <h2 className="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">
-                  Deal transaction history
+                  Earnings history
                 </h2>
-              </div>
-              {totals && totals.transactionCount > 0 && (
-                <p className="text-xs text-gray-400">
-                  {totals.transactionCount} sale{totals.transactionCount !== 1 ? 's' : ''}
-                  {' - '}
-                  {cents(totals.totalGross)} gross
+                <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                  {earningsSummaryDescription}
                 </p>
-              )}
-            </div>
-
-            {earningsLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((item) => (
-                  <div
-                    key={item}
-                    className="h-16 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800"
-                  />
-                ))}
               </div>
-            ) : transactions.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                No deal purchases yet. When customers buy your deals, their gross, fee, and net
-                amounts will appear here.
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100 dark:border-gray-800">
-                      <th className="pb-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
-                        Customer
-                      </th>
-                      <th className="hidden pb-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-gray-400 sm:table-cell">
-                        Deal
-                      </th>
-                      <th className="hidden pb-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-gray-400 md:table-cell">
-                        Date
-                      </th>
-                      <th className="pb-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
-                        Gross
-                      </th>
-                      <th className="hidden pb-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-gray-400 lg:table-cell">
-                        Fee (15%)
-                      </th>
-                      <th className="pb-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
-                        Net
-                      </th>
-                      <th className="pb-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
-                        Status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
-                    {transactions.map((transaction) => (
-                      <tr key={transaction.id}>
-                        <td className="py-3">
-                          <p className="font-semibold text-gray-900 dark:text-gray-100">
-                            {transaction.customerName}
-                          </p>
-                          <p className="text-xs text-gray-400">{phone(transaction.customerPhone)}</p>
-                        </td>
-                        <td className="hidden py-3 text-gray-600 dark:text-gray-400 sm:table-cell">
-                          {transaction.dealTitle}
-                        </td>
-                        <td className="hidden py-3 text-gray-500 dark:text-gray-400 md:table-cell">
-                          {shortDate(transaction.purchasedAt)}
-                        </td>
-                        <td className="py-3 text-right font-medium text-gray-900 dark:text-gray-100">
-                          {cents(transaction.totalAmount)}
-                        </td>
-                        <td className="hidden py-3 text-right text-gray-500 dark:text-gray-400 lg:table-cell">
-                          -{cents(transaction.applicationFeeAmount)}
-                        </td>
-                        <td className="py-3 text-right font-semibold text-gray-900 dark:text-gray-100">
-                          {cents(transaction.businessNetAmount)}
-                        </td>
-                        <td className="py-3">
-                          <span
-                            className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${statusBadgeClass(transaction.status)}`}
-                          >
-                            {transaction.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-        </>
-      ) : null}
 
-      {!hasConnectStatusError && !needsSetup && (isReferralOnly || hasReferralActivity) ? (
-        <section className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900 sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-                Referral payouts
-              </p>
-              <h2 className="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">
-                Recurring referral earnings move into your Stripe payout balance here
-              </h2>
-            </div>
-            {referralLastTransferredAt ? (
-              <p className="text-xs text-gray-400">
-                Last moved {shortDate(referralLastTransferredAt)}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
-            <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                Lifetime earned
-              </p>
-              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {connectLoading ? '...' : cents(referralLifetime)}
-              </p>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                All recorded referral subscription commissions
-              </p>
+              {earningsTotals?.entryCount ? (
+                <p className="text-xs text-gray-400">
+                  {earningsTotals.entryCount} entr{earningsTotals.entryCount === 1 ? 'y' : 'ies'}
+                  {' - '}
+                  {earningsTotals.dealCount} deal{earningsTotals.dealCount === 1 ? '' : 's'}
+                  {' - '}
+                  {earningsTotals.referralCount} referral
+                  {earningsTotals.referralCount === 1 ? '' : 's'}
+                </p>
+              ) : null}
             </div>
 
-            <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                Moved to Stripe
-              </p>
-              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {connectLoading ? '...' : cents(referralTransferred)}
-              </p>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Already transferred into your Stripe payout balance
-              </p>
-            </div>
-
-            <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                Waiting to move
-              </p>
-              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {connectLoading ? '...' : cents(referralPending)}
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                  Deal earnings
+                </p>
+                <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {earningsLoading ? '...' : cents(earningsTotals?.dealNet ?? 0)}
                 </p>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Clientific retries outstanding referral transfers automatically
+                  {earningsLoading
+                    ? 'Checking deal purchases...'
+                    : 'Net deal revenue after platform fees'}
+                </p>
+              </div>
+
+              <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                  Referral earnings
+                </p>
+                <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {earningsLoading ? '...' : cents(earningsTotals?.referralNet ?? 0)}
+                </p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  {earningsLoading
+                    ? 'Checking referral commissions...'
+                    : 'Recorded referral subscription commissions'}
+                </p>
+              </div>
+
+              <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                  Total earnings
+                </p>
+                <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {earningsLoading ? '...' : cents(earningsTotals?.totalNet ?? 0)}
+                </p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  {earningsLoading ? 'Checking combined earnings...' : 'Deals plus referrals'}
                 </p>
               </div>
             </div>
 
-          <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-            {connectLoading
-              ? 'Checking referral payout status...'
-              : referralPending > 0
-                ? `${cents(referralPending)} is still waiting to move into your Stripe payout balance.`
-                : referralLifetime > 0
-                  ? 'All recorded referral earnings have already been moved into Stripe payouts.'
-                  : 'Referral commissions will appear here after a referred business pays its subscription invoice.'}
-          </p>
-        </section>
+            <div className="mt-6">
+              {earningsLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((item) => (
+                    <div
+                      key={item}
+                      className="h-16 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800"
+                    />
+                  ))}
+                </div>
+              ) : earningsEntries.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No earnings yet. Paid deal purchases and referral commissions will appear here.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100 dark:border-gray-800">
+                        <th className="pb-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
+                          Date
+                        </th>
+                        <th className="pb-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
+                          Type
+                        </th>
+                        <th className="pb-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
+                          Source
+                        </th>
+                        <th className="hidden pb-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-gray-400 md:table-cell">
+                          Detail
+                        </th>
+                        <th className="hidden pb-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-gray-400 lg:table-cell">
+                          Gross
+                        </th>
+                        <th className="hidden pb-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-gray-400 lg:table-cell">
+                          Fees
+                        </th>
+                        <th className="pb-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
+                          Earnings
+                        </th>
+                        <th className="pb-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
+                          Status
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
+                      {earningsEntries.map((entry) => {
+                        const detail = earningsDetail(entry);
+
+                        return (
+                          <tr key={`${entry.kind}-${entry.id}`}>
+                            <td className="py-3 text-gray-500 dark:text-gray-400">
+                              {shortDate(entry.occurredAt)}
+                            </td>
+                            <td className="py-3">
+                              <span
+                                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${kindBadgeClass(entry.kind)}`}
+                              >
+                                {kindLabel(entry.kind)}
+                              </span>
+                            </td>
+                            <td className="py-3">
+                              <p className="font-semibold text-gray-900 dark:text-gray-100">
+                                {entry.sourceName}
+                              </p>
+                              {detail ? (
+                                <p className="mt-1 text-xs text-gray-400 md:hidden">{detail}</p>
+                              ) : null}
+                            </td>
+                            <td className="hidden py-3 text-gray-500 dark:text-gray-400 md:table-cell">
+                              {detail ?? '-'}
+                            </td>
+                            <td className="hidden py-3 text-right font-medium text-gray-900 dark:text-gray-100 lg:table-cell">
+                              {cents(entry.grossAmount)}
+                            </td>
+                            <td className="hidden py-3 text-right text-gray-500 dark:text-gray-400 lg:table-cell">
+                              {entry.feeAmount > 0 ? `-${cents(entry.feeAmount)}` : '-'}
+                            </td>
+                            <td className="py-3 text-right font-semibold text-gray-900 dark:text-gray-100">
+                              {cents(entry.netAmount)}
+                            </td>
+                            <td className="py-3">
+                              <span
+                                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${statusBadgeClass(entry.status)}`}
+                              >
+                                {formatStatusLabel(entry.status)}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </section>
+        </>
       ) : null}
 
       {!hasConnectStatusError && connectData?.payouts?.length ? (

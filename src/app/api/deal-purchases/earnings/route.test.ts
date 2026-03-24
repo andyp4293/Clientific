@@ -7,6 +7,7 @@ vi.mock('@/lib/session-business', () => ({ getSessionBusinessId: vi.fn() }));
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     dealPurchase: { findMany: vi.fn() },
+    referralCommission: { findMany: vi.fn() },
   },
 }));
 
@@ -17,7 +18,8 @@ import { GET } from './route';
 
 const mockGetSession = getServerSession as ReturnType<typeof vi.fn>;
 const mockGetBusinessId = getSessionBusinessId as ReturnType<typeof vi.fn>;
-const mockFindMany = prisma.dealPurchase.findMany as ReturnType<typeof vi.fn>;
+const mockDealFindMany = prisma.dealPurchase.findMany as ReturnType<typeof vi.fn>;
+const mockReferralFindMany = prisma.referralCommission.findMany as ReturnType<typeof vi.fn>;
 
 function makeRequest() {
   return new NextRequest('http://localhost/api/deal-purchases/earnings');
@@ -52,10 +54,29 @@ const purchaseFixtures = [
   },
 ];
 
+const referralFixtures = [
+  {
+    id: 'commission-1',
+    createdAt: new Date('2026-03-15T10:30:00Z'),
+    amountDollars: 12.5,
+    transferStatus: 'transferred',
+    transferredAt: new Date('2026-03-16T12:00:00Z'),
+    referral: {
+      referee: {
+        name: 'Glow Spa',
+        email: 'owner@glowspa.com',
+        businessEmail: 'billing@glowspa.com',
+      },
+    },
+  },
+];
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetSession.mockResolvedValue({});
   mockGetBusinessId.mockReturnValue('biz-1');
+  mockDealFindMany.mockResolvedValue([]);
+  mockReferralFindMany.mockResolvedValue([]);
 });
 
 describe('GET /api/deal-purchases/earnings', () => {
@@ -65,56 +86,82 @@ describe('GET /api/deal-purchases/earnings', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns empty transactions and zero totals when no purchases', async () => {
-    mockFindMany.mockResolvedValue([]);
+  it('returns empty entries and zero totals when there are no earnings yet', async () => {
     const res = await GET(makeRequest());
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.transactions).toHaveLength(0);
-    expect(body.totals.totalGross).toBe(0);
-    expect(body.totals.totalFees).toBe(0);
-    expect(body.totals.totalNet).toBe(0);
-    expect(body.totals.transactionCount).toBe(0);
+    expect(body.entries).toHaveLength(0);
+    expect(body.totals.dealGross).toBe(0);
+    expect(body.totals.dealFees).toBe(0);
+    expect(body.totals.dealNet).toBe(0);
+    expect(body.totals.referralNet).toBe(0);
+    expect(body.totals.entryCount).toBe(0);
   });
 
-  it('returns transactions with correct shape', async () => {
-    mockFindMany.mockResolvedValue(purchaseFixtures);
+  it('returns merged deal and referral earnings entries with the correct shape', async () => {
+    mockDealFindMany.mockResolvedValue(purchaseFixtures);
+    mockReferralFindMany.mockResolvedValue(referralFixtures);
     const res = await GET(makeRequest());
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.transactions).toHaveLength(2);
-    const t = body.transactions[0];
-    expect(t.id).toBe('purchase-1');
-    expect(t.dealTitle).toBe('Spring Special');
-    expect(t.customerName).toBe('Jane Doe');
-    expect(t.totalAmount).toBe(4000);
-    expect(t.applicationFeeAmount).toBe(600);
-    expect(t.businessNetAmount).toBe(3400);
-    expect(t.redemptionCode).toBe('ABCD1234');
+    expect(body.entries).toHaveLength(3);
+
+    const referralEntry = body.entries[0];
+    expect(referralEntry.id).toBe('commission-1');
+    expect(referralEntry.kind).toBe('referral');
+    expect(referralEntry.sourceName).toBe('Glow Spa');
+    expect(referralEntry.detailLabel).toBe('billing@glowspa.com');
+    expect(referralEntry.grossAmount).toBe(1250);
+    expect(referralEntry.feeAmount).toBe(0);
+    expect(referralEntry.netAmount).toBe(1250);
+    expect(referralEntry.status).toBe('transferred');
+
+    const dealEntry = body.entries[1];
+    expect(dealEntry.id).toBe('purchase-2');
+    expect(dealEntry.kind).toBe('deal');
+    expect(dealEntry.sourceName).toBe('Spring Special');
+    expect(dealEntry.detailLabel).toBe('Bob Smith');
+    expect(dealEntry.detailPhone).toBe('+15559876543');
+    expect(dealEntry.grossAmount).toBe(10200);
+    expect(dealEntry.feeAmount).toBe(1530);
+    expect(dealEntry.netAmount).toBe(8670);
   });
 
-  it('computes correct totals across transactions', async () => {
-    mockFindMany.mockResolvedValue(purchaseFixtures);
+  it('computes correct totals across deals and referrals', async () => {
+    mockDealFindMany.mockResolvedValue(purchaseFixtures);
+    mockReferralFindMany.mockResolvedValue(referralFixtures);
     const res = await GET(makeRequest());
     const body = await res.json();
-    expect(body.totals.totalGross).toBe(4000 + 10200);
-    expect(body.totals.totalFees).toBe(600 + 1530);
-    expect(body.totals.totalNet).toBe(3400 + 8670);
-    expect(body.totals.transactionCount).toBe(2);
+    expect(body.totals.dealGross).toBe(4000 + 10200);
+    expect(body.totals.dealFees).toBe(600 + 1530);
+    expect(body.totals.dealNet).toBe(3400 + 8670);
+    expect(body.totals.referralNet).toBe(1250);
+    expect(body.totals.totalNet).toBe(3400 + 8670 + 1250);
+    expect(body.totals.dealCount).toBe(2);
+    expect(body.totals.referralCount).toBe(1);
+    expect(body.totals.entryCount).toBe(3);
   });
 
-  it('queries only paid and redeemed purchases for the session business', async () => {
-    mockFindMany.mockResolvedValue([]);
+  it('queries deal purchases and referral commissions for the session business', async () => {
     await GET(makeRequest());
-    expect(mockFindMany).toHaveBeenCalledWith(
+    expect(mockDealFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { businessId: 'biz-1', status: { in: ['paid', 'redeemed'] } },
+      })
+    );
+    expect(mockReferralFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          referral: {
+            referrerId: 'biz-1',
+          },
+        },
       })
     );
   });
 
   it('returns 500 on unexpected DB error', async () => {
-    mockFindMany.mockRejectedValue(new Error('DB down'));
+    mockDealFindMany.mockRejectedValue(new Error('DB down'));
     const res = await GET(makeRequest());
     expect(res.status).toBe(500);
   });

@@ -13,7 +13,6 @@ vi.mock('@stripe/connect-js/pure', () => ({
 vi.mock('@stripe/react-connect-js', () => ({
   ConnectAccountManagement: () => <div data-testid="connect-account-management" />,
   ConnectAccountOnboarding: () => <div data-testid="connect-account-onboarding" />,
-  ConnectBalances: () => <div data-testid="connect-balances" />,
   ConnectComponentsProvider: ({ children }: { children: ReactNode }) => (
     <div data-testid="connect-provider">{children}</div>
   ),
@@ -70,7 +69,7 @@ describe('EmbeddedPayoutWorkspace', () => {
     expect(screen.getByTestId('connect-account-onboarding')).toBeInTheDocument();
   });
 
-  it('switches the embedded workspace to dark appearance tokens and removes the empty banner slot', async () => {
+  it('switches the embedded workspace to dark appearance tokens and keeps only the live controls', async () => {
     document.documentElement.classList.add('dark');
 
     await act(async () => {
@@ -89,9 +88,8 @@ describe('EmbeddedPayoutWorkspace', () => {
     expect(config.appearance.variables.formBackgroundColor).toBe('#111F26');
     expect(config.appearance.variables.borderRadius).toBe('0px');
     expect(config.appearance.variables.buttonBorderRadius).toBe('0px');
-    expect(screen.getByTestId('connect-balances')).toBeInTheDocument();
     expect(screen.getByTestId('connect-payouts')).toBeInTheDocument();
     expect(screen.getByTestId('connect-account-management')).toBeInTheDocument();
-    expect(screen.queryByTestId('connect-notification-banner')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('connect-balances')).not.toBeInTheDocument();
   });
 });

@@ -6,7 +6,6 @@ import { loadConnectAndInitialize } from '@stripe/connect-js/pure';
 import {
   ConnectAccountManagement,
   ConnectAccountOnboarding,
-  ConnectBalances,
   ConnectComponentsProvider,
   ConnectPayouts,
 } from '@stripe/react-connect-js';
@@ -495,9 +494,6 @@ export function EmbeddedPayoutWorkspace({
             ) : (
               <>
                 <div className={workspaceSectionClass}>
-                  <ConnectBalances />
-                </div>
-                <div className={workspaceDividerClass}>
                   <ConnectPayouts />
                 </div>
                 <div className={workspaceDividerClass}>
