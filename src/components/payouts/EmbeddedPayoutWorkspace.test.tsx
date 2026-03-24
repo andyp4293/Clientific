@@ -131,4 +131,45 @@ describe('EmbeddedPayoutWorkspace', () => {
       expect(screen.getByTestId('connect-provider')).toBeInTheDocument();
     });
   });
+
+  it('reuses the first client secret once and fetches a fresh account session when Stripe asks again', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ clientSecret: 'seti_first_secret' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ clientSecret: 'seti_second_secret' }),
+      });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await act(async () => {
+      render(<EmbeddedPayoutWorkspace visible onboardingComplete={false} onRefresh={vi.fn()} />);
+    });
+
+    await waitFor(() => {
+      expect(mockLoadConnectAndInitialize).toHaveBeenCalled();
+    });
+
+    const config = mockLoadConnectAndInitialize.mock.calls[0][0];
+    await expect(config.fetchClientSecret()).resolves.toBe('seti_first_secret');
+    await expect(config.fetchClientSecret()).resolves.toBe('seti_second_secret');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('explains that Stripe re-auth continues verification instead of restarting setup', async () => {
+    await act(async () => {
+      render(<EmbeddedPayoutWorkspace visible onboardingComplete={false} onRefresh={vi.fn()} />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('connect-provider')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/if stripe asks you to confirm again, keep going/i)).toBeInTheDocument();
+    expect(screen.getByText(/does not restart setup/i)).toBeInTheDocument();
+  });
 });

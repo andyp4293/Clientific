@@ -208,7 +208,7 @@ export default function PayoutsPage() {
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-gray-500 dark:text-gray-400">
                   {setupAlreadyStarted
-                    ? `Stripe already has this payout account in progress. Continue below. Stripe can ask you to verify again before showing bank or payout details, and that security check does not mean your setup was lost.`
+                    ? `Stripe already has this payout account in progress. Continue below. If Stripe asks you to verify again, it is continuing the same secure payout verification, not wiping out your progress.`
                     : `Stripe will start with your bank account and only ask for the payout-owner details it still requires before ${isReferralOnly ? 'referral payouts' : 'paid deals and referrals'} can pay out.`}
                 </p>
               </div>
@@ -285,8 +285,9 @@ export default function PayoutsPage() {
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
                   Stripe hosts this section securely inside Clientific. If Stripe asks the business
-                  owner to verify again, it is protecting payout and bank changes, not restarting
-                  the setup from scratch.
+                  owner to sign in or confirm by text again, finish that Stripe prompt and come
+                  right back here. It is protecting payout and bank changes, not restarting the
+                  setup from scratch.
                 </p>
               </div>
 
@@ -380,6 +381,7 @@ export default function PayoutsPage() {
                 <p>Stripe keeps payout setup and payout controls in the same secure area on this page.</p>
                 <p>If Stripe asks the owner to sign in again, that is a normal security check for payout changes.</p>
                 <p>You can come back here anytime to review balances, payout history, and settings.</p>
+                <p>If Stripe verification opens again, use the same Stripe prompt on this page and then refresh the status here once it closes.</p>
               </div>
             </div>
           </div>

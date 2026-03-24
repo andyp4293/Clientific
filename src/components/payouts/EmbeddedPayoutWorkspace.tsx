@@ -342,7 +342,7 @@ export function EmbeddedPayoutWorkspace({
     setIsInitializing(true);
 
     const initializeWorkspace = async () => {
-      try {
+      const requestFreshClientSecret = async () => {
         const res = await fetch('/api/stripe/connect/account-session', {
           method: 'POST',
         });
@@ -355,15 +355,28 @@ export function EmbeddedPayoutWorkspace({
           });
         }
 
+        return body.clientSecret as string;
+      };
+
+      try {
+        let initialClientSecret = await requestFreshClientSecret();
+
         if (cancelled) {
           return;
         }
 
-        const clientSecret = body.clientSecret as string;
         const instance = loadConnectAndInitialize({
           publishableKey,
           appearance: buildConnectAppearance(isDark),
-          fetchClientSecret: async () => clientSecret,
+          fetchClientSecret: async () => {
+            if (initialClientSecret) {
+              const cachedClientSecret = initialClientSecret;
+              initialClientSecret = '';
+              return cachedClientSecret;
+            }
+
+            return requestFreshClientSecret();
+          },
         });
 
         setWorkspaceError(null);
@@ -455,6 +468,27 @@ export function EmbeddedPayoutWorkspace({
       ) : connectInstance ? (
         <ConnectComponentsProvider connectInstance={connectInstance}>
           <div className="space-y-4">
+            {!onboardingComplete ? (
+              <div className="rounded-[28px] border border-primary/15 bg-primary/[0.06] px-4 py-4 dark:border-primary/20 dark:bg-primary/[0.08] sm:px-5">
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  If Stripe asks you to confirm again, keep going.
+                </p>
+                <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                  Stripe can ask the payout owner to sign in again with a one-time code before bank or identity changes. That continues the same secure verification and does not restart setup.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
+                  <span className="rounded-full border border-gray-200/80 bg-white/80 px-3 py-1.5 dark:border-white/10 dark:bg-white/[0.05]">
+                    Finish the Stripe prompt
+                  </span>
+                  <span className="rounded-full border border-gray-200/80 bg-white/80 px-3 py-1.5 dark:border-white/10 dark:bg-white/[0.05]">
+                    Return to this same page
+                  </span>
+                  <span className="rounded-full border border-gray-200/80 bg-white/80 px-3 py-1.5 dark:border-white/10 dark:bg-white/[0.05]">
+                    Click Refresh status if needed
+                  </span>
+                </div>
+              </div>
+            ) : null}
             {!onboardingComplete ? (
               <div className={embedFrameClass}>
                 <ConnectAccountOnboarding

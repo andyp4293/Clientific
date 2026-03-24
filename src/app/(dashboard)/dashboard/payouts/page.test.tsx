@@ -129,6 +129,7 @@ describe('PayoutsPage', () => {
 
     expect(screen.getByText(/start your payout verification here/i)).toBeInTheDocument();
     expect(screen.getByText(/continue securely below/i)).toBeInTheDocument();
+    expect(screen.getByText(/sign in or confirm by text again/i)).toBeInTheDocument();
     expect(screen.getByTestId('embedded-payout-workspace')).toBeInTheDocument();
     expect(screen.getByText('setup workspace')).toBeInTheDocument();
   });
@@ -354,7 +355,7 @@ describe('PayoutsPage', () => {
       screen.getByText(/we rechecked stripe when you came back/i)
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/does not mean your setup was lost/i)
+      screen.getByText(/not wiping out your progress/i)
     ).toBeInTheDocument();
     expect(
       screen.getByText(/stripe still needs the payout terms accepted before payouts can go live/i)
