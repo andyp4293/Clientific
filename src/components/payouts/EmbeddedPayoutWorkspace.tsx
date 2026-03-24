@@ -181,6 +181,17 @@ export function collectOutstandingRequirementKeys(
   ].map((requirement) => requirement.toLowerCase());
 }
 
+export function hasOnlyTermsAcceptanceOutstanding(
+  requirements: ConnectData['requirements'] | null | undefined
+) {
+  const outstandingRequirements = collectOutstandingRequirementKeys(requirements);
+
+  return (
+    outstandingRequirements.length > 0 &&
+    outstandingRequirements.every((requirement) => requirement.startsWith('tos_acceptance.'))
+  );
+}
+
 export function summarizeRequirementTasks(requirements: string[]) {
   const tasks = new Map<string, string>();
 
@@ -242,13 +253,21 @@ export function summarizeRequirementGuidance(
 ) {
   const requirements = collectOutstandingRequirementKeys(connectData?.requirements);
   const guidance = new Map<string, string>();
+  const onlyTermsAcceptanceOutstanding = hasOnlyTermsAcceptanceOutstanding(
+    connectData?.requirements
+  );
 
   if (!connectData?.externalAccount || requirements.some((item) => item.startsWith('external_account'))) {
     guidance.set('bank_account', 'Stripe still does not have a payout bank account saved for this account.');
   }
 
   if (requirements.some((item) => item.startsWith('tos_acceptance.'))) {
-    guidance.set('terms', 'Stripe still needs the payout terms accepted before payouts can go live.');
+    guidance.set(
+      'terms',
+      onlyTermsAcceptanceOutstanding && connectData?.externalAccount
+        ? 'Stripe already saved the payout bank account. The last step is accepting Stripe\'s Connected Account Agreement on the final review screen.'
+        : 'Stripe still needs the payout terms accepted before payouts can go live.'
+    );
   }
 
   if (

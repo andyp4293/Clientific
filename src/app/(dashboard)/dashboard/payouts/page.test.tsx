@@ -355,6 +355,69 @@ describe('PayoutsPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('calls out the final Stripe agreement step when the bank account is already saved', () => {
+    mockUseSearchParams.mockReturnValue(new URLSearchParams('stripe_onboarding=return'));
+    mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
+      const key = config?.queryKey?.[0];
+
+      if (key === 'deal-earnings') {
+        return {
+          data: {
+            transactions: [],
+            totals: {
+              totalGross: 0,
+              totalFees: 0,
+              totalNet: 0,
+              transactionCount: 0,
+            },
+          },
+          isLoading: false,
+        };
+      }
+
+      if (key === 'connect-payouts') {
+        return {
+          data: buildConnectData({
+            externalAccount: {
+              id: 'ba_123',
+              bankName: 'Bank of America',
+              last4: '1080',
+              routingNumberLast4: '0000',
+              accountHolderName: 'Jackson Nails',
+              status: 'verified',
+            },
+            requirements: {
+              currentlyDue: ['tos_acceptance.date', 'tos_acceptance.ip'],
+              eventuallyDue: [],
+              pastDue: ['tos_acceptance.date', 'tos_acceptance.ip'],
+              pendingVerification: [],
+              disabledReason: 'requirements.past_due',
+            },
+          }),
+          isLoading: false,
+          refetch: vi.fn(),
+        };
+      }
+
+      return { data: undefined, isLoading: false };
+    });
+
+    render(<PayoutsPage />);
+
+    expect(
+      screen.getByRole('button', { name: /resume final stripe confirmation/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /finish stripe's final confirmation/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/stripe saved your bank account, but the final stripe agreement was not submitted yet/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/the last step is accepting stripe's connected account agreement on the final review screen/i)
+    ).toBeInTheDocument();
+  });
+
   it('shows friendly payout tasks instead of raw Stripe field names', () => {
     mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
       const key = config?.queryKey?.[0];

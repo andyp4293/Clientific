@@ -9,6 +9,7 @@ import {
   type ConnectData,
   formatRequirementStatus,
   formatSchedule,
+  hasOnlyTermsAcceptanceOutstanding,
   summarizeRequirementGuidance,
   summarizeRequirementTasks,
   sumBalanceAmounts,
@@ -146,17 +147,30 @@ export default function PayoutsPage() {
   const requirementTasks = summarizeRequirementTasks(rawRequirementList);
   const requirementGuidance = summarizeRequirementGuidance(connectData);
   const requirementStatus = formatRequirementStatus(connectData?.requirements.disabledReason);
+  const onlyTermsAcceptanceOutstanding = hasOnlyTermsAcceptanceOutstanding(
+    connectData?.requirements
+  );
+  const hasSavedBankButMissingTerms =
+    needsSetup &&
+    onlyTermsAcceptanceOutstanding &&
+    Boolean(connectData?.externalAccount);
   const bankAccountSummary = connectData?.externalAccount
     ? `${connectData.externalAccount.bankName ?? 'Bank account'} ending in ${connectData.externalAccount.last4}`
     : 'Stripe has not saved a payout bank account yet';
   const payoutScheduleSummary = formatSchedule(connectData?.payoutSchedule ?? null);
   const onboardingState = searchParams.get('stripe_onboarding');
   const startSetupLabel =
-    onboardingState === 'return' ? 'Continue secure setup' : 'Start secure setup';
+    hasSavedBankButMissingTerms
+      ? 'Resume final Stripe confirmation'
+      : onboardingState === 'return'
+        ? 'Continue secure setup'
+        : 'Start secure setup';
 
   const onboardingMessage =
-    onboardingState === 'return' && needsSetup
-      ? 'We rechecked Stripe when you came back. If setup still looks incomplete, Stripe has not saved the remaining payout steps on this account yet.'
+    onboardingState === 'return' && hasSavedBankButMissingTerms
+      ? 'Stripe saved your bank account, but the final Stripe agreement was not submitted yet. On the Stripe review screen, scroll to the bottom and submit the final confirmation instead of using Return to Clientific in the sidebar.'
+      : onboardingState === 'return' && needsSetup
+        ? 'We rechecked Stripe when you came back. Stripe says there are still payout requirements open on this account, so you can continue the same secure setup from here.'
       : onboardingState === 'refresh_error'
         ? 'Your Stripe setup link expired before it was opened. Start secure setup again to continue.'
         : onboardingState === 'missing_business'
@@ -230,11 +244,14 @@ export default function PayoutsPage() {
                     Secure Stripe setup
                   </p>
                   <h2 className="mt-3 text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
-                    Connect payouts without leaving this page
+                    {hasSavedBankButMissingTerms
+                      ? 'Finish Stripe\'s final confirmation'
+                      : 'Connect payouts without leaving this page'}
                   </h2>
                   <p className="mt-3 text-sm leading-6 text-gray-500 dark:text-gray-400">
-                    Start with your bank account. Stripe will only ask for the payout-owner
-                    details it still requires before {isReferralOnly ? 'referral payouts' : 'paid deals and referrals'} can pay out.
+                    {hasSavedBankButMissingTerms
+                      ? 'Stripe already saved your bank account. Return to Stripe and finish the final agreement review. If you leave from the Return to Clientific link before submitting, Stripe sends you back here with setup still incomplete.'
+                      : `Start with your bank account. Stripe will only ask for the payout-owner details it still requires before ${isReferralOnly ? 'referral payouts' : 'paid deals and referrals'} can pay out.`}
                   </p>
                 </div>
 
@@ -397,7 +414,11 @@ export default function PayoutsPage() {
               </p>
               <div className="mt-4 space-y-3 text-sm leading-6 text-gray-500 dark:text-gray-400">
                 <p>Stripe starts with your bank account and only the payout details it still requires.</p>
-                <p>When Stripe is done, this page becomes your live payout workspace automatically.</p>
+                <p>
+                  {hasSavedBankButMissingTerms
+                    ? 'If Stripe shows a final review screen, scroll to the bottom and submit the agreement before returning here.'
+                    : 'When Stripe is done, this page becomes your live payout workspace automatically.'}
+                </p>
                 <p>You can come back here anytime to review balances, payout history, and settings.</p>
               </div>
             </div>
