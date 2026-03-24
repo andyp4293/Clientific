@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 export interface SelectOption {
   value: string;
@@ -19,6 +19,9 @@ interface CustomSelectProps {
   /** Label shown when value is '' (renders as a selectable empty option). */
   placeholder?: string;
   ariaLabel?: string;
+  searchable?: boolean;
+  searchPlaceholder?: string;
+  noResultsLabel?: string;
 }
 
 export function CustomSelect({
@@ -31,13 +34,35 @@ export function CustomSelect({
   required = false,
   placeholder,
   ariaLabel,
+  searchable = false,
+  searchPlaceholder = 'Search…',
+  noResultsLabel = 'No matches found',
 }: CustomSelectProps) {
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const selected = options.find((option) => option.value === value);
   const displayLabel = selected?.label ?? placeholder ?? '';
   const isEmpty = !selected;
+  const filteredOptions = useMemo(() => {
+    const trimmedQuery = searchQuery.trim();
+    if (!searchable || !trimmedQuery) return options;
+
+    const normalizedQuery = trimmedQuery.toLowerCase();
+    const queryDigits = trimmedQuery.replace(/\D/g, '');
+
+    return options.filter((option) => {
+      const normalizedLabel = option.label.toLowerCase();
+      if (normalizedLabel.includes(normalizedQuery)) return true;
+
+      if (!queryDigits) return false;
+
+      const optionDigits = option.label.replace(/\D/g, '');
+      return optionDigits.includes(queryDigits);
+    });
+  }, [options, searchQuery, searchable]);
 
   useEffect(() => {
     if (!open) return;
@@ -63,6 +88,22 @@ export function CustomSelect({
       document.removeEventListener('keydown', onKeyDown);
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      setSearchQuery('');
+      return;
+    }
+
+    if (!searchable) return;
+
+    const timeoutId = window.setTimeout(() => {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [open, searchable]);
 
   return (
     <div ref={containerRef} className="relative w-full">
@@ -121,6 +162,21 @@ export function CustomSelect({
           role="listbox"
           className="absolute z-50 mt-2 max-h-64 w-full overflow-auto rounded-2xl border border-gray-200/90 bg-white/95 p-1.5 shadow-[0_28px_70px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:border-white/10 dark:bg-gray-900/95"
         >
+          {searchable && (
+            <li className="sticky top-0 z-10 mb-1 rounded-xl bg-white/95 p-1 backdrop-blur-xl dark:bg-gray-900/95">
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                onKeyDown={(event) => event.stopPropagation()}
+                placeholder={searchPlaceholder}
+                className="input min-h-[44px] text-sm"
+                aria-label={searchPlaceholder}
+              />
+            </li>
+          )}
+
           {placeholder !== undefined && (
             <li
               key="__placeholder__"
@@ -141,7 +197,7 @@ export function CustomSelect({
             </li>
           )}
 
-          {options.map((option) => (
+          {filteredOptions.map((option) => (
             <li
               key={option.value}
               role="option"
@@ -160,6 +216,12 @@ export function CustomSelect({
               {value === option.value && <CheckIcon />}
             </li>
           ))}
+
+          {searchable && filteredOptions.length === 0 && (
+            <li className="px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
+              {noResultsLabel}
+            </li>
+          )}
         </ul>
       )}
     </div>

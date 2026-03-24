@@ -1078,6 +1078,9 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
                     onChange={(val) => setFormData({ ...formData, customerId: val })}
                     className="input text-sm"
                     placeholder="Select customer…"
+                    searchable
+                    searchPlaceholder="Search by name or phone"
+                    noResultsLabel="No customers match that search"
                     required={customerMode === 'existing'}
                     options={customers.map((c: any) => ({ value: c.id, label: c.name + (c.phone ? `  ·  ${c.phone}` : '') }))}
                   />

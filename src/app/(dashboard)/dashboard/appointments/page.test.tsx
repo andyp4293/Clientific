@@ -23,4 +23,12 @@ describe('appointments page mobile dialog contract', () => {
     expect(source).toContain('buildAppointmentStartOptions');
     expect(source).toContain('getEffectiveStaffDayHours');
   });
+
+  it('uses a searchable customer picker for manual appointment creation', () => {
+    const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('searchable');
+    expect(source).toContain('searchPlaceholder="Search by name or phone"');
+    expect(source).toContain('noResultsLabel="No customers match that search"');
+  });
 });
