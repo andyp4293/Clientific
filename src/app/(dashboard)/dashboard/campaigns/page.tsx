@@ -38,10 +38,16 @@ function createDefaultForm() {
   return { title: '', description: '', discountType: 'percent_off', discountValue: '', serviceScope: 'all_services', eligibleServiceIds: [] as string[], startsAt: toDateOnlyValue(today), expiresAt: toDateOnlyValue(addDays(today, 1)), maxRedemptions: '' };
 }
 
+function createDefaultExtensionDate() {
+  return toDateOnlyValue(addDays(new Date(), 7));
+}
+
 export default function DealsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(createDefaultForm);
+  const [extendDeal, setExtendDeal] = useState<{ id: string; title: string; startsAt: string; expiresAt: string } | null>(null);
+  const [extendExpiresAt, setExtendExpiresAt] = useState(createDefaultExtensionDate);
   const [expandedDeal, setExpandedDeal] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [confirmingNotify, setConfirmingNotify] = useState<string | null>(null);
@@ -83,6 +89,21 @@ export default function DealsPage() {
   const toggleMutation = useMutation({
     mutationFn: async ({ id, active }: { id: string; active: boolean }) => { const res = await fetch(`/api/deals/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active }) }); if (!res.ok) throw new Error('Failed'); },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['deals'] }),
+  });
+  const extendMutation = useMutation({
+    mutationFn: async ({ id, expiresAt }: { id: string; expiresAt: string }) => {
+      const res = await fetch(`/api/deals/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ expiresAt }) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Failed to extend deal');
+      return body;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deals'] });
+      setExtendDeal(null);
+      setExtendExpiresAt(createDefaultExtensionDate());
+      toast.success('Deal extended');
+    },
+    onError: (error: any) => toast.error(error?.message || 'Failed to extend deal'),
   });
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => { const res = await fetch(`/api/deals/${id}`, { method: 'DELETE' }); if (!res.ok) throw new Error('Failed'); },
@@ -136,6 +157,25 @@ export default function DealsPage() {
     });
   }
 
+  function openExtendDeal(deal: Pick<Deal, 'id' | 'title' | 'startsAt' | 'expiresAt'>) {
+    setExtendDeal({ id: deal.id, title: deal.title, startsAt: deal.startsAt, expiresAt: deal.expiresAt });
+    setExtendExpiresAt(createDefaultExtensionDate());
+  }
+
+  function closeExtendDeal() {
+    setExtendDeal(null);
+    setExtendExpiresAt(createDefaultExtensionDate());
+  }
+
+  function submitExtension(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!extendDeal) return;
+    if (!extendExpiresAt) return toast.error('Choose a new end date');
+    if (isDealStartBeforeToday(extendExpiresAt)) return toast.error('New end date cannot be earlier than today');
+    if (isDealEndSameOrBeforeStart(extendDeal.startsAt, extendExpiresAt)) return toast.error('New end date must be after the deal start date');
+    extendMutation.mutate({ id: extendDeal.id, expiresAt: extendExpiresAt });
+  }
+
   function submitForm(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!form.title || !form.startsAt || !form.expiresAt) return toast.error('Fill in the required fields');
@@ -176,7 +216,7 @@ export default function DealsPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="new-deal-modal-title"
-            className="flex h-[100dvh] min-h-[100dvh] w-full flex-col border border-transparent bg-white shadow-2xl dark:bg-gray-900 sm:h-auto sm:min-h-0 sm:max-h-[92vh] sm:max-w-3xl sm:rounded-3xl sm:border-gray-200 dark:sm:border-gray-700"
+            className="flex h-[100dvh] min-h-[100dvh] w-full flex-col border-0 bg-white shadow-2xl dark:bg-gray-900 sm:h-auto sm:min-h-0 sm:max-h-[92vh] sm:max-w-3xl sm:overflow-hidden sm:rounded-3xl sm:border sm:border-gray-200 sm:shadow-2xl dark:sm:border-gray-700"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4 pt-[calc(env(safe-area-inset-top)+1rem)] dark:border-gray-800 sm:px-6 sm:pt-6">
@@ -236,6 +276,7 @@ export default function DealsPage() {
             const isExpired = new Date(deal.expiresAt) <= new Date();
             const isFull = deal.maxRedemptions !== null && deal.redemptionCount >= deal.maxRedemptions;
             const isExpanded = expandedDeal === deal.id;
+            const isExtendingThisDeal = extendDeal?.id === deal.id;
             const isSendingThisDeal = sendingNotifyId === deal.id;
             const notifyButtonsDisabled = sendingNotifyId !== null;
 
@@ -272,9 +313,43 @@ export default function DealsPage() {
                       )}
                     </div>
                   )}
+                  {isExpired && isExtendingThisDeal && (
+                    <form onSubmit={submitExtension} className="mb-3 rounded-2xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/30 dark:bg-amber-900/10">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">Extend this expired promo</p>
+                          <p className="mt-1 text-xs leading-5 text-amber-800 dark:text-amber-300">
+                            Pick a new end date to make this promotion live again. If the deal is still active, it becomes available right away.
+                          </p>
+                        </div>
+                        <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                          Expired {shortDate(deal.expiresAt)}
+                        </span>
+                      </div>
+                      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                        <div className="w-full sm:max-w-xs">
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-amber-900 dark:text-amber-200">New end date</label>
+                          <DatePicker value={fromDateOnlyValue(extendExpiresAt)} onChange={(date) => setExtendExpiresAt(toDateOnlyValue(date))} minDate={new Date(new Date().setHours(0, 0, 0, 0))} placeholder="Select new end date" />
+                        </div>
+                        <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                          <button type="button" onClick={closeExtendDeal} className="btn-outline text-sm" disabled={extendMutation.isPending}>Cancel</button>
+                          <button type="submit" className="btn-primary text-sm" disabled={extendMutation.isPending}>
+                            {extendMutation.isPending ? 'Saving...' : 'Save extension'}
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  )}
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <button onClick={() => setExpandedDeal(isExpanded ? null : deal.id)} className="text-xs font-semibold text-primary transition-colors hover:text-primary/80">{isExpanded ? 'Hide activity' : 'View activity'}</button>
-                    {deal.active && (confirmingNotify === deal.id ? <div className="flex flex-wrap items-center gap-2"><span className="text-xs text-gray-600 dark:text-gray-400">Send each opted-in customer this purchase link by text?</span><button onClick={() => { if (sendingNotifyId !== null) return; setSendingNotifyId(deal.id); setConfirmingNotify(null); notifyMutation.mutate(deal.id); }} disabled={sendingNotifyId !== null} className="rounded-lg bg-primary px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60">Yes, send</button><button onClick={() => setConfirmingNotify(null)} disabled={sendingNotifyId !== null} className="text-xs font-semibold text-gray-500 transition-colors hover:text-gray-700 dark:hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-60">Cancel</button></div> : <button onClick={() => setConfirmingNotify(deal.id)} disabled={notifyButtonsDisabled} className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800">{isSendingThisDeal ? 'Sending...' : 'Text My Customers'}</button>)}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button onClick={() => setExpandedDeal(isExpanded ? null : deal.id)} className="text-xs font-semibold text-primary transition-colors hover:text-primary/80">{isExpanded ? 'Hide activity' : 'View activity'}</button>
+                      {isExpired && (
+                        <button type="button" onClick={() => openExtendDeal(deal)} className="text-xs font-semibold text-primary transition-colors hover:text-primary/80">
+                          {isExtendingThisDeal ? 'Editing extension' : 'Extend promo'}
+                        </button>
+                      )}
+                    </div>
+                    {deal.active && !isExpired && (confirmingNotify === deal.id ? <div className="flex flex-wrap items-center gap-2"><span className="text-xs text-gray-600 dark:text-gray-400">Send each opted-in customer this purchase link by text?</span><button onClick={() => { if (sendingNotifyId !== null) return; setSendingNotifyId(deal.id); setConfirmingNotify(null); notifyMutation.mutate(deal.id); }} disabled={sendingNotifyId !== null} className="rounded-lg bg-primary px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60">Yes, send</button><button onClick={() => setConfirmingNotify(null)} disabled={sendingNotifyId !== null} className="text-xs font-semibold text-gray-500 transition-colors hover:text-gray-700 dark:hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-60">Cancel</button></div> : <button onClick={() => setConfirmingNotify(deal.id)} disabled={notifyButtonsDisabled} className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800">{isSendingThisDeal ? 'Sending...' : 'Text My Customers'}</button>)}
                   </div>
                 </div>
                 {isExpanded && <div className="border-t border-gray-100 px-4 py-4 dark:border-gray-700 md:px-5"><div className="grid gap-5 xl:grid-cols-2"><section className="space-y-3"><div className="flex items-center justify-between gap-3"><h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Purchases</h3><span className="text-xs text-gray-400 dark:text-gray-500">{deal.purchases.length}</span></div>{deal.purchases.length === 0 ? <p className="text-xs text-gray-400 dark:text-gray-500">No purchases yet.</p> : <div className="max-h-96 space-y-2 overflow-y-auto pr-1">{deal.purchases.map((purchase) => <div key={purchase.id} className="rounded-2xl border border-gray-100 bg-gray-50/80 p-3 text-sm dark:border-gray-700 dark:bg-gray-800/70"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-semibold text-gray-900 dark:text-gray-100">{purchase.customerName}</p><p className="text-xs text-gray-500 dark:text-gray-400">{phone(purchase.customerPhone)}</p></div><span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-700 dark:bg-gray-700 dark:text-gray-100">{purchase.redeemedAt ? 'Redeemed' : purchase.status}</span></div><div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400"><span className="font-mono font-bold tracking-[0.2em] text-gray-900 dark:text-gray-100">{purchase.redemptionCode ?? 'PENDING'}</span><span>{dateTime(purchase.purchasedAt)}</span><span>{cents(purchase.totalAmount)}</span></div><div className="mt-3 space-y-1 text-xs text-gray-600 dark:text-gray-300">{purchase.items.map((item) => <div key={item.id} className="flex items-center justify-between gap-3"><span>{item.serviceName}</span><span>{cents(item.discountedUnitAmount)}</span></div>)}</div><div className="mt-3 flex flex-wrap items-center gap-2"><a href={`/deal-purchases/${purchase.token}`} target="_blank" rel="noreferrer" className="text-xs font-semibold text-primary hover:underline">Open receipt</a>{purchase.stripeReceiptUrl && <a href={purchase.stripeReceiptUrl} target="_blank" rel="noreferrer" className="text-xs font-semibold text-primary hover:underline">Stripe receipt</a>}<button type="button" onClick={() => { setRedeemingPurchaseId(purchase.id); redeemMutation.mutate({ purchaseId: purchase.id }); }} disabled={redeemingPurchaseId !== null || Boolean(purchase.redeemedAt)} className="text-xs font-semibold text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-60">{purchase.redeemedAt ? 'Already redeemed' : redeemingPurchaseId === purchase.id ? 'Redeeming...' : 'Redeem now'}</button></div></div>)}</div>}</section><section className="space-y-3"><div className="flex items-center justify-between gap-3"><h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Sent Recipients</h3><span className="text-xs text-gray-400 dark:text-gray-500">{deal.notificationSends.length}</span></div>{deal.notificationSends.length === 0 ? <p className="text-xs text-gray-400 dark:text-gray-500">No deal texts sent yet.</p> : <div className="max-h-80 space-y-2 overflow-y-auto pr-1">{deal.notificationSends.map((send) => <div key={send.id} className="rounded-2xl border border-gray-100 bg-gray-50/80 p-3 text-sm dark:border-gray-700 dark:bg-gray-800/70"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-semibold text-gray-900 dark:text-gray-100">{send.customerName?.trim() || 'Unnamed customer'}</p><p className="text-xs text-gray-500 dark:text-gray-400">{phone(send.customerPhone)}</p></div><span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${send.status === 'sent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'}`}>{send.status}</span></div><div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400"><span>{dateTime(send.createdAt)}</span>{send.code ? <span className="font-mono font-bold tracking-[0.2em] text-gray-900 dark:text-gray-100">{send.code}</span> : <span>Purchase link sent</span>}</div>{send.errorMessage && send.status !== 'sent' && <p className="mt-2 text-xs text-red-600 dark:text-red-300">{send.errorMessage}</p>}</div>)}</div>}{deal.deliveryType === 'code_claim' && <div className="space-y-2 rounded-2xl border border-gray-100 p-3 dark:border-gray-700"><p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Legacy claim codes</p>{deal.redemptions.length === 0 ? <p className="text-xs text-gray-400 dark:text-gray-500">No codes claimed yet.</p> : deal.redemptions.map((redemption) => <div key={redemption.id} className="flex items-center justify-between text-xs"><span className="font-mono font-bold tracking-[0.2em] text-gray-900 dark:text-gray-100">{redemption.code}</span><span className={redemption.usedAt ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}>{redemption.usedAt ? 'Used' : 'Pending'}</span></div>)}</div>}</section></div></div>}

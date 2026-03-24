@@ -219,7 +219,7 @@ describe('DealsPage (Campaigns)', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('uses a full-screen mobile modal instead of a bottom sheet', () => {
+  it('uses a full-screen mobile modal while preserving the desktop dialog shell', () => {
     mockQueries([]);
     render(<DealsPage />);
 
@@ -232,8 +232,12 @@ describe('DealsPage (Campaigns)', () => {
     expect(overlay?.className).not.toContain('items-end');
     expect(dialog.className).toContain('h-[100dvh]');
     expect(dialog.className).toContain('min-h-[100dvh]');
+    expect(dialog.className).toContain('border-0');
     expect(dialog.className).not.toContain('rounded-t-3xl');
     expect(dialog.className).toContain('sm:max-h-[92vh]');
+    expect(dialog.className).toContain('sm:max-w-3xl');
+    expect(dialog.className).toContain('sm:rounded-3xl');
+    expect(dialog.className).toContain('sm:border');
   });
 
   it('limits deal dates to today or later and keeps the end date after the start date', () => {
