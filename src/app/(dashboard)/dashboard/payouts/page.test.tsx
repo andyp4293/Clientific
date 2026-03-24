@@ -26,19 +26,13 @@ vi.mock('@/components/payouts/EmbeddedPayoutWorkspace', async () => {
     EmbeddedPayoutWorkspace: ({
       visible,
       onboardingComplete,
-      detailsSubmitted,
     }: {
       visible: boolean;
       onboardingComplete: boolean;
-      detailsSubmitted: boolean;
     }) =>
       visible ? (
         <div data-testid="embedded-payout-workspace">
-          {onboardingComplete
-            ? 'live payout workspace'
-            : detailsSubmitted
-              ? 'review workspace'
-              : 'setup workspace'}
+          {onboardingComplete ? 'live payout workspace' : 'setup workspace'}
         </div>
       ) : null,
   };
@@ -130,14 +124,12 @@ describe('PayoutsPage', () => {
     expect(page).not.toHaveClass('max-w-7xl');
   });
 
-  it('keeps payout setup embedded on the main payouts page when setup is incomplete', () => {
+  it('keeps payout setup on the main payouts page when setup is incomplete', () => {
     render(<PayoutsPage />);
 
-    expect(screen.getByText(/start your payout verification here/i)).toBeInTheDocument();
-    expect(screen.getByText(/continue securely below/i)).toBeInTheDocument();
-    expect(screen.getByText(/sign in or confirm by text again/i)).toBeInTheDocument();
-    expect(screen.getByTestId('embedded-payout-workspace')).toBeInTheDocument();
-    expect(screen.getByText('setup workspace')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /start secure setup/i })).toBeInTheDocument();
+    expect(screen.getByText(/connect payouts without leaving this page/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('embedded-payout-workspace')).not.toBeInTheDocument();
   });
 
   it('shows the live embedded payout workspace directly on the payouts page', () => {
@@ -196,7 +188,7 @@ describe('PayoutsPage', () => {
     expect(screen.getByRole('heading', { name: /keep your deal revenue and payout progress in one place/i })).toBeInTheDocument();
     expect(screen.getByTestId('embedded-payout-workspace')).toBeInTheDocument();
     expect(screen.queryByText(/funds status/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/continue securely below/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /start secure setup/i })).not.toBeInTheDocument();
   });
 
   it('keeps businesses focused on deal payouts before referral details', () => {
@@ -336,8 +328,6 @@ describe('PayoutsPage', () => {
       if (key === 'connect-payouts') {
         return {
           data: buildConnectData({
-            notConnected: false,
-            accountId: 'acct_123',
             requirements: {
               currentlyDue: ['external_account', 'tos_acceptance.date'],
               eventuallyDue: [],
@@ -356,65 +346,13 @@ describe('PayoutsPage', () => {
 
     render(<PayoutsPage />);
 
-    expect(screen.getByText(/finish the payout steps already in progress/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /continue secure setup/i })).toBeInTheDocument();
     expect(
       screen.getByText(/we rechecked stripe when you came back/i)
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/not wiping out your progress/i)
-    ).toBeInTheDocument();
-    expect(
       screen.getByText(/stripe still needs the payout terms accepted before payouts can go live/i)
     ).toBeInTheDocument();
-  });
-
-  it('shows Stripe review copy instead of restart copy after details are submitted', () => {
-    mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
-      const key = config?.queryKey?.[0];
-
-      if (key === 'deal-earnings') {
-        return {
-          data: {
-            transactions: [],
-            totals: {
-              totalGross: 0,
-              totalFees: 0,
-              totalNet: 0,
-              transactionCount: 0,
-            },
-          },
-          isLoading: false,
-        };
-      }
-
-      if (key === 'connect-payouts') {
-        return {
-          data: buildConnectData({
-            notConnected: false,
-            accountId: 'acct_review',
-            detailsSubmitted: true,
-            requirements: {
-              currentlyDue: [],
-              eventuallyDue: [],
-              pastDue: [],
-              pendingVerification: ['individual.verification.document'],
-              disabledReason: 'requirements.pending_verification',
-            },
-          }),
-          isLoading: false,
-          refetch: vi.fn(),
-        };
-      }
-
-      return { data: undefined, isLoading: false };
-    });
-
-    render(<PayoutsPage />);
-
-    expect(screen.getByRole('heading', { name: /stripe is reviewing your payout details/i })).toBeInTheDocument();
-    expect(screen.getByText(/stripe already has the submitted payout details/i)).toBeInTheDocument();
-    expect(screen.getByText('review workspace')).toBeInTheDocument();
-    expect(screen.queryByText(/start your payout verification here/i)).not.toBeInTheDocument();
   });
 
   it('shows friendly payout tasks instead of raw Stripe field names', () => {

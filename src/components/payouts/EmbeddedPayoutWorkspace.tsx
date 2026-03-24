@@ -1,13 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { StripeConnectInstance } from '@stripe/connect-js';
 import { loadConnectAndInitialize } from '@stripe/connect-js/pure';
 import {
   ConnectAccountManagement,
   ConnectAccountOnboarding,
+  ConnectBalances,
   ConnectComponentsProvider,
-  ConnectNotificationBanner,
   ConnectPayouts,
 } from '@stripe/react-connect-js';
 import { sanitizeStripeEnvValue } from '@/lib/stripe-env';
@@ -91,19 +91,19 @@ function buildConnectAppearance(isDark: boolean) {
     overlays: 'dialog' as const,
     variables: {
       colorPrimary: '#0F8A63',
-      colorBackground: isDark ? '#0C1720' : '#F3F8F7',
+      colorBackground: isDark ? '#12202A' : '#FCFEFD',
       colorText: isDark ? '#F3F8F7' : '#102026',
       colorSecondaryText: isDark ? '#B8CAC5' : '#546A67',
       colorDanger: '#DC2626',
-      colorBorder: isDark ? 'rgba(184, 202, 197, 0.12)' : 'rgba(123, 150, 144, 0.2)',
+      colorBorder: isDark ? 'rgba(184, 202, 197, 0.18)' : '#D7E2E0',
       buttonPrimaryColorBackground: '#0F8A63',
       buttonPrimaryColorBorder: '#0F8A63',
       buttonPrimaryColorText: '#F8FFFC',
-      buttonSecondaryColorBackground: isDark ? '#13222C' : '#EEF5F3',
-      buttonSecondaryColorBorder: isDark ? '#2B4550' : '#D7E2E0',
+      buttonSecondaryColorBackground: isDark ? '#182A34' : '#F3F8F7',
+      buttonSecondaryColorBorder: isDark ? '#31505B' : '#D7E2E0',
       buttonSecondaryColorText: isDark ? '#F3F8F7' : '#102026',
-      badgeNeutralColorBackground: isDark ? '#13222C' : '#EEF5F3',
-      badgeNeutralColorBorder: isDark ? '#2B4550' : '#D7E2E0',
+      badgeNeutralColorBackground: isDark ? '#1A2C36' : '#F3F8F7',
+      badgeNeutralColorBorder: isDark ? '#31505B' : '#D7E2E0',
       badgeNeutralColorText: isDark ? '#D9E7E3' : '#385059',
       badgeSuccessColorBackground: isDark ? 'rgba(15, 138, 99, 0.18)' : 'rgba(15, 138, 99, 0.10)',
       badgeSuccessColorBorder: isDark ? 'rgba(103, 223, 178, 0.24)' : 'rgba(15, 138, 99, 0.18)',
@@ -114,8 +114,8 @@ function buildConnectAppearance(isDark: boolean) {
       badgeDangerColorBackground: isDark ? 'rgba(220, 38, 38, 0.18)' : 'rgba(220, 38, 38, 0.10)',
       badgeDangerColorBorder: isDark ? 'rgba(248, 113, 113, 0.24)' : 'rgba(220, 38, 38, 0.18)',
       badgeDangerColorText: isDark ? '#FCA5A5' : '#B91C1C',
-      offsetBackgroundColor: isDark ? '#101C25' : '#EEF5F3',
-      formBackgroundColor: isDark ? '#0C1720' : '#F8FCFB',
+      offsetBackgroundColor: isDark ? '#182A34' : '#F3F8F7',
+      formBackgroundColor: isDark ? '#0D1820' : '#FFFFFF',
       formHighlightColorBorder: '#0F8A63',
       formAccentColor: '#0F8A63',
       actionPrimaryColorText: isDark ? '#82E7BF' : '#0F8A63',
@@ -298,14 +298,10 @@ export function formatRequirementStatus(reason: string | null | undefined) {
 export function EmbeddedPayoutWorkspace({
   visible,
   onboardingComplete,
-  detailsSubmitted,
-  requirements,
   onRefresh,
 }: {
   visible: boolean;
   onboardingComplete: boolean;
-  detailsSubmitted: boolean;
-  requirements?: ConnectData['requirements'] | null;
   onRefresh: () => void;
 }) {
   const publishableKey = sanitizeStripeEnvValue(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
@@ -314,13 +310,6 @@ export function EmbeddedPayoutWorkspace({
   const [isInitializing, setIsInitializing] = useState(false);
   const [refreshSeed, setRefreshSeed] = useState(0);
   const [isDark, setIsDark] = useState(false);
-  const [notificationCount, setNotificationCount] = useState({ total: 0, actionRequired: 0 });
-  const handleNotificationsChange = useCallback(
-    ({ total, actionRequired }: { total: number; actionRequired: number }) => {
-      setNotificationCount({ total, actionRequired });
-    },
-    []
-  );
 
   useEffect(() => {
     const checkTheme = () => setIsDark(document.documentElement.classList.contains('dark'));
@@ -335,7 +324,6 @@ export function EmbeddedPayoutWorkspace({
       setConnectInstance(null);
       setWorkspaceError(null);
       setIsInitializing(false);
-      setNotificationCount({ total: 0, actionRequired: 0 });
       return;
     }
 
@@ -353,10 +341,9 @@ export function EmbeddedPayoutWorkspace({
     setWorkspaceError(null);
     setConnectInstance(null);
     setIsInitializing(true);
-    setNotificationCount({ total: 0, actionRequired: 0 });
 
     const initializeWorkspace = async () => {
-      const requestFreshClientSecret = async () => {
+      try {
         const res = await fetch('/api/stripe/connect/account-session', {
           method: 'POST',
         });
@@ -369,28 +356,15 @@ export function EmbeddedPayoutWorkspace({
           });
         }
 
-        return body.clientSecret as string;
-      };
-
-      try {
-        let initialClientSecret = await requestFreshClientSecret();
-
         if (cancelled) {
           return;
         }
 
+        const clientSecret = body.clientSecret as string;
         const instance = loadConnectAndInitialize({
           publishableKey,
           appearance: buildConnectAppearance(isDark),
-          fetchClientSecret: async () => {
-            if (initialClientSecret) {
-              const cachedClientSecret = initialClientSecret;
-              initialClientSecret = '';
-              return cachedClientSecret;
-            }
-
-            return requestFreshClientSecret();
-          },
+          fetchClientSecret: async () => clientSecret,
         });
 
         setWorkspaceError(null);
@@ -432,29 +406,8 @@ export function EmbeddedPayoutWorkspace({
     );
   }
 
-  const embedFrameClass = 'overflow-x-auto overflow-y-visible px-1';
-  const isReviewState = detailsSubmitted && !onboardingComplete;
-  const currentRequirementCount =
-    (requirements?.currentlyDue?.length ?? 0) + (requirements?.pastDue?.length ?? 0);
-  const hasImmediateRequirements = currentRequirementCount > 0;
-  const hasPendingVerification = (requirements?.pendingVerification?.length ?? 0) > 0;
-  const loadingLabel = onboardingComplete
-    ? 'Loading secure Stripe payout controls...'
-    : isReviewState
-      ? 'Loading secure Stripe review status...'
-      : 'Loading secure Stripe verification...';
-  const fallbackMessage =
-    workspaceError?.retryable === false
-      ? onboardingComplete
-        ? 'Secure Stripe payout controls are temporarily unavailable while live payout access is being finalized.'
-        : isReviewState
-          ? 'Secure Stripe review controls are temporarily unavailable while live payout access is being finalized.'
-          : 'Secure Stripe verification is temporarily unavailable while live payout access is being finalized.'
-      : onboardingComplete
-        ? 'Secure Stripe payout controls could not be opened yet. Try again to create a fresh secure session.'
-        : isReviewState
-          ? 'Secure Stripe review controls could not be opened yet. Try again to create a fresh secure session.'
-          : 'Secure Stripe verification could not be opened yet. Refresh and try again to continue setup.';
+  const workspaceSurfaceClass =
+    'overflow-hidden rounded-[30px] border border-gray-200/80 bg-white/92 shadow-[0_18px_45px_-32px_rgba(15,23,42,0.4)] dark:border-white/10 dark:bg-[#0f1b23]/92';
 
   return (
     <div className="space-y-5">
@@ -476,155 +429,31 @@ export function EmbeddedPayoutWorkspace({
       )}
 
       {isInitializing ? (
-        <div className="space-y-4 rounded-[28px] bg-gray-50/80 p-4 dark:bg-white/5 sm:p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div className="space-y-2">
-              <div className="h-3 w-32 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
-              <div className="h-4 w-56 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
-            </div>
-            <div className="h-9 w-28 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
-          </div>
-          <div className="space-y-3">
-            <div className="h-40 animate-pulse rounded-[24px] bg-white/80 shadow-sm dark:bg-[#101c25]" />
-            <div className="h-72 animate-pulse rounded-[24px] bg-white/80 shadow-sm dark:bg-[#101c25]" />
-          </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{loadingLabel}</p>
+        <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-700 dark:bg-gray-900">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+          <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
+            Opening secure Stripe setup...
+          </p>
         </div>
       ) : connectInstance ? (
         <ConnectComponentsProvider connectInstance={connectInstance}>
           <div className="space-y-4">
-            {!onboardingComplete && !detailsSubmitted ? (
-              <div className="rounded-[28px] border border-primary/15 bg-primary/[0.06] px-4 py-4 dark:border-primary/20 dark:bg-primary/[0.08] sm:px-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      If Stripe asks you to confirm again, keep going.
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                      Stripe can ask the payout owner to sign in again with a one-time code before
-                      bank or identity changes. That continues the same secure verification and
-                      does not restart setup.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setRefreshSeed((value) => value + 1)}
-                    className="btn-outline text-xs"
-                  >
-                    Reload secure Stripe session
-                  </button>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
-                  <span className="rounded-full border border-gray-200/80 bg-white/80 px-3 py-1.5 dark:border-white/10 dark:bg-white/[0.05]">
-                    Finish the Stripe prompt
-                  </span>
-                  <span className="rounded-full border border-gray-200/80 bg-white/80 px-3 py-1.5 dark:border-white/10 dark:bg-white/[0.05]">
-                    Return to this same page
-                  </span>
-                  <span className="rounded-full border border-gray-200/80 bg-white/80 px-3 py-1.5 dark:border-white/10 dark:bg-white/[0.05]">
-                    Click Refresh status if needed
-                  </span>
-                </div>
-              </div>
-            ) : null}
-
-            {isReviewState ? (
-              <div className="rounded-[28px] border border-primary/15 bg-primary/[0.06] px-4 py-4 dark:border-primary/20 dark:bg-primary/[0.08] sm:px-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      {hasImmediateRequirements
-                        ? 'Stripe still has a few follow-up items to finish.'
-                        : hasPendingVerification
-                          ? 'Stripe is reviewing the submitted payout details.'
-                          : 'Stripe has your submitted payout details.'}
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                      {hasImmediateRequirements
-                        ? 'Use the secure Stripe panel below to finish the last required items. If Stripe asks the owner to confirm again, that is continuing the same payout verification.'
-                        : hasPendingVerification
-                          ? 'The payout owner already submitted the details Stripe needed. If Stripe asks for another confirmation code, finish it and then come right back here while Stripe completes review.'
-                          : 'If Stripe asks the payout owner to confirm again, finish that Stripe prompt and then return here. As soon as Stripe finishes review, this page switches to the live payout workspace automatically.'}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setRefreshSeed((value) => value + 1)}
-                    className="btn-outline text-xs"
-                  >
-                    Reload secure Stripe session
-                  </button>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
-                  <span className="rounded-full border border-gray-200/80 bg-white/80 px-3 py-1.5 dark:border-white/10 dark:bg-white/[0.05]">
-                    Stripe review stays on this page
-                  </span>
-                  <span className="rounded-full border border-gray-200/80 bg-white/80 px-3 py-1.5 dark:border-white/10 dark:bg-white/[0.05]">
-                    Refresh status after any Stripe prompt
-                  </span>
-                  {notificationCount.actionRequired > 0 ? (
-                    <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300">
-                      {notificationCount.actionRequired} action
-                      {notificationCount.actionRequired === 1 ? '' : 's'} still required
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
-
-            {!onboardingComplete && !detailsSubmitted ? (
-              <div className={embedFrameClass}>
+            {!onboardingComplete ? (
+              <div className={workspaceSurfaceClass}>
                 <ConnectAccountOnboarding
                   collectionOptions={{ fields: 'currently_due' }}
                   onExit={onRefresh}
                 />
               </div>
-            ) : !onboardingComplete ? (
-              <>
-                <div className={embedFrameClass}>
-                  <ConnectNotificationBanner
-                    collectionOptions={{ fields: 'currently_due', futureRequirements: 'omit' }}
-                    onNotificationsChange={handleNotificationsChange}
-                  />
-                </div>
-
-                {hasImmediateRequirements ? (
-                  <div className={embedFrameClass}>
-                    <ConnectAccountManagement
-                      collectionOptions={{ fields: 'currently_due', futureRequirements: 'omit' }}
-                    />
-                  </div>
-                ) : null}
-
-                {!hasImmediateRequirements &&
-                !hasPendingVerification &&
-                notificationCount.total === 0 ? (
-                  <div className="rounded-3xl border border-gray-200 bg-white/80 p-4 text-sm leading-6 text-gray-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300">
-                    Stripe did not return any new action items in this session. If the owner just
-                    finished a confirmation step, use{' '}
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">
-                      Refresh status
-                    </span>{' '}
-                    on the payouts page to pull the latest Stripe state.
-                  </div>
-                ) : null}
-              </>
             ) : (
               <>
-                <div className="rounded-[28px] border border-primary/15 bg-primary/[0.06] px-4 py-4 dark:border-primary/20 dark:bg-primary/[0.08] sm:px-5">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    If Stripe asks you to sign in again, it is protecting payout changes.
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                    Stripe can re-check the payout owner with a one-time code before bank or
-                    payout-setting changes. That is a normal secure Stripe check and does not mean
-                    setup is restarting.
-                  </p>
+                <div className={workspaceSurfaceClass}>
+                  <ConnectBalances />
                 </div>
-                <div className={embedFrameClass}>
+                <div className={workspaceSurfaceClass}>
                   <ConnectPayouts />
                 </div>
-                <div className={embedFrameClass}>
+                <div className={workspaceSurfaceClass}>
                   <ConnectAccountManagement
                     collectionOptions={{ fields: 'currently_due', futureRequirements: 'include' }}
                   />
@@ -635,7 +464,9 @@ export function EmbeddedPayoutWorkspace({
         </ConnectComponentsProvider>
       ) : (
         <div className="rounded-3xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400">
-          {fallbackMessage}
+          {workspaceError?.retryable === false
+            ? 'Secure Stripe setup is temporarily unavailable while live payout access is being finalized.'
+            : 'Secure Stripe setup could not be opened yet. Try again to create a fresh setup session.'}
         </div>
       )}
     </div>
