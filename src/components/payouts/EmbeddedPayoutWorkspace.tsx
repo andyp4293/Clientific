@@ -93,7 +93,7 @@ function buildConnectAppearance(isDark: boolean) {
     overlays: 'dialog' as const,
     variables: {
       colorPrimary: '#0F8A63',
-      colorBackground: isDark ? '#12202A' : '#FCFEFD',
+      colorBackground: isDark ? '#111F26' : '#F3F8F7',
       colorText: isDark ? '#F3F8F7' : '#102026',
       colorSecondaryText: isDark ? '#B8CAC5' : '#546A67',
       colorDanger: '#DC2626',
@@ -101,7 +101,7 @@ function buildConnectAppearance(isDark: boolean) {
       buttonPrimaryColorBackground: '#0F8A63',
       buttonPrimaryColorBorder: '#0F8A63',
       buttonPrimaryColorText: '#F8FFFC',
-      buttonSecondaryColorBackground: isDark ? '#182A34' : '#F3F8F7',
+      buttonSecondaryColorBackground: isDark ? '#111F26' : '#F3F8F7',
       buttonSecondaryColorBorder: isDark ? '#31505B' : '#D7E2E0',
       buttonSecondaryColorText: isDark ? '#F3F8F7' : '#102026',
       badgeNeutralColorBackground: isDark ? '#1A2C36' : '#F3F8F7',
@@ -116,21 +116,52 @@ function buildConnectAppearance(isDark: boolean) {
       badgeDangerColorBackground: isDark ? 'rgba(220, 38, 38, 0.18)' : 'rgba(220, 38, 38, 0.10)',
       badgeDangerColorBorder: isDark ? 'rgba(248, 113, 113, 0.24)' : 'rgba(220, 38, 38, 0.18)',
       badgeDangerColorText: isDark ? '#FCA5A5' : '#B91C1C',
-      offsetBackgroundColor: isDark ? '#182A34' : '#F3F8F7',
-      formBackgroundColor: isDark ? '#0D1820' : '#FFFFFF',
+      offsetBackgroundColor: isDark ? '#111F26' : '#F3F8F7',
+      formBackgroundColor: isDark ? '#111F26' : '#F3F8F7',
       formHighlightColorBorder: '#0F8A63',
       formAccentColor: '#0F8A63',
       actionPrimaryColorText: isDark ? '#82E7BF' : '#0F8A63',
       actionSecondaryColorText: isDark ? '#E7F2EF' : '#102026',
-      borderRadius: '20px',
-      buttonBorderRadius: '18px',
-      formBorderRadius: '18px',
-      overlayBorderRadius: '22px',
+      borderRadius: '0px',
+      buttonBorderRadius: '0px',
+      formBorderRadius: '0px',
+      overlayBorderRadius: '0px',
       spacingUnit: '12px',
       fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
       overlayBackdropColor: isDark ? 'rgba(3, 12, 18, 0.72)' : 'rgba(12, 24, 33, 0.18)',
     },
   };
+}
+
+function EmbeddedWorkspaceLoading({ onboardingComplete }: { onboardingComplete: boolean }) {
+  return (
+    <div
+      data-testid="embedded-workspace-loading"
+      className="space-y-4 border border-gray-200/80 bg-gray-50/70 p-5 dark:border-white/10 dark:bg-white/[0.04]"
+    >
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 h-5 w-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+        <div>
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            {onboardingComplete
+              ? 'Loading secure Stripe workspace...'
+              : 'Loading secure Stripe setup...'}
+          </p>
+          <p className="mt-1 text-sm leading-6 text-gray-500 dark:text-gray-400">
+            {onboardingComplete
+              ? 'Stripe is preparing balances, payouts, and account settings for this session.'
+              : 'Stripe is preparing a fresh secure verification session for this account.'}
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="h-12 animate-pulse bg-gray-200/80 dark:bg-white/10" />
+        <div className="h-24 animate-pulse bg-gray-200/60 dark:bg-white/[0.08]" />
+        <div className="h-24 animate-pulse bg-gray-200/60 dark:bg-white/[0.08]" />
+      </div>
+    </div>
+  );
 }
 
 export function sumBalanceAmounts(amounts: BalanceAmount[] | undefined) {
@@ -427,8 +458,8 @@ export function EmbeddedPayoutWorkspace({
     );
   }
 
-  const workspaceSurfaceClass =
-    'overflow-hidden rounded-[30px] border border-gray-200/80 bg-white/92 shadow-[0_18px_45px_-32px_rgba(15,23,42,0.4)] dark:border-white/10 dark:bg-[#0f1b23]/92';
+  const workspaceSectionClass = 'overflow-hidden';
+  const workspaceDividerClass = 'border-t border-gray-200/80 pt-5 dark:border-white/10';
 
   return (
     <div className="space-y-5">
@@ -450,17 +481,12 @@ export function EmbeddedPayoutWorkspace({
       )}
 
       {isInitializing ? (
-        <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-700 dark:bg-gray-900">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
-          <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-            Opening secure Stripe setup...
-          </p>
-        </div>
+        <EmbeddedWorkspaceLoading onboardingComplete={onboardingComplete} />
       ) : connectInstance ? (
         <ConnectComponentsProvider connectInstance={connectInstance}>
           <div className="space-y-4">
             {!onboardingComplete ? (
-              <div className={workspaceSurfaceClass}>
+              <div className={workspaceSectionClass}>
                 <ConnectAccountOnboarding
                   collectionOptions={{ fields: 'currently_due' }}
                   onExit={onRefresh}
@@ -468,13 +494,13 @@ export function EmbeddedPayoutWorkspace({
               </div>
             ) : (
               <>
-                <div className={workspaceSurfaceClass}>
+                <div className={workspaceSectionClass}>
                   <ConnectBalances />
                 </div>
-                <div className={workspaceSurfaceClass}>
+                <div className={workspaceDividerClass}>
                   <ConnectPayouts />
                 </div>
-                <div className={workspaceSurfaceClass}>
+                <div className={workspaceDividerClass}>
                   <ConnectAccountManagement
                     collectionOptions={{ fields: 'currently_due', futureRequirements: 'include' }}
                   />

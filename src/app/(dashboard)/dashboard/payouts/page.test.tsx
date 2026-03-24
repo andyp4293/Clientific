@@ -130,9 +130,14 @@ describe('PayoutsPage', () => {
     render(<PayoutsPage />);
 
     expect(screen.getByRole('button', { name: /start secure setup/i })).toBeInTheDocument();
-    expect(screen.getByText(/connect payouts without leaving this page/i)).toBeInTheDocument();
+    expect(screen.getByText(/finish payout setup/i)).toBeInTheDocument();
     expect(screen.getByText(/current business:/i)).toBeInTheDocument();
     expect(screen.getByText(/abc nails/i)).toBeInTheDocument();
+    expect(screen.getByText(/^after setup$/i)).toBeInTheDocument();
+    expect(screen.getByText(/balances, payout history, and payout settings appear here after approval/i)).toBeInTheDocument();
+    expect(screen.queryByText('$0.00')).not.toBeInTheDocument();
+    expect(screen.queryByText(/^available now$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^still pending$/i)).not.toBeInTheDocument();
     expect(screen.queryByTestId('embedded-payout-workspace')).not.toBeInTheDocument();
   });
 

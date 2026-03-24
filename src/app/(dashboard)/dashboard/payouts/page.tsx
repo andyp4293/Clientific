@@ -14,7 +14,6 @@ import {
   summarizeRequirementTasks,
   sumBalanceAmounts,
 } from '@/components/payouts/EmbeddedPayoutWorkspace';
-import { FundsStatusPanel } from '@/components/payouts/FundsStatusPanel';
 import { buildPayoutFundsBreakdown } from '@/lib/payout-funds';
 
 type Transaction = {
@@ -295,12 +294,12 @@ export default function PayoutsPage() {
                   <h2 className="mt-3 text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
                     {hasSavedBankButMissingTerms
                       ? 'Finish Stripe\'s final confirmation'
-                      : 'Connect payouts without leaving this page'}
+                      : 'Finish payout setup'}
                   </h2>
                   <p className="mt-3 text-sm leading-6 text-gray-500 dark:text-gray-400">
                     {hasSavedBankButMissingTerms
-                      ? 'Stripe already saved your bank account. Return to Stripe and finish the final agreement review. If you leave from the Return to Clientific link before submitting, Stripe sends you back here with setup still incomplete.'
-                      : `Start with your bank account. Stripe will only ask for the payout-owner details it still requires before ${isReferralOnly ? 'referral payouts' : 'paid deals and referrals'} can pay out.`}
+                      ? 'Stripe already saved your bank account. Return to Stripe and submit the final agreement to finish setup.'
+                      : `Stripe will collect only the remaining payout details before ${isReferralOnly ? 'referral payouts' : 'paid deals and referrals'} can go live.`}
                   </p>
                 </div>
 
@@ -395,8 +394,8 @@ export default function PayoutsPage() {
                   </h2>
                   <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
                     {isReferralOnly
-                      ? 'Referral earnings start moving into Stripe and can be paid out after this secure setup is complete.'
-                      : 'Free-service deals and code-claim offers can still run without payouts. Paid purchase-link deals start using Stripe payouts once setup is complete.'}
+                      ? 'Referral earnings move into Stripe after setup is complete.'
+                      : 'Paid purchase-link deals start using Stripe payouts after setup is complete.'}
                   </p>
                 </div>
               </div>
@@ -445,30 +444,17 @@ export default function PayoutsPage() {
           </div>
 
           <div className="space-y-4 xl:sticky xl:top-6">
-            <FundsStatusPanel
-              availableAmountCents={availableBalance}
-              stripePendingAmountCents={pendingBalance}
-              dealPendingAmountCents={dealPending}
-              dealPendingCount={dealPendingCount}
-              referralPendingAmountCents={referralPending}
-              referralPendingCount={referralPendingCount}
-              readyForPaidDeals={Boolean(connectData?.readyForPaidDeals)}
-              isLoading={connectLoading}
-              className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900"
-            />
-
             <div className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                What to expect
+                After setup
               </p>
               <div className="mt-4 space-y-3 text-sm leading-6 text-gray-500 dark:text-gray-400">
-                <p>Stripe starts with your bank account and only the payout details it still requires.</p>
                 <p>
                   {hasSavedBankButMissingTerms
-                    ? 'If Stripe shows a final review screen, scroll to the bottom and submit the agreement before returning here.'
-                    : 'When Stripe is done, this page becomes your live payout workspace automatically.'}
+                    ? 'If Stripe shows a final review screen, submit the agreement before returning here.'
+                    : 'This page switches to the live payout workspace automatically when setup is complete.'}
                 </p>
-                <p>You can come back here anytime to review balances, payout history, and settings.</p>
+                <p>Balances, payout history, and payout settings appear here after approval.</p>
               </div>
             </div>
           </div>

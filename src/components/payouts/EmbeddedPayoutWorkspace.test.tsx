@@ -41,6 +41,15 @@ describe('EmbeddedPayoutWorkspace', () => {
     document.documentElement.className = '';
   });
 
+  it('shows a loading state while Stripe is creating the secure session', () => {
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
+
+    render(<EmbeddedPayoutWorkspace visible onboardingComplete={false} onRefresh={vi.fn()} />);
+
+    expect(screen.getByTestId('embedded-workspace-loading')).toBeInTheDocument();
+    expect(screen.getByText(/loading secure stripe setup/i)).toBeInTheDocument();
+  });
+
   it('uses the light appearance tokens by default', async () => {
     await act(async () => {
       render(<EmbeddedPayoutWorkspace visible onboardingComplete={false} onRefresh={vi.fn()} />);
@@ -54,8 +63,10 @@ describe('EmbeddedPayoutWorkspace', () => {
     });
 
     const config = mockLoadConnectAndInitialize.mock.calls[0][0];
-    expect(config.appearance.variables.colorBackground).toBe('#FCFEFD');
-    expect(config.appearance.variables.formBackgroundColor).toBe('#FFFFFF');
+    expect(config.appearance.variables.colorBackground).toBe('#F3F8F7');
+    expect(config.appearance.variables.formBackgroundColor).toBe('#F3F8F7');
+    expect(config.appearance.variables.borderRadius).toBe('0px');
+    expect(config.appearance.variables.formBorderRadius).toBe('0px');
     expect(screen.getByTestId('connect-account-onboarding')).toBeInTheDocument();
   });
 
@@ -74,8 +85,10 @@ describe('EmbeddedPayoutWorkspace', () => {
     });
 
     const config = mockLoadConnectAndInitialize.mock.calls[0][0];
-    expect(config.appearance.variables.colorBackground).toBe('#12202A');
-    expect(config.appearance.variables.formBackgroundColor).toBe('#0D1820');
+    expect(config.appearance.variables.colorBackground).toBe('#111F26');
+    expect(config.appearance.variables.formBackgroundColor).toBe('#111F26');
+    expect(config.appearance.variables.borderRadius).toBe('0px');
+    expect(config.appearance.variables.buttonBorderRadius).toBe('0px');
     expect(screen.getByTestId('connect-balances')).toBeInTheDocument();
     expect(screen.getByTestId('connect-payouts')).toBeInTheDocument();
     expect(screen.getByTestId('connect-account-management')).toBeInTheDocument();
