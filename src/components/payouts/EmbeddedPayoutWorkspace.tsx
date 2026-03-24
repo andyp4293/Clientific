@@ -20,6 +20,8 @@ export type BalanceAmount = {
 export type ConnectData = {
   notConnected: boolean;
   accountId: string | null;
+  businessName?: string | null;
+  businessEmail?: string | null;
   businessType: string | null;
   isReferralOnly: boolean;
   chargesEnabled: boolean;

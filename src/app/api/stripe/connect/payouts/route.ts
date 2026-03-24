@@ -20,17 +20,36 @@ import {
   syncBusinessConnectState,
 } from '@/lib/stripe-connect';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+function withNoStoreHeaders<T>(body: T, init?: ResponseInit) {
+  return NextResponse.json(body, {
+    ...init,
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      Pragma: 'no-cache',
+      Expires: '0',
+      ...(init?.headers ?? {}),
+    },
+  });
+}
+
 function emptyResponse(
   notConnected: boolean,
   referralPayouts = emptyReferralPayoutSummary(),
   dealPayouts = emptyDealPayoutSummary(),
-  businessType: string | null = null
+  businessType: string | null = null,
+  businessName: string | null = null,
+  businessEmail: string | null = null
 ) {
   const isReferralOnly = businessType === 'Referral Partner';
 
   return {
     notConnected,
     accountId: null,
+    businessName,
+    businessEmail,
     businessType,
     isReferralOnly,
     chargesEnabled: false,
@@ -79,20 +98,22 @@ export async function GET(_req: NextRequest) {
     const session = await getServerSession(authOptions);
     const businessId = getSessionBusinessId(session);
     if (!businessId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return withNoStoreHeaders({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const business = await prisma.business.findUnique({
       where: { id: businessId },
       select: {
         id: true,
+        name: true,
+        email: true,
         businessType: true,
         stripeConnectAccountId: true,
       },
     });
 
     if (!business) {
-      return NextResponse.json({ error: 'Business not found' }, { status: 404 });
+      return withNoStoreHeaders({ error: 'Business not found' }, { status: 404 });
     }
 
     await reconcileReferralCommissions({
@@ -106,8 +127,15 @@ export async function GET(_req: NextRequest) {
     ]);
 
     if (!business.stripeConnectAccountId) {
-      return NextResponse.json(
-        emptyResponse(true, referralPayouts, dealPayouts, business.businessType)
+      return withNoStoreHeaders(
+        emptyResponse(
+          true,
+          referralPayouts,
+          dealPayouts,
+          business.businessType,
+          business.name,
+          business.email
+        )
       );
     }
 
@@ -135,9 +163,11 @@ export async function GET(_req: NextRequest) {
         ? await fetchConnectPayoutsOverview(status.accountId)
         : null;
 
-      return NextResponse.json({
+      return withNoStoreHeaders({
         notConnected: false,
         accountId: status.accountId,
+        businessName: business.name,
+        businessEmail: business.email,
         businessType: business.businessType,
         isReferralOnly: business.businessType === 'Referral Partner',
         chargesEnabled: status.chargesEnabled,
@@ -162,8 +192,15 @@ export async function GET(_req: NextRequest) {
     } catch (error: any) {
       if (isRecoverableConnectAccountError(error)) {
         await clearStaleConnectState(business.id);
-        return NextResponse.json(
-          emptyResponse(true, referralPayouts, dealPayouts, business.businessType)
+        return withNoStoreHeaders(
+          emptyResponse(
+            true,
+            referralPayouts,
+            dealPayouts,
+            business.businessType,
+            business.name,
+            business.email
+          )
         );
       }
 
@@ -171,6 +208,6 @@ export async function GET(_req: NextRequest) {
     }
   } catch (error: any) {
     console.error('GET /api/stripe/connect/payouts error:', error);
-    return NextResponse.json({ error: 'Failed to load payout data' }, { status: 500 });
+    return withNoStoreHeaders({ error: 'Failed to load payout data' }, { status: 500 });
   }
 }

@@ -103,6 +103,9 @@ function makeRequest() {
 
 const connectedBusiness = {
   id: 'biz-1',
+  name: 'ABC Nails',
+  email: 'andyp4293@gmail.com',
+  businessType: 'Salon',
   stripeConnectAccountId: 'acct_test123',
 };
 
@@ -200,11 +203,19 @@ describe('GET /api/stripe/connect/payouts', () => {
   });
 
   it('returns notConnected: true when no stripeConnectAccountId', async () => {
-    mockFindUnique.mockResolvedValue({ id: 'biz-1', stripeConnectAccountId: null });
+    mockFindUnique.mockResolvedValue({
+      id: 'biz-1',
+      name: 'ABC Nails',
+      email: 'andyp4293@gmail.com',
+      businessType: 'Salon',
+      stripeConnectAccountId: null,
+    });
     const res = await GET(makeRequest());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.notConnected).toBe(true);
+    expect(body.businessName).toBe('ABC Nails');
+    expect(body.businessEmail).toBe('andyp4293@gmail.com');
     expect(body.dealPayouts).toEqual(dealSummary);
     expect(body.referralPayouts).toEqual(referralSummary);
     expect(body.balances).toBeNull();
@@ -219,8 +230,11 @@ describe('GET /api/stripe/connect/payouts', () => {
 
     const res = await GET(makeRequest());
     expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toContain('no-store');
     const body = await res.json();
     expect(body.notConnected).toBe(false);
+    expect(body.businessName).toBe('ABC Nails');
+    expect(body.businessEmail).toBe('andyp4293@gmail.com');
     expect(body.readyForPaidDeals).toBe(true);
     expect(body.bankAccountConnected).toBe(true);
     expect(body.externalAccount.last4).toBe('6789');

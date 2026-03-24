@@ -43,6 +43,8 @@ import PayoutsPage from './page';
 const buildConnectData = (overrides: Record<string, unknown> = {}) => ({
   notConnected: true,
   accountId: null,
+  businessName: 'ABC Nails',
+  businessEmail: 'andyp4293@gmail.com',
   businessType: 'Salon',
   isReferralOnly: false,
   chargesEnabled: false,
@@ -129,6 +131,8 @@ describe('PayoutsPage', () => {
 
     expect(screen.getByRole('button', { name: /start secure setup/i })).toBeInTheDocument();
     expect(screen.getByText(/connect payouts without leaving this page/i)).toBeInTheDocument();
+    expect(screen.getByText(/current business:/i)).toBeInTheDocument();
+    expect(screen.getByText(/abc nails/i)).toBeInTheDocument();
     expect(screen.queryByTestId('embedded-payout-workspace')).not.toBeInTheDocument();
   });
 

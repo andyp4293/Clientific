@@ -82,7 +82,7 @@ export default function PayoutsPage() {
   const { data: earningsData, isLoading: earningsLoading } = useQuery<EarningsData>({
     queryKey: ['deal-earnings'],
     queryFn: async () => {
-      const res = await fetch('/api/deal-purchases/earnings');
+      const res = await fetch('/api/deal-purchases/earnings', { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed to load earnings');
       return res.json();
     },
@@ -95,7 +95,7 @@ export default function PayoutsPage() {
   } = useQuery<ConnectData>({
     queryKey: ['connect-payouts'],
     queryFn: async () => {
-      const res = await fetch('/api/stripe/connect/payouts');
+      const res = await fetch('/api/stripe/connect/payouts', { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed to load payout status');
       return res.json();
     },
@@ -233,6 +233,21 @@ export default function PayoutsPage() {
           </div>
         </div>
       </div>
+
+      {connectData?.businessName || connectData?.businessEmail ? (
+        <div className="rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-600 shadow-sm dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-300">
+          <span className="font-semibold text-gray-900 dark:text-gray-100">Current business:</span>{' '}
+          {connectData?.businessName ?? 'Unknown business'}
+          {connectData?.businessEmail ? (
+            <>
+              {' '}
+              <span className="text-gray-500 dark:text-gray-400">
+                ({connectData.businessEmail})
+              </span>
+            </>
+          ) : null}
+        </div>
+      ) : null}
 
       {needsSetup ? (
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr),360px]">
