@@ -16,6 +16,7 @@ vi.mock('@stripe/react-connect-js', () => ({
   ConnectComponentsProvider: ({ children }: { children: ReactNode }) => (
     <div data-testid="connect-provider">{children}</div>
   ),
+  ConnectNotificationBanner: () => <div data-testid="connect-notification-banner" />,
   ConnectPayouts: () => <div data-testid="connect-payouts" />,
 }));
 
@@ -42,7 +43,14 @@ describe('EmbeddedPayoutWorkspace', () => {
 
   it('uses the light appearance tokens by default', async () => {
     await act(async () => {
-      render(<EmbeddedPayoutWorkspace visible onboardingComplete={false} onRefresh={vi.fn()} />);
+      render(
+        <EmbeddedPayoutWorkspace
+          visible
+          onboardingComplete={false}
+          detailsSubmitted={false}
+          onRefresh={vi.fn()}
+        />
+      );
     });
 
     await waitFor(() => {
@@ -70,7 +78,14 @@ describe('EmbeddedPayoutWorkspace', () => {
       )
     );
 
-    render(<EmbeddedPayoutWorkspace visible onboardingComplete onRefresh={vi.fn()} />);
+    render(
+      <EmbeddedPayoutWorkspace
+        visible
+        onboardingComplete
+        detailsSubmitted
+        onRefresh={vi.fn()}
+      />
+    );
 
     expect(screen.getByText(/loading secure stripe payout controls/i)).toBeInTheDocument();
 
@@ -88,7 +103,14 @@ describe('EmbeddedPayoutWorkspace', () => {
     document.documentElement.classList.add('dark');
 
     await act(async () => {
-      render(<EmbeddedPayoutWorkspace visible onboardingComplete onRefresh={vi.fn()} />);
+      render(
+        <EmbeddedPayoutWorkspace
+          visible
+          onboardingComplete
+          detailsSubmitted
+          onRefresh={vi.fn()}
+        />
+      );
     });
 
     await waitFor(() => {
@@ -118,7 +140,14 @@ describe('EmbeddedPayoutWorkspace', () => {
       )
     );
 
-    render(<EmbeddedPayoutWorkspace visible onboardingComplete={false} onRefresh={vi.fn()} />);
+    render(
+      <EmbeddedPayoutWorkspace
+        visible
+        onboardingComplete={false}
+        detailsSubmitted={false}
+        onRefresh={vi.fn()}
+      />
+    );
 
     expect(screen.getByText(/loading secure stripe verification/i)).toBeInTheDocument();
 
@@ -147,7 +176,14 @@ describe('EmbeddedPayoutWorkspace', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await act(async () => {
-      render(<EmbeddedPayoutWorkspace visible onboardingComplete={false} onRefresh={vi.fn()} />);
+      render(
+        <EmbeddedPayoutWorkspace
+          visible
+          onboardingComplete={false}
+          detailsSubmitted={false}
+          onRefresh={vi.fn()}
+        />
+      );
     });
 
     await waitFor(() => {
@@ -162,7 +198,14 @@ describe('EmbeddedPayoutWorkspace', () => {
 
   it('explains that Stripe re-auth continues verification instead of restarting setup', async () => {
     await act(async () => {
-      render(<EmbeddedPayoutWorkspace visible onboardingComplete={false} onRefresh={vi.fn()} />);
+      render(
+        <EmbeddedPayoutWorkspace
+          visible
+          onboardingComplete={false}
+          detailsSubmitted={false}
+          onRefresh={vi.fn()}
+        />
+      );
     });
 
     await waitFor(() => {
@@ -171,5 +214,34 @@ describe('EmbeddedPayoutWorkspace', () => {
 
     expect(screen.getByText(/if stripe asks you to confirm again, keep going/i)).toBeInTheDocument();
     expect(screen.getByText(/does not restart setup/i)).toBeInTheDocument();
+  });
+
+  it('shows Stripe review controls instead of replaying onboarding after details are submitted', async () => {
+    await act(async () => {
+      render(
+        <EmbeddedPayoutWorkspace
+          visible
+          onboardingComplete={false}
+          detailsSubmitted
+          requirements={{
+            currentlyDue: [],
+            eventuallyDue: [],
+            pastDue: [],
+            pendingVerification: ['individual.verification.document'],
+            disabledReason: 'requirements.pending_verification',
+          }}
+          onRefresh={vi.fn()}
+        />
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('connect-provider')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('connect-notification-banner')).toBeInTheDocument();
+    expect(screen.queryByTestId('connect-account-onboarding')).not.toBeInTheDocument();
+    expect(screen.getByText(/stripe is reviewing the submitted payout details/i)).toBeInTheDocument();
+    expect(screen.getByText(/reload secure stripe session/i)).toBeInTheDocument();
   });
 });

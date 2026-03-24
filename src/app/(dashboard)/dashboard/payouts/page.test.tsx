@@ -26,13 +26,19 @@ vi.mock('@/components/payouts/EmbeddedPayoutWorkspace', async () => {
     EmbeddedPayoutWorkspace: ({
       visible,
       onboardingComplete,
+      detailsSubmitted,
     }: {
       visible: boolean;
       onboardingComplete: boolean;
+      detailsSubmitted: boolean;
     }) =>
       visible ? (
         <div data-testid="embedded-payout-workspace">
-          {onboardingComplete ? 'live payout workspace' : 'setup workspace'}
+          {onboardingComplete
+            ? 'live payout workspace'
+            : detailsSubmitted
+              ? 'review workspace'
+              : 'setup workspace'}
         </div>
       ) : null,
   };
@@ -360,6 +366,55 @@ describe('PayoutsPage', () => {
     expect(
       screen.getByText(/stripe still needs the payout terms accepted before payouts can go live/i)
     ).toBeInTheDocument();
+  });
+
+  it('shows Stripe review copy instead of restart copy after details are submitted', () => {
+    mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
+      const key = config?.queryKey?.[0];
+
+      if (key === 'deal-earnings') {
+        return {
+          data: {
+            transactions: [],
+            totals: {
+              totalGross: 0,
+              totalFees: 0,
+              totalNet: 0,
+              transactionCount: 0,
+            },
+          },
+          isLoading: false,
+        };
+      }
+
+      if (key === 'connect-payouts') {
+        return {
+          data: buildConnectData({
+            notConnected: false,
+            accountId: 'acct_review',
+            detailsSubmitted: true,
+            requirements: {
+              currentlyDue: [],
+              eventuallyDue: [],
+              pastDue: [],
+              pendingVerification: ['individual.verification.document'],
+              disabledReason: 'requirements.pending_verification',
+            },
+          }),
+          isLoading: false,
+          refetch: vi.fn(),
+        };
+      }
+
+      return { data: undefined, isLoading: false };
+    });
+
+    render(<PayoutsPage />);
+
+    expect(screen.getByRole('heading', { name: /stripe is reviewing your payout details/i })).toBeInTheDocument();
+    expect(screen.getByText(/stripe already has the submitted payout details/i)).toBeInTheDocument();
+    expect(screen.getByText('review workspace')).toBeInTheDocument();
+    expect(screen.queryByText(/start your payout verification here/i)).not.toBeInTheDocument();
   });
 
   it('shows friendly payout tasks instead of raw Stripe field names', () => {
