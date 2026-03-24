@@ -483,4 +483,48 @@ describe('PayoutsPage', () => {
     expect(screen.getByText(/secure payments and payouts/i)).toBeInTheDocument();
     expect(screen.queryByText(/payouts powered by stripe/i)).not.toBeInTheDocument();
   });
+
+  it('shows a payout status error instead of pretending setup is incomplete when the API fails', () => {
+    mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
+      const key = config?.queryKey?.[0];
+
+      if (key === 'deal-earnings') {
+        return {
+          data: {
+            transactions: [],
+            totals: {
+              totalGross: 0,
+              totalFees: 0,
+              totalNet: 0,
+              transactionCount: 0,
+            },
+          },
+          isLoading: false,
+        };
+      }
+
+      if (key === 'connect-payouts') {
+        return {
+          data: undefined,
+          isLoading: false,
+          error: new Error('Failed to load payout data'),
+          refetch: vi.fn(),
+        };
+      }
+
+      return { data: undefined, isLoading: false };
+    });
+
+    render(<PayoutsPage />);
+
+    expect(
+      screen.getByRole('heading', {
+        name: /clientific could not verify the live stripe payout status just now/i,
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /retry payout status/i })
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /start secure setup/i })).not.toBeInTheDocument();
+  });
 });

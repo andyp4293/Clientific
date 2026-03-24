@@ -67,6 +67,19 @@ export function emptyReferralPayoutSummary(): ReferralPayoutSummary {
   };
 }
 
+function isMissingStripeCustomerError(error: unknown) {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const stripeError = error as {
+    code?: unknown;
+    param?: unknown;
+  };
+
+  return stripeError.code === 'resource_missing' && stripeError.param === 'customer';
+}
+
 function emptyReferralReconciliationSummary(since: Date): ReferralReconciliationSummary {
   return {
     since: since.toISOString(),
@@ -313,10 +326,25 @@ export async function reconcileReferralCommissions(params?: {
         },
       })
     : null;
-  const stripeInvoices = await listPaidInvoicesSince(
-    since,
-    targetBusiness?.stripeCustomerId ?? null
-  );
+  let stripeInvoices: Stripe.Invoice[] = [];
+  try {
+    stripeInvoices = await listPaidInvoicesSince(
+      since,
+      targetBusiness?.stripeCustomerId ?? null
+    );
+  } catch (error) {
+    if (targetBusiness?.stripeCustomerId && isMissingStripeCustomerError(error)) {
+      await prisma.business.update({
+        where: { id: targetBusiness.id },
+        data: {
+          stripeCustomerId: null,
+        },
+      });
+      stripeInvoices = [];
+    } else {
+      throw error;
+    }
+  }
   const databaseInvoices = await listPaidDatabaseInvoicesSince(
     since,
     targetBusiness?.id ?? null

@@ -91,16 +91,22 @@ export default function PayoutsPage() {
   const {
     data: connectData,
     isLoading: connectLoading,
+    error: connectError,
     refetch: refetchConnect,
   } = useQuery<ConnectData>({
     queryKey: ['connect-payouts'],
     queryFn: async () => {
       const res = await fetch('/api/stripe/connect/payouts', { cache: 'no-store' });
-      if (!res.ok) throw new Error('Failed to load payout status');
-      return res.json();
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body.error || 'Failed to load payout status');
+      }
+      return body;
     },
   });
 
+  const connectErrorMessage =
+    connectError instanceof Error ? connectError.message : 'Failed to load payout status';
   const refreshConnect = async () => {
     await refetchConnect();
     await queryClient.invalidateQueries({ queryKey: ['connect-payouts'] });
@@ -135,7 +141,8 @@ export default function PayoutsPage() {
   const pendingBalance = sumBalanceAmounts(connectData?.balances?.pending);
   const dealPending = connectData?.dealPayouts?.pendingTransfer ?? 0;
   const dealPendingCount = connectData?.dealPayouts?.pendingCount ?? 0;
-  const needsSetup = !connectData?.readyForPaidDeals;
+  const hasConnectStatusError = Boolean(connectError);
+  const needsSetup = !hasConnectStatusError && !connectData?.readyForPaidDeals;
   const isReferralOnly = Boolean(connectData?.isReferralOnly);
   const referralLifetime = connectData?.referralPayouts?.lifetimeEarned ?? 0;
   const referralPending = connectData?.referralPayouts?.pendingTransfer ?? 0;
@@ -249,7 +256,34 @@ export default function PayoutsPage() {
         </div>
       ) : null}
 
-      {needsSetup ? (
+      {hasConnectStatusError ? (
+        <section className="rounded-[28px] border border-red-200 bg-red-50 p-5 shadow-sm dark:border-red-900/30 dark:bg-red-900/20">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-red-700 dark:text-red-300">
+                Payout Status Unavailable
+              </p>
+              <h2 className="mt-2 text-xl font-semibold text-red-900 dark:text-red-100">
+                Clientific could not verify the live Stripe payout status just now
+              </h2>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-red-800 dark:text-red-200">
+                {connectErrorMessage}. This does not automatically mean your payout setup is incomplete.
+                Refresh the status to try again.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => void refreshConnect()}
+              className="btn-outline border-red-300 text-sm text-red-800 hover:bg-red-100 dark:border-red-800 dark:text-red-200 dark:hover:bg-red-900/30"
+            >
+              Retry payout status
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {!hasConnectStatusError && needsSetup ? (
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr),360px]">
           <div className="space-y-6">
             <section className="brand-panel rounded-[32px] p-6 sm:p-7">
@@ -439,7 +473,7 @@ export default function PayoutsPage() {
             </div>
           </div>
         </section>
-      ) : (
+      ) : !hasConnectStatusError ? (
         <section className="space-y-6">
           <section className="brand-hero rounded-[32px] border border-gray-200/80 p-6 sm:p-7 dark:border-white/10">
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr),340px] xl:items-start">
@@ -588,9 +622,9 @@ export default function PayoutsPage() {
             />
           </section>
         </section>
-      )}
+      ) : null}
 
-      {!needsSetup && !isReferralOnly ? (
+      {!hasConnectStatusError && !needsSetup && !isReferralOnly ? (
         <>
           <section className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -782,7 +816,7 @@ export default function PayoutsPage() {
         </>
       ) : null}
 
-      {!needsSetup && (isReferralOnly || hasReferralActivity) ? (
+      {!hasConnectStatusError && !needsSetup && (isReferralOnly || hasReferralActivity) ? (
         <section className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -850,7 +884,7 @@ export default function PayoutsPage() {
         </section>
       ) : null}
 
-      {connectData?.payouts?.length ? (
+      {!hasConnectStatusError && connectData?.payouts?.length ? (
         <section className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900 md:p-6">
           <div className="mb-4">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">

@@ -16,6 +16,7 @@ vi.mock('@/lib/prisma', () => ({
       update: vi.fn(),
     },
     business: {
+      findUnique: vi.fn(),
       findMany: vi.fn(),
       update: vi.fn(),
     },
@@ -55,6 +56,7 @@ const mockUpdateCommission = prisma.referralCommission.update as ReturnType<type
 const mockReferralFindMany = prisma.referral.findMany as ReturnType<typeof vi.fn>;
 const mockUpdateReferral = prisma.referral.update as ReturnType<typeof vi.fn>;
 const mockBusinessFindMany = prisma.business.findMany as ReturnType<typeof vi.fn>;
+const mockBusinessFindUnique = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockUpdateBusiness = prisma.business.update as ReturnType<typeof vi.fn>;
 const mockTransaction = prisma.$transaction as ReturnType<typeof vi.fn>;
 const mockInvoiceList = stripe.invoices.list as ReturnType<typeof vi.fn>;
@@ -65,6 +67,7 @@ beforeEach(() => {
   mockCreate.mockResolvedValue({ id: 'comm_1' });
   mockUpdateReferral.mockResolvedValue({});
   mockUpdateBusiness.mockResolvedValue({});
+  mockBusinessFindUnique.mockResolvedValue(null);
   mockUpdateCommission.mockResolvedValue({});
   mockInvoiceFindMany.mockResolvedValue([]);
   mockReferralFindMany.mockResolvedValue([]);
@@ -397,6 +400,52 @@ describe('reconcileReferralCommissions', () => {
     });
     expect(DEFAULT_REFERRAL_RECONCILIATION_LOOKBACK_DAYS).toBe(45);
     expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('clears a stale Stripe customer id and falls back to the local invoice ledger', async () => {
+    mockBusinessFindUnique.mockResolvedValue({
+      id: 'biz_target',
+      stripeCustomerId: 'cus_missing',
+    });
+    mockInvoiceList.mockRejectedValue({
+      code: 'resource_missing',
+      param: 'customer',
+    });
+    mockInvoiceFindMany.mockResolvedValue([
+      {
+        stripeInvoiceId: 'inv_local_1',
+        amount: 4900,
+        businessId: 'biz_referee_1',
+      },
+    ]);
+    mockReferralFindMany.mockResolvedValue([
+      {
+        id: 'ref_1',
+        referrerId: 'biz_1',
+        refereeId: 'biz_referee_1',
+        referee: {
+          stripeCustomerId: null,
+        },
+      },
+    ]);
+    mockFindUnique.mockResolvedValue(null);
+
+    const result = await reconcileReferralCommissions({
+      lookbackDays: 45,
+      businessId: 'biz_target',
+    });
+
+    expect(mockUpdateBusiness).toHaveBeenCalledWith({
+      where: { id: 'biz_target' },
+      data: {
+        stripeCustomerId: null,
+      },
+    });
+    expect(result).toMatchObject({
+      scannedInvoices: 1,
+      matchedReferralInvoices: 1,
+      createdCommissions: 1,
+    });
   });
 });
 

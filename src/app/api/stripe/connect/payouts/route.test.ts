@@ -305,4 +305,18 @@ describe('GET /api/stripe/connect/payouts', () => {
     const res = await GET(makeRequest());
     expect(res.status).toBe(500);
   });
+
+  it('still returns payout status when referral reconciliation fails', async () => {
+    mockFindUnique.mockResolvedValue(connectedBusiness);
+    mockReconcileReferralCommissions.mockRejectedValue(new Error('No such customer'));
+    mockSyncStatus.mockResolvedValue(connectStatus);
+    mockFetchOverview.mockResolvedValue(connectOverview);
+
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.notConnected).toBe(false);
+    expect(body.readyForPaidDeals).toBe(true);
+  });
 });

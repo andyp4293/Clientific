@@ -116,10 +116,17 @@ export async function GET(_req: NextRequest) {
       return withNoStoreHeaders({ error: 'Business not found' }, { status: 404 });
     }
 
-    await reconcileReferralCommissions({
-      businessId: business.id,
-      lookbackDays: 90,
-    });
+    try {
+      await reconcileReferralCommissions({
+        businessId: business.id,
+        lookbackDays: 90,
+      });
+    } catch (error) {
+      console.error(
+        'GET /api/stripe/connect/payouts referral reconciliation error:',
+        error
+      );
+    }
 
     const [referralPayouts, dealPayouts] = await Promise.all([
       getReferralPayoutSummary(business.id),
