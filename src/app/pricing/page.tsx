@@ -73,8 +73,8 @@ function PricingContent() {
             Three launch plans
           </h1>
           <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-6 sm:mb-8">
-            Start from ${lowestMonthlyPrice}/month. Starter, Pro, and Premium currently include
-            the same full Clientific workflow while we finalize the long-term packaging.
+            Regularly priced up to $149/month. Today, launch pricing starts at ${lowestMonthlyPrice}/month
+            while Starter, Pro, and Premium still include the same full Clientific workflow.
           </p>
           <div className="mx-auto grid max-w-4xl grid-cols-1 gap-3 min-[520px]:grid-cols-3">
             {[
@@ -104,6 +104,8 @@ function PricingContent() {
             const publicSlug = getPublicPlanSlug(key.toLowerCase());
             const isLoading = loadingPlan === publicSlug;
             const monthlySavings = plan.compareAtPrice - plan.price;
+            const yearlySavings = monthlySavings * 12;
+            const discountPercent = Math.round((monthlySavings / plan.compareAtPrice) * 100);
 
             return (
               <div
@@ -123,21 +125,47 @@ function PricingContent() {
                           : 'border border-primary/20 bg-primary/10 text-primary dark:border-primary/30 dark:bg-primary/15 dark:text-primary-200'
                       }`}
                     >
-                      {plan.popular ? 'Most Popular' : 'Launch Price'}
+                      {plan.popular ? 'Most Popular' : 'Special Pricing'}
                     </span>
                   </div>
                   <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{plan.summary}</p>
-                  <div className="mt-5 flex items-end gap-3">
-                    <div className="text-sm font-medium text-gray-400 line-through dark:text-gray-500">
+                  <div className="mt-5 rounded-2xl border border-gray-200/80 bg-gray-50/80 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                      Regularly
+                    </p>
+                    <div className="mt-1 text-lg font-semibold text-gray-400 line-through decoration-2 dark:text-gray-500">
                       ${plan.compareAtPrice}/month
                     </div>
-                    <div className="flex items-baseline">
-                      <span className="text-4xl font-bold text-gray-900 dark:text-white">${plan.price}</span>
-                      <span className="text-gray-600 dark:text-gray-300 ml-2">/month</span>
+                    <div className="mt-4 flex items-end gap-3">
+                      <span className="rounded-full bg-primary px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white">
+                        Today
+                      </span>
+                      <div className="flex items-baseline">
+                        <span className="text-5xl font-bold text-gray-900 dark:text-white">${plan.price}</span>
+                        <span className="ml-2 text-gray-600 dark:text-gray-300">/month</span>
+                      </div>
                     </div>
                   </div>
-                  <p className="mt-2 text-sm font-medium text-primary dark:text-primary-200">
-                    Save ${monthlySavings}/month during launch pricing
+                  <div className="mt-4 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm dark:border-emerald-900/30 dark:bg-emerald-900/20">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
+                        You Save
+                      </p>
+                      <p className="mt-1 font-semibold text-emerald-900 dark:text-emerald-100">
+                        ${monthlySavings}/month
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm dark:border-primary/30 dark:bg-primary/15">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary dark:text-primary-200">
+                        Discount
+                      </p>
+                      <p className="mt-1 font-semibold text-gray-900 dark:text-gray-100">
+                        {discountPercent}% off
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm font-medium text-primary dark:text-primary-200">
+                    That is ${yearlySavings}/year below the regular monthly rate.
                   </p>
                   <p className="mt-2 text-xs font-medium uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
                     Same full feature set right now

@@ -93,6 +93,8 @@ export function UpgradePricingCards({ status, hasStripeCustomer, trialExpired = 
           const price = plan.price;
           const isLoading = loading === planSlug;
           const monthlySavings = plan.compareAtPrice - plan.price;
+          const yearlySavings = monthlySavings * 12;
+          const discountPercent = Math.round((monthlySavings / plan.compareAtPrice) * 100);
 
           return (
             <div
@@ -113,21 +115,43 @@ export function UpgradePricingCards({ status, hasStripeCustomer, trialExpired = 
                         : 'border border-primary/20 bg-primary/10 text-primary dark:border-primary/30 dark:bg-primary/15 dark:text-primary-200'
                     }`}
                   >
-                    {plan.popular ? 'Most Popular' : 'Launch Price'}
+                    {plan.popular ? 'Most Popular' : 'Special Pricing'}
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{plan.summary}</p>
-                <div className="mt-3 flex items-end gap-3">
-                  <span className="text-sm font-medium text-gray-400 line-through dark:text-gray-500">
+                <div className="mt-4 rounded-2xl border border-gray-200/80 bg-gray-50/80 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                    Regularly
+                  </p>
+                  <div className="mt-1 text-base font-semibold text-gray-400 line-through decoration-2 dark:text-gray-500">
                     ${plan.compareAtPrice}/month
-                  </span>
-                  <div className="flex items-end gap-1">
-                    <span className="text-3xl font-bold text-gray-900 dark:text-gray-100">${price}</span>
-                    <span className="text-gray-400 text-sm mb-1">/month</span>
+                  </div>
+                  <div className="mt-3 flex items-end gap-2">
+                    <span className="rounded-full bg-primary px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white">
+                      Today
+                    </span>
+                    <div className="flex items-end gap-1">
+                      <span className="text-4xl font-bold text-gray-900 dark:text-gray-100">${price}</span>
+                      <span className="mb-1 text-sm text-gray-400">/month</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm dark:border-emerald-900/30 dark:bg-emerald-900/20">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">
+                      Save
+                    </p>
+                    <p className="mt-1 font-semibold text-emerald-900 dark:text-emerald-100">${monthlySavings}/mo</p>
+                  </div>
+                  <div className="rounded-2xl border border-primary/20 bg-primary/10 px-3 py-3 text-sm dark:border-primary/30 dark:bg-primary/15">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary dark:text-primary-200">
+                      Discount
+                    </p>
+                    <p className="mt-1 font-semibold text-gray-900 dark:text-gray-100">{discountPercent}% off</p>
                   </div>
                 </div>
                 <p className="mt-2 text-sm font-medium text-primary dark:text-primary-200">
-                  Save ${monthlySavings}/month during launch pricing
+                  That is ${yearlySavings}/year below the regular monthly rate.
                 </p>
                 <p className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
                   Same feature access right now

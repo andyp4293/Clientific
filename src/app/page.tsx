@@ -552,11 +552,12 @@ export default function HomePage() {
                 Pricing
               </div>
               <h2 className="text-3xl font-bold text-gray-950 dark:text-gray-100 sm:text-4xl">
-                Three launch plans, same full workflow
+                Regular pricing crossed out, launch pricing live
               </h2>
               <p className="mt-4 max-w-xl text-lg text-gray-700 dark:text-gray-300">
-                Plans start at ${lowestMonthlyPrice}/month. Starter, Pro, and Premium currently
-                unlock the same booking, customer management, growth tools, and payouts workflow.
+                Regularly priced up to $149/month. Today, Starter, Pro, and Premium start at
+                ${lowestMonthlyPrice}/month while all three still unlock the same booking,
+                customer management, growth tools, and payouts workflow.
               </p>
               <div className="mt-8 space-y-3">
                 {platformFacts.map((fact) => (
@@ -582,6 +583,8 @@ export default function HomePage() {
                 const plan = PRICING_PLANS[key];
                 const planSlug = getPublicPlanSlug(key.toLowerCase());
                 const monthlySavings = plan.compareAtPrice - plan.price;
+                const yearlySavings = monthlySavings * 12;
+                const discountPercent = Math.round((monthlySavings / plan.compareAtPrice) * 100);
                 const cardClassName =
                   `relative flex flex-col rounded-[28px] border p-6 shadow-lg sm:p-8 ${
                     plan.popular
@@ -609,22 +612,48 @@ export default function HomePage() {
                             : 'border border-primary/20 bg-white/80 text-primary dark:border-primary/30 dark:bg-white/[0.08] dark:text-primary-200'
                         }`}
                       >
-                        {plan.popular ? 'Most Popular' : 'Launch Price'}
+                        {plan.popular ? 'Most Popular' : 'Special Pricing'}
                       </div>
                     </div>
 
                     <div className="mb-7 mt-7">
-                      <div className="text-sm font-medium text-gray-400 line-through dark:text-gray-500">
-                        ${plan.compareAtPrice}/mo
+                      <div className="rounded-2xl border border-gray-200/80 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                          Regularly
+                        </p>
+                        <div className="mt-1 text-lg font-semibold text-gray-400 line-through decoration-2 dark:text-gray-500">
+                          ${plan.compareAtPrice}/mo
+                        </div>
+                        <div className="mt-4 flex items-end gap-3">
+                          <span className="rounded-full bg-primary px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-white">
+                            Today
+                          </span>
+                          <div>
+                            <span className="text-5xl font-bold text-gray-950 dark:text-white">
+                              ${plan.price}
+                            </span>
+                            <span className="text-base font-normal text-gray-700 dark:text-gray-300">
+                              /mo
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <span className="text-4xl font-bold text-gray-950 dark:text-white">
-                        ${plan.price}
-                      </span>
-                      <span className="text-base font-normal text-gray-700 dark:text-gray-300">
-                        /mo
-                      </span>
-                      <p className="mt-2 text-sm font-medium text-primary dark:text-primary-200">
-                        Save ${monthlySavings}/month during launch pricing
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm dark:border-emerald-900/30 dark:bg-emerald-900/20">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">
+                            Save
+                          </p>
+                          <p className="mt-1 font-semibold text-emerald-900 dark:text-emerald-100">${monthlySavings}/mo</p>
+                        </div>
+                        <div className="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm dark:border-primary/30 dark:bg-primary/15">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary dark:text-primary-200">
+                            Discount
+                          </p>
+                          <p className="mt-1 font-semibold text-gray-900 dark:text-gray-100">{discountPercent}% off</p>
+                        </div>
+                      </div>
+                      <p className="mt-3 text-sm font-medium text-primary dark:text-primary-200">
+                        That is ${yearlySavings}/year below the regular monthly rate.
                       </p>
                       <p className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
                         Same feature access right now
