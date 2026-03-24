@@ -475,270 +475,288 @@ export default function PayoutsPage() {
       ) : !hasConnectStatusError ? (
         <>
           <section className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr),minmax(340px,0.85fr)] xl:items-start">
-            <section className="brand-panel rounded-[32px] border border-gray-200/80 p-4 sm:p-5 lg:p-6 dark:border-white/10">
-              <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                    Secure Stripe workspace
-                  </p>
-                  <h2 className="mt-2 text-xl font-semibold text-gray-900 dark:text-gray-100">
-                    Manage payouts immediately
-                  </h2>
-                  <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
-                    Request payouts and manage account settings without leaving Clientific.
-                  </p>
+            <div className="space-y-6">
+              <section className="brand-panel rounded-[32px] border border-gray-200/80 p-4 sm:p-5 lg:p-6 dark:border-white/10">
+                <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                      Secure Stripe workspace
+                    </p>
+                    <h2 className="mt-2 text-xl font-semibold text-gray-900 dark:text-gray-100">
+                      Manage payouts immediately
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                      Request payouts and manage account settings without leaving Clientific.
+                    </p>
+                  </div>
+
+                  <div className="rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary dark:bg-primary/15">
+                    Live
+                  </div>
                 </div>
 
-                <div className="rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary dark:bg-primary/15">
-                  Live
-                </div>
-              </div>
+                <EmbeddedPayoutWorkspace
+                  visible
+                  onboardingComplete={Boolean(connectData?.onboardingComplete)}
+                  onRefresh={refreshConnect}
+                />
+              </section>
 
-              <EmbeddedPayoutWorkspace
-                visible
-                onboardingComplete={Boolean(connectData?.onboardingComplete)}
-                onRefresh={refreshConnect}
-              />
-            </section>
+              <section className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900 md:p-6">
+                <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                      Earnings
+                    </p>
+                    <h2 className="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">
+                      Earnings history
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                      {earningsSummaryDescription}
+                    </p>
+                  </div>
 
-            <aside className="brand-hero rounded-[32px] border border-gray-200/80 p-6 sm:p-7 dark:border-white/10 xl:sticky xl:top-6">
-              <p className="inline-flex items-center gap-2 rounded-full border border-gray-200/80 bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-primary dark:border-white/10 dark:bg-white/5">
-                Live payout summary
-              </p>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
-                Payout balances and schedule
-              </h2>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-gray-600 dark:text-gray-300">
-                {liveSummaryDescription}
-              </p>
-
-              {onboardingMessage ? (
-                <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900/30 dark:bg-emerald-900/20 dark:text-emerald-200">
-                  {onboardingMessage}
-                </div>
-              ) : null}
-
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <div className="brand-hero-card rounded-[24px] p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] brand-hero-kicker">
-                    Available now
-                  </p>
-                  <p className="mt-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    {connectLoading ? '...' : cents(fundsBreakdown.availableAmountCents)}
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                    {connectLoading
-                      ? 'Checking cleared payout funds...'
-                      : fundsBreakdown.availableDescription}
-                  </p>
-                </div>
-
-                <div className="brand-hero-card rounded-[24px] p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] brand-hero-kicker">
-                    Still pending
-                  </p>
-                  <p className="mt-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    {connectLoading ? '...' : cents(fundsBreakdown.pendingAmountCents)}
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                    {connectLoading
-                      ? 'Checking pending payout funds...'
-                      : fundsBreakdown.pendingDescription}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="brand-hero-card rounded-[24px] p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] brand-hero-kicker">
-                    Bank account
-                  </p>
-                  <p className="mt-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    {bankAccountSummary}
-                  </p>
-                  {connectData?.externalAccount?.accountHolderName ? (
-                    <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">
-                      {connectData.externalAccount.accountHolderName}
+                  {earningsTotals?.entryCount ? (
+                    <p className="text-xs text-gray-400">
+                      {earningsTotals.entryCount} entr{earningsTotals.entryCount === 1 ? 'y' : 'ies'}
+                      {' - '}
+                      {earningsTotals.dealCount} deal{earningsTotals.dealCount === 1 ? '' : 's'}
+                      {' - '}
+                      {earningsTotals.referralCount} referral
+                      {earningsTotals.referralCount === 1 ? '' : 's'}
                     </p>
                   ) : null}
                 </div>
 
-                <div className="brand-hero-card rounded-[24px] p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] brand-hero-kicker">
-                    Payout schedule
-                  </p>
-                  <p className="mt-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    {payoutScheduleSummary}
-                  </p>
-                </div>
-              </div>
-            </aside>
-          </section>
-
-          <section className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900 md:p-6">
-            <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-                  Earnings
-                </p>
-                <h2 className="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">
-                  Earnings history
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
-                  {earningsSummaryDescription}
-                </p>
-              </div>
-
-              {earningsTotals?.entryCount ? (
-                <p className="text-xs text-gray-400">
-                  {earningsTotals.entryCount} entr{earningsTotals.entryCount === 1 ? 'y' : 'ies'}
-                  {' - '}
-                  {earningsTotals.dealCount} deal{earningsTotals.dealCount === 1 ? '' : 's'}
-                  {' - '}
-                  {earningsTotals.referralCount} referral
-                  {earningsTotals.referralCount === 1 ? '' : 's'}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                  Deal earnings
-                </p>
-                <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {earningsLoading ? '...' : cents(earningsTotals?.dealNet ?? 0)}
-                </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  {earningsLoading
-                    ? 'Checking deal purchases...'
-                    : 'Net deal revenue after platform fees'}
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                  Referral earnings
-                </p>
-                <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {earningsLoading ? '...' : cents(earningsTotals?.referralNet ?? 0)}
-                </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  {earningsLoading
-                    ? 'Checking referral commissions...'
-                    : 'Recorded referral subscription commissions'}
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                  Total earnings
-                </p>
-                <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {earningsLoading ? '...' : cents(earningsTotals?.totalNet ?? 0)}
-                </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  {earningsLoading ? 'Checking combined earnings...' : 'Deals plus referrals'}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              {earningsLoading ? (
-                <div className="space-y-3">
-                  {[1, 2, 3].map((item) => (
-                    <div
-                      key={item}
-                      className="h-16 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800"
-                    />
-                  ))}
-                </div>
-              ) : earningsEntries.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No earnings yet. Paid deal purchases and referral commissions will appear here.
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-100 dark:border-gray-800">
-                        <th className="pb-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
-                          Date
-                        </th>
-                        <th className="pb-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
-                          Type
-                        </th>
-                        <th className="pb-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
-                          Source
-                        </th>
-                        <th className="hidden pb-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-gray-400 md:table-cell">
-                          Detail
-                        </th>
-                        <th className="hidden pb-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-gray-400 lg:table-cell">
-                          Gross
-                        </th>
-                        <th className="hidden pb-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-gray-400 lg:table-cell">
-                          Fees
-                        </th>
-                        <th className="pb-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
-                          Earnings
-                        </th>
-                        <th className="pb-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
-                          Status
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
-                      {earningsEntries.map((entry) => {
-                        const detail = earningsDetail(entry);
-
-                        return (
-                          <tr key={`${entry.kind}-${entry.id}`}>
-                            <td className="py-3 text-gray-500 dark:text-gray-400">
-                              {shortDate(entry.occurredAt)}
-                            </td>
-                            <td className="py-3">
-                              <span
-                                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${kindBadgeClass(entry.kind)}`}
-                              >
-                                {kindLabel(entry.kind)}
-                              </span>
-                            </td>
-                            <td className="py-3">
-                              <p className="font-semibold text-gray-900 dark:text-gray-100">
-                                {entry.sourceName}
-                              </p>
-                              {detail ? (
-                                <p className="mt-1 text-xs text-gray-400 md:hidden">{detail}</p>
-                              ) : null}
-                            </td>
-                            <td className="hidden py-3 text-gray-500 dark:text-gray-400 md:table-cell">
-                              {detail ?? '-'}
-                            </td>
-                            <td className="hidden py-3 text-right font-medium text-gray-900 dark:text-gray-100 lg:table-cell">
-                              {cents(entry.grossAmount)}
-                            </td>
-                            <td className="hidden py-3 text-right text-gray-500 dark:text-gray-400 lg:table-cell">
-                              {entry.feeAmount > 0 ? `-${cents(entry.feeAmount)}` : '-'}
-                            </td>
-                            <td className="py-3 text-right font-semibold text-gray-900 dark:text-gray-100">
-                              {cents(entry.netAmount)}
-                            </td>
-                            <td className="py-3">
-                              <span
-                                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${statusBadgeClass(entry.status)}`}
-                              >
-                                {formatStatusLabel(entry.status)}
-                              </span>
-                            </td>
+                <div className="mt-6">
+                  {earningsLoading ? (
+                    <div className="space-y-3">
+                      {[1, 2, 3].map((item) => (
+                        <div
+                          key={item}
+                          className="h-16 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800"
+                        />
+                      ))}
+                    </div>
+                  ) : earningsEntries.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      No earnings yet. Paid deal purchases and referral commissions will appear here.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-100 dark:border-gray-800">
+                            <th className="pb-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
+                              Date
+                            </th>
+                            <th className="pb-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
+                              Type
+                            </th>
+                            <th className="pb-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
+                              Source
+                            </th>
+                            <th className="hidden pb-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-gray-400 md:table-cell">
+                              Detail
+                            </th>
+                            <th className="hidden pb-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-gray-400 lg:table-cell">
+                              Gross
+                            </th>
+                            <th className="hidden pb-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-gray-400 lg:table-cell">
+                              Fees
+                            </th>
+                            <th className="pb-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
+                              Earnings
+                            </th>
+                            <th className="pb-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
+                              Status
+                            </th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
+                          {earningsEntries.map((entry) => {
+                            const detail = earningsDetail(entry);
+
+                            return (
+                              <tr key={`${entry.kind}-${entry.id}`}>
+                                <td className="py-3 text-gray-500 dark:text-gray-400">
+                                  {shortDate(entry.occurredAt)}
+                                </td>
+                                <td className="py-3">
+                                  <span
+                                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${kindBadgeClass(entry.kind)}`}
+                                  >
+                                    {kindLabel(entry.kind)}
+                                  </span>
+                                </td>
+                                <td className="py-3">
+                                  <p className="font-semibold text-gray-900 dark:text-gray-100">
+                                    {entry.sourceName}
+                                  </p>
+                                  {detail ? (
+                                    <p className="mt-1 text-xs text-gray-400 md:hidden">{detail}</p>
+                                  ) : null}
+                                </td>
+                                <td className="hidden py-3 text-gray-500 dark:text-gray-400 md:table-cell">
+                                  {detail ?? '-'}
+                                </td>
+                                <td className="hidden py-3 text-right font-medium text-gray-900 dark:text-gray-100 lg:table-cell">
+                                  {cents(entry.grossAmount)}
+                                </td>
+                                <td className="hidden py-3 text-right text-gray-500 dark:text-gray-400 lg:table-cell">
+                                  {entry.feeAmount > 0 ? `-${cents(entry.feeAmount)}` : '-'}
+                                </td>
+                                <td className="py-3 text-right font-semibold text-gray-900 dark:text-gray-100">
+                                  {cents(entry.netAmount)}
+                                </td>
+                                <td className="py-3">
+                                  <span
+                                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${statusBadgeClass(entry.status)}`}
+                                  >
+                                    {formatStatusLabel(entry.status)}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
-              )}
+              </section>
             </div>
+
+            <aside className="space-y-6 xl:sticky xl:top-6">
+              <section className="brand-hero rounded-[32px] border border-gray-200/80 p-6 sm:p-7 dark:border-white/10">
+                <p className="inline-flex items-center gap-2 rounded-full border border-gray-200/80 bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-primary dark:border-white/10 dark:bg-white/5">
+                  Live payout summary
+                </p>
+                <h2 className="mt-4 text-3xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+                  Payout balances and schedule
+                </h2>
+                <p className="mt-3 max-w-xl text-sm leading-6 text-gray-600 dark:text-gray-300">
+                  {liveSummaryDescription}
+                </p>
+
+                {onboardingMessage ? (
+                  <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900/30 dark:bg-emerald-900/20 dark:text-emerald-200">
+                    {onboardingMessage}
+                  </div>
+                ) : null}
+
+                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                  <div className="brand-hero-card rounded-[24px] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] brand-hero-kicker">
+                      Available now
+                    </p>
+                    <p className="mt-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {connectLoading ? '...' : cents(fundsBreakdown.availableAmountCents)}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                      {connectLoading
+                        ? 'Checking cleared payout funds...'
+                        : fundsBreakdown.availableDescription}
+                    </p>
+                  </div>
+
+                  <div className="brand-hero-card rounded-[24px] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] brand-hero-kicker">
+                      Still pending
+                    </p>
+                    <p className="mt-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {connectLoading ? '...' : cents(fundsBreakdown.pendingAmountCents)}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                      {connectLoading
+                        ? 'Checking pending payout funds...'
+                        : fundsBreakdown.pendingDescription}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="brand-hero-card rounded-[24px] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] brand-hero-kicker">
+                      Bank account
+                    </p>
+                    <p className="mt-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {bankAccountSummary}
+                    </p>
+                    {connectData?.externalAccount?.accountHolderName ? (
+                      <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">
+                        {connectData.externalAccount.accountHolderName}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="brand-hero-card rounded-[24px] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] brand-hero-kicker">
+                      Payout schedule
+                    </p>
+                    <p className="mt-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {payoutScheduleSummary}
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              <section className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                <div className="mb-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                    Earnings
+                  </p>
+                  <h3 className="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">
+                    Earnings overview
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                    Split current earnings between deal purchases and referrals.
+                  </p>
+                </div>
+
+                <div className="grid gap-3">
+                  <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                      Deal earnings
+                    </p>
+                    <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {earningsLoading ? '...' : cents(earningsTotals?.dealNet ?? 0)}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      {earningsLoading
+                        ? 'Checking deal purchases...'
+                        : 'Net deal revenue after platform fees'}
+                    </p>
+                  </div>
+
+                  <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                      Referral earnings
+                    </p>
+                    <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {earningsLoading ? '...' : cents(earningsTotals?.referralNet ?? 0)}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      {earningsLoading
+                        ? 'Checking referral commissions...'
+                        : 'Recorded referral subscription commissions'}
+                    </p>
+                  </div>
+
+                  <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                      Total earnings
+                    </p>
+                    <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {earningsLoading ? '...' : cents(earningsTotals?.totalNet ?? 0)}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      {earningsLoading ? 'Checking combined earnings...' : 'Deals plus referrals'}
+                    </p>
+                  </div>
+                </div>
+              </section>
+            </aside>
           </section>
         </>
       ) : null}
