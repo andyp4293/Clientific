@@ -37,6 +37,10 @@ const faqs = [
     q: 'Can I cancel anytime?',
     a: 'Yes. There are no long-term contracts, and billing can be managed from your account settings.',
   },
+  {
+    q: 'What is different between Starter, Pro, and Premium right now?',
+    a: 'Right now the three launch plans share the same feature set and limits. The tier names and prices are live first, and plan packaging can be split out later without changing the workflow today.',
+  },
 ];
 
 const platformFacts = [
@@ -47,8 +51,8 @@ const platformFacts = [
   },
   {
     eyebrow: 'Pricing',
-    title: 'One monthly subscription',
-    body: 'The public self-serve plan keeps booking, CRM, deals, referrals, and payouts under one bill.',
+    title: 'Three launch prices',
+    body: 'Starter, Pro, and Premium are all live now, and each tier currently includes the same core workflow.',
   },
   {
     eyebrow: 'Booking',
@@ -181,6 +185,9 @@ export default function HomePage() {
   const { status } = useSession();
   const isAuthenticated = status === 'authenticated';
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const lowestMonthlyPrice = Math.min(
+    ...VISIBLE_SELF_SERVE_PLAN_KEYS.map((key) => PRICING_PLANS[key].price)
+  );
 
   return (
     <div className="page-shell min-h-screen">
@@ -545,11 +552,11 @@ export default function HomePage() {
                 Pricing
               </div>
               <h2 className="text-3xl font-bold text-gray-950 dark:text-gray-100 sm:text-4xl">
-                One clear self-serve plan
+                Three launch plans, same full workflow
               </h2>
               <p className="mt-4 max-w-xl text-lg text-gray-700 dark:text-gray-300">
-                The public plan keeps booking, customer management, growth tools, and
-                payouts in one subscription for a single location.
+                Plans start at ${lowestMonthlyPrice}/month. Starter, Pro, and Premium currently
+                unlock the same booking, customer management, growth tools, and payouts workflow.
               </p>
               <div className="mt-8 space-y-3">
                 {platformFacts.map((fact) => (
@@ -570,12 +577,17 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="mx-auto grid max-w-3xl gap-6">
+            <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-3">
               {VISIBLE_SELF_SERVE_PLAN_KEYS.map((key) => {
                 const plan = PRICING_PLANS[key];
                 const planSlug = getPublicPlanSlug(key.toLowerCase());
+                const monthlySavings = plan.compareAtPrice - plan.price;
                 const cardClassName =
-                  'relative flex flex-col rounded-[28px] border border-primary/30 bg-gradient-to-br from-primary-50 via-white to-gray-100 p-6 shadow-lg shadow-primary/10 dark:border-primary/40 dark:from-gray-950 dark:via-gray-950 dark:to-primary-950 sm:p-8';
+                  `relative flex flex-col rounded-[28px] border p-6 shadow-lg sm:p-8 ${
+                    plan.popular
+                      ? 'border-primary/30 bg-gradient-to-br from-primary-50 via-white to-gray-100 shadow-primary/10 dark:border-primary/40 dark:from-gray-950 dark:via-gray-950 dark:to-primary-950'
+                      : 'border-gray-200 bg-white/85 dark:border-white/10 dark:bg-white/[0.03]'
+                  }`;
 
                 return (
                   <div
@@ -590,18 +602,33 @@ export default function HomePage() {
                         </h3>
                         <p className="text-sm text-gray-700 dark:text-gray-300">{plan.summary}</p>
                       </div>
-                      <div className="rounded-full border border-primary/20 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary dark:bg-white/[0.08]">
-                        Self-serve
+                      <div
+                        className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] ${
+                          plan.popular
+                            ? 'bg-primary text-white'
+                            : 'border border-primary/20 bg-white/80 text-primary dark:border-primary/30 dark:bg-white/[0.08] dark:text-primary-200'
+                        }`}
+                      >
+                        {plan.popular ? 'Most Popular' : 'Launch Price'}
                       </div>
                     </div>
 
                     <div className="mb-7 mt-7">
+                      <div className="text-sm font-medium text-gray-400 line-through dark:text-gray-500">
+                        ${plan.compareAtPrice}/mo
+                      </div>
                       <span className="text-4xl font-bold text-gray-950 dark:text-white">
                         ${plan.price}
                       </span>
                       <span className="text-base font-normal text-gray-700 dark:text-gray-300">
                         /mo
                       </span>
+                      <p className="mt-2 text-sm font-medium text-primary dark:text-primary-200">
+                        Save ${monthlySavings}/month during launch pricing
+                      </p>
+                      <p className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                        Same feature access right now
+                      </p>
                     </div>
 
                     <ul className="mb-8 flex-1 space-y-3">
@@ -622,7 +649,7 @@ export default function HomePage() {
                         className="w-full rounded-xl bg-primary py-3 text-center font-semibold text-white transition-colors hover:bg-primary-600"
                         style={{ boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' }}
                       >
-                        View Subscription
+                        View Pricing
                       </Link>
                     ) : (
                       <Link
@@ -630,7 +657,7 @@ export default function HomePage() {
                         className="w-full rounded-xl bg-primary py-3.5 text-center font-semibold text-white transition-colors hover:bg-primary-600"
                         style={{ boxShadow: '0 0 20px rgb(var(--color-primary-600) / 0.35)' }}
                       >
-                        Start 14-day Trial
+                        Start {plan.name} Trial
                       </Link>
                     )}
                   </div>

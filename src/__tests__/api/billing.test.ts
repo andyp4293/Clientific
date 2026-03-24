@@ -37,39 +37,40 @@ vi.mock('@/lib/stripe', () => ({
     subscriptions: { retrieve: vi.fn() },
     invoices: { list: vi.fn() },
     paymentMethods: { retrieve: vi.fn() },
+    prices: { retrieve: vi.fn() },
     checkout: { sessions: { create: vi.fn() } },
   },
   // Inline — vi.mock factories are hoisted; no external variables allowed
   PRICING_PLANS: {
     STARTER: {
-      name: 'Clientific', summary: 'One simple plan', price: 49, yearlyPrice: 39,
+      name: 'Starter', summary: 'Launch pricing for the full Clientific workflow.', price: 39, compareAtPrice: 59, yearlyPrice: 39,
       priceId: 'price_starter_monthly', yearlyPriceId: 'price_starter_yearly',
-      features: ['Up to 100 customers'],
-      limits: { customers: 100, staff: 2, services: 10 },
-      popular: true,
+      features: ['Booking, CRM, marketing, referrals, and payouts'],
+      limits: { customers: 5000, staff: 15, services: 100 },
+      popular: false,
       selfServe: true,
       supportsYearly: false,
       legacy: false,
     },
     PRO: {
-      name: 'Pro', summary: 'Legacy plan', price: 79, yearlyPrice: 63,
+      name: 'Pro', summary: 'Our most popular launch price for the same full feature set.', price: 69, compareAtPrice: 99, yearlyPrice: 69,
       priceId: 'price_pro_monthly', yearlyPriceId: 'price_pro_yearly',
-      features: ['Up to 1,000 customers'],
-      limits: { customers: 1000, staff: 10, services: 50 },
-      popular: false,
-      selfServe: false,
-      supportsYearly: true,
-      legacy: true,
+      features: ['Booking, CRM, marketing, referrals, and payouts'],
+      limits: { customers: 5000, staff: 15, services: 100 },
+      popular: true,
+      selfServe: true,
+      supportsYearly: false,
+      legacy: false,
     },
     PREMIUM: {
-      name: 'Premium', summary: 'Legacy plan', price: 149, yearlyPrice: 119,
+      name: 'Premium', summary: 'Highest launch tier, with the same current feature access while packaging evolves.', price: 99, compareAtPrice: 149, yearlyPrice: 99,
       priceId: 'price_premium_monthly', yearlyPriceId: 'price_premium_yearly',
-      features: ['Unlimited customers'],
-      limits: { customers: Infinity, staff: Infinity, services: Infinity },
+      features: ['Booking, CRM, marketing, referrals, and payouts'],
+      limits: { customers: 5000, staff: 15, services: 100 },
       popular: false,
-      selfServe: false,
-      supportsYearly: true,
-      legacy: true,
+      selfServe: true,
+      supportsYearly: false,
+      legacy: false,
     },
   },
 }));
@@ -100,6 +101,7 @@ const mockCustomerCreate = stripe.customers.create as ReturnType<typeof vi.fn>;
 const mockPortalCreate = stripe.billingPortal.sessions.create as ReturnType<typeof vi.fn>;
 const mockSubRetrieve = stripe.subscriptions.retrieve as ReturnType<typeof vi.fn>;
 const mockInvoiceList = stripe.invoices.list as ReturnType<typeof vi.fn>;
+const mockPriceRetrieve = stripe.prices.retrieve as ReturnType<typeof vi.fn>;
 const mockCheckoutCreate = stripe.checkout.sessions.create as ReturnType<typeof vi.fn>;
 const mockGetSubscriptionInfo = getSubscriptionInfo as ReturnType<typeof vi.fn>;
 
@@ -124,6 +126,23 @@ function makeReq(url: string, method = 'GET', body?: object): NextRequest {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockPriceRetrieve.mockImplementation(async (priceId: string) => {
+    const prices: Record<string, { active: boolean; currency: string; recurring: { interval: 'month' | 'year' }; unit_amount: number }> = {
+      price_starter_monthly: { active: true, currency: 'usd', recurring: { interval: 'month' }, unit_amount: 3900 },
+      price_starter_yearly: { active: true, currency: 'usd', recurring: { interval: 'year' }, unit_amount: 3900 },
+      price_pro_monthly: { active: true, currency: 'usd', recurring: { interval: 'month' }, unit_amount: 6900 },
+      price_pro_yearly: { active: true, currency: 'usd', recurring: { interval: 'year' }, unit_amount: 6900 },
+      price_premium_monthly: { active: true, currency: 'usd', recurring: { interval: 'month' }, unit_amount: 9900 },
+      price_premium_yearly: { active: true, currency: 'usd', recurring: { interval: 'year' }, unit_amount: 9900 },
+    };
+
+    const price = prices[priceId];
+    if (!price) {
+      throw new Error(`Unexpected price lookup: ${priceId}`);
+    }
+
+    return price;
+  });
 });
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -511,7 +530,7 @@ describe('POST /api/checkout/create', () => {
     });
   });
 
-  it('accepts the public base slug and maps it to the starter Stripe price IDs', async () => {
+  it('accepts the legacy base slug and normalizes it to the starter Stripe plan', async () => {
     mockSession.mockResolvedValue({ user: { email: 'test@example.com' } });
     mockFindUnique.mockResolvedValue(makeBusiness({ stripeSubscriptionId: null }));
     mockCheckoutCreate.mockResolvedValue({ url: 'https://checkout.stripe.com/session_base' });
@@ -524,9 +543,9 @@ describe('POST /api/checkout/create', () => {
         expect.objectContaining({ price: 'price_starter_monthly', quantity: 1 }),
       ]),
       subscription_data: expect.objectContaining({
-        metadata: expect.objectContaining({ plan: 'base' }),
+        metadata: expect.objectContaining({ plan: 'starter' }),
       }),
-      metadata: expect.objectContaining({ plan: 'base' }),
+      metadata: expect.objectContaining({ plan: 'starter' }),
     }));
   });
 
@@ -541,7 +560,7 @@ describe('POST /api/checkout/create', () => {
     expect(callArgs.subscription_data.trial_period_days).toBeUndefined();
   });
 
-  it('uses yearly price ID when billingPeriod is yearly', async () => {
+  it('falls back to the monthly price when yearly billing is requested but the plan is monthly-only', async () => {
     mockSession.mockResolvedValue({ user: { email: 'test@example.com' } });
     mockFindUnique.mockResolvedValue(makeBusiness({ stripeSubscriptionId: null }));
     mockCheckoutCreate.mockResolvedValue({ url: 'https://checkout.stripe.com/session_yearly' });
@@ -550,7 +569,7 @@ describe('POST /api/checkout/create', () => {
 
     expect(mockCheckoutCreate).toHaveBeenCalledWith(expect.objectContaining({
       line_items: expect.arrayContaining([
-        expect.objectContaining({ price: 'price_pro_yearly' }),
+        expect.objectContaining({ price: 'price_pro_monthly' }),
       ]),
     }));
   });
@@ -603,12 +622,33 @@ describe('POST /api/checkout/create', () => {
   it('returns a safe checkout error when Stripe rejects the configured price ID', async () => {
     mockSession.mockResolvedValue({ user: { email: 'test@example.com' } });
     mockFindUnique.mockResolvedValue(makeBusiness({ stripeSubscriptionId: null }));
-    mockCheckoutCreate.mockRejectedValue(
+    mockPriceRetrieve.mockRejectedValue(
       new Error("No such price: 'price_1TCTdH0hFQoOoQppM7SXMmDN\\n'")
     );
 
     const res = await checkoutPost(makeReq('http://localhost:3000/api/checkout/create', 'POST', { plan: 'base' }));
     expect(res.status).toBe(500);
+
+    const body = await res.json();
+    expect(body.error).toBe('Checkout is temporarily unavailable. Please try again in a moment.');
+  });
+
+  it('returns a safe checkout error when the configured Stripe price amount does not match the advertised amount', async () => {
+    mockSession.mockResolvedValue({ user: { email: 'test@example.com' } });
+    mockFindUnique.mockResolvedValue(makeBusiness({ stripeSubscriptionId: null }));
+    mockPriceRetrieve.mockResolvedValue({
+      active: true,
+      currency: 'usd',
+      recurring: { interval: 'month' },
+      unit_amount: 4900,
+    });
+
+    const res = await checkoutPost(
+      makeReq('http://localhost:3000/api/checkout/create', 'POST', { plan: 'starter', billingPeriod: 'monthly' })
+    );
+
+    expect(res.status).toBe(500);
+    expect(mockCheckoutCreate).not.toHaveBeenCalled();
 
     const body = await res.json();
     expect(body.error).toBe('Checkout is temporarily unavailable. Please try again in a moment.');

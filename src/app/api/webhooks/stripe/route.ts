@@ -119,13 +119,15 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   }
 
   const businessId = session.metadata?.businessId;
-  const plan = normalizeSubscriptionPlan(session.metadata?.plan);
 
   if (!businessId) return;
 
   const subscription = await stripe.subscriptions.retrieve(
     session.subscription as string
   );
+  const plan =
+    getPlanFromPriceId(subscription.items.data[0]?.price.id ?? '') ??
+    normalizeSubscriptionPlan(session.metadata?.plan);
 
   await prisma.business.update({
     where: { id: businessId },

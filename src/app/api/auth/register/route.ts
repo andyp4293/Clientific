@@ -175,7 +175,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const normalizedPlan = normalizeSubscriptionPlan(plan ?? 'base');
+    const normalizedPlan = normalizeSubscriptionPlan(plan ?? 'starter');
     const trialDays = STANDARD_TRIAL_DAYS;
     const trialEndsAt = addDays(new Date(), trialDays);
 

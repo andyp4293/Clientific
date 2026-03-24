@@ -80,25 +80,58 @@ export function UpgradePricingCards({ status, hasStripeCustomer, trialExpired = 
 
   return (
     <div className="mt-8 w-full max-w-3xl mx-auto">
-      <div className="grid gap-6">
+      <div className="mb-5 rounded-[24px] border border-primary/15 bg-primary/[0.06] px-5 py-4 text-sm leading-6 text-gray-700 dark:border-primary/20 dark:bg-primary/[0.08] dark:text-gray-200">
+        Starter, Pro, and Premium currently unlock the same full feature set. The launch pricing
+        is live now so you can choose the Stripe subscription tier you want before the packaging
+        changes later.
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
         {VISIBLE_SELF_SERVE_PLAN_KEYS.map((key) => {
           const plan = PRICING_PLANS[key];
           const planSlug = getPublicPlanSlug(key.toLowerCase());
           const price = plan.price;
           const isLoading = loading === planSlug;
+          const monthlySavings = plan.compareAtPrice - plan.price;
 
           return (
             <div
               key={key}
-              className="relative rounded-2xl border border-primary bg-primary/5 dark:bg-primary/10 shadow-lg p-6 flex flex-col"
+              className={`relative rounded-[28px] border p-6 shadow-lg flex flex-col ${
+                plan.popular
+                  ? 'border-primary bg-primary/8 shadow-primary/15 dark:bg-primary/12'
+                  : 'border-gray-200 bg-white dark:border-white/10 dark:bg-white/[0.03]'
+              }`}
             >
               <div className="mb-4">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{plan.name}</h3>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{plan.summary}</p>
-                <div className="mt-2 flex items-end gap-1">
-                  <span className="text-3xl font-bold text-gray-900 dark:text-gray-100">${price}</span>
-                  <span className="text-gray-400 text-sm mb-1">/month</span>
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{plan.name}</h3>
+                  <span
+                    className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${
+                      plan.popular
+                        ? 'bg-primary text-white'
+                        : 'border border-primary/20 bg-primary/10 text-primary dark:border-primary/30 dark:bg-primary/15 dark:text-primary-200'
+                    }`}
+                  >
+                    {plan.popular ? 'Most Popular' : 'Launch Price'}
+                  </span>
                 </div>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{plan.summary}</p>
+                <div className="mt-3 flex items-end gap-3">
+                  <span className="text-sm font-medium text-gray-400 line-through dark:text-gray-500">
+                    ${plan.compareAtPrice}/month
+                  </span>
+                  <div className="flex items-end gap-1">
+                    <span className="text-3xl font-bold text-gray-900 dark:text-gray-100">${price}</span>
+                    <span className="text-gray-400 text-sm mb-1">/month</span>
+                  </div>
+                </div>
+                <p className="mt-2 text-sm font-medium text-primary dark:text-primary-200">
+                  Save ${monthlySavings}/month during launch pricing
+                </p>
+                <p className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                  Same feature access right now
+                </p>
               </div>
               <ul className="space-y-2 flex-1 mb-6">
                 {plan.features.map((feature) => (
@@ -118,8 +151,8 @@ export function UpgradePricingCards({ status, hasStripeCustomer, trialExpired = 
                 {isLoading
                   ? 'Redirecting...'
                   : status === 'trialing' && !trialExpired
-                    ? 'Start 14-day free trial'
-                    : 'Continue with $49/month'}
+                    ? `Choose ${plan.name}`
+                    : `Select ${plan.name}`}
               </button>
             </div>
           );

@@ -12,6 +12,7 @@ import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { MobileOverlayChromeWatcher } from '@/components/layout/MobileOverlayChromeWatcher';
 import { SubscriptionBanner } from '@/components/billing/SubscriptionBanner';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/pricing-plans';
 import { Toaster } from 'sonner';
 
 type DashboardBusinessSnapshot = {
@@ -209,10 +210,13 @@ export default async function DashboardLayout({
 
   // Locked layout for onboarding and subscribe - no nav, no sidebar, just logo + sign out.
   if (isSubscribePage || isOnboardingPage) {
+    const lowestMonthlyPrice = Math.min(
+      ...VISIBLE_SELF_SERVE_PLAN_KEYS.map((key) => PRICING_PLANS[key].price)
+    );
     const title = isOnboardingPage ? 'Finish setup' : 'Complete subscription';
     const subtitle = isOnboardingPage
       ? 'Add your business phone and location before the dashboard unlocks.'
-      : 'Start your $49/month subscription to continue using Clientific.';
+      : `Choose a plan from $${lowestMonthlyPrice}/month to continue using Clientific.`;
 
     return (
       <div className="min-h-screen brand-shell">

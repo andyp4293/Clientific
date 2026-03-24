@@ -13,7 +13,7 @@ export type SubscriptionStatus =
   | 'incomplete_expired'
   | 'unpaid';
 
-export type SubscriptionPlan = 'trial' | 'base' | 'pro' | 'premium';
+export type SubscriptionPlan = 'trial' | 'starter' | 'pro' | 'premium';
 
 // Cached subscription status — avoids a DB hit on every dashboard page nav.
 // TTL is 60s; busted immediately via revalidateTag when Stripe webhook fires.
@@ -156,9 +156,9 @@ export async function getSubscriptionInfo(businessId: string) {
  */
 export function requiresPlanUpgrade(
   currentPlan: SubscriptionPlan,
-  requiredPlan: 'base' | 'pro' | 'premium'
+  requiredPlan: 'starter' | 'pro' | 'premium'
 ): boolean {
-  const planHierarchy: SubscriptionPlan[] = ['trial', 'base', 'pro', 'premium'];
+  const planHierarchy: SubscriptionPlan[] = ['trial', 'starter', 'pro', 'premium'];
   const currentIndex = planHierarchy.indexOf(normalizeSubscriptionPlan(currentPlan) as SubscriptionPlan);
   const requiredIndex = planHierarchy.indexOf(normalizeSubscriptionPlan(requiredPlan) as SubscriptionPlan);
   

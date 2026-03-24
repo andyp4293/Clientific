@@ -16,11 +16,13 @@ describe('Homepage theme contract', () => {
 
   it('uses shared light and dark hero surfaces for the homepage, featured plan, and closing CTA', () => {
     render(<HomePage />);
+    const featuredPlans = screen.getAllByTestId('homepage-featured-plan');
 
     expect(screen.getByTestId('homepage-hero').className).toContain('home-hero-shell');
     expect(screen.getByTestId('homepage-hero-panel').className).toContain('home-hero-panel');
-    expect(screen.getByTestId('homepage-featured-plan').className).toContain('from-primary-50');
-    expect(screen.getByTestId('homepage-featured-plan').className).toContain('dark:from-gray-950');
+    expect(featuredPlans).toHaveLength(3);
+    expect(featuredPlans.some((card) => card.className.includes('from-primary-50'))).toBe(true);
+    expect(featuredPlans.some((card) => card.className.includes('dark:from-gray-950'))).toBe(true);
     expect(screen.getByTestId('homepage-cta').className).toContain('from-primary-50');
     expect(screen.getByTestId('homepage-cta').className).toContain('dark:from-gray-950');
   });

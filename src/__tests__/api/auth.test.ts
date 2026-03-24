@@ -270,7 +270,7 @@ describe('POST /api/auth/register', () => {
     expect(createCall.trialEndsAt).toBeInstanceOf(Date);
   });
 
-  it('normalizes the public base plan slug before saving', async () => {
+  it('normalizes the legacy base plan slug to starter before saving', async () => {
     mockFindUnique.mockResolvedValue(null);
     mockCreate.mockResolvedValue(MOCK_BUSINESS);
     mockHoursCreate.mockResolvedValue({});
@@ -279,7 +279,7 @@ describe('POST /api/auth/register', () => {
 
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ subscriptionPlan: 'base' }),
+        data: expect.objectContaining({ subscriptionPlan: 'starter' }),
       }),
     );
   });

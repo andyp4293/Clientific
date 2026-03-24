@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getSubscriptionInfo } from '@/lib/subscription';
 import { APP_NAME } from '@/lib/brand';
+import { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/pricing-plans';
 import { UpgradePricingCards } from '@/components/billing/UpgradePricingCards';
 import { getSessionBusinessId } from '@/lib/session-business';
 
@@ -24,13 +25,19 @@ export default async function SubscribePage() {
   const status = info?.subscriptionStatus ?? 'inactive';
   const hasStripeCustomer = !!info?.stripeCustomerId;
   const trialExpired = status === 'trialing' && (info?.trialDaysRemaining ?? 0) <= 0;
+  const lowestMonthlyPrice = Math.min(
+    ...VISIBLE_SELF_SERVE_PLAN_KEYS.map((key) => PRICING_PLANS[key].price)
+  );
 
   let headline = 'Subscription required';
-  let subtext = `Start your $49/month subscription to continue using ${APP_NAME}.`;
+  let subtext = `Choose a plan from $${lowestMonthlyPrice}/month to continue using ${APP_NAME}.`;
 
   if (status === 'trialing' || status === 'trial') {
     headline = 'Your free trial has ended';
-    subtext = 'Your 14-day trial is over. Start your $49/month subscription to keep your business running on ' + APP_NAME + '.';
+    subtext =
+      `Your 14-day trial is over. Pick Starter, Pro, or Premium from $${lowestMonthlyPrice}/month to keep your business running on ` +
+      APP_NAME +
+      '.';
   } else if (status === 'past_due') {
     headline = 'Payment failed';
     subtext = 'We couldn\'t process your last payment. Update your card to restore access.';

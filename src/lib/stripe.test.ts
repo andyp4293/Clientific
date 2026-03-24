@@ -28,8 +28,8 @@ afterEach(() => {
 describe('stripe billing config', () => {
   it('trims whitespace from Stripe secret and price IDs', async () => {
     process.env.STRIPE_SECRET_KEY = 'sk_test_trim_me\\n';
-    process.env.STRIPE_STARTER_PRICE_ID = 'price_base_monthly\\n';
-    process.env.STRIPE_STARTER_YEARLY_PRICE_ID = 'price_base_yearly \n';
+    process.env.STRIPE_STARTER_PRICE_ID = 'price_starter_monthly\\n';
+    process.env.STRIPE_STARTER_YEARLY_PRICE_ID = 'price_starter_yearly \n';
     process.env.STRIPE_PRO_PRICE_ID = 'price_pro_monthly\\r\\n';
     process.env.STRIPE_PRO_YEARLY_PRICE_ID = 'price_pro_yearly \n';
     process.env.STRIPE_PREMIUM_PRICE_ID = 'price_premium_monthly\\n';
@@ -37,17 +37,29 @@ describe('stripe billing config', () => {
 
     const { PRICING_PLANS } = await loadStripeModule();
 
-    expect(PRICING_PLANS.STARTER.priceId).toBe('price_base_monthly');
-    expect(PRICING_PLANS.STARTER.yearlyPriceId).toBe('price_base_yearly');
+    expect(PRICING_PLANS.STARTER.priceId).toBe('price_starter_monthly');
+    expect(PRICING_PLANS.STARTER.yearlyPriceId).toBe('price_starter_yearly');
     expect(PRICING_PLANS.PRO.priceId).toBe('price_pro_monthly');
     expect(PRICING_PLANS.PREMIUM.yearlyPriceId).toBe('price_premium_yearly');
   });
 
-  it('exposes only the single visible self-serve plan', async () => {
+  it('exposes the three launch self-serve plans with shared access and launch pricing', async () => {
     const { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } = await loadStripeModule();
 
-    expect(VISIBLE_SELF_SERVE_PLAN_KEYS).toEqual(['STARTER']);
-    expect(PRICING_PLANS.STARTER.price).toBe(49);
+    expect(VISIBLE_SELF_SERVE_PLAN_KEYS).toEqual(['STARTER', 'PRO', 'PREMIUM']);
+    expect(PRICING_PLANS.STARTER.price).toBe(39);
+    expect(PRICING_PLANS.STARTER.compareAtPrice).toBe(59);
     expect(PRICING_PLANS.STARTER.supportsYearly).toBe(false);
+    expect(PRICING_PLANS.PRO.price).toBe(69);
+    expect(PRICING_PLANS.PRO.compareAtPrice).toBe(99);
+    expect(PRICING_PLANS.PREMIUM.price).toBe(99);
+    expect(PRICING_PLANS.PREMIUM.compareAtPrice).toBe(149);
+    expect(PRICING_PLANS.STARTER.features).toEqual(PRICING_PLANS.PRO.features);
+    expect(PRICING_PLANS.PRO.features).toEqual(PRICING_PLANS.PREMIUM.features);
+    expect(PRICING_PLANS.STARTER.limits).toEqual(PRICING_PLANS.PRO.limits);
+    expect(PRICING_PLANS.PRO.limits).toEqual(PRICING_PLANS.PREMIUM.limits);
+    expect(PRICING_PLANS.STARTER.selfServe).toBe(true);
+    expect(PRICING_PLANS.PRO.selfServe).toBe(true);
+    expect(PRICING_PLANS.PREMIUM.selfServe).toBe(true);
   });
 });

@@ -7,6 +7,12 @@ import { getAppBaseUrlFromRequest } from '@/lib/app-url';
 import { getPricingPlanKey, normalizeSubscriptionPlan } from '@/lib/plan-utils';
 import { getSessionBusinessId } from '@/lib/session-business';
 
+function createPriceConfigurationError(message: string) {
+  return Object.assign(new Error(message), {
+    code: 'PRICE_CONFIGURATION_ERROR',
+  });
+}
+
 function getCheckoutTrialDays(business: {
   stripeSubscriptionId: string | null;
   subscriptionStatus: string | null;
@@ -34,6 +40,38 @@ function getCheckoutTrialDays(business: {
   }
 
   return Math.ceil(remainingMs / (1000 * 60 * 60 * 24));
+}
+
+async function validateCheckoutPrice({
+  priceId,
+  expectedAmount,
+  expectedInterval,
+}: {
+  priceId: string;
+  expectedAmount: number;
+  expectedInterval: 'month' | 'year';
+}) {
+  const price = await stripe.prices.retrieve(priceId);
+
+  if (!price.active) {
+    throw createPriceConfigurationError(`Configured Stripe price is inactive: ${priceId}`);
+  }
+
+  if (price.currency?.toLowerCase() !== 'usd') {
+    throw createPriceConfigurationError(`Configured Stripe price must use USD: ${priceId}`);
+  }
+
+  if (price.recurring?.interval !== expectedInterval) {
+    throw createPriceConfigurationError(
+      `Configured Stripe price interval ${price.recurring?.interval ?? 'missing'} does not match ${expectedInterval}: ${priceId}`
+    );
+  }
+
+  if (price.unit_amount !== expectedAmount) {
+    throw createPriceConfigurationError(
+      `Configured Stripe price amount ${price.unit_amount} does not match expected ${expectedAmount}: ${priceId}`
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -69,6 +107,8 @@ export async function POST(req: NextRequest) {
       planConfig.supportsYearly &&
       Boolean(planConfig.yearlyPriceId);
     const priceId = useYearlyPrice ? planConfig.yearlyPriceId : planConfig.priceId;
+    const expectedAmount = (useYearlyPrice ? planConfig.yearlyPrice : planConfig.price) * 100;
+    const expectedInterval = useYearlyPrice ? 'year' : 'month';
 
     const business = businessId
       ? await prisma.business.findUnique({
@@ -103,6 +143,7 @@ export async function POST(req: NextRequest) {
     }
 
     const checkoutTrialDays = getCheckoutTrialDays(business);
+    await validateCheckoutPrice({ priceId, expectedAmount, expectedInterval });
 
     // Derive base URL — prefer env var, fall back to the request origin
     const appUrl = getAppBaseUrlFromRequest(req.url);
@@ -138,7 +179,10 @@ export async function POST(req: NextRequest) {
     console.error('Checkout error:', error);
 
     const message = typeof error?.message === 'string' ? error.message : '';
-    if (message.includes('No such price')) {
+    if (
+      message.includes('No such price') ||
+      error?.code === 'PRICE_CONFIGURATION_ERROR'
+    ) {
       return NextResponse.json(
         { error: 'Checkout is temporarily unavailable. Please try again in a moment.' },
         { status: 500 }

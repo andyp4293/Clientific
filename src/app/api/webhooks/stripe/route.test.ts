@@ -60,19 +60,19 @@ vi.mock('@/lib/stripe', async () => {
     },
     PRICING_PLANS: {
       STARTER: {
-        name: 'Starter', price: 29, yearlyPrice: 23,
+        name: 'Starter', price: 39, compareAtPrice: 59, yearlyPrice: 39,
         priceId: 'price_starter', yearlyPriceId: 'price_starter_yearly',
-        limits: { customers: 100, staff: 2, services: 10 }, popular: false,
+        limits: { customers: 5000, staff: 15, services: 100 }, popular: false,
       },
       PRO: {
-        name: 'Pro', price: 79, yearlyPrice: 63,
+        name: 'Pro', price: 69, compareAtPrice: 99, yearlyPrice: 69,
         priceId: 'price_pro', yearlyPriceId: 'price_pro_yearly',
-        limits: { customers: 1000, staff: 10, services: 50 }, popular: true,
+        limits: { customers: 5000, staff: 15, services: 100 }, popular: true,
       },
       PREMIUM: {
-        name: 'Premium', price: 149, yearlyPrice: 119,
+        name: 'Premium', price: 99, compareAtPrice: 149, yearlyPrice: 99,
         priceId: 'price_premium', yearlyPriceId: 'price_premium_yearly',
-        limits: { customers: Infinity, staff: Infinity, services: Infinity }, popular: false,
+        limits: { customers: 5000, staff: 15, services: 100 }, popular: false,
       },
     },
   };
@@ -280,6 +280,42 @@ describe('Stripe webhook — checkout.session.completed (deal purchase)', () => 
     const res = await POST(makeSignedRequest(subscriptionSession));
     expect(res.status).toBe(200);
     expect(mockFinalize).not.toHaveBeenCalled();
+  });
+
+  it('prefers the Stripe subscription price over stale checkout metadata when syncing the plan', async () => {
+    const subscriptionSession = {
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_sub_plan_sync',
+          metadata: { businessId: 'biz-1', plan: 'starter' },
+          subscription: 'sub_456',
+          customer: 'cus_456',
+        },
+      },
+    };
+    const mockStripeSubscriptionsRetrieve = stripe.subscriptions.retrieve as ReturnType<typeof vi.fn>;
+    mockStripeSubscriptionsRetrieve.mockResolvedValue({
+      id: 'sub_456',
+      status: 'active',
+      trial_end: null,
+      current_period_end: 1700000000,
+      items: { data: [{ price: { id: 'price_pro' } }] },
+    });
+    mockBusinessUpdate.mockResolvedValue({});
+
+    const res = await POST(makeSignedRequest(subscriptionSession));
+
+    expect(res.status).toBe(200);
+    expect(mockBusinessUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'biz-1' },
+        data: expect.objectContaining({
+          subscriptionPlan: 'pro',
+          stripePriceId: 'price_pro',
+        }),
+      })
+    );
   });
 });
 

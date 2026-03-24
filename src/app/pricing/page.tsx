@@ -15,6 +15,9 @@ function PricingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const lowestMonthlyPrice = Math.min(
+    ...VISIBLE_SELF_SERVE_PLAN_KEYS.map((key) => PRICING_PLANS[key].price)
+  );
 
   useEffect(() => {
     const autostart = searchParams.get('autostart');
@@ -67,10 +70,11 @@ function PricingContent() {
       <div className="max-w-7xl mx-auto px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
         <div className="text-center mb-8 sm:mb-12">
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">
-            One Simple Monthly Plan
+            Three launch plans
           </h1>
           <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-6 sm:mb-8">
-            Everything most service businesses need in one subscription. Start with a 14-day free trial.
+            Start from ${lowestMonthlyPrice}/month. Starter, Pro, and Premium currently include
+            the same full Clientific workflow while we finalize the long-term packaging.
           </p>
           <div className="mx-auto grid max-w-4xl grid-cols-1 gap-3 min-[520px]:grid-cols-3">
             {[
@@ -88,12 +92,18 @@ function PricingContent() {
           </div>
         </div>
 
-        <div className="grid max-w-3xl mx-auto gap-6">
+        <div className="mx-auto mb-6 max-w-4xl rounded-[28px] border border-primary/15 bg-primary/[0.06] px-5 py-4 text-left text-sm leading-6 text-gray-700 dark:border-primary/20 dark:bg-primary/[0.08] dark:text-gray-200">
+          Every plan below unlocks the same booking, CRM, AI receptionist, deals, referrals, and
+          payouts experience right now. The pricing tiers are live first so you can choose the
+          launch point you want before we split features later.
+        </div>
+
+        <div className="grid max-w-6xl mx-auto gap-6 lg:grid-cols-3">
           {VISIBLE_SELF_SERVE_PLAN_KEYS.map((key) => {
             const plan = PRICING_PLANS[key];
             const publicSlug = getPublicPlanSlug(key.toLowerCase());
             const isLoading = loadingPlan === publicSlug;
-            const displayPrice = plan.price;
+            const monthlySavings = plan.compareAtPrice - plan.price;
 
             return (
               <div
@@ -103,12 +113,38 @@ function PricingContent() {
                   plan.popular ? 'border-2 border-primary shadow-xl shadow-primary/10' : ''
                 } rounded-[28px] p-6 sm:p-8`}
               >
-                <div className="text-center mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{plan.name}</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">{plan.summary}</p>
-                  <div className="flex items-baseline justify-center mb-1">
-                    <span className="text-4xl font-bold text-gray-900 dark:text-white">${displayPrice}</span>
-                    <span className="text-gray-600 dark:text-gray-300 ml-2">/month</span>
+                <div className="mb-6">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{plan.name}</h3>
+                    <span
+                      className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] ${
+                        plan.popular
+                          ? 'bg-primary text-white'
+                          : 'border border-primary/20 bg-primary/10 text-primary dark:border-primary/30 dark:bg-primary/15 dark:text-primary-200'
+                      }`}
+                    >
+                      {plan.popular ? 'Most Popular' : 'Launch Price'}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{plan.summary}</p>
+                  <div className="mt-5 flex items-end gap-3">
+                    <div className="text-sm font-medium text-gray-400 line-through dark:text-gray-500">
+                      ${plan.compareAtPrice}/month
+                    </div>
+                    <div className="flex items-baseline">
+                      <span className="text-4xl font-bold text-gray-900 dark:text-white">${plan.price}</span>
+                      <span className="text-gray-600 dark:text-gray-300 ml-2">/month</span>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-sm font-medium text-primary dark:text-primary-200">
+                    Save ${monthlySavings}/month during launch pricing
+                  </p>
+                  <p className="mt-2 text-xs font-medium uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+                    Same full feature set right now
+                  </p>
+                  <div className="mt-4 rounded-2xl border border-gray-200/80 bg-gray-50/80 px-4 py-3 text-sm text-gray-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300">
+                    Booking, CRM, marketing, referrals, and payouts are identical across all three
+                    plans for now.
                   </div>
                 </div>
 
@@ -135,8 +171,8 @@ function PricingContent() {
                   {isLoading
                     ? 'Redirecting...'
                     : isAuthenticated
-                      ? 'Start 14-day free trial'
-                      : 'Start Free Trial'}
+                      ? `Choose ${plan.name}`
+                      : `Start ${plan.name} trial`}
                 </button>
               </div>
             );

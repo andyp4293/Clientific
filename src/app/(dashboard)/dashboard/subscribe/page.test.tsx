@@ -69,7 +69,7 @@ describe('SubscribePage', () => {
     render(await SubscribePage());
 
     expect(screen.getByText(/your free trial has ended/i)).toBeInTheDocument();
-    expect(screen.getByText(/your 14-day trial is over/i)).toBeInTheDocument();
+    expect(screen.getByText(/pick starter, pro, or premium from \$39\/month/i)).toBeInTheDocument();
     expect(screen.getByTestId('pricing-cards')).toHaveAttribute('data-status', 'trialing');
     expect(screen.getByTestId('pricing-cards')).toHaveAttribute('data-trial-expired', 'true');
     expect(screen.getByTestId('pricing-cards')).toHaveAttribute('data-has-stripe-customer', 'true');
@@ -81,7 +81,7 @@ describe('SubscribePage', () => {
     render(await SubscribePage());
 
     expect(screen.getByText(/subscription required/i)).toBeInTheDocument();
-    expect(screen.getByText(/start your \$49\/month subscription/i)).toBeInTheDocument();
+    expect(screen.getByText(/choose a plan from \$39\/month/i)).toBeInTheDocument();
     expect(screen.getByTestId('pricing-cards')).toHaveAttribute('data-status', 'inactive');
     expect(screen.getByTestId('pricing-cards')).toHaveAttribute('data-trial-expired', 'false');
   });

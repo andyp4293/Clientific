@@ -1,6 +1,6 @@
-export type CanonicalSubscriptionPlan = 'trial' | 'base' | 'pro' | 'premium';
+export type CanonicalSubscriptionPlan = 'trial' | 'starter' | 'pro' | 'premium';
 export type PricingPlanKey = 'STARTER' | 'PRO' | 'PREMIUM';
-export type PublicPlanSlug = 'trial' | 'base' | 'pro' | 'premium';
+export type PublicPlanSlug = 'trial' | 'starter' | 'pro' | 'premium';
 
 export function normalizeSubscriptionPlan(plan: string | null | undefined): CanonicalSubscriptionPlan {
   const normalized = typeof plan === 'string' ? plan.trim().toLowerCase() : '';
@@ -8,7 +8,7 @@ export function normalizeSubscriptionPlan(plan: string | null | undefined): Cano
   switch (normalized) {
     case 'starter':
     case 'base':
-      return 'base';
+      return 'starter';
     case 'pro':
       return 'pro';
     case 'premium':
@@ -24,7 +24,7 @@ export function getPricingPlanKey(plan: string | null | undefined): PricingPlanK
   const normalized = normalizeSubscriptionPlan(plan);
 
   switch (normalized) {
-    case 'base':
+    case 'starter':
       return 'STARTER';
     case 'pro':
       return 'PRO';
@@ -39,8 +39,8 @@ export function getPublicPlanSlug(plan: string | null | undefined): PublicPlanSl
   const normalized = normalizeSubscriptionPlan(plan);
 
   switch (normalized) {
-    case 'base':
-      return 'base';
+    case 'starter':
+      return 'starter';
     case 'pro':
       return 'pro';
     case 'premium':
@@ -54,8 +54,8 @@ export function getPublicPlanLabel(plan: string | null | undefined): string {
   const normalized = normalizeSubscriptionPlan(plan);
 
   switch (normalized) {
-    case 'base':
-      return 'Clientific';
+    case 'starter':
+      return 'Starter';
     case 'pro':
       return 'Pro';
     case 'premium':

@@ -37,7 +37,7 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
 
-  const defaultPlan = getPublicPlanSlug(searchParams.get('plan') || 'base');
+  const defaultPlan = getPublicPlanSlug(searchParams.get('plan') || 'starter');
   const defaultEmail = searchParams.get('email') || '';
   const refCode = searchParams.get('ref') || '';
   const isPartnerSignup = searchParams.get('partner') === '1';
