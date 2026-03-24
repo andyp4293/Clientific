@@ -219,6 +219,23 @@ describe('DealsPage (Campaigns)', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('uses a full-screen mobile modal instead of a bottom sheet', () => {
+    mockQueries([]);
+    render(<DealsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /new deal/i }));
+
+    const overlay = document.querySelector('[data-mobile-overlay="true"]');
+    const dialog = screen.getByRole('dialog', { name: /create a new promotion/i });
+
+    expect(overlay).toBeTruthy();
+    expect(overlay?.className).not.toContain('items-end');
+    expect(dialog.className).toContain('h-[100dvh]');
+    expect(dialog.className).toContain('min-h-[100dvh]');
+    expect(dialog.className).not.toContain('rounded-t-3xl');
+    expect(dialog.className).toContain('sm:max-h-[92vh]');
+  });
+
   it('limits deal dates to today or later and keeps the end date after the start date', () => {
     mockQueries([]);
     render(<DealsPage />);
