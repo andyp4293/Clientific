@@ -98,6 +98,18 @@ describe('PATCH /api/deals/[id]', () => {
     expect(mockDealUpdate).not.toHaveBeenCalled();
   });
 
+  it('returns 400 when end date is earlier than today', async () => {
+    const res = await PATCH(
+      makePatchRequest({ expiresAt: '2026-03-09' }),
+      { params: Promise.resolve({ id: 'deal-1' }) }
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/end date cannot be earlier than today/i);
+    expect(mockDealUpdate).not.toHaveBeenCalled();
+  });
+
   it('returns 400 when end date is the same day as start date', async () => {
     const res = await PATCH(
       makePatchRequest({ startsAt: '2026-03-12', expiresAt: '2026-03-12' }),
@@ -177,6 +189,33 @@ describe('PATCH /api/deals/[id]', () => {
 
     expect(startsAt.getHours()).toBe(0);
     expect(startsAt.getMinutes()).toBe(0);
+    expect(expiresAt.getHours()).toBe(23);
+    expect(expiresAt.getMinutes()).toBe(59);
+  });
+
+  it('allows extending an expired deal by updating only the end date', async () => {
+    mockDealFindUnique.mockResolvedValue({
+      ...existingDeal,
+      active: true,
+      startsAt: new Date('2026-03-01T00:00:00.000Z'),
+      expiresAt: new Date('2026-03-09T23:59:59.999Z'),
+    });
+    mockDealUpdate.mockResolvedValue({
+      ...existingDeal,
+      id: 'deal-1',
+      active: true,
+      startsAt: new Date('2026-03-01T00:00:00.000Z'),
+      expiresAt: new Date('2026-03-17T23:59:59.999Z'),
+    });
+
+    const res = await PATCH(
+      makePatchRequest({ expiresAt: '2026-03-17' }),
+      { params: Promise.resolve({ id: 'deal-1' }) }
+    );
+
+    expect(res.status).toBe(200);
+    const updateArgs = mockDealUpdate.mock.calls[0][0] as any;
+    const expiresAt = updateArgs.data.expiresAt as Date;
     expect(expiresAt.getHours()).toBe(23);
     expect(expiresAt.getMinutes()).toBe(59);
   });

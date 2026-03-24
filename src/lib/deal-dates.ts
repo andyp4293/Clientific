@@ -46,6 +46,13 @@ export function isDealStartBeforeToday(
   value: string | Date,
   now: Date = new Date()
 ): boolean {
+  return isDealDateBeforeToday(value, now);
+}
+
+export function isDealDateBeforeToday(
+  value: string | Date,
+  now: Date = new Date()
+): boolean {
   const startKey = toComparableDateKey(value);
   if (!startKey) return false;
   // Use UTC-12 (westernmost timezone) so a date is only rejected if it's

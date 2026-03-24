@@ -198,6 +198,21 @@ describe('DealsPage (Campaigns)', () => {
     expect(screen.getByText(/no deals yet/i)).toBeInTheDocument();
   });
 
+  it('lets expired deals open an extension form instead of showing the text blast action', () => {
+    const pastStart = new Date(Date.now() - 10 * 86400000).toISOString();
+    const pastEnd = new Date(Date.now() - 2 * 86400000).toISOString();
+    mockQueries([makeDeal({ startsAt: pastStart, expiresAt: pastEnd, active: true })]);
+    render(<DealsPage />);
+
+    expect(screen.getByRole('button', { name: /extend promo/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /text my customers/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /extend promo/i }));
+
+    expect(screen.getByText(/extend this expired promo/i)).toBeInTheDocument();
+    expect(screen.getByTestId('Select new end date')).toBeInTheDocument();
+  });
+
   it('opens the new deal form in a modal so the form stays in view', () => {
     mockQueries([]);
     render(<DealsPage />);

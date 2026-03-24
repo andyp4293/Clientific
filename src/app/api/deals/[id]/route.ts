@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import {
+  isDealDateBeforeToday,
   isDealEndSameOrBeforeStart,
   isDealStartBeforeToday,
   parseDealDate,
@@ -65,6 +66,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       const parsed = parseDealDate(body.expiresAt, true);
       if (!parsed) {
         return NextResponse.json({ error: 'Invalid deal dates' }, { status: 400 });
+      }
+      if (isDealDateBeforeToday(parsed)) {
+        return NextResponse.json({ error: 'End date cannot be earlier than today' }, { status: 400 });
       }
       parsedExpiresAt = parsed;
     }
