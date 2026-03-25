@@ -555,8 +555,7 @@ export default function HomePage() {
               Regular pricing crossed out, launch pricing live
             </h2>
             <p className="mx-auto mt-4 max-w-3xl text-lg text-gray-700 dark:text-gray-300">
-              Regularly priced up to $149/month. Today, Starter, Pro, and Premium start at
-              ${lowestMonthlyPrice}/month with AI receptionist starting on Pro.
+              Starter covers the core workflow, with AI receptionist starting on Pro.
             </p>
             <div className="mx-auto mt-8 grid max-w-3xl gap-3 sm:grid-cols-3">
               <div className="rounded-2xl border border-gray-200/80 bg-white/85 px-4 py-4 text-sm shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
@@ -584,9 +583,6 @@ export default function HomePage() {
               {VISIBLE_SELF_SERVE_PLAN_KEYS.map((key) => {
                 const plan = PRICING_PLANS[key];
                 const planSlug = getPublicPlanSlug(key.toLowerCase());
-                const monthlySavings = plan.compareAtPrice - plan.price;
-                const yearlySavings = monthlySavings * 12;
-                const discountPercent = Math.round((monthlySavings / plan.compareAtPrice) * 100);
                 const cardClassName =
                   `relative flex flex-col overflow-hidden rounded-[32px] border p-6 shadow-[0_18px_60px_rgba(6,17,24,0.08)] sm:p-8 ${
                     plan.popular
@@ -607,67 +603,25 @@ export default function HomePage() {
                         </h3>
                         <p className="text-sm leading-6 text-gray-700 dark:text-gray-300">{plan.summary}</p>
                       </div>
-                      <div
-                        className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] ${
-                          plan.popular
-                            ? 'bg-primary text-white'
-                            : 'border border-primary/20 bg-white/80 text-primary dark:border-primary/30 dark:bg-white/[0.08] dark:text-primary-200'
-                        }`}
-                      >
-                        {plan.popular ? 'Most Popular' : 'Special Pricing'}
-                      </div>
+                      {plan.popular ? (
+                        <div className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-white">
+                          Most Popular
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="mb-7 mt-7">
                       <div className="rounded-[30px] border border-gray-200/80 bg-white/80 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] dark:border-white/10 dark:bg-white/[0.04]">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">
-                              Launch Price
-                            </p>
-                            <div className="mt-2 flex items-end gap-2">
-                              <span className="text-[3.1rem] font-bold leading-none tracking-[-0.06em] text-gray-950 dark:text-white sm:text-[4rem]">
-                                ${plan.price}
-                              </span>
-                              <span className="pb-2 text-sm font-medium text-gray-700 dark:text-gray-300 sm:text-base">
-                                /mo
-                              </span>
-                            </div>
-                          </div>
-                          <div className="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-right dark:border-primary/30 dark:bg-primary/15">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary dark:text-primary-200">
-                              Today
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{discountPercent}% off</p>
-                          </div>
-                        </div>
-                        <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                          <div className="rounded-2xl border border-gray-200/80 bg-gray-50/90 px-4 py-3 dark:border-white/10 dark:bg-white/[0.03]">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                              Regularly
-                            </p>
-                            <p className="mt-1 font-semibold text-gray-400 line-through decoration-2 dark:text-gray-500">${plan.compareAtPrice}/mo</p>
-                          </div>
-                          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-900/30 dark:bg-emerald-900/20">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">
-                              Save
-                            </p>
-                            <p className="mt-1 font-semibold text-emerald-900 dark:text-emerald-100">${monthlySavings}/mo</p>
-                          </div>
-                          <div className="rounded-2xl border border-primary/20 bg-primary/[0.08] px-4 py-3 dark:border-primary/30 dark:bg-primary/[0.12]">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary dark:text-primary-200">
-                              Annual Delta
-                            </p>
-                            <p className="mt-1 font-semibold text-gray-900 dark:text-gray-100">${yearlySavings}</p>
-                          </div>
-                        </div>
-                        <div className="mt-4 flex items-center justify-between gap-4 rounded-2xl border border-primary/15 bg-primary/[0.05] px-4 py-3 dark:border-primary/20 dark:bg-primary/[0.08]">
-                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Launch pricing active now
-                          </p>
-                          <p className="text-sm font-semibold text-primary dark:text-primary-200">
-                            ${yearlySavings}/year below regular
-                          </p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">
+                          Monthly Price
+                        </p>
+                        <div className="mt-3 flex items-end gap-2">
+                          <span className="text-[3.1rem] font-bold leading-none tracking-[-0.06em] text-gray-950 dark:text-white sm:text-[4rem]">
+                            ${plan.price}
+                          </span>
+                          <span className="pb-2 text-sm font-medium text-gray-700 dark:text-gray-300 sm:text-base">
+                            /mo
+                          </span>
                         </div>
                       </div>
                       <div className="mt-4 rounded-2xl border border-gray-200/80 bg-gray-50/80 px-4 py-3 text-sm text-gray-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300">
@@ -683,10 +637,7 @@ export default function HomePage() {
 
                     <ul className="mb-8 grid flex-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
                       {plan.features.map((feature) => (
-                        <li
-                          key={feature}
-                          className="flex items-start gap-2.5 rounded-2xl border border-gray-200/70 bg-white/70 px-4 py-3 text-sm leading-6 text-gray-800 dark:border-white/8 dark:bg-white/[0.03] dark:text-gray-200"
-                        >
+                        <li key={feature} className="flex items-start gap-2.5 px-1 py-2 text-sm leading-6 text-gray-800 dark:text-gray-200">
                           <CheckIcon />
                           <span>{feature}</span>
                         </li>

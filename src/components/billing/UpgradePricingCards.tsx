@@ -117,10 +117,6 @@ export function UpgradePricingCards({ status, hasStripeCustomer, trialExpired = 
           const planSlug = getPublicPlanSlug(key.toLowerCase());
           const price = plan.price;
           const isLoading = loading === planSlug;
-          const monthlySavings = plan.compareAtPrice - plan.price;
-          const yearlySavings = monthlySavings * 12;
-          const discountPercent = Math.round((monthlySavings / plan.compareAtPrice) * 100);
-
           return (
             <div
               key={key}
@@ -136,58 +132,19 @@ export function UpgradePricingCards({ status, hasStripeCustomer, trialExpired = 
                     <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{plan.name}</h3>
                     <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">{plan.summary}</p>
                   </div>
-                  <span
-                    className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] ${
-                      plan.popular
-                        ? 'bg-primary text-white'
-                        : 'border border-primary/20 bg-primary/10 text-primary dark:border-primary/30 dark:bg-primary/15 dark:text-primary-200'
-                    }`}
-                  >
-                    {plan.popular ? 'Most Popular' : 'Special Pricing'}
-                  </span>
+                  {plan.popular ? (
+                    <span className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
+                      Most Popular
+                    </span>
+                  ) : null}
                 </div>
                 <div className="mt-5 rounded-[28px] border border-gray-200/80 bg-white/80 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] dark:border-white/10 dark:bg-white/[0.04]">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-                        Launch Price
-                      </p>
-                      <div className="mt-2 flex items-end gap-2">
-                        <span className="text-[2.9rem] font-bold leading-none tracking-[-0.06em] text-gray-900 dark:text-gray-100 sm:text-[3.4rem]">${price}</span>
-                        <span className="pb-2 text-sm font-medium text-gray-500 dark:text-gray-400">/month</span>
-                      </div>
-                    </div>
-                    <div className="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-right dark:border-primary/30 dark:bg-primary/15">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary dark:text-primary-200">
-                        Today
-                      </p>
-                      <p className="mt-1 font-semibold text-gray-900 dark:text-gray-100">{discountPercent}% off</p>
-                    </div>
-                  </div>
-                  <div className="mt-4 grid grid-cols-3 gap-2">
-                    <div className="rounded-2xl border border-gray-200/80 bg-gray-50/90 px-3 py-3 text-sm dark:border-white/10 dark:bg-white/[0.03]">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                        Regularly
-                      </p>
-                      <p className="mt-1 font-semibold text-gray-400 line-through decoration-2 dark:text-gray-500">${plan.compareAtPrice}/mo</p>
-                    </div>
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm dark:border-emerald-900/30 dark:bg-emerald-900/20">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">
-                        Save
-                      </p>
-                      <p className="mt-1 font-semibold text-emerald-900 dark:text-emerald-100">${monthlySavings}/mo</p>
-                    </div>
-                    <div className="rounded-2xl border border-primary/20 bg-primary/[0.08] px-3 py-3 text-sm dark:border-primary/30 dark:bg-primary/[0.12]">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary dark:text-primary-200">
-                        Annual
-                      </p>
-                      <p className="mt-1 font-semibold text-gray-900 dark:text-gray-100">${yearlySavings}</p>
-                    </div>
-                  </div>
-                  <div className="mt-4 rounded-2xl border border-primary/15 bg-primary/[0.05] px-4 py-3 dark:border-primary/20 dark:bg-primary/[0.08]">
-                    <p className="text-sm font-medium text-primary dark:text-primary-200">
-                      Launch pricing active now
-                    </p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+                    Monthly Price
+                  </p>
+                  <div className="mt-3 flex items-end gap-2">
+                    <span className="text-[2.9rem] font-bold leading-none tracking-[-0.06em] text-gray-900 dark:text-gray-100 sm:text-[3.4rem]">${price}</span>
+                    <span className="pb-2 text-sm font-medium text-gray-500 dark:text-gray-400">/month</span>
                   </div>
                 </div>
                 <p className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
@@ -196,7 +153,7 @@ export function UpgradePricingCards({ status, hasStripeCustomer, trialExpired = 
               </div>
               <ul className="mb-6 grid flex-1 gap-3">
                 {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2 rounded-2xl border border-gray-200/70 bg-white/70 px-4 py-3 text-sm text-gray-600 dark:border-white/8 dark:bg-white/[0.03] dark:text-gray-300">
+                  <li key={feature} className="flex items-start gap-2 px-1 py-2 text-sm text-gray-600 dark:text-gray-300">
                     <svg className="w-4 h-4 text-primary shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
