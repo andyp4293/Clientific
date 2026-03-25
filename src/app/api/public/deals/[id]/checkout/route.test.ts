@@ -90,7 +90,7 @@ const baseDeal = {
   expiresAt: new Date(now + 86400_000),
   maxRedemptions: null,
   redemptionCount: 0,
-  platformFeePercent: 15,
+  platformFeePercent: 10,
   businessId: 'biz-1',
   eligibleServices: [],
   business: {

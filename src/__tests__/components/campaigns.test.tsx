@@ -87,7 +87,7 @@ function makeDeal(overrides: Record<string, unknown> = {}) {
     newCustomersOnly: false,
     createdAt: now.toISOString(),
     notifiedAt: null,
-    platformFeePercent: 15,
+    platformFeePercent: 10,
     revenueTracked: 0,
     platformFeesOwed: 0,
     purchases: [],

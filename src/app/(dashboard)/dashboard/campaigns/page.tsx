@@ -282,7 +282,7 @@ export default function DealsPage() {
                   <p className="text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
                     By creating this deal, you agree to Clientific&apos;s{' '}
                     <a href="/terms" target="_blank" className="underline hover:text-gray-600 dark:hover:text-gray-300">Terms of Service</a>.
-                    {' '}Clientific charges a 15% service fee on each paid deal purchase, deducted before your Stripe-powered payout. Free and code-claim deals are not subject to this fee.
+                    {' '}Clientific charges a 10% service fee on each paid deal purchase, deducted before your Stripe-powered payout. Free and code-claim deals are not subject to this fee.
                   </p>
                 </div>
               </div>

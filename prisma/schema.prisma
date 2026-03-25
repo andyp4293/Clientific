@@ -459,7 +459,7 @@ model Deal {
   newCustomersOnly   Boolean                @default(false)
   redemptionCount    Int                    @default(0)
   active             Boolean                @default(true)
-  platformFeePercent Float                  @default(15)
+  platformFeePercent Float                  @default(10)
   notifiedAt         DateTime?
   business           Business               @relation(fields: [businessId], references: [id], onDelete: Cascade)
   service            Service?               @relation(fields: [serviceId], references: [id])

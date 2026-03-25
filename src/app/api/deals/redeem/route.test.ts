@@ -55,7 +55,7 @@ describe('POST /api/deals/redeem', () => {
         title: 'VIP Offer',
         discountType: 'amount_off',
         discountValue: 10,
-        platformFeePercent: 15,
+        platformFeePercent: 10,
       },
       customer: null,
       usedAt: null,
@@ -76,7 +76,7 @@ describe('POST /api/deals/redeem', () => {
         title: 'Legacy Offer',
         discountType: 'percent_off',
         discountValue: 15,
-        platformFeePercent: 15,
+        platformFeePercent: 10,
       },
       customer: { name: 'Jane', phone: '+15551234567' },
       usedAt: null,
@@ -89,7 +89,6 @@ describe('POST /api/deals/redeem', () => {
 
     const body = await res.json();
     expect(body.success).toBe(true);
-    expect(body.platformFee).toBe(15);
+    expect(body.platformFee).toBe(10);
   });
 });
-

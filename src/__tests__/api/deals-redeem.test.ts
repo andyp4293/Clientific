@@ -34,7 +34,7 @@ const DEAL = {
   title: 'Test Deal',
   discountType: 'percent_off',
   discountValue: 20,
-  platformFeePercent: 15,
+  platformFeePercent: 10,
 };
 
 function getReq(url: string) {
@@ -165,13 +165,13 @@ describe('POST /api/deals/redeem', () => {
 
   it('computes platformFee from transactionAmount and platformFeePercent', async () => {
     vi.mocked(prisma.dealRedemption.findUnique).mockResolvedValue({
-      deal: DEAL, // platformFeePercent: 15
+      deal: DEAL, // platformFeePercent: 10
       customer: null,
       usedAt: null,
     } as any);
     const res = await redeemPOST(postReq({ code: 'ABCDEFGH', transactionAmount: 100 }));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.platformFee).toBe(15);
+    expect(body.platformFee).toBe(10);
   });
 });

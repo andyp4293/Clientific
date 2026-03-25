@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
         title: redemption.deal.title,
         discountType: redemption.deal.discountType,
         discountValue: redemption.deal.discountValue,
-        platformFeePercent: (redemption.deal as any).platformFeePercent ?? 15,
+        platformFeePercent: (redemption.deal as any).platformFeePercent ?? 10,
       },
       customer: redemption.customer ?? null,
       alreadyUsed: redemption.usedAt !== null,

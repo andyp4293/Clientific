@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Code already used' }, { status: 400 });
     }
 
-    const platformFeePercent = (redemption.deal as any).platformFeePercent ?? 15;
+    const platformFeePercent = (redemption.deal as any).platformFeePercent ?? 10;
     const platformFee =
       transactionAmount !== null
         ? Math.round(transactionAmount * platformFeePercent) / 100
