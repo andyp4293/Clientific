@@ -82,6 +82,7 @@ describe('Customer modals', () => {
           phone: null,
           birthday: null,
           notes: null,
+          dealSmsBlocked: false,
           groupMemberships: [{ group: groups[1] }],
         }}
         groups={groups}
@@ -90,6 +91,7 @@ describe('Customer modals', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /select birthday/i }));
     fireEvent.click(screen.getByLabelText(/vip/i));
+    fireEvent.click(screen.getByRole('switch', { name: /toggle deals sms messages for this customer/i }));
     fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
@@ -98,6 +100,7 @@ describe('Customer modals', () => {
 
     expect(url).toBe('/api/customers/cus_1');
     expect(payload.birthday).toBe('2026-03-09');
+    expect(payload.dealSmsBlocked).toBe(true);
     expect(payload.groupIds).toEqual(['group-2', 'group-1']);
     expect(mockRefresh).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);

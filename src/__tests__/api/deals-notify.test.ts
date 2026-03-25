@@ -309,6 +309,18 @@ describe('POST /api/deals/[id]/notify', () => {
     expect(sendSMS).not.toHaveBeenCalled();
   });
 
+  it('skips customers blocked from deal SMS by the business', async () => {
+    await POST(notifyReq(), ctx('deal-1'));
+
+    expect(prisma.customer.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          dealSmsBlocked: false,
+        }),
+      })
+    );
+  });
+
   it('updates notifiedAt on the deal before sending', async () => {
     await POST(notifyReq(), ctx('deal-1'));
 

@@ -198,6 +198,32 @@ describe('POST /api/customers', () => {
     expect(body.customer.id).toBe('cust-1');
   });
 
+  it('persists the business-level deal SMS block when creating a customer', async () => {
+    mockGetServerSession.mockResolvedValue({
+      user: { businessId: 'biz-1', email: 'test@test.com' },
+    });
+    mockBusinessFindUnique
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        subscriptionPlan: 'starter',
+        _count: { customers: 5, staff: 0, services: 0 },
+      });
+
+    mockCustomerFindFirst.mockResolvedValue(null);
+    mockCustomerCreate.mockResolvedValue({ id: 'cust-1', name: 'Test Customer', businessId: 'biz-1' });
+
+    const res = await POST(makeRequest({ name: 'Test Customer', dealSmsBlocked: true }));
+
+    expect(res.status).toBe(201);
+    expect(mockCustomerCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          dealSmsBlocked: true,
+        }),
+      })
+    );
+  });
+
   it('persists selected customer groups when creating a customer', async () => {
     mockGetServerSession.mockResolvedValue({
       user: { businessId: 'biz-1', email: 'test@test.com' },

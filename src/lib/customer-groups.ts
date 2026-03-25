@@ -28,6 +28,7 @@ export function buildPromotionSmsAudienceWhere(
     businessId,
     smsMarketingConsent: true,
     smsOptedOut: false,
+    dealSmsBlocked: false,
     phone: { not: null },
     OR: [
       {

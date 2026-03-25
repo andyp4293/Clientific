@@ -104,10 +104,40 @@ describe("/api/customers/[id]", () => {
     expect(prisma.customer.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
+          dealSmsBlocked: false,
           groupMemberships: {
             deleteMany: {},
             create: [{ groupId: "group-1" }, { groupId: "group-2" }],
           },
+        }),
+      })
+    );
+  });
+
+  it("PUT persists the business-level deal SMS block", async () => {
+    vi.mocked(prisma.customer.findFirst).mockResolvedValue({
+      id: "cust-1",
+      businessId: "biz-1",
+    } as any);
+    vi.mocked(prisma.customer.update).mockResolvedValue({
+      id: "cust-1",
+      businessId: "biz-1",
+      dealSmsBlocked: true,
+    } as any);
+
+    const res = await PUT(
+      makeRequest("PUT", {
+        name: "Jane Doe",
+        dealSmsBlocked: true,
+      }),
+      params()
+    );
+
+    expect(res.status).toBe(200);
+    expect(prisma.customer.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          dealSmsBlocked: true,
         }),
       })
     );

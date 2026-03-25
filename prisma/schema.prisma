@@ -158,6 +158,7 @@ model Customer {
   smsMarketingConsentAt DateTime?
   smsOptedOut           Boolean                @default(false)
   smsOptedOutAt         DateTime?
+  dealSmsBlocked        Boolean                @default(false)
   appointments          Appointment[]
   checkIns              CheckIn[]
   dealRedemptions       DealRedemption[]

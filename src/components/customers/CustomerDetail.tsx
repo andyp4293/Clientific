@@ -23,6 +23,7 @@ type Customer = {
   phone: string | null;
   smsConsent: boolean;
   smsOptedOut: boolean;
+  dealSmsBlocked?: boolean;
   segment: string;
   totalSpent: number;
   lastVisit: Date | null;
@@ -248,6 +249,12 @@ export default function CustomerDetail({
                 {customer.lastVisit
                   ? format(new Date(customer.lastVisit), "MMM d, yyyy")
                   : "Never"}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Deals SMS</div>
+              <div className="mt-1 text-gray-900 dark:text-gray-100">
+                {customer.dealSmsBlocked ? "Deals blocked by you" : "Deals SMS allowed"}
               </div>
             </div>
           </div>

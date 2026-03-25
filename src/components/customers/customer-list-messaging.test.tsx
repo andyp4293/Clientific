@@ -45,6 +45,7 @@ function buildCustomer(overrides: Record<string, unknown> = {}) {
     phone: '+15551234567',
     smsConsent: true,
     smsOptedOut: false,
+    dealSmsBlocked: false,
     segment: 'VIP',
     totalSpent: 250,
     lastVisit: new Date('2026-03-12T12:00:00.000Z'),
@@ -107,6 +108,7 @@ describe('CustomerList messaging', () => {
             phone: '+15557654321',
             smsConsent: false,
             smsOptedOut: true,
+            dealSmsBlocked: true,
             segment: 'REGULAR',
             totalSpent: 90,
             lastVisit: null,
@@ -141,8 +143,10 @@ describe('CustomerList messaging', () => {
     expect(screen.getAllByText('SMS status').length).toBeGreaterThan(0);
     expect(screen.getAllByText('SMS Enabled').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Can receive SMS').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Deals SMS allowed').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Opted out').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Stopped SMS').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Deals blocked by you').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Denies SMS').length).toBeGreaterThan(0);
     expect(screen.getAllByText('SMS permission has not been given').length).toBeGreaterThan(0);
   });

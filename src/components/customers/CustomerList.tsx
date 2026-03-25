@@ -22,6 +22,7 @@ type Customer = {
   phone: string | null;
   smsConsent: boolean;
   smsOptedOut: boolean;
+  dealSmsBlocked?: boolean;
   totalSpent: number;
   lastVisit: Date | null;
   birthday: Date | null;
@@ -147,6 +148,22 @@ function renderCustomerContactInfo(customer: Pick<Customer, "email" | "phone">) 
       ))}
     </div>
   );
+}
+
+function getDealSmsStatus(customer: Pick<Customer, "dealSmsBlocked">) {
+  if (customer.dealSmsBlocked) {
+    return {
+      label: "Deals blocked by you",
+      className:
+        "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+    };
+  }
+
+  return {
+    label: "Deals SMS allowed",
+    className:
+      "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+  };
 }
 
 function renderCustomerGroups(customer: Pick<Customer, "groupMemberships">) {
@@ -580,6 +597,7 @@ export default function CustomerList({
             <div className="grid gap-4 p-4 md:hidden" data-testid="customer-mobile-list">
               {customers.map((customer) => {
                 const smsStatus = getSmsStatus(customer);
+                const dealSmsStatus = getDealSmsStatus(customer);
 
                 return (
                   <article
@@ -619,6 +637,11 @@ export default function CustomerList({
                           className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${smsStatus.className}`}
                         >
                           {smsStatus.label}
+                        </span>
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${dealSmsStatus.className}`}
+                        >
+                          {dealSmsStatus.label}
                         </span>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           {smsStatus.description}
@@ -712,6 +735,7 @@ export default function CustomerList({
                 <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
                   {customers.map((customer) => {
                     const smsStatus = getSmsStatus(customer);
+                    const dealSmsStatus = getDealSmsStatus(customer);
 
                     return (
                       <tr key={customer.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
@@ -754,11 +778,18 @@ export default function CustomerList({
                         </td>
                         <td className="whitespace-nowrap px-6 py-4">
                           <div className="space-y-1">
-                            <span
-                              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${smsStatus.className}`}
-                            >
-                              {smsStatus.label}
-                            </span>
+                            <div className="flex flex-wrap gap-2">
+                              <span
+                                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${smsStatus.className}`}
+                              >
+                                {smsStatus.label}
+                              </span>
+                              <span
+                                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${dealSmsStatus.className}`}
+                              >
+                                {dealSmsStatus.label}
+                              </span>
+                            </div>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
                               {smsStatus.description}
                             </p>

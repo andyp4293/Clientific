@@ -106,6 +106,7 @@ export async function PUT(
 
     const body = await request.json();
     const { name, email, phone, birthday, notes } = body;
+    const dealSmsBlocked = body?.dealSmsBlocked === true;
     const groupIds = normalizeCustomerGroupIds(body?.groupIds);
 
     // Validation
@@ -177,6 +178,7 @@ export async function PUT(
         phoneLookupKey: phoneData.phoneLookupKey,
         birthday: birthday ? new Date(birthday) : null,
         notes: notes || null,
+        dealSmsBlocked,
         groupMemberships: {
           deleteMany: {},
           ...(groupIds.length > 0

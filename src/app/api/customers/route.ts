@@ -94,6 +94,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { name, email, phone, birthday, notes } = body;
+    const dealSmsBlocked = body?.dealSmsBlocked === true;
     const groupIds = normalizeCustomerGroupIds(body?.groupIds);
 
     // Validation
@@ -165,6 +166,7 @@ export async function POST(request: NextRequest) {
         phoneLookupKey: phoneData.phoneLookupKey,
         birthday: birthday ? new Date(birthday) : null,
         notes: notes || null,
+        dealSmsBlocked,
         segment: "NEW", // Default segment
         totalSpent: 0,
         ...(groupIds.length > 0

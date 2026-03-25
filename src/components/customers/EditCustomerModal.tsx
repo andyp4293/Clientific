@@ -19,6 +19,7 @@ interface EditCustomerModalProps {
     phone: string | null;
     birthday: Date | null;
     notes: string | null;
+    dealSmsBlocked?: boolean;
     groupMemberships?: Array<{
       group: CustomerGroup;
     }>;
@@ -55,6 +56,7 @@ export default function EditCustomerModal({
     phone: customer.phone || "",
     birthday: customer.birthday ? toDateInputValue(new Date(customer.birthday)) : "",
     notes: customer.notes || "",
+    dealSmsBlocked: customer.dealSmsBlocked ?? false,
     groupIds: (customer.groupMemberships ?? []).map((membership) => membership.group.id),
   });
 
@@ -243,6 +245,61 @@ export default function EditCustomerModal({
               selectedGroupIds={formData.groupIds}
               onChange={(groupIds) => setFormData({ ...formData, groupIds })}
             />
+
+            <div className="rounded-2xl border border-gray-200 bg-gray-50/80 px-4 py-4 dark:border-gray-700 dark:bg-gray-900/40">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Deals SMS messages
+                  </p>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Block deal SMS messages for this customer when needed.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={!formData.dealSmsBlocked}
+                  aria-label="Toggle deals SMS messages for this customer"
+                  onClick={() =>
+                    setFormData({
+                      ...formData,
+                      dealSmsBlocked: !formData.dealSmsBlocked,
+                    })
+                  }
+                  className={`relative inline-flex h-12 min-w-[140px] shrink-0 items-center overflow-hidden rounded-full border p-1 text-sm font-semibold transition-colors ${
+                    formData.dealSmsBlocked
+                      ? "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300"
+                      : "border-primary/40 bg-primary/10 text-primary dark:border-primary/50 dark:bg-primary/15"
+                  }`}
+                >
+                  <span
+                    className={`absolute inset-y-1 left-1 z-0 w-[calc(50%-0.25rem)] rounded-full shadow-sm transition-transform ${
+                      formData.dealSmsBlocked
+                        ? "translate-x-[calc(100%+0.25rem)] bg-amber-500 dark:bg-amber-500"
+                        : "translate-x-0 bg-primary"
+                    }`}
+                  />
+                  <span
+                    className={`relative z-10 flex-1 text-center transition-colors ${
+                      formData.dealSmsBlocked ? "text-amber-800 dark:text-amber-300" : "text-white"
+                    }`}
+                  >
+                    Send
+                  </span>
+                  <span
+                    className={`relative z-10 flex-1 text-center transition-colors ${
+                      formData.dealSmsBlocked ? "text-white" : "text-gray-500 dark:text-gray-400"
+                    }`}
+                  >
+                    Block
+                  </span>
+                </button>
+              </div>
+              <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
+                {formData.dealSmsBlocked ? "Deals blocked by you" : "Deals SMS allowed"}
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-col gap-3 border-t border-gray-200 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] dark:border-gray-700 sm:border-t-0 sm:px-6 sm:pb-6 sm:pt-4">

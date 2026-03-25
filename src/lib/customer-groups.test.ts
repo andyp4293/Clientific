@@ -23,6 +23,7 @@ describe("customer-groups helpers", () => {
       businessId: "biz-1",
       smsMarketingConsent: true,
       smsOptedOut: false,
+      dealSmsBlocked: false,
       phone: { not: null },
       OR: [
         {
