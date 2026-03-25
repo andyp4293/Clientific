@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -97,6 +97,7 @@ export default function CustomerDetail({
   googleReviewUrl?: string | null;
   yelpUrl?: string | null;
 }) {
+  const [customerRecord, setCustomerRecord] = useState(customer);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "history" | "messages">(
@@ -104,13 +105,19 @@ export default function CustomerDetail({
   );
   const [requestingReview, setRequestingReview] = useState(false);
 
-  const canSendCustomSms = Boolean(customer.phone && customer.smsConsent && !customer.smsOptedOut);
+  useEffect(() => {
+    setCustomerRecord(customer);
+  }, [customer]);
+
+  const canSendCustomSms = Boolean(
+    customerRecord.phone && customerRecord.smsConsent && !customerRecord.smsOptedOut
+  );
   const canRequestReview = canSendCustomSms && Boolean(googleReviewUrl || yelpUrl);
 
   const { data: smsData, isLoading: smsLoading, refetch: refetchSmsLogs } = useQuery({
-    queryKey: ["sms-logs", customer.id],
+    queryKey: ["sms-logs", customerRecord.id],
     queryFn: async () => {
-      const res = await fetch(`/api/customers/${customer.id}/sms-logs`);
+      const res = await fetch(`/api/customers/${customerRecord.id}/sms-logs`);
       if (!res.ok) return { logs: [] };
       return res.json();
     },
@@ -135,7 +142,7 @@ export default function CustomerDetail({
             <div className="flex items-center gap-4">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-100 dark:bg-primary/15">
                 <span className="text-xl font-bold text-primary-600 dark:text-primary-300">
-                  {customer.name
+                  {customerRecord.name
                     .split(" ")
                     .map((namePart) => namePart[0])
                     .join("")
@@ -145,16 +152,16 @@ export default function CustomerDetail({
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                  {customer.name}
+                  {customerRecord.name}
                 </h1>
                 <div className="mt-1 flex items-center gap-3">
                   <span
-                    className={`rounded-full px-2 py-1 text-xs font-semibold ${segmentColors[customer.segment]}`}
+                    className={`rounded-full px-2 py-1 text-xs font-semibold ${segmentColors[customerRecord.segment]}`}
                   >
-                    {segmentLabels[customer.segment]}
+                    {segmentLabels[customerRecord.segment]}
                   </span>
                   <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Customer since {format(new Date(customer.createdAt), "MMM d, yyyy")}
+                    Customer since {format(new Date(customerRecord.createdAt), "MMM d, yyyy")}
                   </span>
                 </div>
               </div>
@@ -169,7 +176,7 @@ export default function CustomerDetail({
                     const res = await fetch("/api/reviews/request", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ customerId: customer.id }),
+                      body: JSON.stringify({ customerId: customerRecord.id }),
                     });
                     if (!res.ok) throw new Error();
                     toast.success("Review request sent!");
@@ -197,7 +204,7 @@ export default function CustomerDetail({
               Total Visits
             </div>
             <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {customer._count.checkIns}
+              {customerRecord._count.checkIns}
             </div>
           </div>
 
@@ -206,7 +213,7 @@ export default function CustomerDetail({
               Total Spent
             </div>
             <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              ${customer.totalSpent.toFixed(2)}
+              ${customerRecord.totalSpent.toFixed(2)}
             </div>
           </div>
 
@@ -214,7 +221,7 @@ export default function CustomerDetail({
             <div className="mb-1 text-sm font-medium text-gray-600 dark:text-gray-400">
               Appointments
             </div>
-            <div className="text-2xl font-bold text-primary">{customer._count.appointments}</div>
+            <div className="text-2xl font-bold text-primary">{customerRecord._count.appointments}</div>
           </div>
         </div>
 
@@ -226,42 +233,42 @@ export default function CustomerDetail({
             <div>
               <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Email</div>
               <div className="mt-1 text-gray-900 dark:text-gray-100">
-                {customer.email || "Not provided"}
+                {customerRecord.email || "Not provided"}
               </div>
             </div>
             <div>
               <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Phone</div>
               <div className="mt-1 text-gray-900 dark:text-gray-100">
-                {customer.phone || "Not provided"}
+                {customerRecord.phone || "Not provided"}
               </div>
             </div>
             <div>
               <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Birthday</div>
               <div className="mt-1 text-gray-900 dark:text-gray-100">
-                {customer.birthday
-                  ? format(new Date(customer.birthday), "MMMM d, yyyy")
+                {customerRecord.birthday
+                  ? format(new Date(customerRecord.birthday), "MMMM d, yyyy")
                   : "Not provided"}
               </div>
             </div>
             <div>
               <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Last Visit</div>
               <div className="mt-1 text-gray-900 dark:text-gray-100">
-                {customer.lastVisit
-                  ? format(new Date(customer.lastVisit), "MMM d, yyyy")
+                {customerRecord.lastVisit
+                  ? format(new Date(customerRecord.lastVisit), "MMM d, yyyy")
                   : "Never"}
               </div>
             </div>
             <div>
               <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Deals SMS</div>
               <div className="mt-1 text-gray-900 dark:text-gray-100">
-                {customer.dealSmsBlocked ? "Deals blocked by you" : "Deals SMS allowed"}
+                {customerRecord.dealSmsBlocked ? "Deals blocked by you" : "Deals SMS allowed"}
               </div>
             </div>
           </div>
-          {customer.notes && (
+          {customerRecord.notes && (
             <div className="mt-4">
               <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Notes</div>
-              <div className="mt-1 text-gray-900 dark:text-gray-100">{customer.notes}</div>
+              <div className="mt-1 text-gray-900 dark:text-gray-100">{customerRecord.notes}</div>
             </div>
           )}
         </div>
@@ -309,11 +316,11 @@ export default function CustomerDetail({
                   <h3 className="mb-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
                     Recent Check-Ins
                   </h3>
-                  {customer.checkIns.length === 0 ? (
+                  {customerRecord.checkIns.length === 0 ? (
                     <p className="text-gray-500 dark:text-gray-400">No check-ins yet</p>
                   ) : (
                     <div className="space-y-2">
-                      {customer.checkIns.map((checkIn) => (
+                      {customerRecord.checkIns.map((checkIn) => (
                         <div
                           key={checkIn.id}
                           className="flex items-center justify-between rounded-lg bg-gray-50 p-3 dark:bg-gray-700"
@@ -336,10 +343,10 @@ export default function CustomerDetail({
 
             {activeTab === "history" && (
               <div className="space-y-4">
-                {customer.appointments.length === 0 ? (
+                {customerRecord.appointments.length === 0 ? (
                   <p className="text-gray-500 dark:text-gray-400">No appointments yet</p>
                 ) : (
-                  customer.appointments.map((appointment) => (
+                  customerRecord.appointments.map((appointment) => (
                     <div
                       key={appointment.id}
                       className="rounded-lg bg-gray-50 p-4 dark:bg-gray-700"
@@ -396,15 +403,15 @@ export default function CustomerDetail({
                   )}
                 </div>
 
-                {!customer.phone ? (
+                {!customerRecord.phone ? (
                   <p className="text-gray-500 dark:text-gray-400">
                     No phone number on file - SMS history unavailable.
                   </p>
-                ) : customer.smsOptedOut ? (
+                ) : customerRecord.smsOptedOut ? (
                   <p className="text-gray-500 dark:text-gray-400">
                     This customer has opted out of SMS, so new messages are unavailable.
                   </p>
-                ) : !customer.smsConsent ? (
+                ) : !customerRecord.smsConsent ? (
                   <p className="text-gray-500 dark:text-gray-400">
                     This customer has not consented to SMS yet, so new messages are unavailable.
                   </p>
@@ -465,13 +472,23 @@ export default function CustomerDetail({
       </div>
 
       <EditCustomerModal
-        customer={customer}
+        customer={customerRecord}
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         groups={groups}
+        onSaved={(nextCustomer) =>
+          setCustomerRecord((current) => ({
+            ...current,
+            ...nextCustomer,
+            checkIns: nextCustomer.checkIns ?? current.checkIns,
+            appointments: nextCustomer.appointments ?? current.appointments,
+            _count: nextCustomer._count ?? current._count,
+            groupMemberships: nextCustomer.groupMemberships ?? current.groupMemberships,
+          }))
+        }
       />
       <SendCustomerMessageModal
-        customer={customer}
+        customer={customerRecord}
         isOpen={isMessageModalOpen}
         onClose={() => setIsMessageModalOpen(false)}
         onSent={async () => {

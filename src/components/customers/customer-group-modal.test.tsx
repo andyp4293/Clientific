@@ -22,7 +22,15 @@ describe("CustomerGroupModal", () => {
 
   it("creates a new group with the selected promotion SMS setting", async () => {
     const onClose = vi.fn();
-    render(<CustomerGroupModal isOpen onClose={onClose} group={null} />);
+    const onSaved = vi.fn();
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        group: { id: "group-new", name: "VIP", promotionSmsEnabled: false, _count: { memberships: 0 } },
+      }),
+    } as Response);
+
+    render(<CustomerGroupModal isOpen onClose={onClose} onSaved={onSaved} group={null} />);
 
     fireEvent.change(screen.getByLabelText(/group name/i), {
       target: { value: "VIP" },
@@ -37,16 +45,21 @@ describe("CustomerGroupModal", () => {
       name: "VIP",
       promotionSmsEnabled: false,
     });
+    expect(onSaved).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "group-new", name: "VIP", promotionSmsEnabled: false }),
+    );
     expect(mockRefresh).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("deletes an existing group after confirmation", async () => {
     const onClose = vi.fn();
+    const onDeleted = vi.fn();
     render(
       <CustomerGroupModal
         isOpen
         onClose={onClose}
+        onDeleted={onDeleted}
         group={{
           id: "group-1",
           name: "VIP",
@@ -62,6 +75,7 @@ describe("CustomerGroupModal", () => {
     const [url, options] = vi.mocked(fetch).mock.calls[0];
     expect(url).toBe("/api/customer-groups/group-1");
     expect((options as RequestInit).method).toBe("DELETE");
+    expect(onDeleted).toHaveBeenCalledWith("group-1");
     expect(mockRefresh).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
   });

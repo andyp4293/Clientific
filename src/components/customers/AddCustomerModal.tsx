@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DatePicker } from "@/components/ui/DatePicker";
 import CustomerGroupSelector from "./CustomerGroupSelector";
@@ -15,12 +15,14 @@ interface AddCustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
   groups: CustomerGroup[];
+  onCreated?: (customer: any) => void;
 }
 
 export default function AddCustomerModal({
   isOpen,
   onClose,
   groups,
+  onCreated,
 }: AddCustomerModalProps) {
   const toDateInputValue = (date: Date) => {
     const year = date.getFullYear();
@@ -73,7 +75,10 @@ export default function AddCustomerModal({
         notes: "",
         groupIds: [],
       });
-      router.refresh();
+      onCreated?.(data.customer);
+      startTransition(() => {
+        router.refresh();
+      });
       onClose();
     } catch (err: any) {
       setError(err.message);

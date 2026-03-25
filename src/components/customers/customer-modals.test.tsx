@@ -52,7 +52,13 @@ describe('Customer modals', () => {
 
   it('submits AddCustomerModal with DatePicker birthday format', async () => {
     const onClose = vi.fn();
-    render(<AddCustomerModal isOpen onClose={onClose} groups={groups} />);
+    const onCreated = vi.fn();
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ customer: { id: 'cust-new', name: 'Alice' } }),
+    } as Response);
+
+    render(<AddCustomerModal isOpen onClose={onClose} groups={groups} onCreated={onCreated} />);
 
     fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'Alice' } });
     fireEvent.click(screen.getByRole('button', { name: /select birthday/i }));
@@ -65,16 +71,23 @@ describe('Customer modals', () => {
 
     expect(payload.birthday).toBe('2026-03-09');
     expect(payload.groupIds).toEqual(['group-1']);
+    expect(onCreated).toHaveBeenCalledWith(expect.objectContaining({ id: 'cust-new', name: 'Alice' }));
     expect(mockRefresh).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('submits EditCustomerModal with DatePicker birthday format', async () => {
     const onClose = vi.fn();
+    const onSaved = vi.fn();
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ customer: { id: 'cus_1', name: 'Bob Updated', dealSmsBlocked: true } }),
+    } as Response);
     render(
       <EditCustomerModal
         isOpen
         onClose={onClose}
+        onSaved={onSaved}
         customer={{
           id: 'cus_1',
           name: 'Bob',
@@ -102,6 +115,9 @@ describe('Customer modals', () => {
     expect(payload.birthday).toBe('2026-03-09');
     expect(payload.dealSmsBlocked).toBe(true);
     expect(payload.groupIds).toEqual(['group-2', 'group-1']);
+    expect(onSaved).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'cus_1', name: 'Bob Updated', dealSmsBlocked: true }),
+    );
     expect(mockRefresh).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
   });

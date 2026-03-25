@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type CustomerGroup = {
@@ -16,12 +16,16 @@ interface CustomerGroupModalProps {
   isOpen: boolean;
   onClose: () => void;
   group?: CustomerGroup | null;
+  onSaved?: (group: CustomerGroup) => void;
+  onDeleted?: (groupId: string) => void;
 }
 
 export default function CustomerGroupModal({
   isOpen,
   onClose,
   group,
+  onSaved,
+  onDeleted,
 }: CustomerGroupModalProps) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -60,7 +64,10 @@ export default function CustomerGroupModal({
         throw new Error(body.error || "Failed to save customer group");
       }
 
-      router.refresh();
+      onSaved?.(body.group);
+      startTransition(() => {
+        router.refresh();
+      });
       onClose();
     } catch (saveError: any) {
       setError(saveError?.message || "Failed to save customer group");
@@ -95,7 +102,10 @@ export default function CustomerGroupModal({
         throw new Error(body.error || "Failed to delete customer group");
       }
 
-      router.refresh();
+      onDeleted?.(group.id);
+      startTransition(() => {
+        router.refresh();
+      });
       onClose();
     } catch (deleteError: any) {
       setError(deleteError?.message || "Failed to delete customer group");

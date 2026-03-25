@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
@@ -205,15 +205,25 @@ export default function CustomerList({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(initialSearch);
+  const [customerRecords, setCustomerRecords] = useState(customers);
+  const [groupRecords, setGroupRecords] = useState(groups);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<CustomerGroup | null>(null);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [messagingCustomer, setMessagingCustomer] = useState<Customer | null>(null);
-  const groupFilterOptions = groups.map((group) => ({
+  const groupFilterOptions = groupRecords.map((group) => ({
     value: group.id,
     label: group.name,
   }));
+
+  useEffect(() => {
+    setCustomerRecords(customers);
+  }, [customers]);
+
+  useEffect(() => {
+    setGroupRecords(groups);
+  }, [groups]);
 
   const updateQueryParam = (key: string, value?: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -257,6 +267,89 @@ export default function CustomerList({
   const closeGroupModal = () => {
     setEditingGroup(null);
     setIsGroupModalOpen(false);
+  };
+
+  const handleCustomerCreated = (customer: Customer) => {
+    setCustomerRecords((current) => [
+      {
+        ...customer,
+        _count: customer._count ?? {
+          checkIns: 0,
+          appointments: 0,
+        },
+        lastVisit: customer.lastVisit ?? null,
+        birthday: customer.birthday ?? null,
+        notes: customer.notes ?? null,
+        groupMemberships: customer.groupMemberships ?? [],
+      },
+      ...current,
+    ]);
+  };
+
+  const handleCustomerSaved = (customer: Customer) => {
+    setCustomerRecords((current) =>
+      current.map((entry) =>
+        entry.id === customer.id
+          ? {
+              ...entry,
+              ...customer,
+              _count: customer._count ?? entry._count,
+              groupMemberships: customer.groupMemberships ?? entry.groupMemberships,
+            }
+          : entry
+      )
+    );
+    setEditingCustomer((current) =>
+      current?.id === customer.id
+        ? {
+            ...current,
+            ...customer,
+            groupMemberships: customer.groupMemberships ?? current.groupMemberships,
+          }
+        : current
+    );
+  };
+
+  const handleCustomerDeleted = (customerId: string) => {
+    setCustomerRecords((current) => current.filter((customer) => customer.id !== customerId));
+    setEditingCustomer((current) => (current?.id === customerId ? null : current));
+    setMessagingCustomer((current) => (current?.id === customerId ? null : current));
+  };
+
+  const handleGroupSaved = (group: CustomerGroup) => {
+    setGroupRecords((current) => {
+      const next = current.some((entry) => entry.id === group.id)
+        ? current.map((entry) => (entry.id === group.id ? group : entry))
+        : [...current, group];
+
+      const sorted = [...next].sort((a, b) => a.name.localeCompare(b.name));
+
+      setCustomerRecords((customersCurrent) =>
+        customersCurrent.map((customer) => ({
+          ...customer,
+          groupMemberships: customer.groupMemberships.map((membership) => ({
+            group:
+              sorted.find((entry) => entry.id === membership.group.id) ?? membership.group,
+          })),
+        }))
+      );
+
+      return sorted;
+    });
+    setEditingGroup(group);
+  };
+
+  const handleGroupDeleted = (groupId: string) => {
+    setGroupRecords((current) => current.filter((group) => group.id !== groupId));
+    setCustomerRecords((current) =>
+      current.map((customer) => ({
+        ...customer,
+        groupMemberships: customer.groupMemberships.filter(
+          (membership) => membership.group.id !== groupId
+        ),
+      }))
+    );
+    setEditingGroup((current) => (current?.id === groupId ? null : current));
   };
 
   const renderCustomerActions = (customer: Customer, compact = false) => (
@@ -375,7 +468,7 @@ export default function CustomerList({
                   Customer groups
                 </h2>
                 <p className="mt-0.5 text-xs font-medium uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                  {groups.length} saved
+                  {groupRecords.length} saved
                 </p>
               </div>
             </div>
@@ -396,13 +489,13 @@ export default function CustomerList({
             </button>
           </div>
 
-          {groups.length === 0 ? (
+          {groupRecords.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-gray-300/90 bg-white/75 px-4 py-5 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-400">
               No groups yet.
             </div>
           ) : (
             <div className="grid gap-3 xl:grid-cols-3">
-              {groups.map((group) => (
+              {groupRecords.map((group) => (
                 <button
                   key={group.id}
                   type="button"
@@ -595,7 +688,7 @@ export default function CustomerList({
         ) : (
           <>
             <div className="grid gap-4 p-4 md:hidden" data-testid="customer-mobile-list">
-              {customers.map((customer) => {
+              {customerRecords.map((customer) => {
                 const smsStatus = getSmsStatus(customer);
                 const dealSmsStatus = getDealSmsStatus(customer);
 
@@ -733,7 +826,7 @@ export default function CustomerList({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
-                  {customers.map((customer) => {
+                  {customerRecords.map((customer) => {
                     const smsStatus = getSmsStatus(customer);
                     const dealSmsStatus = getDealSmsStatus(customer);
 
@@ -811,7 +904,8 @@ export default function CustomerList({
       <AddCustomerModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        groups={groups}
+        groups={groupRecords}
+        onCreated={handleCustomerCreated}
       />
 
       {editingCustomer && (
@@ -819,7 +913,9 @@ export default function CustomerList({
           customer={editingCustomer}
           isOpen={true}
           onClose={() => setEditingCustomer(null)}
-          groups={groups}
+          groups={groupRecords}
+          onSaved={handleCustomerSaved}
+          onDeleted={handleCustomerDeleted}
         />
       )}
 
@@ -827,6 +923,8 @@ export default function CustomerList({
         isOpen={isGroupModalOpen}
         onClose={closeGroupModal}
         group={editingGroup}
+        onSaved={handleGroupSaved}
+        onDeleted={handleGroupDeleted}
       />
 
       {messagingCustomer && (

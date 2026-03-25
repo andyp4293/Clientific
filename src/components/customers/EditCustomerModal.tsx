@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DatePicker } from "@/components/ui/DatePicker";
 import CustomerGroupSelector from "./CustomerGroupSelector";
@@ -27,6 +27,8 @@ interface EditCustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
   groups: CustomerGroup[];
+  onSaved?: (customer: any) => void;
+  onDeleted?: (customerId: string) => void;
 }
 
 export default function EditCustomerModal({
@@ -34,6 +36,8 @@ export default function EditCustomerModal({
   isOpen,
   onClose,
   groups,
+  onSaved,
+  onDeleted,
 }: EditCustomerModalProps) {
   const toDateInputValue = (date: Date) => {
     const year = date.getFullYear();
@@ -78,7 +82,10 @@ export default function EditCustomerModal({
         throw new Error(data.error || "Failed to update customer");
       }
 
-      router.refresh();
+      onSaved?.(data.customer);
+      startTransition(() => {
+        router.refresh();
+      });
       onClose();
     } catch (err: any) {
       setError(err.message);
@@ -118,7 +125,10 @@ export default function EditCustomerModal({
         throw new Error(data.error || "Failed to delete customer");
       }
 
-      router.refresh();
+      onDeleted?.(customer.id);
+      startTransition(() => {
+        router.refresh();
+      });
       onClose();
     } catch (err: any) {
       setError(err.message);
