@@ -101,29 +101,40 @@ export default function AddCustomerModal({
   return (
     <div data-mobile-overlay="true" className="fixed inset-0 z-[70] bg-black/50 p-0 sm:flex sm:items-center sm:justify-center sm:px-4 sm:py-6">
       <div className="flex h-[100dvh] w-full flex-col bg-white shadow-2xl dark:bg-gray-800 sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-2xl sm:border sm:border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between border-b border-gray-200 px-4 py-4 pt-[calc(env(safe-area-inset-top)+1rem)] dark:border-gray-700 sm:border-b-0 sm:px-6 sm:pb-0 sm:pt-6">
-          <h3 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-            Add New Customer
-          </h3>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-300"
-            aria-label="Close add customer modal"
-          >
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+        <div className="border-b border-gray-200 bg-gradient-to-b from-primary/[0.08] via-white to-white dark:border-gray-700 dark:from-primary/[0.14] dark:via-gray-800 dark:to-gray-800">
+          <div className="h-[env(safe-area-inset-top)] bg-white/95 dark:bg-gray-800/95 sm:hidden" />
+          <div className="flex items-start justify-between gap-4 px-4 pb-5 pt-4 sm:px-6 sm:pb-0 sm:pt-6">
+            <div className="min-w-0">
+              <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/[0.08] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary dark:border-primary/25 dark:bg-primary/[0.14]">
+                New customer
+              </div>
+              <h3 className="mt-3 text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                Add customer
+              </h3>
+              <p className="mt-2 max-w-md text-sm leading-6 text-gray-500 dark:text-gray-400">
+                Save their contact details, optional birthday, notes, and any customer groups in one place.
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="rounded-2xl border border-gray-200/80 bg-white/80 p-2 text-gray-400 transition-colors hover:bg-white hover:text-gray-600 dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+              aria-label="Close add customer modal"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">

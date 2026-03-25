@@ -121,4 +121,14 @@ describe('Customer modals', () => {
     expect(mockRefresh).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('renders the richer mobile header for add customer', () => {
+    render(<AddCustomerModal isOpen onClose={vi.fn()} groups={groups} />);
+
+    expect(screen.getByText('New customer')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Add customer' })).toBeInTheDocument();
+    expect(
+      screen.getByText(/save their contact details, optional birthday, notes, and any customer groups/i),
+    ).toBeInTheDocument();
+  });
 });

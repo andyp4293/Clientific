@@ -122,31 +122,36 @@ export default function CustomerGroupModal({
       className="fixed inset-0 z-[70] bg-gray-50 p-0 dark:bg-gray-900 sm:bg-black/50 sm:flex sm:items-center sm:justify-center sm:px-4 sm:py-6"
     >
       <div className="flex h-[100dvh] min-h-[100dvh] w-full flex-col overflow-hidden bg-gray-50 shadow-none dark:bg-gray-900 sm:h-auto sm:min-h-0 sm:max-h-[90vh] sm:max-w-xl sm:rounded-[28px] sm:border sm:border-gray-200 sm:bg-white sm:shadow-2xl dark:sm:border-gray-700 dark:sm:bg-gray-900">
-        <div className="bg-gray-50 dark:bg-gray-900">
-          <div className="h-[env(safe-area-inset-top)] bg-gray-50 dark:bg-gray-900 sm:hidden" />
-          <div className="flex items-center justify-between border-b border-gray-200/80 px-5 py-4 dark:border-gray-800 sm:px-6 sm:pt-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-              Customer group
-            </p>
-            <h3 className="mt-1 text-[2rem] font-semibold tracking-tight text-gray-900 dark:text-gray-100">
-              {group ? "Edit group" : "Create group"}
-            </h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-2xl p-2 text-gray-400 transition-colors hover:bg-gray-200/70 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-            aria-label="Close customer group modal"
-          >
-            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
+        <div className="border-b border-gray-200/80 bg-gradient-to-b from-primary/[0.08] via-gray-50 to-gray-50 dark:border-gray-800 dark:from-primary/[0.14] dark:via-gray-900 dark:to-gray-900">
+          <div className="h-[env(safe-area-inset-top)] bg-gray-50/95 dark:bg-gray-900/95 sm:hidden" />
+          <div className="px-5 pb-5 pt-4 sm:px-6 sm:pt-6">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/[0.08] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary dark:border-primary/25 dark:bg-primary/[0.14]">
+                  Customer group
+                </div>
+                <h3 className="mt-3 text-[2rem] font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+                  {group ? "Edit group" : "Create group"}
+                </h3>
+                <p className="mt-2 max-w-md text-sm leading-6 text-gray-500 dark:text-gray-400">
+                  Choose a name and decide whether this group should receive deals SMS messages.
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="rounded-2xl border border-gray-200/80 bg-white/80 p-2 text-gray-400 transition-colors hover:bg-white hover:text-gray-700 dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+                aria-label="Close customer group modal"
+              >
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 

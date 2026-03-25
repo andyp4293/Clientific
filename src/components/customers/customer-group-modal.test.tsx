@@ -112,4 +112,14 @@ describe("CustomerGroupModal", () => {
     expect(screen.getByText("Include this group in deals SMS messages.")).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: /toggle deals sms messages/i })).toBeInTheDocument();
   });
+
+  it("renders the richer mobile header for customer groups", () => {
+    render(<CustomerGroupModal isOpen onClose={vi.fn()} group={null} />);
+
+    expect(screen.getByText("Customer group")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Create group" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/choose a name and decide whether this group should receive deals sms messages/i),
+    ).toBeInTheDocument();
+  });
 });
