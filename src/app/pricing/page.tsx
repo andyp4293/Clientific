@@ -92,12 +92,39 @@ function PricingContent() {
           </div>
         </div>
 
-        <div className="mx-auto mb-6 max-w-4xl rounded-[28px] border border-primary/15 bg-primary/[0.06] px-5 py-4 text-left text-sm leading-6 text-gray-700 dark:border-primary/20 dark:bg-primary/[0.08] dark:text-gray-200">
-          Starter includes booking, CRM, deals, referrals, and payouts. Pro and Premium add the
-          AI receptionist experience on top of that core workflow.
+        <div className="mx-auto mb-8 max-w-5xl rounded-[32px] border border-primary/15 bg-gradient-to-r from-primary/[0.08] via-white to-white px-6 py-5 text-left text-sm leading-6 text-gray-700 shadow-sm dark:border-primary/20 dark:bg-gradient-to-r dark:from-primary/[0.14] dark:via-white/[0.04] dark:to-white/[0.02] dark:text-gray-200 lg:px-8">
+          <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary dark:text-primary-200">
+                Launch Access
+              </p>
+              <p className="mt-2 text-base font-semibold text-gray-900 dark:text-gray-100">
+                Starter includes booking, CRM, deals, referrals, and payouts. Pro and Premium add
+                AI receptionist coverage on top of that core workflow.
+              </p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 dark:border-white/10 dark:bg-white/[0.05]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+                  Trial
+                </p>
+                <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  14 days free
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 dark:border-white/10 dark:bg-white/[0.05]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+                  Billing
+                </p>
+                <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  Monthly, cancel anytime
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="grid max-w-6xl mx-auto gap-6 lg:grid-cols-3">
+        <div className="mx-auto grid max-w-[1400px] gap-6 xl:grid-cols-3">
           {VISIBLE_SELF_SERVE_PLAN_KEYS.map((key) => {
             const plan = PRICING_PLANS[key];
             const publicSlug = getPublicPlanSlug(key.toLowerCase());
@@ -110,15 +137,20 @@ function PricingContent() {
               <div
                 key={key}
                 data-testid="pricing-plan-card"
-                className={`card p-8 relative flex flex-col ${
-                  plan.popular ? 'border-2 border-primary shadow-xl shadow-primary/10' : ''
-                } rounded-[28px] p-6 sm:p-8`}
+                className={`relative flex h-full flex-col overflow-hidden rounded-[32px] border p-6 shadow-[0_18px_60px_rgba(6,17,24,0.08)] transition-transform sm:p-8 ${
+                  plan.popular
+                    ? 'border-primary/30 bg-gradient-to-b from-primary/[0.12] via-white to-white shadow-[0_24px_80px_rgba(15,190,146,0.18)] dark:border-primary/40 dark:from-primary/[0.18] dark:via-[#08131a] dark:to-[#08131a]'
+                    : 'border-gray-200/80 bg-gradient-to-b from-white via-white to-gray-50/90 dark:border-white/10 dark:from-white/[0.05] dark:via-[#08131a] dark:to-white/[0.03]'
+                }`}
               >
                 <div className="mb-6">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{plan.name}</h3>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="max-w-[15rem]">
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{plan.name}</h3>
+                      <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">{plan.summary}</p>
+                    </div>
                     <span
-                      className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] ${
+                      className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] ${
                         plan.popular
                           ? 'bg-primary text-white'
                           : 'border border-primary/20 bg-primary/10 text-primary dark:border-primary/30 dark:bg-primary/15 dark:text-primary-200'
@@ -127,75 +159,90 @@ function PricingContent() {
                       {plan.popular ? 'Most Popular' : 'Special Pricing'}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{plan.summary}</p>
-                  <div className="mt-5 overflow-hidden rounded-[26px] border border-gray-200/80 bg-gradient-to-br from-white via-gray-50/95 to-primary/[0.05] p-4 dark:border-white/10 dark:from-white/[0.06] dark:via-white/[0.04] dark:to-primary/[0.12] sm:p-5">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="mt-6 rounded-[30px] border border-gray-200/80 bg-white/80 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] dark:border-white/10 dark:bg-white/[0.04] sm:p-6">
+                    <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
-                          Regularly
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">
+                          Launch Price
                         </p>
-                        <div className="mt-1 text-base font-semibold text-gray-400 line-through decoration-2 dark:text-gray-500 sm:text-lg">
-                          ${plan.compareAtPrice}/month
+                        <div className="mt-2 flex items-end gap-2">
+                          <span className="text-[3.4rem] font-bold leading-none tracking-[-0.06em] text-gray-900 dark:text-white sm:text-[4.2rem]">
+                            ${plan.price}
+                          </span>
+                          <span className="pb-2 text-base font-medium text-gray-600 dark:text-gray-300">
+                            /month
+                          </span>
                         </div>
                       </div>
-                      <span className="rounded-full bg-primary px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white shadow-sm shadow-primary/30">
-                        Today
-                      </span>
+                      <div className="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-right dark:border-primary/30 dark:bg-primary/15">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary dark:text-primary-200">
+                          Today
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                          {discountPercent}% off
+                        </p>
+                      </div>
                     </div>
-                    <div className="mt-4 flex items-end gap-2 sm:gap-3">
-                      <span className="text-[2.8rem] font-bold leading-none tracking-tight text-gray-900 dark:text-white sm:text-5xl">
-                        ${plan.price}
-                      </span>
-                      <span className="pb-1 text-sm font-medium text-gray-600 dark:text-gray-300 sm:text-base">
-                        /month
-                      </span>
+
+                    <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-2xl border border-gray-200/80 bg-gray-50/90 px-4 py-3 dark:border-white/10 dark:bg-white/[0.03]">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+                          Regularly
+                        </p>
+                        <p className="mt-1 text-base font-semibold text-gray-400 line-through decoration-2 dark:text-gray-500">
+                          ${plan.compareAtPrice}/mo
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-900/30 dark:bg-emerald-900/20">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
+                          Save
+                        </p>
+                        <p className="mt-1 text-base font-semibold text-emerald-900 dark:text-emerald-100">
+                          ${monthlySavings}/mo
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-primary/20 bg-primary/[0.08] px-4 py-3 dark:border-primary/30 dark:bg-primary/[0.12]">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary dark:text-primary-200">
+                          Annual Delta
+                        </p>
+                        <p className="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">
+                          ${yearlySavings}
+                        </p>
+                      </div>
                     </div>
-                    <p className="mt-2 text-sm font-medium text-primary dark:text-primary-200">
-                      Launch pricing active now
+
+                    <div className="mt-4 flex items-center justify-between gap-4 rounded-2xl border border-primary/15 bg-primary/[0.05] px-4 py-3 dark:border-primary/20 dark:bg-primary/[0.08]">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Launch pricing active now
+                      </p>
+                      <p className="text-sm font-semibold text-primary dark:text-primary-200">
+                        ${yearlySavings}/year below regular
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-5 rounded-2xl border border-gray-200/80 bg-gray-50/80 px-4 py-3 text-sm text-gray-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                      {key === 'STARTER' ? 'Core Workflow' : 'AI Receptionist Included'}
                     </p>
-                  </div>
-                  <div className="mt-4 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm dark:border-emerald-900/30 dark:bg-emerald-900/20">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
-                        You Save
-                      </p>
-                      <p className="mt-1 font-semibold text-emerald-900 dark:text-emerald-100">
-                        ${monthlySavings}/month
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm dark:border-primary/30 dark:bg-primary/15">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary dark:text-primary-200">
-                        Discount
-                      </p>
-                      <p className="mt-1 font-semibold text-gray-900 dark:text-gray-100">
-                        {discountPercent}% off
-                      </p>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-sm font-medium text-primary dark:text-primary-200">
-                    That is ${yearlySavings}/year below the regular monthly rate.
-                  </p>
-                  <p className="mt-2 text-xs font-medium uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-                    {key === 'STARTER' ? 'Core workflow' : 'AI receptionist included'}
-                  </p>
-                  <div className="mt-4 rounded-2xl border border-gray-200/80 bg-gray-50/80 px-4 py-3 text-sm text-gray-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300">
-                    {key === 'STARTER'
-                      ? 'Booking, CRM, marketing, referrals, and payouts are included here.'
-                      : 'Includes the full core workflow plus AI receptionist phone coverage.'}
+                    <p className="mt-2">
+                      {key === 'STARTER'
+                        ? 'Booking, CRM, marketing, referrals, and payouts are included here.'
+                        : 'Includes the full core workflow plus AI receptionist phone coverage.'}
+                    </p>
                   </div>
                 </div>
 
-                <ul className="space-y-3 mb-8 flex-1">
+                <ul className="mb-8 grid flex-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
                   {plan.features.map((feature, index) => (
-                    <li key={index} className="flex items-start">
-                      <svg className="w-5 h-5 text-success mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <li key={index} className="flex items-start rounded-2xl border border-gray-200/70 bg-white/70 px-4 py-3 dark:border-white/8 dark:bg-white/[0.03]">
+                      <svg className="mr-3 mt-0.5 h-5 w-5 flex-shrink-0 text-success" fill="currentColor" viewBox="0 0 20 20">
                         <path
                           fillRule="evenodd"
                           d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
                           clipRule="evenodd"
                         />
                       </svg>
-                      <span className="text-sm text-gray-700 dark:text-gray-300">{feature}</span>
+                      <span className="text-sm leading-6 text-gray-700 dark:text-gray-300">{feature}</span>
                     </li>
                   ))}
                 </ul>
@@ -203,7 +250,7 @@ function PricingContent() {
                 <button
                   onClick={() => void handleSubscribe(publicSlug)}
                   disabled={isLoading}
-                  className="block w-full text-center py-3.5 px-4 rounded-xl font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed bg-primary text-white hover:bg-primary-700"
+                  className="block w-full rounded-2xl bg-primary px-4 py-4 text-center font-semibold text-white transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isLoading
                     ? 'Redirecting...'
