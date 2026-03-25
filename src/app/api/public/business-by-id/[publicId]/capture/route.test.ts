@@ -38,6 +38,18 @@ vi.mock('@/lib/deal-claims', () => ({
   },
 }));
 
+vi.mock('@/lib/deal-eligibility', () => ({
+  assertDealAudienceEligibility: vi.fn(),
+  DealEligibilityError: class DealEligibilityError extends Error {
+    status: number;
+
+    constructor(message: string, status: number) {
+      super(message);
+      this.status = status;
+    }
+  },
+}));
+
 import { prisma } from '@/lib/prisma';
 import {
   formatKioskDealClaimSMS,
@@ -46,6 +58,7 @@ import {
 } from '@/lib/twilio';
 import { getInStoreCaptureConfig } from '@/lib/in-store-capture';
 import { claimDealForCustomer, DealClaimError } from '@/lib/deal-claims';
+import { assertDealAudienceEligibility, DealEligibilityError } from '@/lib/deal-eligibility';
 import { GET, POST } from './route';
 
 function makeParams(publicId = 'pub_123') {
@@ -74,6 +87,10 @@ describe('Public in-store capture route', () => {
       slug: 'test-salon',
       enableOnlineBooking: true,
       vapiPhoneNumber: '+18557654989',
+      stripeConnectAccountId: 'acct_123',
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+      stripeConnectDetailsSubmitted: true,
     } as any);
 
     vi.mocked(prisma.customer.findFirst).mockResolvedValue(null);
@@ -93,11 +110,13 @@ describe('Public in-store capture route', () => {
       id: 'deal-1',
       title: 'Spring Special',
       deliveryType: 'code_claim',
+      newCustomersOnly: false,
       expiresAt: new Date('2026-03-20T00:00:00.000Z'),
       maxRedemptions: null,
       redemptionCount: 0,
     } as any);
     vi.mocked(prisma.smsConsentEvent.create).mockResolvedValue({ id: 'evt-1' } as any);
+    vi.mocked(assertDealAudienceEligibility).mockResolvedValue(undefined);
 
     vi.mocked(getInStoreCaptureConfig).mockResolvedValue({
       business: {
@@ -295,5 +314,81 @@ describe('Public in-store capture route', () => {
     expect(prisma.customer.create).not.toHaveBeenCalled();
     expect(prisma.customer.update).not.toHaveBeenCalled();
     expect(sendSMS).not.toHaveBeenCalled();
+  });
+
+  it('does not claim a new-customer-only deal for an existing customer already in the database', async () => {
+    vi.mocked(prisma.customer.findFirst).mockResolvedValue({
+      id: 'cust-1',
+      name: 'Jane',
+      phone: '+15551234567',
+      email: 'jane@example.com',
+      smsOptedOut: false,
+    } as any);
+    vi.mocked(assertDealAudienceEligibility).mockRejectedValue(
+      new DealEligibilityError(
+        'This promotion is only available to new customers. This phone number is already in the business database.',
+        409
+      )
+    );
+
+    const res = await POST(
+      makePostRequest({
+        name: 'Jane',
+        phone: '5551234567',
+        smsMarketingConsent: true,
+        dealId: 'deal-1',
+      }),
+      makeParams()
+    );
+
+    expect(res.status).toBe(200);
+    expect(claimDealForCustomer).not.toHaveBeenCalled();
+    expect(formatKioskSignupConfirmationSMS).toHaveBeenCalledTimes(1);
+
+    const body = await res.json();
+    expect(body.deal).toBeNull();
+    expect(body.dealIssue).toContain('only available to new customers');
+  });
+
+  it('does not send a purchase link for a new-customer-only deal when the phone already exists', async () => {
+    vi.mocked(prisma.deal.findFirst).mockResolvedValue({
+      id: 'deal-1',
+      title: 'Spring Special',
+      deliveryType: 'purchase_link',
+      discountType: 'amount_off',
+      discountValue: 20,
+      newCustomersOnly: true,
+      expiresAt: new Date('2026-03-20T00:00:00.000Z'),
+      maxRedemptions: null,
+      redemptionCount: 0,
+    } as any);
+    vi.mocked(assertDealAudienceEligibility).mockRejectedValue(
+      new DealEligibilityError(
+        'This promotion is only available to new customers. This phone number is already in the business database.',
+        409
+      )
+    );
+
+    const res = await POST(
+      makePostRequest({
+        name: 'Jane',
+        phone: '5551234567',
+        smsMarketingConsent: true,
+        dealId: 'deal-1',
+      }),
+      makeParams()
+    );
+
+    expect(res.status).toBe(200);
+    expect(claimDealForCustomer).not.toHaveBeenCalled();
+    expect(sendSMS).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'signup sms',
+      })
+    );
+
+    const body = await res.json();
+    expect(body.deal).toBeNull();
+    expect(body.dealIssue).toContain('only available to new customers');
   });
 });

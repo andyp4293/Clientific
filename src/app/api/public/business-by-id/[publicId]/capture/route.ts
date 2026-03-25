@@ -15,6 +15,7 @@ import {
 } from '@/lib/phone';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { claimDealForCustomer, DealClaimError } from '@/lib/deal-claims';
+import { assertDealAudienceEligibility, DealEligibilityError } from '@/lib/deal-eligibility';
 import { getAppBaseUrlFromRequest } from '@/lib/app-url';
 import { getInStoreCaptureConfig } from '@/lib/in-store-capture';
 import { dealRequiresPayoutSetup, isBusinessReadyForPaidDeals } from '@/lib/paid-deal-payouts';
@@ -198,6 +199,7 @@ export async function POST(
             deliveryType: true,
             discountType: true,
             discountValue: true,
+            newCustomersOnly: true,
             expiresAt: true,
             maxRedemptions: true,
             redemptionCount: true,
@@ -217,6 +219,12 @@ export async function POST(
         ) {
           throw new DealClaimError('This business is still finishing payout setup', 400);
         }
+
+        await assertDealAudienceEligibility({
+          businessId: business.id,
+          customerPhone: phoneRaw,
+          newCustomersOnly: selectedDeal.newCustomersOnly,
+        });
 
         if (selectedDeal.deliveryType === 'purchase_link') {
           claimedDeal = {
@@ -238,7 +246,10 @@ export async function POST(
           };
         }
       } catch (error) {
-        if (error instanceof DealClaimError && error.status < 500) {
+        if (
+          (error instanceof DealClaimError || error instanceof DealEligibilityError) &&
+          error.status < 500
+        ) {
           dealIssue = error.message;
         } else {
           throw error;
