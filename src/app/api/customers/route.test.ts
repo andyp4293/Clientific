@@ -259,6 +259,47 @@ describe('POST /api/customers', () => {
     expect(mockCustomerCreate).not.toHaveBeenCalled();
   });
 
+  it('trims and deduplicates selected customer groups before validation and create', async () => {
+    mockGetServerSession.mockResolvedValue({
+      user: { businessId: 'biz-1', email: 'test@test.com' },
+    });
+    mockBusinessFindUnique
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        subscriptionPlan: 'starter',
+        _count: { customers: 5, staff: 0, services: 0 },
+      });
+    mockCustomerFindFirst.mockResolvedValue(null);
+    mockCustomerGroupFindMany.mockResolvedValue([{ id: 'group-1' }, { id: 'group-2' }]);
+    mockCustomerCreate.mockResolvedValue({ id: 'cust-1', name: 'Test Customer', businessId: 'biz-1' });
+
+    const res = await POST(
+      makeRequest({
+        name: 'Test Customer',
+        groupIds: [' group-1 ', 'group-1', 'group-2', '', '   '],
+      })
+    );
+
+    expect(res.status).toBe(201);
+    expect(prisma.customerGroup.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          businessId: 'biz-1',
+          id: { in: ['group-1', 'group-2'] },
+        },
+      })
+    );
+    expect(mockCustomerCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          groupMemberships: {
+            create: [{ groupId: 'group-1' }, { groupId: 'group-2' }],
+          },
+        }),
+      })
+    );
+  });
+
   it('creates customer successfully during valid trial', async () => {
     mockGetServerSession.mockResolvedValue({
       user: { businessId: 'biz-1', email: 'test@test.com' },

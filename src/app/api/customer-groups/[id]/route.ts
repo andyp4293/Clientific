@@ -3,7 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { requireActiveSubscription } from "@/lib/subscription";
-import { normalizeCustomerGroupName } from "@/lib/customer-groups";
+import {
+  CUSTOMER_GROUP_NAME_MAX_LENGTH,
+  normalizeCustomerGroupName,
+} from "@/lib/customer-groups";
 
 async function getOwnedGroup(id: string, businessId: string) {
   return prisma.customerGroup.findFirst({
@@ -45,6 +48,13 @@ export async function PUT(
 
     if (!name) {
       return NextResponse.json({ error: "Group name is required" }, { status: 400 });
+    }
+
+    if (name.length > CUSTOMER_GROUP_NAME_MAX_LENGTH) {
+      return NextResponse.json(
+        { error: `Group name must be ${CUSTOMER_GROUP_NAME_MAX_LENGTH} characters or fewer` },
+        { status: 400 }
+      );
     }
 
     const duplicate = await prisma.customerGroup.findFirst({

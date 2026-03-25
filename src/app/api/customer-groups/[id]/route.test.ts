@@ -86,4 +86,16 @@ describe("/api/customer-groups/[id]", () => {
       where: { id: "group-1" },
     });
   });
+
+  it("PUT rejects names longer than the supported UI limit", async () => {
+    const res = await PUT(
+      makeRequest("PUT", { name: "a".repeat(61), promotionSmsEnabled: true }),
+      params()
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/60 characters or fewer/i);
+    expect(prisma.customerGroup.update).not.toHaveBeenCalled();
+  });
 });

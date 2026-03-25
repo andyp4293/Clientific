@@ -88,4 +88,14 @@ describe("/api/customer-groups", () => {
     expect(body.error).toMatch(/already exists/i);
     expect(prisma.customerGroup.create).not.toHaveBeenCalled();
   });
+
+  it("POST rejects names longer than the supported UI limit", async () => {
+    const res = await POST(makeRequest({ name: "a".repeat(61) }));
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/60 characters or fewer/i);
+    expect(prisma.customerGroup.findFirst).not.toHaveBeenCalled();
+    expect(prisma.customerGroup.create).not.toHaveBeenCalled();
+  });
 });

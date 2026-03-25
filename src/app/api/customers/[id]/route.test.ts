@@ -134,6 +134,51 @@ describe("/api/customers/[id]", () => {
     expect(prisma.customer.update).not.toHaveBeenCalled();
   });
 
+  it("PUT trims and deduplicates selected customer groups before syncing memberships", async () => {
+    vi.mocked(prisma.customer.findFirst)
+      .mockResolvedValueOnce({
+        id: "cust-1",
+        businessId: "biz-1",
+      } as any)
+      .mockResolvedValueOnce(null);
+    vi.mocked(prisma.customerGroup.findMany).mockResolvedValue([
+      { id: "group-1" },
+      { id: "group-2" },
+    ] as any);
+    vi.mocked(prisma.customer.update).mockResolvedValue({
+      id: "cust-1",
+      businessId: "biz-1",
+    } as any);
+
+    const res = await PUT(
+      makeRequest("PUT", {
+        name: "Jane Doe",
+        groupIds: [" group-1 ", "group-1", "group-2", "", "   "],
+      }),
+      params()
+    );
+
+    expect(res.status).toBe(200);
+    expect(prisma.customerGroup.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          businessId: "biz-1",
+          id: { in: ["group-1", "group-2"] },
+        },
+      })
+    );
+    expect(prisma.customer.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          groupMemberships: {
+            deleteMany: {},
+            create: [{ groupId: "group-1" }, { groupId: "group-2" }],
+          },
+        }),
+      })
+    );
+  });
+
   it("DELETE returns 404 when the customer does not belong to the business", async () => {
     vi.mocked(prisma.customer.findFirst).mockResolvedValue(null);
 

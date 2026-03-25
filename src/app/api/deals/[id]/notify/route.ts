@@ -10,6 +10,7 @@ import {
   formatDealClaimCodeSMS,
   formatDealPurchaseLinkSMS,
 } from '@/lib/twilio';
+import { buildPromotionSmsAudienceWhere } from '@/lib/customer-groups';
 import { getSessionBusinessId } from '@/lib/session-business';
 import { claimDealForCustomer, DealClaimError } from '@/lib/deal-claims';
 import { getAppBaseUrlFromRequest } from '@/lib/app-url';
@@ -76,28 +77,7 @@ export async function POST(
     }
 
     const customers = await prisma.customer.findMany({
-      where: {
-        businessId,
-        smsMarketingConsent: true,
-        smsOptedOut: false,
-        phone: { not: null },
-        OR: [
-          {
-            groupMemberships: {
-              none: {},
-            },
-          },
-          {
-            groupMemberships: {
-              some: {
-                group: {
-                  promotionSmsEnabled: true,
-                },
-              },
-            },
-          },
-        ],
-      },
+      where: buildPromotionSmsAudienceWhere(businessId),
       select: { id: true, phone: true, name: true },
     });
 
