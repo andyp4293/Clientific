@@ -50,8 +50,8 @@ type ClientificLogoProps = {
 };
 
 export function ClientificLogo({
-  className,
-  markClassName = 'h-8 w-8',
+  className = 'inline-flex items-center gap-[0.28em]',
+  markClassName = 'h-[1.1em] w-[1.1em]',
   nameClassName = 'text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-100',
   showName = true,
   name = APP_NAME,
