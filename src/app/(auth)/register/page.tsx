@@ -5,6 +5,7 @@ import { signIn, useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { APP_NAME } from '@/lib/brand';
+import { ClientificLogo } from '@/components/brand/ClientificLogo';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import { getPublicPlanLabel, getPublicPlanSlug } from '@/lib/plan-utils';
 
@@ -376,12 +377,12 @@ function RegisterForm() {
       <div className="w-full max-w-2xl mx-auto">
         <div className="text-center mb-6 sm:mb-8">
           <Link href="/" className="inline-flex items-center space-x-2">
-            <div className="w-8 sm:w-10 h-8 sm:h-10 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl sm:text-2xl">C</span>
-            </div>
-            <span className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {APP_NAME}
-            </span>
+            <ClientificLogo
+              className="inline-flex items-center gap-2"
+              markClassName="h-8 w-8 sm:h-10 sm:w-10 text-gray-950 dark:text-white"
+              nameClassName="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100"
+              title={APP_NAME}
+            />
           </Link>
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2">
             {isPartnerSignup

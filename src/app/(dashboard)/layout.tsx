@@ -12,6 +12,7 @@ import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { MobileOverlayChromeWatcher } from '@/components/layout/MobileOverlayChromeWatcher';
 import { SubscriptionBanner } from '@/components/billing/SubscriptionBanner';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { ClientificLogo } from '@/components/brand/ClientificLogo';
 import { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/pricing-plans';
 import { Toaster } from 'sonner';
 
@@ -90,10 +91,12 @@ function DashboardUnavailable({
     <div className="min-h-screen brand-shell">
       <header className="fixed top-0 left-0 right-0 h-14 z-50 brand-panel border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6">
         <Link href="/" className="flex items-center space-x-2">
-          <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-base">C</span>
-          </div>
-          <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{APP_NAME}</span>
+          <ClientificLogo
+            className="flex items-center gap-2"
+            markClassName="h-7 w-7 text-gray-950 dark:text-white"
+            nameClassName="text-lg font-bold text-gray-900 dark:text-gray-100"
+            title={APP_NAME}
+          />
         </Link>
         <Link
           href="/signout"
@@ -225,10 +228,12 @@ export default async function DashboardLayout({
       <div className="min-h-screen brand-shell">
         <header className="fixed top-0 left-0 right-0 h-14 z-50 brand-panel border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6">
           <div className="flex items-center space-x-2">
-            <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-base">C</span>
-            </div>
-            <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{APP_NAME}</span>
+            <ClientificLogo
+              className="flex items-center gap-2"
+              markClassName="h-7 w-7 text-gray-950 dark:text-white"
+              nameClassName="text-lg font-bold text-gray-900 dark:text-gray-100"
+              title={APP_NAME}
+            />
           </div>
           <Link
             href="/signout"
@@ -263,10 +268,12 @@ export default async function DashboardLayout({
 
       <div className="hidden lg:flex fixed top-0 left-0 right-0 h-16 z-50 brand-panel border-b border-gray-200 dark:border-gray-800 items-center justify-between px-6">
         <Link href="/dashboard" className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-xl">C</span>
-          </div>
-          <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{APP_NAME}</span>
+          <ClientificLogo
+            className="flex items-center gap-2"
+            markClassName="h-8 w-8 text-gray-950 dark:text-white"
+            nameClassName="text-xl font-bold text-gray-900 dark:text-gray-100"
+            title={APP_NAME}
+          />
         </Link>
         <NotificationBell />
       </div>

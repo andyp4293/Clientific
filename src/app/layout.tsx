@@ -18,20 +18,13 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: APP_NAME,
   },
-  icons: {
-    icon: [
-      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-      { url: '/icons/icon.svg', type: 'image/svg+xml' },
-    ],
-    apple: [
-      { url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
-    ],
-  },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#2563eb',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#07131f' },
+  ],
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,

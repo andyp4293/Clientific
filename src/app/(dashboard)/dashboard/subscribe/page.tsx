@@ -5,6 +5,7 @@ import { getSubscriptionInfo } from '@/lib/subscription';
 import { APP_NAME } from '@/lib/brand';
 import { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/pricing-plans';
 import { UpgradePricingCards } from '@/components/billing/UpgradePricingCards';
+import { ClientificMark } from '@/components/brand/ClientificLogo';
 import { getSessionBusinessId } from '@/lib/session-business';
 
 export default async function SubscribePage() {
@@ -48,9 +49,7 @@ export default async function SubscribePage() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-start pt-12 px-4 pb-16">
-      <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mb-6">
-        <span className="text-white font-bold text-3xl">C</span>
-      </div>
+      <ClientificMark className="mb-6 h-16 w-16 text-gray-950 dark:text-white" title={APP_NAME} />
       <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 text-center">{headline}</h1>
       <p className="mt-3 text-gray-500 dark:text-gray-400 text-center max-w-md">{subtext}</p>
 

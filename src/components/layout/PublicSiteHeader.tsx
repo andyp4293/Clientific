@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { APP_NAME } from '@/lib/brand';
+import { ClientificLogo } from '@/components/brand/ClientificLogo';
 
 type PublicNavKey = 'home' | 'explore' | 'pricing' | 'partner' | 'business' | 'deal' | 'book' | 'support';
 
@@ -40,10 +41,12 @@ export function PublicSiteHeader({
     <header className="sticky top-0 z-40 border-b border-gray-200/70 bg-white/80 backdrop-blur-md dark:border-gray-900 dark:bg-gray-950/90">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white shadow-sm">
-            C
-          </span>
-          <span className="text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-100">{APP_NAME}</span>
+          <ClientificLogo
+            className="flex items-center gap-2"
+            markClassName="h-8 w-8 text-gray-950 dark:text-white"
+            nameClassName="text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-100"
+            title={APP_NAME}
+          />
         </Link>
 
         <nav className="hidden items-center gap-5 md:flex">

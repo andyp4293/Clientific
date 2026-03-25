@@ -1,13 +1,12 @@
 import Link from 'next/link';
 import { APP_NAME } from '@/lib/brand';
+import { ClientificMark } from '@/components/brand/ClientificLogo';
 
 export default function NotFound() {
   return (
     <div className="page-shell min-h-screen flex flex-col items-center justify-center px-4">
       <div className="text-center max-w-md">
-        <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <span className="text-white font-bold text-3xl">C</span>
-        </div>
+        <ClientificMark className="mx-auto mb-6 h-16 w-16 text-gray-950 dark:text-white" title={APP_NAME} />
         <h1 className="text-6xl font-bold text-primary mb-4">404</h1>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Page not found</h2>
         <p className="text-gray-500 dark:text-gray-400 mb-8">

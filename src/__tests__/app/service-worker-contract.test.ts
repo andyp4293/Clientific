@@ -7,7 +7,7 @@ describe('service worker navigation contract', () => {
     const source = readFileSync(join(process.cwd(), 'public', 'sw.js'), 'utf8');
 
     expect(source).toContain("const OFFLINE_FALLBACK_URL = '/offline.html';");
-    expect(source).toContain('const CACHE_NAME = \'clientific-v4\';');
+    expect(source).toMatch(/const CACHE_NAME = 'clientific-v\d+';/);
     expect(source).not.toContain("'/'");
     expect(source).not.toContain("'/dashboard'");
     expect(source).not.toContain("'/login'");

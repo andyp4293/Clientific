@@ -7,6 +7,7 @@ import { APP_DOMAIN, APP_NAME, APP_SUPPORT_EMAIL, APP_SUPPORT_PATH } from '@/lib
 import { getPublicPlanSlug } from '@/lib/plan-utils';
 import { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/pricing-plans';
 import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
+import { ClientificLogo } from '@/components/brand/ClientificLogo';
 
 const faqs = [
   {
@@ -814,12 +815,12 @@ export default function HomePage() {
           <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
             <div className="col-span-2 md:col-span-1">
               <div className="mb-4 flex items-center space-x-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                  <span className="text-xl font-bold text-white">C</span>
-                </div>
-                <span className="text-xl font-bold text-gray-950 dark:text-gray-100">
-                  {APP_NAME}
-                </span>
+                <ClientificLogo
+                  className="flex items-center gap-2"
+                  markClassName="h-8 w-8 text-gray-950 dark:text-white"
+                  nameClassName="text-xl font-bold text-gray-950 dark:text-gray-100"
+                  title={APP_NAME}
+                />
               </div>
               <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
                 Booking, customer follow-up, deals, referrals, and payouts for service
