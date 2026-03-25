@@ -1,250 +1,171 @@
 import Link from 'next/link';
+import { LegalPageLayout, LegalSection } from '@/components/legal/LegalPageLayout';
 import { APP_NAME, APP_SUPPORT_EMAIL, APP_SUPPORT_PATH } from '@/lib/brand';
+
+const sections = [
+  { id: 'acceptance', title: 'Acceptance and eligibility' },
+  { id: 'service', title: 'Service scope' },
+  { id: 'accounts-billing', title: 'Accounts, trials, and billing' },
+  { id: 'customer-data', title: 'Customer data and compliance' },
+  { id: 'messaging-ai', title: 'Messaging, telephony, and AI' },
+  { id: 'acceptable-use', title: 'Acceptable use' },
+  { id: 'ownership', title: 'Ownership and feedback' },
+  { id: 'disclaimers-liability', title: 'Disclaimers and liability' },
+  { id: 'termination', title: 'Termination and changes' },
+];
 
 export default function TermsOfServicePage() {
   return (
-    <div className="brand-shell min-h-screen py-12 px-4 sm:px-6 lg:px-8">
-      <div className="brand-panel max-w-4xl mx-auto p-8">
-        {/* Header */}
-        <div className="mb-8">
-          <Link href="/" className="text-primary hover:text-primary-700 font-medium mb-4 inline-block">
-            ← Back to Home
+    <LegalPageLayout
+      title="Terms of Service"
+      subtitle="The rules for using Clientific, including subscriptions, messaging, AI receptionist, deals, and payouts."
+      lastUpdated="March 25, 2026"
+      sections={sections}
+      secondaryCtaHref="/privacy"
+      secondaryCtaLabel="View Privacy Policy"
+    >
+      <LegalSection id="acceptance" title="1. Acceptance and eligibility">
+        <p>
+          These Terms of Service govern your access to and use of {APP_NAME}. By creating an account, accessing
+          the platform, or using our services, you agree to these Terms.
+        </p>
+        <p>
+          You may use {APP_NAME} only if you can form a binding contract and are authorized to act on behalf of
+          the business or organization using the account. If you do not agree to these Terms, do not use the
+          service.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="service" title="2. Service scope">
+        <p>
+          {APP_NAME} provides software tools for service businesses, including booking flows, customer CRM,
+          appointment management, reminders, deal and referral campaigns, business analytics, subscription
+          billing, Stripe-connected payout workflows, and optional AI receptionist features.
+        </p>
+        <p>
+          We may add, change, remove, or suspend features from time to time. Some features may depend on third
+          party providers or availability in specific regions, devices, or plans.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="accounts-billing" title="3. Accounts, trials, and billing">
+        <p>
+          You must provide accurate, current information and keep your login credentials secure. You are
+          responsible for all activity under your account and for promptly notifying us of unauthorized access.
+        </p>
+        <p>
+          Clientific currently offers a 14-day free trial on self-serve plans. Trial availability, eligibility,
+          and length may change at any time.
+        </p>
+        <p>Paid subscriptions are billed according to the plan and cadence you select. Unless required by law:</p>
+        <ul className="list-disc space-y-2 pl-6">
+          <li>subscription fees are charged in advance;</li>
+          <li>fees are generally non-refundable;</li>
+          <li>you authorize us and our payment providers to charge your selected payment method; and</li>
+          <li>we may change pricing prospectively with notice.</li>
+        </ul>
+        <p>
+          If you connect payouts or payment features, you may also be subject to the terms and requirements of
+          the relevant payment providers, including Stripe.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="customer-data" title="4. Customer data and compliance">
+        <p>
+          As between you and {APP_NAME}, you retain your rights in the business and customer data you submit to
+          the platform. You grant us the rights needed to host, process, transmit, display, and use that data to
+          provide the service.
+        </p>
+        <p>You are responsible for your own compliance with laws that apply to your business, including laws about:</p>
+        <ul className="list-disc space-y-2 pl-6">
+          <li>consumer notices, privacy, and data protection;</li>
+          <li>marketing consent, SMS and email compliance, and opt-out handling;</li>
+          <li>promotions, discounts, referral incentives, and advertising claims;</li>
+          <li>call recording and AI disclosure rules where applicable; and</li>
+          <li>tax, labor, and industry-specific business requirements.</li>
+        </ul>
+        <p>
+          You may not upload or use data you do not have the right to use. We may remove content or suspend
+          activity that appears unlawful, abusive, or non-compliant.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="messaging-ai" title="5. Messaging, telephony, and AI">
+        <p>
+          {APP_NAME} supports appointment reminders, transactional messages, deal SMS messages, and other
+          communications. You are responsible for choosing when to send messages and for making sure the
+          recipients are eligible to receive them.
+        </p>
+        <p>
+          Message delivery depends on carrier networks, telephony vendors, and other third parties. We do not
+          guarantee delivery, timing, or availability of any message, call, or phone feature.
+        </p>
+        <p>
+          If you enable the optional AI receptionist, calls may be answered by an automated system and may
+          involve AI-generated responses, recordings, and transcripts. You are responsible for any caller-facing
+          disclosures required by applicable law and for using the feature in a lawful, non-deceptive manner.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="acceptable-use" title="6. Acceptable use">
+        <p>You may not use the service to:</p>
+        <ul className="list-disc space-y-2 pl-6">
+          <li>break the law or violate the rights of others;</li>
+          <li>send spam, unlawful marketing, or deceptive communications;</li>
+          <li>harvest data, scrape the service, or bypass platform protections;</li>
+          <li>interfere with platform performance, security, or availability;</li>
+          <li>reverse engineer or attempt to copy the service except where the law clearly permits it; or</li>
+          <li>use the service in a way that could expose us, our users, or our providers to harm or liability.</li>
+        </ul>
+      </LegalSection>
+
+      <LegalSection id="ownership" title="7. Ownership and feedback">
+        <p>
+          {APP_NAME} and its software, design, branding, and underlying technology are owned by us or our
+          licensors and are protected by intellectual property laws.
+        </p>
+        <p>
+          If you send us feedback or suggestions, we may use them without restriction or compensation to you.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="disclaimers-liability" title="8. Disclaimers and liability">
+        <p>
+          The service is provided on an &quot;as is&quot; and &quot;as available&quot; basis. To the fullest extent permitted by law,
+          we disclaim warranties of merchantability, fitness for a particular purpose, non-infringement, and any
+          warranty that the service will be uninterrupted, error-free, secure, or suitable for your specific
+          business needs.
+        </p>
+        <p>
+          To the fullest extent permitted by law, {APP_NAME} will not be liable for any indirect, incidental,
+          special, consequential, exemplary, or punitive damages, or for any loss of profits, revenue, goodwill,
+          data, customers, or business opportunities.
+        </p>
+        <p>
+          To the fullest extent permitted by law, our total liability for claims arising out of or related to the
+          service will not exceed the amount you paid us for the service during the 12 months before the event
+          giving rise to the claim.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="termination" title="9. Termination and changes">
+        <p>
+          You may stop using the service at any time. We may suspend or terminate access if you violate these
+          Terms, create risk for the platform or others, or if we are legally required to do so.
+        </p>
+        <p>
+          We may update these Terms from time to time. When we do, we will post the revised version and update
+          the &quot;Last updated&quot; date above. Continued use of the service after the updated Terms take effect means
+          you accept the revised Terms.
+        </p>
+        <p>
+          Questions about these Terms can be sent to{' '}
+          <Link href={APP_SUPPORT_PATH} className="font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-300 dark:hover:text-emerald-200">
+            {APP_SUPPORT_EMAIL}
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50 mb-2">Terms of Service</h1>
-          <p className="text-gray-700 dark:text-gray-100">Last updated: March 6, 2026</p>
-        </div>
-
-        {/* Content */}
-        <div className="prose prose-slate dark:prose-invert max-w-none space-y-6">
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">1. Acceptance of Terms</h2>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              By accessing and using {APP_NAME} (&quot;Service&quot;), you accept and agree to be bound by the terms and
-              provision of this agreement. If you do not agree to these terms, please do not use our Service.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">2. Description of Service</h2>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              {APP_NAME} provides a SaaS platform for service-based businesses, including: appointment booking and
-              management, customer relationship management, online booking pages, SMS appointment reminders, an
-              AI-powered phone receptionist (automated voice system), deals and promotions management, and
-              business analytics. We reserve the right to modify, suspend, or discontinue the Service at any time
-              without notice.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">3. User Accounts</h2>
-            <div className="text-gray-800 dark:text-gray-100 leading-relaxed space-y-2">
-              <p>When you create an account with us, you must provide accurate and complete information.</p>
-              <p>You are responsible for:</p>
-              <ul className="list-disc pl-6 space-y-1">
-                <li>Maintaining the security of your account and password</li>
-                <li>All activities that occur under your account</li>
-                <li>Notifying us immediately of any unauthorized access</li>
-              </ul>
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">4. Free Trial</h2>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              {APP_NAME} offers a 14-day free trial. After the trial period, you must choose a paid subscription
-              plan to continue using the Service. We reserve the right to modify or cancel free trials at any time.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">5. Payment Terms</h2>
-            <div className="text-gray-800 dark:text-gray-100 leading-relaxed space-y-2">
-              <p>Subscription fees are:</p>
-              <ul className="list-disc pl-6 space-y-1">
-                <li>Billed monthly or annually based on your selected plan</li>
-                <li>Non-refundable except as required by law</li>
-                <li>Subject to change with 30 days notice</li>
-                <li>Processed through secure third-party payment processors</li>
-              </ul>
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">6. Data Usage</h2>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              You retain all rights to the data you input into {APP_NAME}. We will not sell, share, or use your
-              customer data for any purpose other than providing the Service. See our Privacy Policy for details
-              on how we handle your data.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">7. Acceptable Use</h2>
-            <div className="text-gray-800 dark:text-gray-100 leading-relaxed space-y-2">
-              <p>You agree not to:</p>
-              <ul className="list-disc pl-6 space-y-1">
-                <li>Use the Service for any illegal or unauthorized purpose</li>
-                <li>Attempt to gain unauthorized access to our systems</li>
-                <li>Transmit viruses, malware, or harmful code</li>
-                <li>Spam, harass, or send unsolicited messages through our Service</li>
-                <li>Reverse engineer or copy our software</li>
-              </ul>
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">8. Intellectual Property</h2>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              The Service and its original content, features, and functionality are owned by {APP_NAME} and are
-              protected by international copyright, trademark, and other intellectual property laws.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">9. Termination</h2>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              We may terminate or suspend your account immediately, without prior notice, for any breach of these 
-              Terms. Upon termination, your right to use the Service will cease immediately. You may also cancel 
-              your subscription at any time through your account settings.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">10. Limitation of Liability</h2>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              {APP_NAME} shall not be liable for any indirect, incidental, special, consequential, or punitive
-              damages resulting from your use or inability to use the Service. Our total liability shall not
-              exceed the amount you paid us in the last 12 months.
-            </p>
-          </section>          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">11. SMS/Text Messaging Terms</h2>
-            <div className="text-gray-800 dark:text-gray-100 leading-relaxed space-y-3">
-              <h3 className="font-semibold text-gray-900 dark:text-gray-50 mt-4">Consent to Receive SMS Messages</h3>
-              <p>
-                By providing your mobile phone number and checking the SMS consent box when booking an appointment, 
-                you expressly consent to receive automated text messages from {APP_NAME} and the business you are
-                booking with regarding your appointment. This includes appointment confirmations, reminders, and
-                cancellation notifications.
-              </p>
-              <p>
-                Promotional or marketing SMS (such as deal alerts and limited-time offers) are sent only when you
-                separately opt in to promotional messaging. You can opt out of any SMS category at any time by
-                replying STOP.
-              </p>
-
-              <h3 className="font-semibold text-gray-900 dark:text-gray-50 mt-4">Message Frequency</h3>
-              <p>
-                Message frequency varies depending on your appointments. You may receive up to 3 messages per appointment:
-              </p>
-              <ul className="list-disc pl-6 space-y-1">
-                <li>One confirmation message when you book</li>
-                <li>One or more reminder messages before your appointment</li>
-                <li>One cancellation message if your appointment is cancelled</li>
-              </ul>
-
-              <h3 className="font-semibold text-gray-900 dark:text-gray-50 mt-4">Message and Data Rates</h3>
-              <p>
-                Message and data rates may apply. The number of messages you receive will depend on how often you 
-                book appointments. Standard messaging rates from your wireless carrier will apply.
-              </p>
-
-              <h3 className="font-semibold text-gray-900 dark:text-gray-50 mt-4">How to Opt-Out</h3>
-              <p>
-                You can opt-out of SMS notifications at any time by:
-              </p>
-              <ul className="list-disc pl-6 space-y-1">
-                <li>Replying <strong>STOP</strong> to any text message you receive from us</li>
-                <li>Contacting the business directly to request removal from SMS notifications</li>
-              </ul>
-              <p className="mt-2">
-                After you send the SMS message "STOP" to us, we will send you an SMS message to confirm that you 
-                have been unsubscribed. You will no longer receive SMS messages from us unless you re-opt-in.
-              </p>
-
-              <h3 className="font-semibold text-gray-900 dark:text-gray-50 mt-4">Help and Support</h3>
-              <p>
-                If you need help or have questions about SMS notifications, reply <strong>HELP</strong> to any 
-                message or contact us at{' '}
-                <Link href={APP_SUPPORT_PATH} className="text-primary hover:text-primary-700">
-                  {APP_SUPPORT_EMAIL}
-                </Link>
-              </p>
-
-              <h3 className="font-semibold text-gray-900 dark:text-gray-50 mt-4">Carrier Liability</h3>
-              <p>
-                Carriers are not liable for delayed or undelivered messages. We are not responsible for any delays 
-                or failures in message delivery, or for messages sent to an incorrect phone number you provided.
-              </p>
-
-              <h3 className="font-semibold text-gray-900 dark:text-gray-50 mt-4">Supported Carriers</h3>
-              <p>
-                Our SMS service works with all major U.S. carriers including AT&T, T-Mobile, Verizon, Sprint, 
-                and many regional carriers. International SMS availability may vary.
-              </p>
-
-              <h3 className="font-semibold text-gray-900 dark:text-gray-50 mt-4">Privacy</h3>
-              <p>
-                Your phone number and SMS consent status will be stored securely and used only for appointment 
-                notifications. We will never sell or share your phone number with third parties for marketing 
-                purposes. See our Privacy Policy for more details.
-              </p>
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">12. AI Phone Receptionist</h2>
-            <div className="text-gray-800 dark:text-gray-100 leading-relaxed space-y-3">
-              <p>
-                {APP_NAME} offers an optional AI-powered phone receptionist feature. By enabling this feature, you agree to the following:
-              </p>
-              <ul className="list-disc pl-6 space-y-1">
-                <li>A dedicated phone number will be provisioned for your business through our telephony provider</li>
-                <li>Inbound calls will be answered by an automated AI voice system, not a human</li>
-                <li>Call transcripts and recordings may be stored to improve the service and for your business records</li>
-                <li>You are responsible for disclosing to your customers that calls may be answered by an automated AI system, as required by applicable law</li>
-                <li>You may not use the AI receptionist to impersonate a human, deceive callers, or engage in any unlawful conduct</li>
-                <li>The AI receptionist is provided &quot;as is&quot; and may not be available 100% of the time</li>
-              </ul>
-              <p>
-                Voice generation and call infrastructure are provided by third-party service providers. Call data is processed under their applicable terms and privacy policies.
-              </p>
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">13. Changes to Terms</h2>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              We reserve the right to modify these terms at any time. We will notify you of any changes by 
-              posting the new Terms of Service on this page and updating the "Last updated" date. Your continued 
-              use of the Service after changes constitutes acceptance of the new terms.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">14. Contact Us</h2>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              If you have any questions about these Terms, please contact us at:
-              <br />
-              <Link href={APP_SUPPORT_PATH} className="text-primary hover:text-primary-700">
-                {APP_SUPPORT_EMAIL}
-              </Link>
-            </p>
-          </section>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <Link href="/privacy" className="text-primary hover:text-primary-700 font-medium">
-              Privacy Policy →
-            </Link>
-            <Link href="/register" className="btn-primary">
-              Start Your Free Trial
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
+          .
+        </p>
+      </LegalSection>
+    </LegalPageLayout>
   );
 }
-

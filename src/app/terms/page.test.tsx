@@ -1,8 +1,18 @@
-﻿import { describe, it, expect } from 'vitest';
-import * as pageModule from './page';
+// @vitest-environment jsdom
 
-describe('page module smoke test', () => {
-  it('exports a default page component', () => {
-    expect(typeof pageModule.default).toBe('function');
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import TermsOfServicePage from './page';
+
+describe('Terms of service page', () => {
+  it('renders current platform terms and trial language', () => {
+    render(<TermsOfServicePage />);
+
+    expect(screen.getByRole('heading', { name: /terms of service/i })).toBeInTheDocument();
+    expect(screen.getByText(/last updated:/i)).toBeInTheDocument();
+    expect(screen.getByText(/march 25, 2026/i)).toBeInTheDocument();
+    expect(screen.getByText(/14-day free trial/i)).toBeInTheDocument();
+    expect(screen.getByText(/stripe-connected payout workflows/i)).toBeInTheDocument();
+    expect(screen.getByText(/if you enable the optional ai receptionist/i)).toBeInTheDocument();
   });
 });

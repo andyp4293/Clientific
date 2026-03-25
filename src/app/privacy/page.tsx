@@ -1,262 +1,208 @@
 import Link from 'next/link';
+import { LegalPageLayout, LegalSection } from '@/components/legal/LegalPageLayout';
 import { APP_NAME, APP_SUPPORT_EMAIL, APP_SUPPORT_PATH } from '@/lib/brand';
+
+const sections = [
+  { id: 'scope', title: 'Scope and roles' },
+  { id: 'data-we-collect', title: 'Information we collect' },
+  { id: 'how-we-use', title: 'How we use information' },
+  { id: 'sharing', title: 'How information is shared' },
+  { id: 'retention-security', title: 'Retention and security' },
+  { id: 'rights', title: 'Privacy rights and choices' },
+  { id: 'children', title: 'Children and sensitive data' },
+  { id: 'changes-contact', title: 'Changes and contact' },
+];
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="brand-shell min-h-screen py-12 px-4 sm:px-6 lg:px-8">
-      <div className="brand-panel max-w-4xl mx-auto p-8">
-        {/* Header */}
-        <div className="mb-8">
-          <Link href="/" className="text-primary hover:text-primary-700 font-medium mb-4 inline-block">
-            ← Back to Home
+    <LegalPageLayout
+      title="Privacy Policy"
+      subtitle="How Clientific collects, uses, stores, and discloses information for business accounts, booking flows, messaging, and payouts."
+      lastUpdated="March 25, 2026"
+      sections={sections}
+      secondaryCtaHref="/terms"
+      secondaryCtaLabel="View Terms"
+    >
+      <LegalSection id="scope" title="1. Scope and roles">
+        <p>
+          This Privacy Policy explains how {APP_NAME} collects, uses, and discloses information when you use
+          our website, dashboard, booking flows, messaging tools, AI receptionist features, and payout tools.
+        </p>
+        <p>
+          In most cases, {APP_NAME} acts as the provider of the software platform used by service businesses.
+          When a business stores or uses customer information in {APP_NAME}, that business is responsible for
+          its relationship with its customers, including obtaining any notices, consents, and permissions
+          required by law.
+        </p>
+        <p>
+          We may act as a business, service provider, processor, or similar role depending on the nature of the
+          data and the law that applies. If you are a customer of a business using {APP_NAME} and want to make
+          a request about your appointment history, customer profile, or marketing preferences, you should also
+          contact that business directly.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="data-we-collect" title="2. Information we collect">
+        <p>We collect information in the following categories:</p>
+        <ul className="list-disc space-y-2 pl-6">
+          <li>
+            <strong>Business account information.</strong> Name, email address, password hash, business name,
+            address, phone number, services, staff details, hours, subscription status, and support messages.
+          </li>
+          <li>
+            <strong>Customer relationship data.</strong> Customer names, phone numbers, email addresses,
+            appointments, visit history, notes, review requests, group membership, and messaging preferences
+            entered by the business or submitted through booking flows.
+          </li>
+          <li>
+            <strong>Communications data.</strong> SMS consent records, opt-out events, message delivery data,
+            email delivery data, support correspondence, and other communication logs needed to operate the
+            service.
+          </li>
+          <li>
+            <strong>AI receptionist and call data.</strong> If enabled by the business, inbound caller phone
+            numbers, call metadata, recordings, transcripts, call outcomes, and related appointment booking data.
+          </li>
+          <li>
+            <strong>Billing and payout data.</strong> Subscription plan details, billing history, connected
+            Stripe account identifiers, payout status information, and transaction metadata. Payment card data is
+            processed by our payment providers and is not stored by us in full.
+          </li>
+          <li>
+            <strong>Technical and usage data.</strong> IP address, browser type, device information, pages
+            visited, referral URLs, session activity, cookies, and similar technologies used for security,
+            authentication, analytics, and product performance.
+          </li>
+        </ul>
+        <p>
+          We collect information directly from you, from businesses and customers using the platform, from your
+          browser or device, and from service providers that support billing, messaging, hosting, and
+          communications.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="how-we-use" title="3. How we use information">
+        <p>We use information to operate and improve the platform, including to:</p>
+        <ul className="list-disc space-y-2 pl-6">
+          <li>create and manage accounts, authenticate users, and secure access to the platform;</li>
+          <li>power booking pages, customer records, appointment reminders, and review flows;</li>
+          <li>send transactional SMS and email communications requested by businesses or triggered by bookings;</li>
+          <li>enable optional deal, referral, and promotional messaging workflows where consent and settings allow;</li>
+          <li>operate the optional AI receptionist, including generating automated responses and call handling;</li>
+          <li>process subscriptions, payouts, transaction records, and fraud-prevention checks;</li>
+          <li>troubleshoot issues, monitor abuse, and enforce our Terms of Service; and</li>
+          <li>analyze performance, maintain reliability, and develop new features.</li>
+        </ul>
+        <p>
+          Where required by law, we rely on appropriate legal bases such as performing a contract, complying
+          with legal obligations, pursuing legitimate interests, or acting on consent.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="sharing" title="4. How information is shared">
+        <p>
+          We do not sell personal information for money. We also do not share personal information for
+          cross-context behavioral advertising.
+        </p>
+        <p>We may disclose information in the following circumstances:</p>
+        <ul className="list-disc space-y-2 pl-6">
+          <li>
+            <strong>Service providers and infrastructure partners.</strong> We use providers for hosting,
+            databases, payment processing, connected-account payouts, email delivery, SMS and telephony,
+            AI model processing, and related technical operations.
+          </li>
+          <li>
+            <strong>Businesses using the platform.</strong> Customer-facing booking, messaging, and appointment
+            information is available to the business that owns the account or workflow involved.
+          </li>
+          <li>
+            <strong>Legal compliance and protection.</strong> We may disclose information where reasonably
+            necessary to comply with law, enforce agreements, protect users or the public, or investigate fraud
+            or misuse.
+          </li>
+          <li>
+            <strong>Corporate transactions.</strong> Information may be disclosed as part of a merger,
+            acquisition, financing, reorganization, or sale of assets, subject to applicable confidentiality and
+            legal obligations.
+          </li>
+        </ul>
+        <p>
+          Businesses are responsible for the messages they choose to send through the platform and for ensuring
+          they have the necessary permissions to use customer information for those messages.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="retention-security" title="5. Retention and security">
+        <p>
+          We retain information for as long as reasonably necessary to provide the service, maintain account
+          records, comply with legal obligations, resolve disputes, and enforce agreements. Retention periods may
+          vary depending on the type of data and the business workflow involved.
+        </p>
+        <p>
+          We use administrative, technical, and organizational safeguards designed to protect information,
+          including access controls, encryption in transit, password hashing, logging, and vendor-based security
+          controls. No system is perfectly secure, and we cannot guarantee absolute security.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="rights" title="6. Privacy rights and choices">
+        <p>You may have rights under applicable privacy laws, including the right to request:</p>
+        <ul className="list-disc space-y-2 pl-6">
+          <li>access to the personal information we hold about you;</li>
+          <li>correction of inaccurate personal information;</li>
+          <li>deletion of personal information, subject to legal exceptions;</li>
+          <li>a portable copy of certain personal information; and</li>
+          <li>information about how we collect, use, and disclose personal information.</li>
+        </ul>
+        <p>
+          California residents may also have rights under the California Consumer Privacy Act, as amended by the
+          CPRA, including rights to know, delete, correct, and limit certain uses of sensitive personal
+          information where applicable.
+        </p>
+        <p>
+          If you are an end customer of a business using {APP_NAME}, some requests should be directed to that
+          business first because it controls the underlying customer relationship data.
+        </p>
+        <p>
+          To exercise a request, contact us at{' '}
+          <Link href={APP_SUPPORT_PATH} className="font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-300 dark:hover:text-emerald-200">
+            {APP_SUPPORT_EMAIL}
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50 mb-2">Privacy Policy</h1>
-          <p className="text-gray-700 dark:text-gray-100">Last updated: March 6, 2026</p>
-        </div>
+          . We may need to verify your identity before completing a request.
+        </p>
+        <p>
+          You can also opt out of marketing emails by using the unsubscribe link in the message, and recipients
+          of SMS can use STOP or other supported opt-out keywords where applicable.
+        </p>
+      </LegalSection>
 
-        {/* Content */}
-        <div className="prose prose-slate dark:prose-invert max-w-none space-y-6">
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">1. Introduction</h2>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              {APP_NAME} (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) is committed to protecting your privacy. This Privacy Policy
-              explains how we collect, use, disclose, and safeguard your information when you use our Service.
-            </p>
-          </section>
+      <LegalSection id="children" title="7. Children and sensitive data">
+        <p>
+          {APP_NAME} is intended for business use and is not directed to children under 13. We do not knowingly
+          collect personal information directly from children under 13 through our own consumer-facing services.
+        </p>
+        <p>
+          Businesses should not use the platform to collect or process sensitive information unless it is
+          necessary, lawful, and properly disclosed. We ask businesses not to store highly sensitive personal
+          information in free-form notes or other fields unless clearly required for their operations and allowed
+          by law.
+        </p>
+      </LegalSection>
 
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">2. Information We Collect</h2>
-            
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-3 mt-4">2.1 Account Information</h3>
-            <div className="text-gray-800 dark:text-gray-100 leading-relaxed space-y-2">
-              <p>When you register for {APP_NAME}, we collect:</p>
-              <ul className="list-disc pl-6 space-y-1">
-                <li>Business name and contact information</li>
-                <li>Email address</li>
-                <li>Password (encrypted)</li>
-                <li>Business address and phone number</li>
-                <li>Payment information (processed securely through our payment partner)</li>
-              </ul>
-            </div>
-
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-3 mt-4">2.2 Customer Data</h3>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              You input customer information into our Service, including:
-            </p>
-            <ul className="list-disc pl-6 space-y-1 text-gray-800 dark:text-gray-100">
-              <li>Customer names and contact details</li>
-              <li>Visit history and check-ins</li>
-              <li>Reviews and ratings</li>
-              <li>Appointment information</li>
-              <li>SMS consent and opt-in/opt-out audit records</li>
-            </ul>
-
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-3 mt-4">2.3 AI Receptionist Data</h3>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              If you enable the AI phone receptionist feature, we collect:
-            </p>
-            <ul className="list-disc pl-6 space-y-1 text-gray-800 dark:text-gray-100">
-              <li>Call transcripts and recordings processed by our AI infrastructure partners</li>
-              <li>Caller phone numbers and call metadata (duration, time)</li>
-              <li>Appointments booked via AI calls</li>
-            </ul>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed mt-2">
-              AI-generated voice responses are produced by our voice technology partners. Calls are automated — callers will hear an AI voice, not a human. We disclose this to callers at the start of each call.
-            </p>
-
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-3 mt-4">2.4 Usage Information</h3>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              We automatically collect certain information when you use our Service:
-            </p>
-            <ul className="list-disc pl-6 space-y-1 text-gray-800 dark:text-gray-100">
-              <li>Log data (IP address, browser type, pages visited)</li>
-              <li>Device information</li>
-              <li>Cookies and similar tracking technologies</li>
-              <li>Usage patterns and preferences</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">3. How We Use Your Information</h2>
-            <div className="text-gray-800 dark:text-gray-100 leading-relaxed space-y-2">
-              <p>We use the information we collect to:</p>
-              <ul className="list-disc pl-6 space-y-1">
-                <li>Provide, maintain, and improve our Service</li>
-                <li>Process your transactions and send confirmations</li>
-                <li>Send you technical notices and support messages</li>
-                <li>Respond to your comments and questions</li>
-                <li>Monitor and analyze trends, usage, and activities</li>
-                <li>Detect, prevent, and address technical issues and fraud</li>
-                <li>Send marketing communications (with your consent)</li>
-              </ul>
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">4. Data Sharing and Disclosure</h2>
-            
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-3 mt-4">4.1 We Do NOT Sell Your Data</h3>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              We will never sell, rent, or trade your personal information or customer data to third parties for 
-              marketing purposes.
-            </p>
-
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-3 mt-4">4.2 Service Providers</h3>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              We may share your information with trusted third-party service providers:
-            </p>
-            <ul className="list-disc pl-6 space-y-1 text-gray-800 dark:text-gray-100">
-              <li><strong>Payment partner</strong> — Billing and subscription processing. Your payment details are handled by our payment processor and are not stored on our servers.</li>
-              <li><strong>Messaging provider</strong> — SMS messaging for appointment confirmations, reminders, and notifications sent to your customers.</li>
-              <li><strong>Email delivery provider</strong> — Transactional email delivery for booking confirmations and system notifications.</li>
-              <li><strong>AI call infrastructure provider</strong> — AI receptionist call handling, including call audio, transcripts, and related metadata when you enable AI calling.</li>
-              <li><strong>Voice generation provider</strong> — Text-to-speech voice generation for AI receptionist calls.</li>
-              <li><strong>Hosting and database providers</strong> — Application hosting and secure data storage infrastructure.</li>
-              <li><strong>Location services provider</strong> — Address autocomplete for business profile setup.</li>
-            </ul>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed mt-2">
-              These providers are contractually obligated to protect your data and use it only for the services
-              they provide to us.
-            </p>
-
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-3 mt-4">4.3 Legal Requirements</h3>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              We may disclose your information if required by law or in response to valid requests by public 
-              authorities.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">5. Data Security</h2>
-            <div className="text-gray-800 dark:text-gray-100 leading-relaxed space-y-2">
-              <p>We implement industry-standard security measures to protect your data:</p>
-              <ul className="list-disc pl-6 space-y-1">
-                <li>SSL/TLS encryption for data in transit</li>
-                <li>Encrypted passwords using bcrypt</li>
-                <li>Secure database with access controls</li>
-                <li>Regular security audits and updates</li>
-                <li>Limited employee access to personal data</li>
-              </ul>
-              <p className="mt-2">
-                However, no method of transmission over the Internet is 100% secure. While we strive to protect 
-                your data, we cannot guarantee absolute security.
-              </p>
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">6. Data Retention</h2>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              We retain your information for as long as your account is active or as needed to provide you services. 
-              If you close your account, we will delete your data within 30 days, except where we are required to 
-              retain it for legal or compliance purposes.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">7. Your Rights</h2>
-            <div className="text-gray-800 dark:text-gray-100 leading-relaxed space-y-2">
-              <p>You have the right to:</p>
-              <ul className="list-disc pl-6 space-y-1">
-                <li><strong>Access</strong> - Request a copy of your personal data</li>
-                <li><strong>Correction</strong> - Update or correct inaccurate information</li>
-                <li><strong>Deletion</strong> - Request deletion of your account and data</li>
-                <li><strong>Export</strong> - Download your customer data</li>
-                <li><strong>Opt-out</strong> - Unsubscribe from marketing emails</li>
-                <li><strong>Object</strong> - Object to certain data processing activities</li>
-              </ul>
-              <p className="mt-2">
-                To exercise these rights, please contact us at{' '}
-                <Link href={APP_SUPPORT_PATH} className="text-primary hover:text-primary-700">
-                  {APP_SUPPORT_EMAIL}
-                </Link>
-              </p>
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">8. Cookies and Tracking</h2>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              We use cookies and similar tracking technologies to track activity on our Service and hold certain 
-              information. You can instruct your browser to refuse all cookies or to indicate when a cookie is 
-              being sent. However, some parts of our Service may not function properly without cookies.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">9. Children's Privacy</h2>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              Our Service is not intended for users under the age of 18. We do not knowingly collect personal 
-              information from children. If you become aware that a child has provided us with personal data, 
-              please contact us immediately.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">10. International Users</h2>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              Your information may be transferred to and maintained on servers located outside of your state, 
-              province, country, or other governmental jurisdiction where data protection laws may differ. By 
-              using our Service, you consent to this transfer.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">11. GDPR Compliance</h2>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              If you are located in the European Economic Area (EEA), you have certain data protection rights 
-              under GDPR. We process your data based on:
-            </p>
-            <ul className="list-disc pl-6 space-y-1 text-gray-800 dark:text-gray-100 mt-2">
-              <li>Your consent</li>
-              <li>Performance of our contract with you</li>
-              <li>Compliance with legal obligations</li>
-              <li>Our legitimate business interests</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">12. CCPA Compliance</h2>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              If you are a California resident, you have specific rights under the California Consumer Privacy Act 
-              (CCPA), including the right to know what personal information we collect and the right to request 
-              deletion of your data.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">13. Changes to This Privacy Policy</h2>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              We may update our Privacy Policy from time to time. We will notify you of any changes by posting 
-              the new Privacy Policy on this page and updating the "Last updated" date. We encourage you to 
-              review this Privacy Policy periodically.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-4">14. Contact Us</h2>
-            <p className="text-gray-800 dark:text-gray-100 leading-relaxed">
-              If you have any questions about this Privacy Policy, please contact us:
-            </p>
-            <div className="text-gray-800 dark:text-gray-100 leading-relaxed mt-2">
-              <p>Email: <Link href={APP_SUPPORT_PATH} className="text-primary hover:text-primary-700">{APP_SUPPORT_EMAIL}</Link></p>
-            </div>
-          </section>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <Link href="/terms" className="text-primary hover:text-primary-700 font-medium">
-              Terms of Service →
-            </Link>
-            <Link href="/register" className="btn-primary">
-              Start Your Free Trial
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
+      <LegalSection id="changes-contact" title="8. Changes and contact">
+        <p>
+          We may update this Privacy Policy from time to time. When we do, we will post the updated version on
+          this page and revise the &quot;Last updated&quot; date above. Material changes may also be communicated through the
+          platform or by email where appropriate.
+        </p>
+        <p>
+          Questions about this Privacy Policy can be sent to{' '}
+          <Link href={APP_SUPPORT_PATH} className="font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-300 dark:hover:text-emerald-200">
+            {APP_SUPPORT_EMAIL}
+          </Link>
+          .
+        </p>
+      </LegalSection>
+    </LegalPageLayout>
   );
 }
-
