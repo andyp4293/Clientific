@@ -332,45 +332,60 @@ export default function CustomerList({
               className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
             />
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <button onClick={openCreateGroupModal} className="btn-outline whitespace-nowrap">
-              Manage Groups
-            </button>
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="btn-primary whitespace-nowrap"
-            >
-              + Add Customer
-            </button>
-          </div>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="btn-primary whitespace-nowrap"
+          >
+            + Add Customer
+          </button>
         </div>
 
-        <div className="space-y-3 rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-1">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Customer groups
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Create your own groups and decide which ones should receive promotion and deal SMS.
-              </p>
+        <div className="space-y-3 rounded-[28px] border border-gray-200 bg-gradient-to-br from-white via-white to-gray-50/80 p-4 dark:border-gray-700 dark:from-gray-800 dark:via-gray-800 dark:to-gray-900/60">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary dark:bg-primary/15">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.8}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.73-.157-1.424-.44-2.05M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.73.157-1.424.44-2.05m0 0a5 5 0 019.12 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  Customer groups
+                </h2>
+                <p className="mt-0.5 text-xs font-medium uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                  {groups.length} saved
+                </p>
+              </div>
             </div>
 
-            <button onClick={openCreateGroupModal} className="btn-outline text-sm">
-              New Group
+            <button
+              onClick={openCreateGroupModal}
+              className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/90 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-primary/30 hover:text-primary dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-200 dark:hover:border-primary/40 dark:hover:text-primary"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14m7-7H5" />
+              </svg>
+              Add group
             </button>
           </div>
 
           {groups.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-gray-300 bg-white/80 px-4 py-6 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-400">
-              No customer groups yet. Create one to organize customers and control promotion texting.
+            <div className="rounded-2xl border border-dashed border-gray-300/90 bg-white/75 px-4 py-5 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-400">
+              No groups yet.
             </div>
           ) : (
             <div className="grid gap-3 xl:grid-cols-3">
               {groups.map((group) => (
-                <div
+                <button
                   key={group.id}
-                  className="rounded-2xl border border-gray-200 bg-white/80 p-4 dark:border-gray-700 dark:bg-gray-800/70"
+                  type="button"
+                  onClick={() => openEditGroupModal(group)}
+                  className="group rounded-2xl border border-gray-200 bg-white/90 p-4 text-left transition-colors hover:border-primary/30 hover:bg-primary/[0.04] dark:border-gray-700 dark:bg-gray-900/70 dark:hover:border-primary/40 dark:hover:bg-primary/[0.08]"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -382,14 +397,16 @@ export default function CustomerList({
                         {(group._count?.memberships ?? 0) === 1 ? "" : "s"}
                       </p>
                     </div>
-                    <button
-                      onClick={() => openEditGroupModal(group)}
-                      className="text-xs font-semibold text-primary transition-colors hover:text-primary/80"
+                    <svg
+                      className="mt-0.5 h-4 w-4 shrink-0 text-gray-300 transition-colors group-hover:text-primary dark:text-gray-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
                     >
-                      Edit
-                    </button>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
                   </div>
-                  <div className="mt-3">
+                  <div className="mt-4 flex items-center justify-between gap-3">
                     <span
                       className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
                         group.promotionSmsEnabled
@@ -399,8 +416,11 @@ export default function CustomerList({
                     >
                       {group.promotionSmsEnabled ? "Promotion SMS on" : "Promotion SMS off"}
                     </span>
+                    <span className="text-xs font-semibold text-gray-400 transition-colors group-hover:text-primary dark:text-gray-500">
+                      Edit
+                    </span>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}

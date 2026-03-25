@@ -6,6 +6,7 @@ describe('mobile modal layering contract', () => {
   it('keeps dashboard and customer modals above the fixed mobile tab bar', () => {
     const modalFiles = [
       ['src', 'components', 'customers', 'AddCustomerModal.tsx'],
+      ['src', 'components', 'customers', 'CustomerGroupModal.tsx'],
       ['src', 'components', 'customers', 'EditCustomerModal.tsx'],
       ['src', 'components', 'customers', 'SendCustomerMessageModal.tsx'],
       ['src', 'components', 'operations', 'AiReceptionistManager.tsx'],
@@ -28,6 +29,7 @@ describe('mobile modal layering contract', () => {
     const fullscreenFiles = [
       ['src', 'app', '(dashboard)', 'dashboard', 'checkins', 'page.tsx'],
       ['src', 'components', 'customers', 'AddCustomerModal.tsx'],
+      ['src', 'components', 'customers', 'CustomerGroupModal.tsx'],
       ['src', 'components', 'customers', 'EditCustomerModal.tsx'],
       ['src', 'components', 'customers', 'SendCustomerMessageModal.tsx'],
       ['src', 'app', '(dashboard)', 'dashboard', 'appointments', 'page.tsx'],
