@@ -26,6 +26,7 @@ interface DealResponse {
     serviceScope: string;
     discountType: string;
     discountValue: number;
+    newCustomersOnly: boolean;
     startsAt: string;
     expiresAt: string;
     selectableServices: DealService[];
@@ -455,6 +456,15 @@ export default function DealCheckoutPage() {
                   </p>
                 </div>
               </div>
+
+              {deal.newCustomersOnly && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-4 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200">
+                  <p className="font-semibold">New customers only</p>
+                  <p className="mt-1 leading-6 text-amber-800 dark:text-amber-300">
+                    This phone number must not already exist in the business customer database.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -559,6 +569,11 @@ export default function DealCheckoutPage() {
                     <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
                       We'll text your redemption code after payment.
                     </p>
+                    {deal.newCustomersOnly && (
+                      <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-300">
+                        We&apos;ll check this phone number before letting you claim or buy this promotion.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

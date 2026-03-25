@@ -82,6 +82,7 @@ export async function GET(
         serviceScope: deal.serviceScope,
         discountType: deal.discountType,
         discountValue: deal.discountValue,
+        newCustomersOnly: deal.newCustomersOnly,
         startsAt: deal.startsAt,
         expiresAt: deal.expiresAt,
         service: deal.service ? { name: deal.service.name } : null,

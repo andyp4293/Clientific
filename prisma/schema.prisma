@@ -456,6 +456,7 @@ model Deal {
   startsAt           DateTime
   expiresAt          DateTime
   maxRedemptions     Int?
+  newCustomersOnly   Boolean                @default(false)
   redemptionCount    Int                    @default(0)
   active             Boolean                @default(true)
   platformFeePercent Float                  @default(15)

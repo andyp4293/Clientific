@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { assertDealAudienceEligibility, DealEligibilityError } from '@/lib/deal-eligibility';
 import { stripe } from '@/lib/stripe';
 import { getAppBaseUrlFromRequest } from '@/lib/app-url';
 import {
@@ -95,6 +96,12 @@ export async function POST(
     if (deal.maxRedemptions !== null && deal.redemptionCount >= deal.maxRedemptions) {
       return NextResponse.json({ error: 'Deal is sold out' }, { status: 400 });
     }
+
+    await assertDealAudienceEligibility({
+      businessId: deal.business.id,
+      customerPhone,
+      newCustomersOnly: deal.newCustomersOnly,
+    });
 
     const selectableServices = getSelectableServicesForDeal(
       deal,
@@ -202,6 +209,9 @@ export async function POST(
 
     return NextResponse.json({ url: checkoutSession.url, purchaseId: purchase.id });
   } catch (error: any) {
+    if (error instanceof DealEligibilityError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     if (error instanceof DealPurchasePricingError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }

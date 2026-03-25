@@ -41,6 +41,7 @@ function makeDeal(overrides: Partial<Record<string, unknown>> = {}) {
     description: 'Save on your next visit',
     discountType: 'percent_off',
     discountValue: 20,
+    newCustomersOnly: false,
     startsAt: new Date(now - 60_000),
     expiresAt: new Date(now + 60_000),
     active: true,
@@ -128,5 +129,19 @@ describe('GET /api/public/deals/[id]', () => {
     const res = await GET(makeRequest(), makeParams());
 
     expect(res.status).toBe(404);
+  });
+
+  it('returns the new-customer-only flag for public deal pages', async () => {
+    mockGetServerSession.mockResolvedValue(null);
+    mockDealFindUnique.mockResolvedValue(makeDeal({ newCustomersOnly: true }));
+
+    const res = await GET(makeRequest(), makeParams());
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({
+      deal: {
+        newCustomersOnly: true,
+      },
+    });
   });
 });

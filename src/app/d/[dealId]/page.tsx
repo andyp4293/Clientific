@@ -23,6 +23,7 @@ interface DealResponse {
     serviceScope: string;
     discountType: string;
     discountValue: number;
+    newCustomersOnly: boolean;
     startsAt: string;
     expiresAt: string;
     service: { name: string } | null;
@@ -262,6 +263,15 @@ export default function PublicDealClaimPage() {
                   </div>
                 </div>
 
+                {deal.newCustomersOnly && (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-4 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200">
+                    <p className="font-semibold">New customers only</p>
+                    <p className="mt-1 leading-6 text-amber-800 dark:text-amber-300">
+                      This promotion is only available if this phone number is not already in this business&apos;s customer database.
+                    </p>
+                  </div>
+                )}
+
                 <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold">
                   <Link
                     href={`/business/${deal.business.publicId}`}
@@ -301,6 +311,16 @@ export default function PublicDealClaimPage() {
                       : `${selectedServices.length} service${selectedServices.length !== 1 ? 's' : ''}`}
                   </p>
                 </div>
+                {deal.newCustomersOnly && (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 dark:border-amber-900/40 dark:bg-amber-900/20">
+                    <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                      Eligibility check
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-amber-800 dark:text-amber-300">
+                      We check the phone number at claim or checkout. Existing customers at this business will not be able to use this promotion.
+                    </p>
+                  </div>
+                )}
                 <div className="rounded-2xl border border-primary/15 bg-primary/5 px-4 py-4 dark:border-primary/20 dark:bg-primary/10">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
                     Estimated total

@@ -84,6 +84,7 @@ function makeDeal(overrides: Record<string, unknown> = {}) {
     maxRedemptions: null,
     redemptionCount: 0,
     active: true,
+    newCustomersOnly: false,
     createdAt: now.toISOString(),
     notifiedAt: null,
     platformFeePercent: 15,
@@ -177,6 +178,28 @@ describe('DealsPage (Campaigns)', () => {
     mockQueries([makeDeal({ active: false, notifiedAt: null })]);
     render(<DealsPage />);
     expect(screen.queryByRole('button', { name: /text my customers/i })).not.toBeInTheDocument();
+  });
+
+  it('hides customer texting and explains why for new-customer-only deals', () => {
+    mockQueries([makeDeal({ newCustomersOnly: true })]);
+    render(<DealsPage />);
+
+    expect(screen.queryByRole('button', { name: /text my customers/i })).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/text my customers is disabled because this promotion only works for new customers/i)
+    ).toBeInTheDocument();
+  });
+
+  it('shows the new customers only note in the creation form', () => {
+    mockQueries([]);
+    render(<DealsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /new deal/i }));
+
+    expect(screen.getByText(/new customers only/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/only people whose phone number is not already in your customer database can claim or buy this promotion/i)
+    ).toBeInTheDocument();
   });
 
   it('shows revenue stats when revenueTracked > 0', () => {

@@ -69,6 +69,16 @@ export async function POST(
       return NextResponse.json({ error: 'Deal is not active' }, { status: 400 });
     }
 
+    if (deal.newCustomersOnly) {
+      return NextResponse.json(
+        {
+          error:
+            'Deals marked new customers only cannot be texted to your existing customer list because those customers are not eligible.',
+        },
+        { status: 409 }
+      );
+    }
+
     if (dealRequiresPayoutSetup(deal)) {
       const payoutStatus = getPaidDealPayoutStatus(deal.business);
       if (!payoutStatus.ready) {

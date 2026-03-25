@@ -177,12 +177,14 @@ describe('POST /api/deals', () => {
 
   it('creates deal successfully with active subscription', async () => {
     mockSession.mockResolvedValue(activeSession);
-    const fakeDeal = { id: 'deal-1', ...validDealBody, businessId: 'biz-1', service: null };
+    const fakeDeal = { id: 'deal-1', ...validDealBody, newCustomersOnly: true, businessId: 'biz-1', service: null };
     mockDealCreate.mockResolvedValue(fakeDeal);
-    const res = await POST(makeRequest());
+    const res = await POST(makeRequest({ ...validDealBody, newCustomersOnly: true }));
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.deal.id).toBe('deal-1');
+    const createArgs = mockDealCreate.mock.calls.at(-1)?.[0] as any;
+    expect(createArgs.data.newCustomersOnly).toBe(true);
   });
 
   it('creates free_service deal without discountValue', async () => {

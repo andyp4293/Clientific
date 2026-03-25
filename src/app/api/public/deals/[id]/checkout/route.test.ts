@@ -5,6 +5,7 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     deal: { findUnique: vi.fn() },
     dealPurchase: { update: vi.fn() },
+    customer: { findFirst: vi.fn() },
   },
 }));
 
@@ -65,6 +66,7 @@ import { POST } from './route';
 
 const mockDealFindUnique = prisma.deal.findUnique as ReturnType<typeof vi.fn>;
 const mockDealPurchaseUpdate = prisma.dealPurchase.update as ReturnType<typeof vi.fn>;
+const mockCustomerFindFirst = prisma.customer.findFirst as ReturnType<typeof vi.fn>;
 const mockSessionCreate = stripe.checkout.sessions.create as ReturnType<typeof vi.fn>;
 const mockCreatePending = createPendingDealPurchase as ReturnType<typeof vi.fn>;
 const mockFinalize = finalizeDealPurchaseFromCheckoutSession as ReturnType<typeof vi.fn>;
@@ -137,6 +139,7 @@ beforeEach(() => {
   );
   mockSessionCreate.mockResolvedValue({ id: 'cs_test_123', url: 'https://checkout.stripe.com/pay/cs_test_123' });
   mockDealPurchaseUpdate.mockResolvedValue({});
+  mockCustomerFindFirst.mockResolvedValue(null);
 });
 
 describe('POST /api/public/deals/[id]/checkout', () => {
@@ -222,6 +225,18 @@ describe('POST /api/public/deals/[id]/checkout', () => {
     expect(res.status).toBe(409);
     const body = await res.json();
     expect(body.error).toMatch(/not ready/i);
+  });
+
+  it('returns 409 when the deal is only for new customers and the phone already exists', async () => {
+    mockDealFindUnique.mockResolvedValue({ ...baseDeal, newCustomersOnly: true });
+    mockCustomerFindFirst.mockResolvedValue({ id: 'cust-existing' });
+
+    const res = await POST(makeRequest({ customerName: 'Jane', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] }), { params: Promise.resolve({ id: 'deal-1' }) });
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toMatch(/only available to new customers/i);
+    expect(mockCreatePending).not.toHaveBeenCalled();
+    expect(mockSessionCreate).not.toHaveBeenCalled();
   });
 
   it('allows recipient transfer-only payout accounts when the shared readiness helper marks them ready', async () => {

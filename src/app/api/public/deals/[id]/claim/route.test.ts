@@ -118,6 +118,18 @@ describe('POST /api/public/deals/[id]/claim', () => {
     expect(body.error).toContain('not currently active');
   });
 
+  it('returns 409 when the deal is only for new customers and the phone already exists', async () => {
+    mockDealFindUnique.mockResolvedValue({ ...activeDeal, deliveryType: 'code_claim', newCustomersOnly: true });
+    mockCustomerFindFirst.mockResolvedValue({ id: 'cust-1', name: 'Existing Customer' });
+
+    const res = await POST(makeRequest('deal-1'), makeParams('deal-1'));
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toMatch(/only available to new customers/i);
+    expect(mockTransaction).not.toHaveBeenCalled();
+    expect(mockSendSMS).not.toHaveBeenCalled();
+  });
+
   it('returns 400 when max redemptions reached for a new claimant', async () => {
     mockDealFindUnique.mockResolvedValue({
       ...activeDeal,

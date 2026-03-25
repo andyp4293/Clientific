@@ -49,6 +49,7 @@ const baseDeal = {
     serviceScope: 'all_services',
     discountType: 'percent_off',
     discountValue: 20,
+    newCustomersOnly: false,
     startsAt: '2026-03-01T00:00:00.000Z',
     expiresAt: '2026-04-30T00:00:00.000Z',
     selectableServices: [
@@ -308,5 +309,25 @@ describe('DealCheckoutPage', () => {
     mockUseQuery.mockReturnValue({ isLoading: true, isError: false, data: undefined });
     render(<DealCheckoutPage />);
     expect(screen.getByText(/loading checkout/i)).toBeInTheDocument();
+  });
+
+  it('shows the new-customer-only eligibility note on checkout', () => {
+    mockUseQuery.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: {
+        deal: {
+          ...baseDeal.deal,
+          newCustomersOnly: true,
+        },
+      },
+    });
+
+    render(<DealCheckoutPage />);
+
+    expect(screen.getAllByText(/new customers only/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/this phone number must not already exist in the business customer database/i)
+    ).toBeInTheDocument();
   });
 });

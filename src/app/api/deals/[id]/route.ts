@@ -172,6 +172,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...(body.title !== undefined && { title: body.title }),
         ...(body.description !== undefined && { description: body.description }),
         ...(body.active !== undefined && { active: nextActive }),
+        ...(body.newCustomersOnly !== undefined && { newCustomersOnly: Boolean(body.newCustomersOnly) }),
         ...(body.deliveryType !== undefined && { deliveryType }),
         ...(body.serviceScope !== undefined && { serviceScope }),
         ...(body.discountType !== undefined && { discountType: body.discountType }),

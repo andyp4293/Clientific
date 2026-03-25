@@ -145,6 +145,16 @@ describe('POST /api/deals/[id]/notify', () => {
     expect(res.status).toBe(400);
   });
 
+  it('returns 409 when a deal is marked new customers only', async () => {
+    vi.mocked(prisma.deal.findUnique).mockResolvedValue({ ...DEAL, newCustomersOnly: true } as any);
+    const res = await POST(notifyReq(), ctx('deal-1'));
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toMatch(/new customers only/i);
+    expect(prisma.customer.findMany).not.toHaveBeenCalled();
+    expect(sendSMS).not.toHaveBeenCalled();
+  });
+
   it('issues personalized codes and texts eligible customers', async () => {
     vi.mocked(prisma.customer.findMany).mockResolvedValue([
       { id: 'cust-1', phone: '5551111111', name: 'Jane Doe' },

@@ -616,26 +616,31 @@ export default function HomePage() {
                     </div>
 
                     <div className="mb-7 mt-7">
-                      <div className="rounded-2xl border border-gray-200/80 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
-                          Regularly
-                        </p>
-                        <div className="mt-1 text-lg font-semibold text-gray-400 line-through decoration-2 dark:text-gray-500">
-                          ${plan.compareAtPrice}/mo
-                        </div>
-                        <div className="mt-4 flex items-end gap-3">
-                          <span className="rounded-full bg-primary px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-white">
+                      <div className="overflow-hidden rounded-[26px] border border-gray-200/80 bg-gradient-to-br from-white via-gray-50/95 to-primary/[0.05] p-4 dark:border-white/10 dark:from-white/[0.06] dark:via-white/[0.04] dark:to-primary/[0.12]">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                              Regularly
+                            </p>
+                            <div className="mt-1 text-base font-semibold text-gray-400 line-through decoration-2 dark:text-gray-500 sm:text-lg">
+                              ${plan.compareAtPrice}/mo
+                            </div>
+                          </div>
+                          <span className="rounded-full bg-primary px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-white shadow-sm shadow-primary/30">
                             Today
                           </span>
-                          <div>
-                            <span className="text-5xl font-bold text-gray-950 dark:text-white">
-                              ${plan.price}
-                            </span>
-                            <span className="text-base font-normal text-gray-700 dark:text-gray-300">
-                              /mo
-                            </span>
-                          </div>
                         </div>
+                        <div className="mt-4 flex items-end gap-2 sm:gap-3">
+                          <span className="text-[2.8rem] font-bold leading-none tracking-tight text-gray-950 dark:text-white sm:text-5xl">
+                            ${plan.price}
+                          </span>
+                          <span className="pb-1 text-sm font-medium text-gray-700 dark:text-gray-300 sm:text-base">
+                            /mo
+                          </span>
+                        </div>
+                        <p className="mt-2 text-sm font-medium text-primary dark:text-primary-200">
+                          Launch pricing active now
+                        </p>
                       </div>
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm dark:border-emerald-900/30 dark:bg-emerald-900/20">

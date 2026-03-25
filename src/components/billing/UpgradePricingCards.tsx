@@ -118,22 +118,27 @@ export function UpgradePricingCards({ status, hasStripeCustomer, trialExpired = 
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{plan.summary}</p>
-                <div className="mt-4 rounded-2xl border border-gray-200/80 bg-gray-50/80 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                    Regularly
-                  </p>
-                  <div className="mt-1 text-base font-semibold text-gray-400 line-through decoration-2 dark:text-gray-500">
-                    ${plan.compareAtPrice}/month
-                  </div>
-                  <div className="mt-3 flex items-end gap-2">
-                    <span className="rounded-full bg-primary px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white">
+                <div className="mt-4 overflow-hidden rounded-[24px] border border-gray-200/80 bg-gradient-to-br from-white via-gray-50/95 to-primary/[0.05] p-4 dark:border-white/10 dark:from-white/[0.06] dark:via-white/[0.04] dark:to-primary/[0.12]">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                        Regularly
+                      </p>
+                      <div className="mt-1 text-base font-semibold text-gray-400 line-through decoration-2 dark:text-gray-500">
+                        ${plan.compareAtPrice}/month
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-primary px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white shadow-sm shadow-primary/30">
                       Today
                     </span>
-                    <div className="flex items-end gap-1">
-                      <span className="text-4xl font-bold text-gray-900 dark:text-gray-100">${price}</span>
-                      <span className="mb-1 text-sm text-gray-400">/month</span>
-                    </div>
                   </div>
+                  <div className="mt-4 flex items-end gap-2">
+                    <span className="text-[2.6rem] font-bold leading-none tracking-tight text-gray-900 dark:text-gray-100 sm:text-4xl">${price}</span>
+                    <span className="pb-1 text-sm font-medium text-gray-500 dark:text-gray-400">/month</span>
+                  </div>
+                  <p className="mt-2 text-sm font-medium text-primary dark:text-primary-200">
+                    Launch pricing active now
+                  </p>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm dark:border-emerald-900/30 dark:bg-emerald-900/20">

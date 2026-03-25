@@ -5,6 +5,7 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     deal: { findUnique: vi.fn() },
     dealPurchase: { update: vi.fn(), delete: vi.fn() },
+    customer: { findFirst: vi.fn() },
   },
 }));
 
@@ -68,6 +69,7 @@ import { POST } from './route';
 
 const mockDealFindUnique = prisma.deal.findUnique as ReturnType<typeof vi.fn>;
 const mockDealPurchaseDelete = prisma.dealPurchase.delete as ReturnType<typeof vi.fn>;
+const mockCustomerFindFirst = prisma.customer.findFirst as ReturnType<typeof vi.fn>;
 const mockPaymentIntentCreate = stripe.paymentIntents.create as ReturnType<typeof vi.fn>;
 const mockCreatePending = createPendingDealPurchase as ReturnType<typeof vi.fn>;
 const mockFinalize = finalizeDealPurchaseFromPaymentIntent as ReturnType<typeof vi.fn>;
@@ -148,6 +150,7 @@ beforeEach(() => {
     client_secret: 'pi_test_123_secret_abc',
   });
   mockDealPurchaseDelete.mockResolvedValue({});
+  mockCustomerFindFirst.mockResolvedValue(null);
 });
 
 describe('POST /api/public/deals/[id]/payment-intent', () => {
@@ -217,6 +220,19 @@ describe('POST /api/public/deals/[id]/payment-intent', () => {
     });
     expect(res.status).toBe(400);
     expect((await res.json()).error).toMatch(/sold out/i);
+  });
+
+  it('returns 409 when the deal is only for new customers and the phone already exists', async () => {
+    mockDealFindUnique.mockResolvedValue({ ...baseDeal, newCustomersOnly: true });
+    mockCustomerFindFirst.mockResolvedValue({ id: 'cust-existing' });
+
+    const res = await POST(makeRequest({ customerName: 'Jane', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] }), {
+      params: Promise.resolve({ id: 'deal-1' }),
+    });
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toMatch(/only available to new customers/i);
+    expect(mockCreatePending).not.toHaveBeenCalled();
   });
 
   it('returns 400 when pricing validation fails', async () => {

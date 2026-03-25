@@ -34,6 +34,7 @@ function makeCodeClaimDeal(viewerCanManage = false) {
       serviceScope: 'selected_services',
       discountType: 'percent_off',
       discountValue: 20,
+      newCustomersOnly: false,
       startsAt: '2026-03-01T00:00:00.000Z',
       expiresAt: '2026-03-31T00:00:00.000Z',
       service: { name: 'Haircut' },
@@ -171,5 +172,26 @@ describe('PublicDealClaimPage — purchase_link flow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /haircut/i }));
     expect(screen.getByRole('button', { name: /continue to checkout/i })).toBeDisabled();
+  });
+
+  it('calls out new-customer-only eligibility on the public deal page', () => {
+    mockUseQuery.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: {
+        ...makePurchaseLinkDeal(),
+        deal: {
+          ...makePurchaseLinkDeal().deal,
+          newCustomersOnly: true,
+        },
+      },
+    });
+
+    render(<PublicDealClaimPage />);
+
+    expect(screen.getAllByText(/new customers only/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/existing customers at this business will not be able to use this promotion/i)
+    ).toBeInTheDocument();
   });
 });

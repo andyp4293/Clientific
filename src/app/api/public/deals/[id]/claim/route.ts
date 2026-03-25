@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { claimDealForCustomer, DealClaimError } from '@/lib/deal-claims';
+import { assertDealAudienceEligibility, DealEligibilityError } from '@/lib/deal-eligibility';
 import { prisma } from '@/lib/prisma';
 import { getAppBaseUrlFromRequest } from '@/lib/app-url';
 import { formatDealClaimCodeSMS, formatPhoneNumber, sendSMS } from '@/lib/twilio';
@@ -23,7 +24,7 @@ export async function POST(
 
     const deal = await prisma.deal.findUnique({
       where: { id },
-      select: { deliveryType: true },
+      select: { deliveryType: true, businessId: true, newCustomersOnly: true },
     });
 
     if (!deal) {
@@ -36,6 +37,12 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    await assertDealAudienceEligibility({
+      businessId: deal.businessId,
+      customerPhone: customerPhoneRaw,
+      newCustomersOnly: deal.newCustomersOnly,
+    });
 
     const claim = await claimDealForCustomer({
       dealId: id,
@@ -77,6 +84,9 @@ export async function POST(
       confirmationSent: smsResult.success,
     });
   } catch (error: any) {
+    if (error instanceof DealEligibilityError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     if (error instanceof DealClaimError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
