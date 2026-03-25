@@ -45,6 +45,18 @@ export default async function CustomerDetailPage({
           appointments: true,
         },
       },
+      groupMemberships: {
+        include: {
+          group: {
+            select: {
+              id: true,
+              name: true,
+              promotionSmsEnabled: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
 
@@ -66,12 +78,24 @@ export default async function CustomerDetailPage({
 
   const business = await prisma.business.findUnique({
     where: { id: session.user.businessId },
-    select: { googleReviewUrl: true, yelpUrl: true },
+    select: {
+      googleReviewUrl: true,
+      yelpUrl: true,
+      customerGroups: {
+        orderBy: [{ name: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          promotionSmsEnabled: true,
+        },
+      },
+    },
   });
 
   return (
     <CustomerDetail
       customer={customerWithServiceDisplay}
+      groups={business?.customerGroups ?? []}
       googleReviewUrl={business?.googleReviewUrl}
       yelpUrl={business?.yelpUrl}
     />

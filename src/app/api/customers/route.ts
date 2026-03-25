@@ -8,6 +8,7 @@ import { requireActiveSubscription, checkPlanLimit } from "@/lib/subscription";
 import { revalidateTag } from "next/cache";
 import { blockedContentError, getBlockedFieldLabel } from "@/lib/moderation";
 import { buildCustomerWhereClause } from "@/lib/customer-filters";
+import { normalizeCustomerGroupIds } from "@/lib/customer-groups";
 
 // GET /api/customers - List all customers
 export async function GET(request: NextRequest) {
@@ -21,6 +22,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const segment = searchParams.get("segment");
+    const group = searchParams.get("group");
     const sms = searchParams.get("sms");
     const contact = searchParams.get("contact");
     const visit = searchParams.get("visit");
@@ -29,6 +31,7 @@ export async function GET(request: NextRequest) {
       businessId: session.user.businessId,
       search: search ?? undefined,
       segment: segment ?? undefined,
+      group: group ?? undefined,
       sms: sms ?? undefined,
       contact: contact ?? undefined,
       visit: visit ?? undefined,
@@ -42,6 +45,18 @@ export async function GET(request: NextRequest) {
             checkIns: true,
             appointments: true,
           },
+        },
+        groupMemberships: {
+          include: {
+            group: {
+              select: {
+                id: true,
+                name: true,
+                promotionSmsEnabled: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "asc" },
         },
       },
       orderBy: { createdAt: "desc" },
@@ -79,6 +94,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { name, email, phone, birthday, notes } = body;
+    const groupIds = normalizeCustomerGroupIds(body?.groupIds);
 
     // Validation
     if (!name || name.trim().length === 0) {
@@ -123,6 +139,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (groupIds.length > 0) {
+      const validGroups = await prisma.customerGroup.findMany({
+        where: {
+          businessId: session.user.businessId,
+          id: { in: groupIds },
+        },
+        select: { id: true },
+      });
+
+      if (validGroups.length !== groupIds.length) {
+        return NextResponse.json(
+          { error: "One or more selected customer groups are invalid" },
+          { status: 400 }
+        );
+      }
+    }
+
     const customer = await prisma.customer.create({
       data: {
         businessId: session.user.businessId,
@@ -134,6 +167,26 @@ export async function POST(request: NextRequest) {
         notes: notes || null,
         segment: "NEW", // Default segment
         totalSpent: 0,
+        ...(groupIds.length > 0
+          ? {
+              groupMemberships: {
+                create: groupIds.map((groupId) => ({ groupId })),
+              },
+            }
+          : {}),
+      },
+      include: {
+        groupMemberships: {
+          include: {
+            group: {
+              select: {
+                id: true,
+                name: true,
+                promotionSmsEnabled: true,
+              },
+            },
+          },
+        },
       },
     });
 

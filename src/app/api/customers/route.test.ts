@@ -7,6 +7,9 @@ vi.mock('@/lib/prisma', () => ({
     business: {
       findUnique: vi.fn(),
     },
+    customerGroup: {
+      findMany: vi.fn(),
+    },
     customer: {
       findFirst: vi.fn(),
       create: vi.fn(),
@@ -49,10 +52,11 @@ vi.mock('@/lib/utils', () => ({
 
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-import { POST } from './route';
+import { GET, POST } from './route';
 
 const mockGetServerSession = getServerSession as ReturnType<typeof vi.fn>;
 const mockBusinessFindUnique = prisma.business.findUnique as ReturnType<typeof vi.fn>;
+const mockCustomerGroupFindMany = prisma.customerGroup.findMany as ReturnType<typeof vi.fn>;
 const mockCustomerFindFirst = prisma.customer.findFirst as ReturnType<typeof vi.fn>;
 const mockCustomerCreate = prisma.customer.create as ReturnType<typeof vi.fn>;
 
@@ -69,6 +73,36 @@ beforeEach(() => {
 });
 
 describe('POST /api/customers', () => {
+  it('GET scopes results and includes customer groups in the response shape', async () => {
+    mockGetServerSession.mockResolvedValue({
+      user: { businessId: 'biz-1', email: 'test@test.com' },
+    });
+    vi.mocked(prisma.customer.findMany).mockResolvedValue([] as any);
+
+    const res = await GET(new NextRequest('http://localhost/api/customers?group=group-1'));
+
+    expect(res.status).toBe(200);
+    expect(prisma.customer.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          businessId: 'biz-1',
+          AND: expect.arrayContaining([
+            expect.objectContaining({
+              groupMemberships: {
+                some: {
+                  groupId: 'group-1',
+                },
+              },
+            }),
+          ]),
+        }),
+        include: expect.objectContaining({
+          groupMemberships: expect.any(Object),
+        }),
+      })
+    );
+  });
+
   it('returns 401 when unauthenticated', async () => {
     mockGetServerSession.mockResolvedValue(null);
     const res = await POST(makeRequest());
@@ -162,6 +196,67 @@ describe('POST /api/customers', () => {
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.customer.id).toBe('cust-1');
+  });
+
+  it('persists selected customer groups when creating a customer', async () => {
+    mockGetServerSession.mockResolvedValue({
+      user: { businessId: 'biz-1', email: 'test@test.com' },
+    });
+    mockBusinessFindUnique
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        subscriptionPlan: 'starter',
+        _count: { customers: 5, staff: 0, services: 0 },
+      });
+    mockCustomerFindFirst.mockResolvedValue(null);
+    mockCustomerGroupFindMany.mockResolvedValue([{ id: 'group-1' }, { id: 'group-2' }]);
+    mockCustomerCreate.mockResolvedValue({ id: 'cust-1', name: 'Test Customer', businessId: 'biz-1' });
+
+    const res = await POST(
+      makeRequest({ name: 'Test Customer', groupIds: ['group-1', 'group-2'] })
+    );
+
+    expect(res.status).toBe(201);
+    expect(prisma.customerGroup.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          businessId: 'biz-1',
+          id: { in: ['group-1', 'group-2'] },
+        },
+      })
+    );
+    expect(mockCustomerCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          groupMemberships: {
+            create: [{ groupId: 'group-1' }, { groupId: 'group-2' }],
+          },
+        }),
+      })
+    );
+  });
+
+  it('rejects unknown customer groups when creating a customer', async () => {
+    mockGetServerSession.mockResolvedValue({
+      user: { businessId: 'biz-1', email: 'test@test.com' },
+    });
+    mockBusinessFindUnique
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        subscriptionPlan: 'starter',
+        _count: { customers: 5, staff: 0, services: 0 },
+      });
+    mockCustomerFindFirst.mockResolvedValue(null);
+    mockCustomerGroupFindMany.mockResolvedValue([{ id: 'group-1' }]);
+
+    const res = await POST(
+      makeRequest({ name: 'Test Customer', groupIds: ['group-1', 'group-2'] })
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/selected customer groups are invalid/i);
+    expect(mockCustomerCreate).not.toHaveBeenCalled();
   });
 
   it('creates customer successfully during valid trial', async () => {

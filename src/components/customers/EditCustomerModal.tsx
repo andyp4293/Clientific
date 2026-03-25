@@ -3,6 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { DatePicker } from "@/components/ui/DatePicker";
+import CustomerGroupSelector from "./CustomerGroupSelector";
+
+type CustomerGroup = {
+  id: string;
+  name: string;
+  promotionSmsEnabled: boolean;
+};
 
 interface EditCustomerModalProps {
   customer: {
@@ -12,15 +19,20 @@ interface EditCustomerModalProps {
     phone: string | null;
     birthday: Date | null;
     notes: string | null;
+    groupMemberships?: Array<{
+      group: CustomerGroup;
+    }>;
   };
   isOpen: boolean;
   onClose: () => void;
+  groups: CustomerGroup[];
 }
 
 export default function EditCustomerModal({
   customer,
   isOpen,
   onClose,
+  groups,
 }: EditCustomerModalProps) {
   const toDateInputValue = (date: Date) => {
     const year = date.getFullYear();
@@ -43,6 +55,7 @@ export default function EditCustomerModal({
     phone: customer.phone || "",
     birthday: customer.birthday ? toDateInputValue(new Date(customer.birthday)) : "",
     notes: customer.notes || "",
+    groupIds: (customer.groupMemberships ?? []).map((membership) => membership.group.id),
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -224,6 +237,12 @@ export default function EditCustomerModal({
                 className="input"
               />
             </div>
+
+            <CustomerGroupSelector
+              groups={groups}
+              selectedGroupIds={formData.groupIds}
+              onChange={(groupIds) => setFormData({ ...formData, groupIds })}
+            />
           </div>
 
           <div className="flex flex-col gap-3 border-t border-gray-200 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] dark:border-gray-700 sm:border-t-0 sm:px-6 sm:pb-6 sm:pt-4">

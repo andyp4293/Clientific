@@ -37,6 +37,11 @@ vi.mock('@/components/ui/DatePicker', () => ({
 }));
 
 describe('Customer modals', () => {
+  const groups = [
+    { id: 'group-1', name: 'VIP', promotionSmsEnabled: true },
+    { id: 'group-2', name: 'No Deals', promotionSmsEnabled: false },
+  ];
+
   beforeEach(() => {
     vi.clearAllMocks();
     global.fetch = vi.fn().mockResolvedValue({
@@ -47,10 +52,11 @@ describe('Customer modals', () => {
 
   it('submits AddCustomerModal with DatePicker birthday format', async () => {
     const onClose = vi.fn();
-    render(<AddCustomerModal isOpen onClose={onClose} />);
+    render(<AddCustomerModal isOpen onClose={onClose} groups={groups} />);
 
     fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'Alice' } });
     fireEvent.click(screen.getByRole('button', { name: /select birthday/i }));
+    fireEvent.click(screen.getByLabelText(/vip/i));
     fireEvent.click(screen.getByRole('button', { name: /^add customer$/i }));
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
@@ -58,6 +64,7 @@ describe('Customer modals', () => {
     const payload = JSON.parse((options as RequestInit).body as string);
 
     expect(payload.birthday).toBe('2026-03-09');
+    expect(payload.groupIds).toEqual(['group-1']);
     expect(mockRefresh).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -75,11 +82,14 @@ describe('Customer modals', () => {
           phone: null,
           birthday: null,
           notes: null,
+          groupMemberships: [{ group: groups[1] }],
         }}
+        groups={groups}
       />
     );
 
     fireEvent.click(screen.getByRole('button', { name: /select birthday/i }));
+    fireEvent.click(screen.getByLabelText(/vip/i));
     fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
@@ -88,6 +98,7 @@ describe('Customer modals', () => {
 
     expect(url).toBe('/api/customers/cus_1');
     expect(payload.birthday).toBe('2026-03-09');
+    expect(payload.groupIds).toEqual(['group-2', 'group-1']);
     expect(mockRefresh).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
   });

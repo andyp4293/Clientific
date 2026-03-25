@@ -14,6 +14,9 @@ vi.mock('@/lib/prisma', () => ({
       findMany: vi.fn(),
       groupBy: vi.fn(),
     },
+    customerGroup: {
+      findMany: vi.fn(),
+    },
   },
 }));
 
@@ -37,11 +40,13 @@ import CustomersPage from './page';
 
 const mockGetServerSession = getServerSession as unknown as ReturnType<typeof vi.fn>;
 const mockFindMany = prisma.customer.findMany as ReturnType<typeof vi.fn>;
+const mockGroupFindMany = prisma.customerGroup.findMany as ReturnType<typeof vi.fn>;
 
 describe('CustomersPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFindMany.mockResolvedValue([]);
+    mockGroupFindMany.mockResolvedValue([]);
   });
 
   it('redirects to /login when no business session exists', async () => {
@@ -93,8 +98,22 @@ describe('CustomersPage', () => {
           },
         ],
       },
-      include: { _count: { select: { checkIns: true, appointments: true } } },
+      include: {
+        _count: { select: { checkIns: true, appointments: true } },
+        groupMemberships: expect.any(Object),
+      },
       orderBy: { createdAt: 'desc' },
+    });
+    expect(mockGroupFindMany).toHaveBeenCalledWith({
+      where: { businessId: 'biz-1' },
+      include: {
+        _count: {
+          select: {
+            memberships: true,
+          },
+        },
+      },
+      orderBy: [{ name: 'asc' }],
     });
   });
 });

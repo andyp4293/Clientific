@@ -47,6 +47,13 @@ type Customer = {
     checkIns: number;
     appointments: number;
   };
+  groupMemberships?: Array<{
+    group: {
+      id: string;
+      name: string;
+      promotionSmsEnabled: boolean;
+    };
+  }>;
 };
 
 const segmentColors: Record<string, string> = {
@@ -76,10 +83,16 @@ const messageTypeLabels: Record<string, string> = {
 
 export default function CustomerDetail({
   customer,
+  groups,
   googleReviewUrl,
   yelpUrl,
 }: {
   customer: Customer;
+  groups: Array<{
+    id: string;
+    name: string;
+    promotionSmsEnabled: boolean;
+  }>;
   googleReviewUrl?: string | null;
   yelpUrl?: string | null;
 }) {
@@ -448,6 +461,7 @@ export default function CustomerDetail({
         customer={customer}
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
+        groups={groups}
       />
       <SendCustomerMessageModal
         customer={customer}

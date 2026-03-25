@@ -81,6 +81,22 @@ export async function POST(
         smsMarketingConsent: true,
         smsOptedOut: false,
         phone: { not: null },
+        OR: [
+          {
+            groupMemberships: {
+              none: {},
+            },
+          },
+          {
+            groupMemberships: {
+              some: {
+                group: {
+                  promotionSmsEnabled: true,
+                },
+              },
+            },
+          },
+        ],
       },
       select: { id: true, phone: true, name: true },
     });

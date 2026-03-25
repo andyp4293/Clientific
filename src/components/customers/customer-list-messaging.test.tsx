@@ -19,12 +19,46 @@ vi.mock('./EditCustomerModal', () => ({
   default: () => null,
 }));
 
+vi.mock('./CustomerGroupModal', () => ({
+  default: () => null,
+}));
+
 vi.mock('sonner', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
   },
 }));
+
+const groups: Array<{
+  id: string;
+  name: string;
+  promotionSmsEnabled: boolean;
+  _count: { memberships: number };
+}> = [];
+
+function buildCustomer(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'cust-1',
+    name: 'Jane Doe',
+    email: 'jane@example.com',
+    phone: '+15551234567',
+    smsConsent: true,
+    smsOptedOut: false,
+    segment: 'VIP',
+    totalSpent: 250,
+    lastVisit: new Date('2026-03-12T12:00:00.000Z'),
+    birthday: null,
+    notes: null,
+    createdAt: new Date('2026-03-01T12:00:00.000Z'),
+    _count: {
+      checkIns: 3,
+      appointments: 4,
+    },
+    groupMemberships: [],
+    ...overrides,
+  };
+}
 
 describe('CustomerList messaging', () => {
   beforeEach(() => {
@@ -36,30 +70,7 @@ describe('CustomerList messaging', () => {
   });
 
   it('opens the text composer and posts a direct message for an eligible customer', async () => {
-    render(
-      <CustomerList
-        customers={[
-          {
-            id: 'cust-1',
-            name: 'Jane Doe',
-            email: 'jane@example.com',
-            phone: '+15551234567',
-            smsConsent: true,
-            smsOptedOut: false,
-            segment: 'VIP',
-            totalSpent: 250,
-            lastVisit: new Date('2026-03-12T12:00:00.000Z'),
-            birthday: null,
-            notes: null,
-            createdAt: new Date('2026-03-01T12:00:00.000Z'),
-            _count: {
-              checkIns: 3,
-              appointments: 4,
-            },
-          },
-        ]}
-      />
-    );
+    render(<CustomerList customers={[buildCustomer()]} groups={groups} />);
 
     const mobileList = screen.getByTestId('customer-mobile-list');
     fireEvent.click(within(mobileList).getByRole('button', { name: /^text$/i }));
@@ -88,25 +99,8 @@ describe('CustomerList messaging', () => {
     render(
       <CustomerList
         customers={[
-          {
-            id: 'cust-1',
-            name: 'Jane Doe',
-            email: 'jane@example.com',
-            phone: '+15551234567',
-            smsConsent: true,
-            smsOptedOut: false,
-            segment: 'VIP',
-            totalSpent: 250,
-            lastVisit: new Date('2026-03-12T12:00:00.000Z'),
-            birthday: null,
-            notes: null,
-            createdAt: new Date('2026-03-01T12:00:00.000Z'),
-            _count: {
-              checkIns: 3,
-              appointments: 4,
-            },
-          },
-          {
+          buildCustomer(),
+          buildCustomer({
             id: 'cust-2',
             name: 'John Smith',
             email: 'john@example.com',
@@ -116,15 +110,13 @@ describe('CustomerList messaging', () => {
             segment: 'REGULAR',
             totalSpent: 90,
             lastVisit: null,
-            birthday: null,
-            notes: null,
             createdAt: new Date('2026-03-02T12:00:00.000Z'),
             _count: {
               checkIns: 1,
               appointments: 1,
             },
-          },
-          {
+          }),
+          buildCustomer({
             id: 'cust-3',
             name: 'Maria Stone',
             email: 'maria@example.com',
@@ -134,20 +126,19 @@ describe('CustomerList messaging', () => {
             segment: 'NEW',
             totalSpent: 0,
             lastVisit: null,
-            birthday: null,
-            notes: null,
             createdAt: new Date('2026-03-03T12:00:00.000Z'),
             _count: {
               checkIns: 0,
               appointments: 0,
             },
-          },
+          }),
         ]}
+        groups={groups}
       />
     );
 
     expect(screen.getByText('Filter customers')).toBeInTheDocument();
-    expect(screen.getAllByText('SMS Status').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('SMS status').length).toBeGreaterThan(0);
     expect(screen.getAllByText('SMS Enabled').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Can receive SMS').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Opted out').length).toBeGreaterThan(0);
@@ -157,35 +148,13 @@ describe('CustomerList messaging', () => {
   });
 
   it('renders readable customer cards on mobile with key details visible', () => {
-    render(
-      <CustomerList
-        customers={[
-          {
-            id: 'cust-1',
-            name: 'Jane Doe',
-            email: 'jane@example.com',
-            phone: '+15551234567',
-            smsConsent: true,
-            smsOptedOut: false,
-            segment: 'VIP',
-            totalSpent: 250,
-            lastVisit: new Date('2026-03-12T12:00:00.000Z'),
-            birthday: null,
-            notes: null,
-            createdAt: new Date('2026-03-01T12:00:00.000Z'),
-            _count: {
-              checkIns: 3,
-              appointments: 4,
-            },
-          },
-        ]}
-      />
-    );
+    render(<CustomerList customers={[buildCustomer()]} groups={groups} />);
 
     const mobileList = screen.getByTestId('customer-mobile-list');
     expect(within(mobileList).getByText('Jane Doe')).toBeInTheDocument();
     expect(within(mobileList).getByText('jane@example.com')).toBeInTheDocument();
     expect(within(mobileList).getByText('+15551234567')).toBeInTheDocument();
+    expect(within(mobileList).getByText('Ungrouped')).toBeInTheDocument();
     expect(within(mobileList).getByText('Joined')).toBeInTheDocument();
     expect(within(mobileList).getByText('Mar 1, 2026')).toBeInTheDocument();
     expect(within(mobileList).getByText('Visits')).toBeInTheDocument();

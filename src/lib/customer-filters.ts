@@ -11,6 +11,7 @@ type CustomerFilterParams = {
   businessId: string;
   search?: string;
   segment?: CustomerSegmentFilter | string;
+  group?: string;
   sms?: CustomerSmsFilter | string;
   contact?: CustomerContactFilter | string;
   visit?: CustomerVisitFilter | string;
@@ -20,6 +21,7 @@ export function buildCustomerWhereClause({
   businessId,
   search,
   segment,
+  group,
   sms,
   contact,
   visit,
@@ -44,6 +46,16 @@ export function buildCustomerWhereClause({
 
   if (segment) {
     andClauses.push({ segment });
+  }
+
+  if (group) {
+    andClauses.push({
+      groupMemberships: {
+        some: {
+          groupId: group,
+        },
+      },
+    });
   }
 
   switch (sms) {

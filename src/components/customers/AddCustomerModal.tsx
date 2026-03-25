@@ -3,15 +3,24 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { DatePicker } from "@/components/ui/DatePicker";
+import CustomerGroupSelector from "./CustomerGroupSelector";
+
+type CustomerGroup = {
+  id: string;
+  name: string;
+  promotionSmsEnabled: boolean;
+};
 
 interface AddCustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
+  groups: CustomerGroup[];
 }
 
 export default function AddCustomerModal({
   isOpen,
   onClose,
+  groups,
 }: AddCustomerModalProps) {
   const toDateInputValue = (date: Date) => {
     const year = date.getFullYear();
@@ -34,6 +43,7 @@ export default function AddCustomerModal({
     phone: "",
     birthday: "",
     notes: "",
+    groupIds: [] as string[],
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,6 +71,7 @@ export default function AddCustomerModal({
         phone: "",
         birthday: "",
         notes: "",
+        groupIds: [],
       });
       router.refresh();
       onClose();
@@ -196,6 +207,12 @@ export default function AddCustomerModal({
                 placeholder="Any additional notes about this customer..."
               />
             </div>
+
+            <CustomerGroupSelector
+              groups={groups}
+              selectedGroupIds={formData.groupIds}
+              onChange={(groupIds) => setFormData({ ...formData, groupIds })}
+            />
           </div>
 
           <div className="flex flex-col-reverse gap-3 border-t border-gray-200 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] dark:border-gray-700 sm:flex-row sm:border-t-0 sm:px-6 sm:pb-6 sm:pt-4">

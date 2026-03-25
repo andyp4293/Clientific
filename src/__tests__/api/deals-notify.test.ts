@@ -358,6 +358,22 @@ describe('POST /api/deals/[id]/notify', () => {
           smsMarketingConsent: true,
           smsOptedOut: false,
           phone: { not: null },
+          OR: [
+            {
+              groupMemberships: {
+                none: {},
+              },
+            },
+            {
+              groupMemberships: {
+                some: {
+                  group: {
+                    promotionSmsEnabled: true,
+                  },
+                },
+              },
+            },
+          ],
         }),
       })
     );

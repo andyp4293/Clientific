@@ -1,0 +1,92 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { prisma } from "@/lib/prisma";
+import { requireActiveSubscription } from "@/lib/subscription";
+import { normalizeCustomerGroupName } from "@/lib/customer-groups";
+
+export async function GET() {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.businessId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const groups = await prisma.customerGroup.findMany({
+      where: { businessId: session.user.businessId },
+      include: {
+        _count: {
+          select: {
+            memberships: true,
+          },
+        },
+      },
+      orderBy: [{ name: "asc" }],
+    });
+
+    return NextResponse.json({ groups });
+  } catch (error) {
+    console.error("GET /api/customer-groups error:", error);
+    return NextResponse.json({ error: "Failed to fetch customer groups" }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.businessId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const subscriptionError = await requireActiveSubscription(session.user.businessId);
+    if (subscriptionError) return subscriptionError;
+
+    const body = await request.json();
+    const name = normalizeCustomerGroupName(body?.name);
+    const promotionSmsEnabled = body?.promotionSmsEnabled !== false;
+
+    if (!name) {
+      return NextResponse.json({ error: "Group name is required" }, { status: 400 });
+    }
+
+    const duplicate = await prisma.customerGroup.findFirst({
+      where: {
+        businessId: session.user.businessId,
+        name: {
+          equals: name,
+          mode: "insensitive",
+        },
+      },
+      select: { id: true },
+    });
+
+    if (duplicate) {
+      return NextResponse.json(
+        { error: "A customer group with that name already exists" },
+        { status: 409 }
+      );
+    }
+
+    const group = await prisma.customerGroup.create({
+      data: {
+        businessId: session.user.businessId,
+        name,
+        promotionSmsEnabled,
+      },
+      include: {
+        _count: {
+          select: {
+            memberships: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json({ group }, { status: 201 });
+  } catch (error) {
+    console.error("POST /api/customer-groups error:", error);
+    return NextResponse.json({ error: "Failed to create customer group" }, { status: 500 });
+  }
+}

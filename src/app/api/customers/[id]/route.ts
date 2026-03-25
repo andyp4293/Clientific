@@ -6,6 +6,7 @@ import { formatPhoneNumber } from "@/lib/utils";
 import { buildCustomerPhoneData, buildCustomerPhoneMatchClauses } from "@/lib/phone";
 import { requireActiveSubscription } from "@/lib/subscription";
 import { blockedContentError, getBlockedFieldLabel } from "@/lib/moderation";
+import { normalizeCustomerGroupIds } from "@/lib/customer-groups";
 
 // GET /api/customers/[id] - Get a single customer
 export async function GET(
@@ -38,6 +39,18 @@ export async function GET(
             service: true,
             staff: true,
           },
+        },
+        groupMemberships: {
+          include: {
+            group: {
+              select: {
+                id: true,
+                name: true,
+                promotionSmsEnabled: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "asc" },
         },
       },
     });
@@ -93,6 +106,7 @@ export async function PUT(
 
     const body = await request.json();
     const { name, email, phone, birthday, notes } = body;
+    const groupIds = normalizeCustomerGroupIds(body?.groupIds);
 
     // Validation
     if (!name || name.trim().length === 0) {
@@ -137,6 +151,23 @@ export async function PUT(
       }
     }
 
+    if (groupIds.length > 0) {
+      const validGroups = await prisma.customerGroup.findMany({
+        where: {
+          businessId: session.user.businessId,
+          id: { in: groupIds },
+        },
+        select: { id: true },
+      });
+
+      if (validGroups.length !== groupIds.length) {
+        return NextResponse.json(
+          { error: "One or more selected customer groups are invalid" },
+          { status: 400 }
+        );
+      }
+    }
+
     const customer = await prisma.customer.update({
       where: { id },
       data: {
@@ -146,6 +177,27 @@ export async function PUT(
         phoneLookupKey: phoneData.phoneLookupKey,
         birthday: birthday ? new Date(birthday) : null,
         notes: notes || null,
+        groupMemberships: {
+          deleteMany: {},
+          ...(groupIds.length > 0
+            ? {
+                create: groupIds.map((groupId) => ({ groupId })),
+              }
+            : {}),
+        },
+      },
+      include: {
+        groupMemberships: {
+          include: {
+            group: {
+              select: {
+                id: true,
+                name: true,
+                promotionSmsEnabled: true,
+              },
+            },
+          },
+        },
       },
     });
 

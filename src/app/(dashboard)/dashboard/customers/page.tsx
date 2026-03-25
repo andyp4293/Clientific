@@ -15,6 +15,7 @@ export default async function CustomersPage({
 }: {
   searchParams: Promise<{
     search?: string;
+    group?: string;
     sms?: CustomerSmsFilter;
     contact?: CustomerContactFilter;
     visit?: CustomerVisitFilter;
@@ -31,16 +32,44 @@ export default async function CustomersPage({
   const where = buildCustomerWhereClause({
     businessId,
     search: params.search,
+    group: params.group,
     sms: params.sms,
     contact: params.contact,
     visit: params.visit,
   });
 
-  const customers = await prisma.customer.findMany({
-    where,
-    include: { _count: { select: { checkIns: true, appointments: true } } },
-    orderBy: { createdAt: "desc" },
-  });
+  const [customers, groups] = await Promise.all([
+    prisma.customer.findMany({
+      where,
+      include: {
+        _count: { select: { checkIns: true, appointments: true } },
+        groupMemberships: {
+          include: {
+            group: {
+              select: {
+                id: true,
+                name: true,
+                promotionSmsEnabled: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.customerGroup.findMany({
+      where: { businessId },
+      include: {
+        _count: {
+          select: {
+            memberships: true,
+          },
+        },
+      },
+      orderBy: [{ name: "asc" }],
+    }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -55,7 +84,9 @@ export default async function CustomersPage({
 
       <CustomerList
         customers={customers}
+        groups={groups}
         initialSearch={params.search}
+        initialGroupFilter={params.group}
         initialSmsFilter={params.sms}
         initialContactFilter={params.contact}
         initialVisitFilter={params.visit}

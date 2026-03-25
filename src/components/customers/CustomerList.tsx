@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import AddCustomerModal from "./AddCustomerModal";
+import CustomerGroupModal from "./CustomerGroupModal";
 import EditCustomerModal from "./EditCustomerModal";
 import SendCustomerMessageModal from "./SendCustomerMessageModal";
 import { CustomSelect } from "@/components/ui/CustomSelect";
@@ -30,11 +31,25 @@ type Customer = {
     checkIns: number;
     appointments: number;
   };
+  groupMemberships: Array<{
+    group: CustomerGroup;
+  }>;
+};
+
+type CustomerGroup = {
+  id: string;
+  name: string;
+  promotionSmsEnabled: boolean;
+  _count?: {
+    memberships: number;
+  };
 };
 
 interface CustomerListProps {
   customers: Customer[];
+  groups: CustomerGroup[];
   initialSearch?: string;
+  initialGroupFilter?: string;
   initialSmsFilter?: CustomerSmsFilter | "";
   initialContactFilter?: CustomerContactFilter | "";
   initialVisitFilter?: CustomerVisitFilter | "";
@@ -134,9 +149,38 @@ function renderCustomerContactInfo(customer: Pick<Customer, "email" | "phone">) 
   );
 }
 
+function renderCustomerGroups(customer: Pick<Customer, "groupMemberships">) {
+  if (customer.groupMemberships.length === 0) {
+    return (
+      <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+        Ungrouped
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {customer.groupMemberships.map(({ group }) => (
+        <span
+          key={group.id}
+          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+            group.promotionSmsEnabled
+              ? "bg-primary/10 text-primary dark:bg-primary/20"
+              : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+          }`}
+        >
+          {group.name}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function CustomerList({
   customers,
+  groups,
   initialSearch = "",
+  initialGroupFilter = "",
   initialSmsFilter = "",
   initialContactFilter = "",
   initialVisitFilter = "",
@@ -145,8 +189,14 @@ export default function CustomerList({
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(initialSearch);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<CustomerGroup | null>(null);
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [messagingCustomer, setMessagingCustomer] = useState<Customer | null>(null);
+  const groupFilterOptions = groups.map((group) => ({
+    value: group.id,
+    label: group.name,
+  }));
 
   const updateQueryParam = (key: string, value?: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -165,12 +215,31 @@ export default function CustomerList({
   };
 
   const hasActiveFilters = Boolean(
-    initialSearch || initialSmsFilter || initialContactFilter || initialVisitFilter,
+    initialSearch ||
+      initialGroupFilter ||
+      initialSmsFilter ||
+      initialContactFilter ||
+      initialVisitFilter,
   );
 
   const clearAllFilters = () => {
     setSearch("");
     router.push("/dashboard/customers");
+  };
+
+  const openCreateGroupModal = () => {
+    setEditingGroup(null);
+    setIsGroupModalOpen(true);
+  };
+
+  const openEditGroupModal = (group: CustomerGroup) => {
+    setEditingGroup(group);
+    setIsGroupModalOpen(true);
+  };
+
+  const closeGroupModal = () => {
+    setEditingGroup(null);
+    setIsGroupModalOpen(false);
   };
 
   const renderCustomerActions = (customer: Customer, compact = false) => (
@@ -253,7 +322,7 @@ export default function CustomerList({
   return (
     <>
       <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-800">
-        <div className="flex flex-col gap-4 sm:flex-row">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
           <div className="flex-1">
             <input
               type="text"
@@ -263,12 +332,78 @@ export default function CustomerList({
               className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
             />
           </div>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="btn-primary whitespace-nowrap"
-          >
-            + Add Customer
-          </button>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button onClick={openCreateGroupModal} className="btn-outline whitespace-nowrap">
+              Manage Groups
+            </button>
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="btn-primary whitespace-nowrap"
+            >
+              + Add Customer
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-3 rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-1">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                Customer groups
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Create your own groups and decide which ones should receive promotion and deal SMS.
+              </p>
+            </div>
+
+            <button onClick={openCreateGroupModal} className="btn-outline text-sm">
+              New Group
+            </button>
+          </div>
+
+          {groups.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-gray-300 bg-white/80 px-4 py-6 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-400">
+              No customer groups yet. Create one to organize customers and control promotion texting.
+            </div>
+          ) : (
+            <div className="grid gap-3 xl:grid-cols-3">
+              {groups.map((group) => (
+                <div
+                  key={group.id}
+                  className="rounded-2xl border border-gray-200 bg-white/80 p-4 dark:border-gray-700 dark:bg-gray-800/70"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {group.name}
+                      </p>
+                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {group._count?.memberships ?? 0} customer
+                        {(group._count?.memberships ?? 0) === 1 ? "" : "s"}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => openEditGroupModal(group)}
+                      className="text-xs font-semibold text-primary transition-colors hover:text-primary/80"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                  <div className="mt-3">
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        group.promotionSmsEnabled
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                          : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                      }`}
+                    >
+                      {group.promotionSmsEnabled ? "Promotion SMS on" : "Promotion SMS off"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="space-y-4 rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
@@ -278,7 +413,7 @@ export default function CustomerList({
                 Filter customers
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Narrow by texting status, contact details, and visit history.
+                Narrow by group, texting status, contact details, and visit history.
               </p>
             </div>
 
@@ -292,7 +427,21 @@ export default function CustomerList({
             )}
           </div>
 
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <label className="space-y-1">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                Group
+              </span>
+              <CustomSelect
+                ariaLabel="Customer group"
+                value={initialGroupFilter}
+                onChange={(value) => updateQueryParam("group", value || undefined)}
+                className="input w-full"
+                placeholder="All groups"
+                options={groupFilterOptions}
+              />
+            </label>
+
             <label className="space-y-1">
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
                 SMS status
@@ -343,6 +492,11 @@ export default function CustomerList({
               {initialSearch && (
                 <span className="inline-flex rounded-full bg-white px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
                   Search: {initialSearch}
+                </span>
+              )}
+              {initialGroupFilter && (
+                <span className="inline-flex rounded-full bg-white px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                  Group: {groups.find((group) => group.id === initialGroupFilter)?.name ?? "Unknown"}
                 </span>
               )}
               {initialSmsFilter && (
@@ -425,6 +579,7 @@ export default function CustomerList({
                             <div className="mt-1">
                               {renderCustomerContactInfo(customer)}
                             </div>
+                            <div className="mt-3">{renderCustomerGroups(customer)}</div>
                           </div>
                         </div>
                       </div>
@@ -507,6 +662,9 @@ export default function CustomerList({
                       Customer
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Groups
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
                       Joined
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -552,6 +710,9 @@ export default function CustomerList({
                             </div>
                           </div>
                         </td>
+                        <td className="px-6 py-4">
+                          {renderCustomerGroups(customer)}
+                        </td>
                         <td className="whitespace-nowrap px-6 py-4">
                           <span className="text-sm text-gray-900 dark:text-gray-100">
                             {formatDateLabel(customer.createdAt)}
@@ -594,6 +755,7 @@ export default function CustomerList({
       <AddCustomerModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
+        groups={groups}
       />
 
       {editingCustomer && (
@@ -601,8 +763,15 @@ export default function CustomerList({
           customer={editingCustomer}
           isOpen={true}
           onClose={() => setEditingCustomer(null)}
+          groups={groups}
         />
       )}
+
+      <CustomerGroupModal
+        isOpen={isGroupModalOpen}
+        onClose={closeGroupModal}
+        group={editingGroup}
+      />
 
       {messagingCustomer && (
         <SendCustomerMessageModal
