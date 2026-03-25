@@ -33,7 +33,7 @@ describe('next.config redirects', () => {
     expect(redirects).toContainEqual(
       expect.objectContaining({
         source: '/favicon.ico',
-        destination: '/icon',
+        destination: '/logo_black_transparent.png',
         permanent: false,
       })
     );
