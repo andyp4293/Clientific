@@ -70,4 +70,24 @@ describe("services page cache sync contract", () => {
     expect(source).not.toContain("formatStaffAvailabilitySummary({");
     expect(source).toContain("DAY_LABELS.map((label, i) => (");
   });
+
+  it("renders service rows with a responsive card layout that preserves title space on mobile", () => {
+    const source = readFileSync(new URL("./page.tsx", import.meta.url), "utf8");
+
+    expect(source).toContain(
+      'className="rounded-2xl border border-gray-200/90 bg-white/70 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/40 sm:p-5"',
+    );
+    expect(source).toContain(
+      'className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"',
+    );
+    expect(source).toContain(
+      'className="min-w-0 flex-1 text-base font-semibold leading-6 text-gray-900 dark:text-gray-100 sm:text-lg sm:leading-7 break-words"',
+    );
+    expect(source).toContain(
+      'className="mt-3 flex flex-wrap gap-2"',
+    );
+    expect(source).toContain(
+      'className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:w-[20rem] lg:flex-none"',
+    );
+  });
 });

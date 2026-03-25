@@ -390,16 +390,19 @@ function ServiceRow({
   disableMoveUp: boolean;
   disableMoveDown: boolean;
 }) {
+  const actionButtonClass =
+    "inline-flex min-h-[2.5rem] items-center justify-center rounded-xl border px-3 py-2 text-sm font-medium transition-colors disabled:opacity-40";
+
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h5 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+    <div className="rounded-2xl border border-gray-200/90 bg-white/70 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/40 sm:p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start gap-2.5">
+            <h5 className="min-w-0 flex-1 text-base font-semibold leading-6 text-gray-900 dark:text-gray-100 sm:text-lg sm:leading-7 break-words">
               {service.name}
             </h5>
             <span
-              className={`px-2 py-0.5 text-xs rounded-full ${
+              className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium ${
                 service.isActive
                   ? "bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400"
                   : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
@@ -409,21 +412,33 @@ function ServiceRow({
             </span>
           </div>
           {service.description && (
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400 sm:max-w-2xl">
               {service.description}
             </p>
           )}
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {service.duration} min
-            {service.price != null ? ` - $${service.price.toFixed(2)}` : ""}
-          </p>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800/80 dark:text-gray-200">
+              {service.duration} min
+            </span>
+            {service.price != null ? (
+              <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary dark:border-primary/25 dark:bg-primary/15 dark:text-primary-light">
+                ${service.price.toFixed(2)}
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-800/80 dark:text-gray-400">
+                Price hidden
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-1">
+
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:w-[20rem] lg:flex-none">
           <button
             type="button"
             onClick={onMoveUp}
             disabled={disableMoveUp}
-            className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded disabled:opacity-40"
+            className={`${actionButtonClass} border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800`}
             title="Move up"
           >
             Up
@@ -432,7 +447,7 @@ function ServiceRow({
             type="button"
             onClick={onMoveDown}
             disabled={disableMoveDown}
-            className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded disabled:opacity-40"
+            className={`${actionButtonClass} border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800`}
             title="Move down"
           >
             Down
@@ -440,7 +455,7 @@ function ServiceRow({
           <button
             type="button"
             onClick={() => onEdit(service)}
-            className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded"
+            className={`${actionButtonClass} border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800`}
           >
             Edit
           </button>
@@ -451,7 +466,7 @@ function ServiceRow({
                 onDelete(service.id);
               }
             }}
-            className="px-2 py-1 text-xs text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded"
+            className={`${actionButtonClass} border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30`}
           >
             Delete
           </button>
