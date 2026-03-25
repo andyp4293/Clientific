@@ -109,10 +109,12 @@ export default function CustomerGroupModal({
   return (
     <div
       data-mobile-overlay="true"
-      className="fixed inset-0 z-[70] bg-black/50 p-0 sm:flex sm:items-center sm:justify-center sm:px-4 sm:py-6"
+      className="fixed inset-0 z-[70] bg-gray-50 p-0 dark:bg-gray-900 sm:bg-black/50 sm:flex sm:items-center sm:justify-center sm:px-4 sm:py-6"
     >
-      <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-gray-50 shadow-none min-h-[100dvh] dark:bg-gray-900 sm:h-auto sm:min-h-0 sm:max-h-[90vh] sm:max-w-xl sm:rounded-[28px] sm:border sm:border-gray-200 sm:bg-white sm:shadow-2xl dark:sm:border-gray-700 dark:sm:bg-gray-900">
-        <div className="flex items-center justify-between border-b border-gray-200/80 px-5 py-4 pt-[calc(env(safe-area-inset-top)+1rem)] dark:border-gray-800 sm:px-6 sm:pt-6">
+      <div className="flex h-[100dvh] min-h-[100dvh] w-full flex-col overflow-hidden bg-gray-50 shadow-none dark:bg-gray-900 sm:h-auto sm:min-h-0 sm:max-h-[90vh] sm:max-w-xl sm:rounded-[28px] sm:border sm:border-gray-200 sm:bg-white sm:shadow-2xl dark:sm:border-gray-700 dark:sm:bg-gray-900">
+        <div className="bg-gray-50 dark:bg-gray-900">
+          <div className="h-[env(safe-area-inset-top)] bg-gray-50 dark:bg-gray-900 sm:hidden" />
+          <div className="flex items-center justify-between border-b border-gray-200/80 px-5 py-4 dark:border-gray-800 sm:px-6 sm:pt-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
               Customer group
@@ -135,6 +137,7 @@ export default function CustomerGroupModal({
               />
             </svg>
           </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">

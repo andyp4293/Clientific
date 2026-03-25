@@ -341,7 +341,7 @@ export default function CustomerList({
         </div>
 
         <div className="space-y-3 rounded-[28px] border border-gray-200 bg-gradient-to-br from-white via-white to-gray-50/80 p-4 dark:border-gray-700 dark:from-gray-800 dark:via-gray-800 dark:to-gray-900/60">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary dark:bg-primary/15">
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -365,12 +365,17 @@ export default function CustomerList({
 
             <button
               onClick={openCreateGroupModal}
-              className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/90 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-primary/30 hover:text-primary dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-200 dark:hover:border-primary/40 dark:hover:text-primary"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white/95 px-4 py-3 text-sm font-semibold text-gray-900 shadow-[0_1px_0_rgba(255,255,255,0.55)] transition-colors hover:border-primary/30 hover:bg-primary/[0.05] hover:text-primary dark:border-gray-700 dark:bg-gray-900/85 dark:text-gray-100 dark:shadow-none dark:hover:border-primary/40 dark:hover:bg-primary/[0.08] dark:hover:text-primary sm:w-auto sm:rounded-full sm:px-4 sm:py-2.5"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14m7-7H5" />
-              </svg>
-              Add group
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary dark:bg-primary/15">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14m7-7H5" />
+                </svg>
+              </span>
+              <span className="text-left leading-none">
+                <span className="block sm:hidden">New group</span>
+                <span className="hidden sm:block">Add group</span>
+              </span>
             </button>
           </div>
 

@@ -78,4 +78,16 @@ describe("CustomerGroupModal", () => {
     expect(slider?.className).toContain("bg-primary");
     expect(screen.getByText("On").className).toContain("text-white");
   });
+
+  it("uses an opaque mobile-safe-area top shell", () => {
+    render(<CustomerGroupModal isOpen onClose={vi.fn()} group={null} />);
+
+    const heading = screen.getByRole("heading", { name: "Create group" });
+    const overlay = heading.closest('[data-mobile-overlay="true"]');
+    const safeAreaFiller = document.querySelector('.h-\\[env\\(safe-area-inset-top\\)\\]');
+    expect(overlay?.className).toContain("bg-gray-50");
+    expect(overlay?.className).toContain("dark:bg-gray-900");
+    expect(safeAreaFiller?.className).toContain("bg-gray-50");
+    expect(safeAreaFiller?.className).toContain("dark:bg-gray-900");
+  });
 });

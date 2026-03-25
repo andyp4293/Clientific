@@ -135,4 +135,13 @@ describe("CustomerList filters", () => {
     expect(screen.getByText("Promotion SMS on")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /customer group/i })).toBeInTheDocument();
   });
+
+  it("renders the add group action as a full-width mobile button with the new label", () => {
+    render(<CustomerList customers={[baseCustomer]} groups={[]} />);
+
+    const addGroupButton = screen.getByRole("button", { name: /new group/i });
+    expect(addGroupButton.className).toContain("w-full");
+    expect(addGroupButton.className).toContain("rounded-2xl");
+    expect(screen.getByText("New group")).toBeInTheDocument();
+  });
 });
