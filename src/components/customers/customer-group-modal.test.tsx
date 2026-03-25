@@ -90,4 +90,12 @@ describe("CustomerGroupModal", () => {
     expect(safeAreaFiller?.className).toContain("bg-gray-50");
     expect(safeAreaFiller?.className).toContain("dark:bg-gray-900");
   });
+
+  it("uses the shorter deals SMS wording in group settings", () => {
+    render(<CustomerGroupModal isOpen onClose={vi.fn()} group={null} />);
+
+    expect(screen.getByText("Deals SMS messages")).toBeInTheDocument();
+    expect(screen.getByText("Include this group in deals SMS messages.")).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: /toggle deals sms messages/i })).toBeInTheDocument();
+  });
 });

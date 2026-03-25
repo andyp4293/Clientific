@@ -170,17 +170,17 @@ export default function CustomerGroupModal({
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    Promotion SMS
+                    Deals SMS messages
                   </p>
                   <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Include this group in deal and promotion blasts.
+                    Include this group in deals SMS messages.
                   </p>
                 </div>
                 <button
                   type="button"
                   role="switch"
                   aria-checked={promotionSmsEnabled}
-                  aria-label="Toggle promotion SMS"
+                  aria-label="Toggle deals SMS messages"
                   onClick={() => setPromotionSmsEnabled((current) => !current)}
                   className={`relative inline-flex h-12 min-w-[112px] shrink-0 items-center overflow-hidden rounded-full border p-1 text-sm font-semibold transition-colors ${
                     promotionSmsEnabled
