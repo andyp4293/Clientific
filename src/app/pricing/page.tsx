@@ -92,39 +92,7 @@ function PricingContent() {
           </div>
         </div>
 
-        <div className="mx-auto mb-8 max-w-5xl rounded-[32px] border border-primary/15 bg-gradient-to-r from-primary/[0.08] via-white to-white px-6 py-5 text-left text-sm leading-6 text-gray-700 shadow-sm dark:border-primary/20 dark:bg-gradient-to-r dark:from-primary/[0.14] dark:via-white/[0.04] dark:to-white/[0.02] dark:text-gray-200 lg:px-8">
-          <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary dark:text-primary-200">
-                Launch Access
-              </p>
-              <p className="mt-2 text-base font-semibold text-gray-900 dark:text-gray-100">
-                Starter includes booking, CRM, deals, referrals, and payouts. Pro and Premium add
-                AI receptionist coverage on top of that core workflow.
-              </p>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 dark:border-white/10 dark:bg-white/[0.05]">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-                  Trial
-                </p>
-                <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  14 days free
-                </p>
-              </div>
-              <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 dark:border-white/10 dark:bg-white/[0.05]">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-                  Billing
-                </p>
-                <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  Monthly, cancel anytime
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mx-auto grid max-w-[1400px] gap-6 xl:grid-cols-3">
+        <div className="mx-auto grid max-w-[1680px] gap-6 2xl:grid-cols-3">
           {VISIBLE_SELF_SERVE_PLAN_KEYS.map((key) => {
             const plan = PRICING_PLANS[key];
             const publicSlug = getPublicPlanSlug(key.toLowerCase());

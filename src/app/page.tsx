@@ -547,64 +547,40 @@ export default function HomePage() {
 
       <section id="pricing" className="bg-white/70 py-20 sm:py-28 dark:bg-gray-950/30">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-10 lg:grid-cols-[0.78fr_1.22fr] lg:items-start">
-            <div className="lg:sticky lg:top-24">
-              <div className="mb-4 inline-block rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-primary dark:bg-primary/10">
-                Pricing
-              </div>
-              <h2 className="text-3xl font-bold text-gray-950 dark:text-gray-100 sm:text-4xl">
-                Regular pricing crossed out, launch pricing live
-              </h2>
-              <p className="mt-4 max-w-xl text-lg text-gray-700 dark:text-gray-300">
-                Regularly priced up to $149/month. Today, Starter, Pro, and Premium start at
-                ${lowestMonthlyPrice}/month with AI receptionist starting on Pro.
-              </p>
-              <div className="mt-8 rounded-[32px] border border-primary/15 bg-gradient-to-br from-primary/[0.08] via-white to-white p-6 shadow-sm dark:border-primary/20 dark:from-primary/[0.16] dark:via-white/[0.04] dark:to-white/[0.02]">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                  <div className="rounded-2xl border border-white/80 bg-white/85 px-4 py-4 text-sm shadow-sm dark:border-white/10 dark:bg-white/[0.05]">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
-                      Trial
-                    </p>
-                    <p className="mt-2 text-base font-semibold text-gray-950 dark:text-white">
-                      14 days free
-                    </p>
-                    <p className="mt-1 leading-6 text-gray-700 dark:text-gray-300">
-                      Start without entering a card.
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-white/80 bg-white/85 px-4 py-4 text-sm shadow-sm dark:border-white/10 dark:bg-white/[0.05]">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
-                      Includes
-                    </p>
-                    <p className="mt-2 text-base font-semibold text-gray-950 dark:text-white">
-                      Core workflow on every plan
-                    </p>
-                    <p className="mt-1 leading-6 text-gray-700 dark:text-gray-300">
-                      AI receptionist starts on Pro.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-6 space-y-3">
-                {platformFacts.map((fact) => (
-                  <div
-                    key={fact.title}
-                    className="rounded-2xl border border-gray-200/80 bg-white/80 px-4 py-4 text-sm shadow-sm dark:border-gray-800 dark:bg-gray-900/70"
-                  >
-                    <p className="font-semibold text-gray-950 dark:text-white">{fact.title}</p>
-                    <p className="mt-1 leading-6 text-gray-700 dark:text-gray-300">{fact.body}</p>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-5 text-sm text-gray-700 dark:text-gray-300">
-                Questions before you start?{' '}
-                <Link href={APP_SUPPORT_PATH} className="text-primary hover:underline">
-                  {APP_SUPPORT_EMAIL}
-                </Link>
-              </p>
+          <div className="mx-auto mb-10 max-w-4xl text-center">
+            <div className="mb-4 inline-block rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-primary dark:bg-primary/10">
+              Pricing
             </div>
+            <h2 className="text-3xl font-bold text-gray-950 dark:text-gray-100 sm:text-4xl">
+              Regular pricing crossed out, launch pricing live
+            </h2>
+            <p className="mx-auto mt-4 max-w-3xl text-lg text-gray-700 dark:text-gray-300">
+              Regularly priced up to $149/month. Today, Starter, Pro, and Premium start at
+              ${lowestMonthlyPrice}/month with AI receptionist starting on Pro.
+            </p>
+            <div className="mx-auto mt-8 grid max-w-3xl gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-gray-200/80 bg-white/85 px-4 py-4 text-sm shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                  Trial
+                </p>
+                <p className="mt-2 font-semibold text-gray-950 dark:text-white">14 days free</p>
+              </div>
+              <div className="rounded-2xl border border-gray-200/80 bg-white/85 px-4 py-4 text-sm shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                  Includes
+                </p>
+                <p className="mt-2 font-semibold text-gray-950 dark:text-white">Core workflow on every plan</p>
+              </div>
+              <div className="rounded-2xl border border-gray-200/80 bg-white/85 px-4 py-4 text-sm shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                  Support
+                </p>
+                <p className="mt-2 font-semibold text-gray-950 dark:text-white">{APP_SUPPORT_EMAIL}</p>
+              </div>
+            </div>
+          </div>
 
-            <div className="mx-auto grid max-w-[1400px] gap-6 xl:grid-cols-3">
+          <div className="mx-auto grid max-w-[1680px] gap-6 2xl:grid-cols-3">
               {VISIBLE_SELF_SERVE_PLAN_KEYS.map((key) => {
                 const plan = PRICING_PLANS[key];
                 const planSlug = getPublicPlanSlug(key.toLowerCase());
@@ -735,9 +711,8 @@ export default function HomePage() {
                       </Link>
                     )}
                   </div>
-                );
-              })}
-            </div>
+              );
+            })}
           </div>
         </div>
       </section>
