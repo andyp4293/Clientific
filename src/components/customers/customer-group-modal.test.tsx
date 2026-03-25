@@ -65,4 +65,17 @@ describe("CustomerGroupModal", () => {
     expect(mockRefresh).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("keeps the active segmented control pill inside the frame and highlights on in green", () => {
+    render(<CustomerGroupModal isOpen onClose={vi.fn()} group={null} />);
+
+    const toggle = screen.getByRole("switch");
+    const slider = toggle.querySelector("span");
+
+    expect(toggle.className).toContain("overflow-hidden");
+    expect(toggle.className).toContain("min-w-[112px]");
+    expect(slider?.className).toContain("translate-x-[calc(100%+0.25rem)]");
+    expect(slider?.className).toContain("bg-primary");
+    expect(screen.getByText("On").className).toContain("text-white");
+  });
 });

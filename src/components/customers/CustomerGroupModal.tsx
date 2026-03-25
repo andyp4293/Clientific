@@ -179,15 +179,17 @@ export default function CustomerGroupModal({
                   aria-checked={promotionSmsEnabled}
                   aria-label="Toggle promotion SMS"
                   onClick={() => setPromotionSmsEnabled((current) => !current)}
-                  className={`relative inline-flex h-11 min-w-[96px] items-center rounded-full border p-1 text-xs font-semibold transition-colors ${
+                  className={`relative inline-flex h-12 min-w-[112px] shrink-0 items-center overflow-hidden rounded-full border p-1 text-sm font-semibold transition-colors ${
                     promotionSmsEnabled
-                      ? "border-primary/30 bg-primary/10 text-primary dark:border-primary/40 dark:bg-primary/15"
+                      ? "border-primary/40 bg-primary/10 text-primary dark:border-primary/50 dark:bg-primary/15"
                       : "border-gray-200 bg-gray-100 text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
                   }`}
                 >
                   <span
-                    className={`absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-white shadow-sm transition-transform dark:bg-gray-800 ${
-                      promotionSmsEnabled ? "translate-x-[calc(100%+0.5rem)]" : "translate-x-0"
+                    className={`absolute inset-y-1 left-1 z-0 w-[calc(50%-0.25rem)] rounded-full shadow-sm transition-transform ${
+                      promotionSmsEnabled
+                        ? "translate-x-[calc(100%+0.25rem)] bg-primary"
+                        : "translate-x-0 bg-white dark:bg-gray-800"
                     }`}
                   />
                   <span
@@ -199,7 +201,7 @@ export default function CustomerGroupModal({
                   </span>
                   <span
                     className={`relative z-10 flex-1 text-center transition-colors ${
-                      promotionSmsEnabled ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400"
+                      promotionSmsEnabled ? "text-white" : "text-gray-500 dark:text-gray-400"
                     }`}
                   >
                     On
