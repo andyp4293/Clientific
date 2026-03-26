@@ -205,7 +205,7 @@ describe('POST /api/webhooks/vapi', () => {
 
     expect(systemPrompt).toContain('say exactly: "Let me connect you now."');
     expect(systemPrompt).toContain('Then immediately call transferCall');
-    expect(systemPrompt).toContain('ask if they would like to be connected to the business');
+    expect(systemPrompt).toContain('ask whether they would like to be transferred to someone who might be able to help');
     expect(systemPrompt).toContain('do not guess');
     expect(systemPrompt).toContain('Only answer a factual business question when the answer is explicitly supported by the information above');
     expect(systemPrompt).toContain('Questions about whether the business is for sale');
