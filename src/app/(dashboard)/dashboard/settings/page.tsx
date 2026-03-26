@@ -166,6 +166,7 @@ export default function SettingsPage() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [showEnableModal, setShowEnableModal] = useState(false);
   const [showDisableModal, setShowDisableModal] = useState(false);
+  const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
   const [activatingUntil, setActivatingUntil] = useState<Date | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
 
@@ -455,6 +456,15 @@ export default function SettingsPage() {
 
     setFormData(nextFormData);
     updateMutation.mutate(nextFormData);
+  };
+
+  const handleResetConfirm = () => {
+    setFormData(business || {});
+    setLogoPreview(business?.logoUrl || null);
+    setSelectedCoordinates(null);
+    setTimezoneManuallyEdited(false);
+    setShowResetConfirmModal(false);
+    toast.success('Changes reset');
   };
 
   const businessTypes = [
@@ -1371,10 +1381,7 @@ export default function SettingsPage() {
       {/* Action Buttons */}
       <div className="flex justify-end gap-3 mt-4">
         <button
-          onClick={() => {
-            setFormData(business || {});
-            setLogoPreview(business?.logoUrl || null);
-          }}
+          onClick={() => setShowResetConfirmModal(true)}
           className="btn-outline"
         >
           Reset
@@ -1460,6 +1467,36 @@ export default function SettingsPage() {
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50"
               >
                 {aiToggleMutation.isPending ? 'Disabling…' : 'Disable'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showResetConfirmModal && (
+        <div data-mobile-overlay="true" className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-700 dark:bg-gray-800">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Reset unsaved changes?
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
+              This will discard the edits on this settings screen and restore the last saved Social
+              & Reviews values.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowResetConfirmModal(false)}
+                className="btn-outline flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleResetConfirm}
+                className="btn-primary flex-1"
+              >
+                Yes, reset
               </button>
             </div>
           </div>

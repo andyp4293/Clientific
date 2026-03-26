@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import * as pageModule from './page';
 
 describe('settings page module', () => {
