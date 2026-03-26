@@ -181,6 +181,31 @@ describe('POST /api/webhooks/vapi', () => {
     expect(systemPrompt).toContain('closed for Christmas Day');
   });
 
+  it('includes the saved transfer phone as Vapi forwardingPhoneNumber and uses the automatic handoff prompt', async () => {
+    vi.mocked(prisma.business.findFirst).mockResolvedValue({
+      ...BASE_BUSINESS,
+      aiReceptionistPhone: '9087272437',
+    } as any);
+
+    const res = await POST(
+      req({
+        message: {
+          type: 'assistant-request',
+          phoneNumber: { id: 'phone-1' },
+        },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const systemPrompt = body.assistant.model.messages[0].content as string;
+
+    expect(body.assistant.forwardingPhoneNumber).toBe('9087272437');
+    expect(systemPrompt).toContain('say exactly: "Let me connect you now."');
+    expect(systemPrompt).toContain('Do not call a transfer tool');
+    expect(systemPrompt).toContain('call will be forwarded automatically');
+  });
+
   it('stores a requested staff preference from conversation updates', async () => {
     const res = await POST(
       req({

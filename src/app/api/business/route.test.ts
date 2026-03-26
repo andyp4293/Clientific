@@ -238,6 +238,22 @@ describe('PATCH /api/business', () => {
     expect(mockBusinessUpdate).not.toHaveBeenCalled();
   });
 
+  it('rejects using the AI receptionist number itself as the transfer destination', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        ...fakeBusiness,
+        vapiPhoneNumber: '+19087272437',
+      });
+
+    const res = await PATCH(makePatchRequest({ aiReceptionistPhone: '(908) 727-2437' }));
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/cannot be the ai receptionist number itself/i);
+    expect(mockBusinessUpdate).not.toHaveBeenCalled();
+  });
+
   it('returns 400 when profile text contains disallowed content', async () => {
     mockSession.mockResolvedValue(activeSession);
     mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });

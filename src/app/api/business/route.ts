@@ -446,6 +446,23 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
+    const currentVapiForwardingLoopCandidate =
+      current.vapiPhoneNumber && normalizeOptionalStoredPhoneNumber(current.vapiPhoneNumber);
+
+    if (
+      normalizedAiReceptionistPhone &&
+      currentVapiForwardingLoopCandidate &&
+      normalizedAiReceptionistPhone === currentVapiForwardingLoopCandidate
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Transfer-to phone number cannot be the AI receptionist number itself. Use a real person phone number.',
+        },
+        { status: 400 }
+      );
+    }
+
     if (
       typeof ownerPhone === 'string' &&
       ownerPhone.trim().length > 0 &&
