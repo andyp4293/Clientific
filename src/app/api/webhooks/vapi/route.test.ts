@@ -207,6 +207,9 @@ describe('POST /api/webhooks/vapi', () => {
     expect(systemPrompt).toContain('Then immediately call transferCall');
     expect(systemPrompt).toContain('ask if they would like to be connected to the business');
     expect(systemPrompt).toContain('do not guess');
+    expect(systemPrompt).toContain('Only answer a factual business question when the answer is explicitly supported by the information above');
+    expect(systemPrompt).toContain('Questions about whether the business is for sale');
+    expect(systemPrompt).toContain('whether someone can buy the business');
     expect(transferTool).toEqual({
       type: 'transferCall',
       destinations: [
