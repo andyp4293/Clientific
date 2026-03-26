@@ -355,7 +355,7 @@ export default function CustomerList({
   const renderCustomerActions = (customer: Customer, compact = false) => (
     <div
       className={
-        compact ? "grid grid-cols-3 gap-2" : "inline-flex items-center gap-1"
+        compact ? "grid grid-cols-3 gap-2" : "flex flex-wrap justify-end gap-1.5"
       }
     >
       {customer.phone && (
@@ -370,7 +370,7 @@ export default function CustomerList({
                 : "Send a text message"
           }
           className={`inline-flex items-center justify-center gap-1.5 rounded-md bg-emerald-50 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 dark:disabled:bg-gray-700 dark:disabled:text-gray-500 ${
-            compact ? "px-3 py-2" : "px-2.5 py-1.5"
+            compact ? "px-3 py-2" : "px-2 py-1.5 xl:px-2.5"
           }`}
         >
           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -389,7 +389,7 @@ export default function CustomerList({
         onClick={() => setEditingCustomer(customer)}
         title="Edit customer"
         className={`inline-flex items-center justify-center gap-1.5 rounded-md bg-gray-100 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 ${
-          compact ? "px-3 py-2" : "px-2.5 py-1.5"
+          compact ? "px-3 py-2" : "px-2 py-1.5 xl:px-2.5"
         }`}
       >
         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -407,7 +407,7 @@ export default function CustomerList({
         href={`/dashboard/customers/${customer.id}`}
         title="View profile"
         className={`inline-flex items-center justify-center gap-1.5 rounded-md bg-primary/10 text-xs font-medium text-primary transition-colors hover:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 ${
-          compact ? "px-3 py-2" : "px-2.5 py-1.5"
+          compact ? "px-3 py-2" : "px-2 py-1.5 xl:px-2.5"
         }`}
       >
         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -795,32 +795,45 @@ export default function CustomerList({
               })}
             </div>
 
-            <div className="hidden overflow-x-auto md:block">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <div className="hidden md:block">
+              <table
+                data-testid="customer-desktop-table"
+                className="w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700"
+              >
+                <colgroup>
+                  <col className="w-[27%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[11%]" />
+                  <col className="w-[8%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[170px]" />
+                </colgroup>
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 xl:px-6">
                       Customer
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 xl:px-6">
                       Groups
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 xl:px-6">
                       Joined
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 xl:px-6">
                       Visits
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 xl:px-6">
                       Total Spent
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 xl:px-6">
                       Last Visit
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 xl:px-6">
                       SMS Status
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 xl:px-6">
                       Actions
                     </th>
                   </tr>
@@ -832,17 +845,17 @@ export default function CustomerList({
 
                     return (
                       <tr key={customer.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="whitespace-nowrap px-6 py-4">
-                          <div className="flex items-center">
+                        <td className="px-4 py-4 align-top xl:px-6">
+                          <div className="flex items-start">
                             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary-100 dark:bg-primary/15">
                               <span className="text-sm font-medium text-primary-600 dark:text-primary-300">
                                 {getCustomerInitials(customer.name)}
                               </span>
                             </div>
-                            <div className="ml-4">
+                            <div className="ml-4 min-w-0">
                               <Link
                                 href={`/dashboard/customers/${customer.id}`}
-                                className="text-sm font-medium text-gray-900 hover:text-primary dark:text-gray-100"
+                                className="block break-words text-sm font-medium text-gray-900 hover:text-primary dark:text-gray-100"
                               >
                                 {customer.name}
                               </Link>
@@ -852,24 +865,24 @@ export default function CustomerList({
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-4 align-top xl:px-6">
                           {renderCustomerGroups(customer)}
                         </td>
-                        <td className="whitespace-nowrap px-6 py-4">
+                        <td className="px-4 py-4 align-top xl:px-6">
                           <span className="text-sm text-gray-900 dark:text-gray-100">
                             {formatDateLabel(customer.createdAt)}
                           </span>
                         </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                        <td className="px-4 py-4 align-top text-sm text-gray-900 dark:text-gray-100 xl:px-6">
                           {customer._count.checkIns}
                         </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                        <td className="px-4 py-4 align-top text-sm text-gray-900 dark:text-gray-100 xl:px-6">
                           ${customer.totalSpent.toFixed(2)}
                         </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                        <td className="px-4 py-4 align-top text-sm text-gray-500 dark:text-gray-400 xl:px-6">
                           {formatLastVisit(customer.lastVisit)}
                         </td>
-                        <td className="whitespace-nowrap px-6 py-4">
+                        <td className="px-4 py-4 align-top xl:px-6">
                           <div className="space-y-1">
                             <div className="flex flex-wrap gap-2">
                               <span
@@ -888,7 +901,7 @@ export default function CustomerList({
                             </p>
                           </div>
                         </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-right">
+                        <td className="px-4 py-4 align-top text-right xl:px-6">
                           {renderCustomerActions(customer)}
                         </td>
                       </tr>

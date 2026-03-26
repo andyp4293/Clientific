@@ -167,4 +167,14 @@ describe('CustomerList messaging', () => {
     expect(within(mobileList).getAllByTestId('customer-mobile-stat-card')).toHaveLength(4);
     expect(within(mobileList).getByRole('link', { name: /^view$/i })).toBeInTheDocument();
   });
+
+  it('uses a fixed desktop table layout so the full table can stay visible at standard zoom', () => {
+    render(<CustomerList customers={[buildCustomer()]} groups={groups} />);
+
+    const desktopTable = screen.getByTestId('customer-desktop-table');
+    expect(desktopTable.className).toContain('table-fixed');
+
+    const emailCell = within(desktopTable).getByText('jane@example.com').closest('td');
+    expect(emailCell?.className).not.toContain('whitespace-nowrap');
+  });
 });
