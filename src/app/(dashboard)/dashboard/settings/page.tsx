@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import AddressAutocomplete, { type AddressComponents } from '@/components/ui/AddressAutocomplete';
@@ -149,6 +150,7 @@ interface Business {
 }
 
 export default function SettingsPage() {
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
   const [activeTab, setActiveTab] = useState<Tab | null>(null);
@@ -167,13 +169,26 @@ export default function SettingsPage() {
   const [activatingUntil, setActivatingUntil] = useState<Date | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
 
-  // Default to first tab on desktop
+  const requestedTab = searchParams.get('tab');
+  const deepLinkedTab: Tab | null =
+    requestedTab === 'profile' ||
+    requestedTab === 'personal' ||
+    requestedTab === 'branding' ||
+    requestedTab === 'integrations' ||
+    requestedTab === 'notifications'
+      ? requestedTab
+      : null;
+
   useEffect(() => {
+    if (deepLinkedTab) {
+      setActiveTab(deepLinkedTab);
+      return;
+    }
+
     if (typeof window !== 'undefined' && window.innerWidth >= 1024 && !activeTab) {
       setActiveTab('profile');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activeTab, deepLinkedTab]);
 
   useEffect(() => {
     if (!activatingUntil) return;

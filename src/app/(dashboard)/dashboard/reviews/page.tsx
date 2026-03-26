@@ -94,8 +94,8 @@ export default function ReviewsPage() {
         ) : (
           <p className="text-sm text-gray-500 dark:text-gray-400">
             No review links set.{' '}
-            <a href="/dashboard/settings" className="text-primary hover:text-primary-700 font-medium">
-              Add them in Settings → Integrations
+            <a href="/dashboard/settings?tab=integrations" className="text-primary hover:text-primary-700 font-medium">
+              Add them in Social &amp; Reviews
             </a>
           </p>
         )}
