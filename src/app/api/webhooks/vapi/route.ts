@@ -488,13 +488,13 @@ Your job:
   - Wait for their response before ending the call. If they say no (or "nope", "that's all", "I'm good", etc.), say the exact phrase: "Happy to help! Have a wonderful day — goodbye!" then call end_call
 - If they want to VIEW or CANCEL an existing appointment (phrases like "check my appointment", "what's my appointment", "I need to cancel", "cancel my booking"): call manage_booking with action "getAppointments" to show their upcoming bookings, then ask which one to cancel, then call "cancelAppointment" with the appointmentId — never say the appointmentId aloud
 - If they want to UPDATE an existing appointment (e.g. "change my name", "update my name to Jimmy", "add a note"): call manage_booking with action "getAppointments" first if you don't already have the appointmentId, then call "updateAppointment" with the appointmentId and the field(s) to change (customerName and/or notes) — never say the appointmentId aloud
-- If they say "talk to a person", "real person", "human", "manager", or similar, say exactly: "Let me connect you now." If a forwarding phone number is configured, the call will be forwarded automatically. Do not ask more questions first and do not call a transfer tool.
+- If they say "talk to a person", "real person", "human", "manager", or similar, say exactly: "Let me connect you now." Then immediately call transferCall. Do not ask more questions first.
 - When the caller signals they are done (says "goodbye", "bye", "that's all", "I'm good", "no", "nope", "nothing else", or similar), you MUST say the exact phrase: "Happy to help! Have a wonderful day — goodbye!" — then immediately call end_call. Do NOT just say "Goodbye!" alone.
 - Never end the call without first saying that exact closing phrase.
 - Before calling a tool, say one short natural phrase — vary it each time and match it to the situation. Examples: "Let me check that.", "Let me see what's open.", "Let me look at the schedule.", "Let me get that booked for you.", "Let me lock that in.", "Let me pull that up.", "One moment.", "Sure, let me grab that." — never repeat the same phrase twice in a row. If you need to call two tools back-to-back (e.g. getAppointments then cancelAppointment), say the phrase only once before the first tool — do NOT say another phrase between them
 - Keep ALL responses under 2 sentences — this is a phone call, be brief
 - Be warm and professional
-- If you don't know the answer and a forwarding phone number is configured, do not guess. First say you do not have that information and ask if they would like to be connected to the business. If they say yes, say exactly: "Let me connect you now." The call will be forwarded automatically. Do not call a transfer tool.
+- If you don't know the answer and a transfer destination is configured, do not guess. First say you do not have that information and ask if they would like to be connected to the business. If they say yes, say exactly: "Let me connect you now." Then immediately call transferCall.
 - If you don't know the answer and no forwarding phone number is configured, say "Let me take a message for the team."
 - Never read service IDs or appointment IDs aloud; they are internal references only`;
 
@@ -563,6 +563,20 @@ Your job:
             },
           },
         },
+        ...(forwardingPhoneNumber
+          ? [
+              {
+                type: 'transferCall',
+                destinations: [
+                  {
+                    type: 'number',
+                    number: forwardingPhoneNumber,
+                    message: 'I am forwarding your call now. Please stay on the line.',
+                  },
+                ],
+              },
+            ]
+          : []),
         { type: 'endCall' },
       ],
     },
@@ -593,7 +607,6 @@ Your job:
     },
     voicemailMessage: `Hi, you've reached ${business.name}. We missed your call — please call us back during business hours or book online at ${bookingUrl}.`,
     silenceTimeoutSeconds: 60,
-    ...(forwardingPhoneNumber && { forwardingPhoneNumber }),
   };
 }
 

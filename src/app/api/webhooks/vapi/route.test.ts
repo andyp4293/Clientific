@@ -181,7 +181,7 @@ describe('POST /api/webhooks/vapi', () => {
     expect(systemPrompt).toContain('closed for Christmas Day');
   });
 
-  it('includes the saved transfer phone and automatic handoff prompt in the assistant config', async () => {
+  it('includes the saved transfer phone and Vapi transfer tool in the assistant config', async () => {
     vi.mocked(prisma.business.findFirst).mockResolvedValue({
       ...BASE_BUSINESS,
       aiReceptionistPhone: '9087272437',
@@ -199,15 +199,24 @@ describe('POST /api/webhooks/vapi', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     const systemPrompt = body.assistant.model.messages[0].content as string;
+    const transferTool = body.assistant.model.tools.find(
+      (tool: any) => tool?.type === 'transferCall'
+    );
 
-    expect(body.assistant.forwardingPhoneNumber).toBe('9087272437');
     expect(systemPrompt).toContain('say exactly: "Let me connect you now."');
-    expect(systemPrompt).toContain('call will be forwarded automatically');
+    expect(systemPrompt).toContain('Then immediately call transferCall');
     expect(systemPrompt).toContain('ask if they would like to be connected to the business');
     expect(systemPrompt).toContain('do not guess');
-    expect(
-      body.assistant.model.tools.find((tool: any) => tool?.function?.name === 'transferCall')
-    ).toBeFalsy();
+    expect(transferTool).toEqual({
+      type: 'transferCall',
+      destinations: [
+        {
+          type: 'number',
+          number: '9087272437',
+          message: 'I am forwarding your call now. Please stay on the line.',
+        },
+      ],
+    });
   });
 
   it('stores a requested staff preference from conversation updates', async () => {
