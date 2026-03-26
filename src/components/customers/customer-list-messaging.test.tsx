@@ -177,4 +177,16 @@ describe('CustomerList messaging', () => {
     const emailCell = within(desktopTable).getByText('jane@example.com').closest('td');
     expect(emailCell?.className).not.toContain('whitespace-nowrap');
   });
+
+  it('centers the desktop actions column', () => {
+    render(<CustomerList customers={[buildCustomer()]} groups={groups} />);
+
+    const desktopTable = screen.getByTestId('customer-desktop-table');
+    const actionsHeader = within(desktopTable).getByText('Actions').closest('th');
+    const textButton = within(desktopTable).getAllByRole('button', { name: /^text$/i })[0];
+    const actionsCell = textButton.closest('td');
+
+    expect(actionsHeader?.className).toContain('text-center');
+    expect(actionsCell?.className).toContain('text-center');
+  });
 });

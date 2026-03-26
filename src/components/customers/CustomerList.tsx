@@ -355,7 +355,7 @@ export default function CustomerList({
   const renderCustomerActions = (customer: Customer, compact = false) => (
     <div
       className={
-        compact ? "grid grid-cols-3 gap-2" : "flex flex-wrap justify-end gap-1.5"
+        compact ? "grid grid-cols-3 gap-2" : "flex flex-wrap justify-center gap-1.5"
       }
     >
       {customer.phone && (
@@ -833,7 +833,7 @@ export default function CustomerList({
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 xl:px-6">
                       SMS Status
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 xl:px-6">
+                    <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 xl:px-6">
                       Actions
                     </th>
                   </tr>
@@ -901,7 +901,7 @@ export default function CustomerList({
                             </p>
                           </div>
                         </td>
-                        <td className="px-4 py-4 align-top text-right xl:px-6">
+                        <td className="px-4 py-4 align-top text-center xl:px-6">
                           {renderCustomerActions(customer)}
                         </td>
                       </tr>
