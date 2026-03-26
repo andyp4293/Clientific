@@ -181,7 +181,7 @@ describe('POST /api/webhooks/vapi', () => {
     expect(systemPrompt).toContain('closed for Christmas Day');
   });
 
-  it('includes the saved transfer phone as Vapi forwardingPhoneNumber and uses the automatic handoff prompt', async () => {
+  it('includes the saved transfer phone, transfer tool, and handoff prompt in the assistant config', async () => {
     vi.mocked(prisma.business.findFirst).mockResolvedValue({
       ...BASE_BUSINESS,
       aiReceptionistPhone: '9087272437',
@@ -199,11 +199,58 @@ describe('POST /api/webhooks/vapi', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     const systemPrompt = body.assistant.model.messages[0].content as string;
+    const transferTool = body.assistant.model.tools.find(
+      (tool: any) => tool?.function?.name === 'transferCall'
+    );
 
     expect(body.assistant.forwardingPhoneNumber).toBe('9087272437');
     expect(systemPrompt).toContain('say exactly: "Let me connect you now."');
-    expect(systemPrompt).toContain('Do not call a transfer tool');
-    expect(systemPrompt).toContain('call will be forwarded automatically');
+    expect(systemPrompt).toContain('Then immediately call transferCall');
+    expect(systemPrompt).toContain('ask if they would like to be connected to the business');
+    expect(systemPrompt).toContain('do not guess');
+    expect(transferTool).toBeTruthy();
+  });
+
+  it('returns a transfer payload to the saved business phone when transferCall is requested', async () => {
+    vi.mocked(prisma.business.findFirst).mockResolvedValue({
+      ...BASE_BUSINESS,
+      aiReceptionistPhone: '+18482612613',
+    } as any);
+
+    const res = await POST(
+      req({
+        message: {
+          type: 'tool-calls',
+          phoneNumber: { id: 'phone-1' },
+          call: { customer: { number: '+15551234567' } },
+          toolCallList: [
+            {
+              id: 'tool-transfer',
+              function: {
+                name: 'transferCall',
+                arguments: {
+                  reason: 'Caller requested a real person',
+                },
+              },
+            },
+          ],
+        },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.results).toHaveLength(1);
+    expect(body.results[0].toolCallId).toBe('tool-transfer');
+    expect(JSON.parse(body.results[0].result)).toEqual({
+      type: 'transfer',
+      callOutcome: 'transferred',
+      destination: {
+        type: 'number',
+        number: '+18482612613',
+        message: 'Transferring the call. Reason: Caller requested a real person',
+      },
+    });
   });
 
   it('stores a requested staff preference from conversation updates', async () => {
