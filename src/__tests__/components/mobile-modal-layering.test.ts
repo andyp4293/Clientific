@@ -43,7 +43,11 @@ describe('mobile modal layering contract', () => {
 
     for (const segments of fullscreenFiles) {
       const source = readFileSync(join(process.cwd(), ...segments), 'utf8');
-      expect(source.includes('h-[100dvh] w-full flex-col') || source.includes('h-full w-full flex-col')).toBe(true);
+      expect(
+        source.includes('h-[100dvh] w-full flex-col') ||
+          source.includes('h-[100svh] min-h-[100svh] w-full flex-col') ||
+          source.includes('h-full w-full flex-col')
+      ).toBe(true);
     }
   });
 

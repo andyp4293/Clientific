@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { createPortal } from "react-dom";
 
 interface SendCustomerMessageModalProps {
   customer: {
@@ -137,11 +138,14 @@ export default function SendCustomerMessageModal({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
 
-  return (
-    <div data-mobile-overlay="true" className="fixed inset-0 z-[70] bg-black/50 p-0 sm:flex sm:items-center sm:justify-center sm:px-4 sm:py-6">
-      <div className="flex h-[100dvh] w-full flex-col bg-white shadow-2xl dark:bg-gray-800 sm:h-auto sm:max-h-[90vh] sm:max-w-xl sm:rounded-2xl sm:border sm:border-gray-200 dark:border-gray-700">
+  const modal = (
+    <div
+      data-mobile-overlay="true"
+      className="fixed inset-0 z-[70] overflow-hidden bg-black/50 p-0 sm:flex sm:items-center sm:justify-center sm:p-4"
+    >
+      <div className="flex h-[100svh] min-h-[100svh] w-full flex-col bg-white shadow-2xl dark:bg-gray-800 sm:h-auto sm:min-h-0 sm:max-h-[90vh] sm:max-w-xl sm:rounded-2xl sm:border sm:border-gray-200 dark:border-gray-700">
         <div className="border-b border-gray-200 bg-gradient-to-b from-primary/[0.08] via-white to-white dark:border-gray-700 dark:from-primary/[0.14] dark:via-gray-800 dark:to-gray-800">
           <div className="h-[env(safe-area-inset-top)] bg-white/95 dark:bg-gray-800/95 sm:hidden" />
           <div className="flex items-start justify-between gap-4 px-4 pb-5 pt-4 sm:px-6 sm:pb-0 sm:pt-6">
@@ -234,25 +238,32 @@ export default function SendCustomerMessageModal({
             )}
           </div>
 
-          <div className="flex flex-col-reverse gap-3 border-t border-gray-200 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] dark:border-gray-700 sm:flex-row sm:border-t-0 sm:px-6 sm:pb-6 sm:pt-4">
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={loading}
-              className="flex-1 btn-outline"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading || quotaLoading || Boolean(quota && quota.remaining <= 0)}
-              className="flex-1 btn-primary"
-            >
-              {loading ? "Sending..." : quota && quota.remaining <= 0 ? "Limit Reached" : "Send Text"}
-            </button>
+          <div
+            className="border-t border-gray-200 bg-white/95 px-4 py-4 dark:border-gray-700 dark:bg-gray-800/95 sm:border-t-0 sm:bg-transparent sm:px-6 sm:pb-6 sm:pt-4 dark:sm:bg-transparent"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}
+          >
+            <div className="grid gap-3 sm:flex sm:flex-row-reverse">
+              <button
+                type="submit"
+                disabled={loading || quotaLoading || Boolean(quota && quota.remaining <= 0)}
+                className="w-full btn-primary sm:flex-1"
+              >
+                {loading ? "Sending..." : quota && quota.remaining <= 0 ? "Limit Reached" : "Send Text"}
+              </button>
+              <button
+                type="button"
+                onClick={handleClose}
+                disabled={loading}
+                className="w-full btn-outline sm:flex-1"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </form>
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }
