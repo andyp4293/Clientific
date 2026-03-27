@@ -104,8 +104,15 @@ describe('CustomerList messaging', () => {
     const mobileList = screen.getByTestId('customer-mobile-list');
     fireEvent.click(within(mobileList).getByRole('button', { name: /^text$/i }));
 
-    expect(screen.getByRole('heading', { name: /send text to jane doe/i })).toBeInTheDocument();
-    expect(await screen.findByText(/25 of 25 direct messages left/i)).toBeInTheDocument();
+    const modalHeading = screen.getByRole('heading', { name: /send text to jane doe/i });
+    const messageModal = modalHeading.closest('[data-mobile-overlay="true"]');
+
+    expect(messageModal).not.toBeNull();
+    expect(within(messageModal as HTMLElement).getByText('Direct message')).toBeInTheDocument();
+    expect(modalHeading).toBeInTheDocument();
+    expect(within(messageModal as HTMLElement).getByText(/we prepend your business name automatically/i)).toBeInTheDocument();
+    expect(within(messageModal as HTMLElement).getByText('+15551234567')).toBeInTheDocument();
+    expect(await within(messageModal as HTMLElement).findByText(/25 of 25 direct messages left/i)).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/^message$/i), {
       target: { value: 'We have an opening tomorrow at 2 PM.' },

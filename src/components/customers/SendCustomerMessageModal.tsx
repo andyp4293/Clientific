@@ -141,64 +141,70 @@ export default function SendCustomerMessageModal({
 
   return (
     <div data-mobile-overlay="true" className="fixed inset-0 z-[70] bg-black/50 p-0 sm:flex sm:items-center sm:justify-center sm:px-4 sm:py-6">
-      <div className="flex h-[100dvh] w-full flex-col bg-white shadow-2xl dark:bg-gray-800 sm:h-auto sm:max-w-xl sm:rounded-2xl sm:border sm:border-gray-200 dark:border-gray-700">
-        <div className="flex items-start justify-between gap-4 border-b border-gray-200 px-4 py-4 pt-[calc(env(safe-area-inset-top)+1rem)] dark:border-gray-700 sm:border-b-0 sm:px-6 sm:pb-0 sm:pt-6">
-          <div>
-            <h3 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-              Send Text to {customer.name}
-            </h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              We automatically prepend your business name before the message.
-            </p>
-            {customer.phone && (
-              <p className="mt-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                {customer.phone}
+      <div className="flex h-[100dvh] w-full flex-col bg-white shadow-2xl dark:bg-gray-800 sm:h-auto sm:max-h-[90vh] sm:max-w-xl sm:rounded-2xl sm:border sm:border-gray-200 dark:border-gray-700">
+        <div className="border-b border-gray-200 bg-gradient-to-b from-primary/[0.08] via-white to-white dark:border-gray-700 dark:from-primary/[0.14] dark:via-gray-800 dark:to-gray-800">
+          <div className="h-[env(safe-area-inset-top)] bg-white/95 dark:bg-gray-800/95 sm:hidden" />
+          <div className="flex items-start justify-between gap-4 px-4 pb-5 pt-4 sm:px-6 sm:pb-0 sm:pt-6">
+            <div className="min-w-0">
+              <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/[0.08] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary dark:border-primary/25 dark:bg-primary/[0.14]">
+                Direct message
+              </div>
+              <h3 className="mt-3 text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                Send text to {customer.name}
+              </h3>
+              <p className="mt-2 max-w-md text-sm leading-6 text-gray-500 dark:text-gray-400">
+                We prepend your business name automatically so the customer immediately knows who the text is from.
               </p>
-            )}
-            <div className="mt-3">
-              {quotaLoading ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Checking direct message allowance...
-                </p>
-              ) : quota ? (
-                <div
-                  className={`inline-flex flex-wrap items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${
-                    quota.remaining > 0
-                      ? "bg-primary/10 text-primary dark:bg-primary/15"
-                      : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                  }`}
-                >
-                  <span>
-                    {quota.remaining} of {quota.limit} direct messages left
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                {customer.phone ? (
+                  <span className="inline-flex items-center rounded-full border border-gray-200/80 bg-white/80 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-200">
+                    {customer.phone}
                   </span>
-                  <span className="opacity-70">
-                    Resets {format(new Date(quota.periodEnd), "MMM d")}
+                ) : null}
+                {quotaLoading ? (
+                  <span className="inline-flex items-center rounded-full border border-gray-200/80 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-400">
+                    Checking direct message allowance...
                   </span>
-                </div>
-              ) : null}
+                ) : quota ? (
+                  <>
+                    <span
+                      className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold ${
+                        quota.remaining > 0
+                          ? "bg-primary/10 text-primary dark:bg-primary/15"
+                          : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                      }`}
+                    >
+                      {quota.remaining} of {quota.limit} direct messages left
+                    </span>
+                    <span className="inline-flex items-center rounded-full border border-gray-200/80 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-400">
+                      Resets {format(new Date(quota.periodEnd), "MMM d")}
+                    </span>
+                  </>
+                ) : null}
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="rounded-2xl border border-gray-200/80 bg-white/80 p-2 text-gray-400 transition-colors hover:bg-white hover:text-gray-600 dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+              aria-label="Close send text modal"
+            >
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-300"
-            aria-label="Close send text modal"
-          >
-            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:pb-0">
+          <div className="flex-1 space-y-5 overflow-y-auto px-4 py-5 sm:px-6 sm:pb-0">
             {error && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700 dark:border-red-800/60 dark:bg-red-900/20 dark:text-red-300">
                 {error}
               </div>
             )}
 
-            <div>
+            <div className="rounded-[28px] border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/40 sm:p-5">
               <label htmlFor="customer-message" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Message
               </label>
@@ -209,16 +215,21 @@ export default function SendCustomerMessageModal({
                 rows={5}
                 maxLength={MAX_MESSAGE_LENGTH}
                 placeholder="Type the message you want to send..."
-                className="input min-h-[132px] resize-y"
+                className="input min-h-[180px] resize-none sm:min-h-[132px]"
               />
-              <div className="mt-1 text-right text-xs text-gray-500 dark:text-gray-400">
-                {message.trim().length}/{MAX_MESSAGE_LENGTH}
+              <div className="mt-2 flex items-center justify-between gap-3 text-xs text-gray-500 dark:text-gray-400">
+                <span className="max-w-[70%] leading-5">
+                  Keep it concise. Direct customer texts are counted separately from deal and promotion SMS.
+                </span>
+                <span className="shrink-0 text-right">
+                  {message.trim().length}/{MAX_MESSAGE_LENGTH}
+                </span>
               </div>
             </div>
 
             {quota && (
-              <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-300">
-                Direct customer texts are counted separately from deal and promotion SMS.
+              <div className="rounded-[28px] border border-gray-200 bg-white/70 px-4 py-3 text-sm leading-6 text-gray-600 dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-300">
+                This direct-message allowance resets with the current subscription period and does not affect deals SMS messages.
               </div>
             )}
           </div>
