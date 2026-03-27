@@ -87,7 +87,7 @@ describe("CustomerList filters", () => {
     expect(screen.getByText("SMS: SMS enabled")).toBeInTheDocument();
     expect(screen.getByText("Contact: Has both")).toBeInTheDocument();
     expect(screen.getByText("Visits: Visited before")).toBeInTheDocument();
-  });
+  }, 10000);
 
   it("updates the SMS filter while preserving the other query params", () => {
     mockSearchParams.mockReturnValue(

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { format } from "date-fns";
 import { toast } from "sonner";
 
 interface SendCustomerMessageModalProps {
@@ -14,6 +15,14 @@ interface SendCustomerMessageModalProps {
   onSent?: () => void | Promise<void>;
 }
 
+type DirectMessageQuota = {
+  limit: number;
+  used: number;
+  remaining: number;
+  periodEnd: string;
+  isActive: boolean;
+};
+
 const MAX_MESSAGE_LENGTH = 500;
 
 export default function SendCustomerMessageModal({
@@ -25,14 +34,56 @@ export default function SendCustomerMessageModal({
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [quota, setQuota] = useState<DirectMessageQuota | null>(null);
+  const [quotaLoading, setQuotaLoading] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
       setMessage("");
       setError("");
       setLoading(false);
+      setQuota(null);
+      setQuotaLoading(false);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadQuota = async () => {
+      setQuotaLoading(true);
+
+      try {
+        const response = await fetch(`/api/customers/${customer.id}/sms-logs`);
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+        if (!cancelled) {
+          setQuota(data.quota ?? null);
+        }
+      } catch {
+        if (!cancelled) {
+          setQuota(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setQuotaLoading(false);
+        }
+      }
+    };
+
+    void loadQuota();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [customer.id, isOpen]);
 
   const handleClose = () => {
     if (loading) return;
@@ -45,6 +96,11 @@ export default function SendCustomerMessageModal({
     const trimmedMessage = message.trim();
     if (!trimmedMessage) {
       setError("Message is required");
+      return;
+    }
+
+    if (quota && quota.remaining <= 0) {
+      setError("Monthly direct message limit reached for this subscription period");
       return;
     }
 
@@ -62,9 +118,15 @@ export default function SendCustomerMessageModal({
 
       const data = await response.json();
       if (!response.ok) {
+        if (data?.quota) {
+          setQuota(data.quota);
+        }
         throw new Error(data.error || "Failed to send message");
       }
 
+      if (data?.quota) {
+        setQuota(data.quota);
+      }
       toast.success(`Message sent to ${customer.name}`);
       await onSent?.();
       onClose();
@@ -93,6 +155,28 @@ export default function SendCustomerMessageModal({
                 {customer.phone}
               </p>
             )}
+            <div className="mt-3">
+              {quotaLoading ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Checking direct message allowance...
+                </p>
+              ) : quota ? (
+                <div
+                  className={`inline-flex flex-wrap items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${
+                    quota.remaining > 0
+                      ? "bg-primary/10 text-primary dark:bg-primary/15"
+                      : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                  }`}
+                >
+                  <span>
+                    {quota.remaining} of {quota.limit} direct messages left
+                  </span>
+                  <span className="opacity-70">
+                    Resets {format(new Date(quota.periodEnd), "MMM d")}
+                  </span>
+                </div>
+              ) : null}
+            </div>
           </div>
           <button
             type="button"
@@ -131,6 +215,12 @@ export default function SendCustomerMessageModal({
                 {message.trim().length}/{MAX_MESSAGE_LENGTH}
               </div>
             </div>
+
+            {quota && (
+              <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-300">
+                Direct customer texts are counted separately from deal and promotion SMS.
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col-reverse gap-3 border-t border-gray-200 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] dark:border-gray-700 sm:flex-row sm:border-t-0 sm:px-6 sm:pb-6 sm:pt-4">
@@ -144,10 +234,10 @@ export default function SendCustomerMessageModal({
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || quotaLoading || Boolean(quota && quota.remaining <= 0)}
               className="flex-1 btn-primary"
             >
-              {loading ? "Sending..." : "Send Text"}
+              {loading ? "Sending..." : quota && quota.remaining <= 0 ? "Limit Reached" : "Send Text"}
             </button>
           </div>
         </form>

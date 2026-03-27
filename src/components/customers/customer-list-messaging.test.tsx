@@ -71,21 +71,50 @@ describe('CustomerList messaging', () => {
   });
 
   it('opens the text composer and posts a direct message for an eligible customer', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          logs: [],
+          quota: {
+            limit: 25,
+            used: 0,
+            remaining: 25,
+            periodEnd: '2026-04-01T00:00:00.000Z',
+            isActive: true,
+          },
+        }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          quota: {
+            limit: 25,
+            used: 1,
+            remaining: 24,
+            periodEnd: '2026-04-01T00:00:00.000Z',
+            isActive: true,
+          },
+        }),
+      } as Response);
+
     render(<CustomerList customers={[buildCustomer()]} groups={groups} />);
 
     const mobileList = screen.getByTestId('customer-mobile-list');
     fireEvent.click(within(mobileList).getByRole('button', { name: /^text$/i }));
 
     expect(screen.getByRole('heading', { name: /send text to jane doe/i })).toBeInTheDocument();
+    expect(await screen.findByText(/25 of 25 direct messages left/i)).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/^message$/i), {
       target: { value: 'We have an opening tomorrow at 2 PM.' },
     });
     fireEvent.click(screen.getByRole('button', { name: /^send text$/i }));
 
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
 
-    const [url, options] = vi.mocked(fetch).mock.calls[0];
+    const [url, options] = vi.mocked(fetch).mock.calls[1];
     expect(url).toBe('/api/customers/cust-1/message');
     expect(options).toMatchObject({
       method: 'POST',
@@ -94,6 +123,30 @@ describe('CustomerList messaging', () => {
     expect(JSON.parse((options as RequestInit).body as string)).toEqual({
       message: 'We have an opening tomorrow at 2 PM.',
     });
+  });
+
+  it('shows the limit reached state when no direct messages remain this period', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        logs: [],
+        quota: {
+          limit: 25,
+          used: 25,
+          remaining: 0,
+          periodEnd: '2026-04-01T00:00:00.000Z',
+          isActive: true,
+        },
+      }),
+    } as Response);
+
+    render(<CustomerList customers={[buildCustomer()]} groups={groups} />);
+
+    const mobileList = screen.getByTestId('customer-mobile-list');
+    fireEvent.click(within(mobileList).getByRole('button', { name: /^text$/i }));
+
+    expect(await screen.findByText(/0 of 25 direct messages left/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /limit reached/i })).toBeDisabled();
   });
 
   it('shows SMS status badges for opted-out, enabled, and denied customers', () => {

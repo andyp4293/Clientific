@@ -11,6 +11,7 @@ export interface PublicPricingPlan {
     customers: number;
     staff: number;
     services: number;
+    directMessages: number;
   };
   popular: boolean;
   selfServe: boolean;
@@ -37,6 +38,7 @@ const AI_RECEPTIONIST_FEATURES = [
 const STARTER_PLAN_FEATURES = [
   ...CORE_PLAN_FEATURES,
   'Up to 10 staff profiles',
+  '25 direct customer SMS messages / month',
   '14-day free trial',
 ];
 
@@ -44,6 +46,7 @@ const PRO_PLAN_FEATURES = [
   ...CORE_PLAN_FEATURES,
   ...AI_RECEPTIONIST_FEATURES,
   'Up to 50 staff profiles',
+  '100 direct customer SMS messages / month',
   '14-day free trial',
 ];
 
@@ -51,6 +54,7 @@ const PREMIUM_PLAN_FEATURES = [
   ...CORE_PLAN_FEATURES,
   ...AI_RECEPTIONIST_FEATURES,
   'Unlimited staff profiles',
+  '500 direct customer SMS messages / month',
   '14-day free trial',
 ];
 
@@ -58,18 +62,21 @@ const STARTER_PLAN_LIMITS = {
   customers: 5000,
   staff: 10,
   services: 100,
+  directMessages: 25,
 };
 
 const PRO_PLAN_LIMITS = {
   customers: 5000,
   staff: 50,
   services: 100,
+  directMessages: 100,
 };
 
 const PREMIUM_PLAN_LIMITS = {
   customers: 5000,
   staff: Infinity,
   services: 100,
+  directMessages: 500,
 };
 
 export const PRICING_PLANS: Record<PricingPlanKey, PublicPricingPlan> = {

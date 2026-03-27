@@ -17,10 +17,12 @@ vi.mock('@/lib/prisma', () => ({
     business: {
       findUnique: vi.fn(),
     },
-    smsLog: {
-      create: vi.fn(),
-    },
   },
+}));
+
+vi.mock('@/lib/direct-message-quota', () => ({
+  reserveDirectMessageQuota: vi.fn(),
+  finalizeDirectMessageQuotaReservation: vi.fn(),
 }));
 
 vi.mock('@/lib/twilio', async () => {
@@ -33,13 +35,19 @@ vi.mock('@/lib/twilio', async () => {
 
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
+import {
+  finalizeDirectMessageQuotaReservation,
+  reserveDirectMessageQuota,
+} from '@/lib/direct-message-quota';
 import { sendSMS } from '@/lib/twilio';
 import { POST } from './route';
 
 const mockGetServerSession = getServerSession as ReturnType<typeof vi.fn>;
 const mockCustomerFindFirst = prisma.customer.findFirst as ReturnType<typeof vi.fn>;
 const mockBusinessFindUnique = prisma.business.findUnique as ReturnType<typeof vi.fn>;
-const mockSmsLogCreate = prisma.smsLog.create as ReturnType<typeof vi.fn>;
+const mockReserveDirectMessageQuota = reserveDirectMessageQuota as ReturnType<typeof vi.fn>;
+const mockFinalizeDirectMessageQuotaReservation =
+  finalizeDirectMessageQuotaReservation as ReturnType<typeof vi.fn>;
 const mockSendSMS = sendSMS as ReturnType<typeof vi.fn>;
 
 function makeRequest(body: Record<string, unknown>) {
@@ -72,14 +80,25 @@ describe('POST /api/customers/[id]/message', () => {
     mockBusinessFindUnique.mockResolvedValue({
       id: 'biz-1',
       name: 'Test Salon',
-      vapiPhoneNumber: '+15557654321',
-      smsAiPhoneNumber: null,
+    });
+    mockReserveDirectMessageQuota.mockResolvedValue({
+      allowed: true,
+      logId: 'log-1',
+      quota: {
+        limit: 25,
+        used: 1,
+        remaining: 24,
+        periodStart: new Date('2026-03-01T00:00:00.000Z'),
+        periodEnd: new Date('2026-04-01T00:00:00.000Z'),
+        isActive: true,
+        plan: 'starter',
+      },
     });
     mockSendSMS.mockResolvedValue({
       success: true,
       sid: 'SM123',
     });
-    mockSmsLogCreate.mockResolvedValue({});
+    mockFinalizeDirectMessageQuotaReservation.mockResolvedValue({});
   });
 
   it('returns 401 when unauthenticated', async () => {
@@ -91,25 +110,52 @@ describe('POST /api/customers/[id]/message', () => {
     expect(mockSendSMS).not.toHaveBeenCalled();
   });
 
-  it('uses the shared SMS sender for direct messages, prefixes the business name, and logs the full outbound message', async () => {
+  it('uses the shared SMS sender, reserves quota, and returns the remaining quota', async () => {
     const response = await POST(makeRequest({ message: 'See you tomorrow.' }), makeParams());
+    const body = await response.json();
 
     expect(response.status).toBe(200);
+    expect(mockReserveDirectMessageQuota).toHaveBeenCalledWith({
+      businessId: 'biz-1',
+      toPhone: '+15551234567',
+      message: 'Test Salon: See you tomorrow. Reply STOP to opt out, HELP for help.',
+    });
     expect(mockSendSMS).toHaveBeenCalledWith({
       to: '+15551234567',
       message: 'Test Salon: See you tomorrow. Reply STOP to opt out, HELP for help.',
     });
-    expect(mockSmsLogCreate).toHaveBeenCalledWith({
-      data: {
-        businessId: 'biz-1',
-        toPhone: '+15551234567',
-        message: 'Test Salon: See you tomorrow. Reply STOP to opt out, HELP for help.',
-        messageType: 'custom',
-        status: 'sent',
-        twilioSid: 'SM123',
-        errorMessage: null,
+    expect(mockFinalizeDirectMessageQuotaReservation).toHaveBeenCalledWith({
+      logId: 'log-1',
+      success: true,
+      sid: 'SM123',
+      error: null,
+    });
+    expect(body.quota.remaining).toBe(24);
+  });
+
+  it('returns a quota-specific 403 when the monthly direct message limit is reached', async () => {
+    mockReserveDirectMessageQuota.mockResolvedValue({
+      allowed: false,
+      code: 'DIRECT_MESSAGE_LIMIT_REACHED',
+      error: 'Monthly direct message limit reached for this subscription period',
+      quota: {
+        limit: 25,
+        used: 25,
+        remaining: 0,
+        periodStart: new Date('2026-03-01T00:00:00.000Z'),
+        periodEnd: new Date('2026-04-01T00:00:00.000Z'),
+        isActive: true,
+        plan: 'starter',
       },
     });
+
+    const response = await POST(makeRequest({ message: 'See you tomorrow.' }), makeParams());
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.code).toBe('DIRECT_MESSAGE_LIMIT_REACHED');
+    expect(body.quota.remaining).toBe(0);
+    expect(mockSendSMS).not.toHaveBeenCalled();
   });
 
   it('blocks direct messages when the customer has opted out of SMS', async () => {
@@ -127,6 +173,30 @@ describe('POST /api/customers/[id]/message', () => {
     expect(response.status).toBe(400);
     expect(body.error).toMatch(/opted out/i);
     expect(mockSendSMS).not.toHaveBeenCalled();
-    expect(mockSmsLogCreate).not.toHaveBeenCalled();
+    expect(mockReserveDirectMessageQuota).not.toHaveBeenCalled();
+  });
+
+  it('returns a subscription-required response when the business is inactive', async () => {
+    mockReserveDirectMessageQuota.mockResolvedValue({
+      allowed: false,
+      code: 'SUBSCRIPTION_REQUIRED',
+      error: 'Active subscription required',
+      quota: {
+        limit: 25,
+        used: 0,
+        remaining: 25,
+        periodStart: new Date('2026-03-01T00:00:00.000Z'),
+        periodEnd: new Date('2026-04-01T00:00:00.000Z'),
+        isActive: false,
+        plan: 'starter',
+      },
+    });
+
+    const response = await POST(makeRequest({ message: 'See you tomorrow.' }), makeParams());
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.code).toBe('SUBSCRIPTION_REQUIRED');
+    expect(mockSendSMS).not.toHaveBeenCalled();
   });
 });

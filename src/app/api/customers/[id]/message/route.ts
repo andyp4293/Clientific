@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import {
+  finalizeDirectMessageQuotaReservation,
+  reserveDirectMessageQuota,
+} from '@/lib/direct-message-quota';
 import { formatDirectCustomerMessageSMS, sendSMS } from '@/lib/twilio';
 
 const MAX_MESSAGE_LENGTH = 500;
@@ -81,21 +85,40 @@ export async function POST(
       message: rawMessage,
     });
 
+    const quotaReservation = await reserveDirectMessageQuota({
+      businessId,
+      toPhone: customer.phone,
+      message,
+    });
+
+    if (!quotaReservation.allowed) {
+      const status =
+        quotaReservation.code === 'DIRECT_MESSAGE_LIMIT_REACHED'
+          ? 403
+          : quotaReservation.code === 'SUBSCRIPTION_REQUIRED'
+            ? 403
+            : 404;
+
+      return NextResponse.json(
+        {
+          error: quotaReservation.error,
+          code: quotaReservation.code,
+          quota: quotaReservation.quota ?? null,
+        },
+        { status },
+      );
+    }
+
     const smsResult = await sendSMS({
       to: customer.phone,
       message,
     });
 
-    await prisma.smsLog.create({
-      data: {
-        businessId,
-        toPhone: customer.phone,
-        message,
-        messageType: 'custom',
-        status: smsResult.success ? 'sent' : 'failed',
-        twilioSid: smsResult.sid ?? null,
-        errorMessage: smsResult.error ?? null,
-      },
+    await finalizeDirectMessageQuotaReservation({
+      logId: quotaReservation.logId,
+      success: smsResult.success,
+      sid: smsResult.sid ?? null,
+      error: smsResult.error ?? null,
     });
 
     if (!smsResult.success) {
@@ -105,7 +128,10 @@ export async function POST(
       );
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      quota: quotaReservation.quota,
+    });
   } catch (error: any) {
     console.error('POST /api/customers/[id]/message error:', error);
     return NextResponse.json(

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from './prisma';
 import { PRICING_PLANS } from './stripe';
 import { unstable_cache } from 'next/cache';
-import { getPricingPlanKey, normalizeSubscriptionPlan } from './plan-utils';
+import { getPricingPlanKey } from './plan-utils';
 import {
   canAccessAiReceptionist,
   requiresPlanUpgrade,
@@ -33,6 +33,18 @@ function getCachedSubscriptionStatus(businessId: string) {
   )();
 }
 
+export function isSubscriptionCurrentlyActive(
+  subscriptionStatus: string | null | undefined,
+  trialEndsAt: Date | null | undefined,
+  now: Date = new Date(),
+): boolean {
+  if (subscriptionStatus === 'trialing' && trialEndsAt) {
+    return now < new Date(trialEndsAt);
+  }
+
+  return subscriptionStatus === 'active';
+}
+
 /**
  * Check if a business has an active subscription (including trial)
  */
@@ -41,13 +53,10 @@ export async function hasActiveSubscription(businessId: string): Promise<boolean
 
   if (!business) return false;
 
-  // Allow access during trial
-  if (business.subscriptionStatus === 'trialing' && business.trialEndsAt) {
-    return new Date() < new Date(business.trialEndsAt);
-  }
-
-  // Allow access if subscription is active
-  return business.subscriptionStatus === 'active';
+  return isSubscriptionCurrentlyActive(
+    business.subscriptionStatus,
+    business.trialEndsAt,
+  );
 }
 
 /**

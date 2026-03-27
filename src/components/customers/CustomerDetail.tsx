@@ -16,6 +16,14 @@ type SmsLog = {
   message: string;
 };
 
+type DirectMessageQuota = {
+  limit: number;
+  used: number;
+  remaining: number;
+  periodEnd: string;
+  isActive: boolean;
+};
+
 type Customer = {
   id: string;
   name: string;
@@ -125,6 +133,7 @@ export default function CustomerDetail({
   });
 
   const smsLogs: SmsLog[] = smsData?.logs ?? [];
+  const directMessageQuota: DirectMessageQuota | null = smsData?.quota ?? null;
 
   return (
     <>
@@ -391,17 +400,41 @@ export default function CustomerDetail({
                     <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                       View prior SMS activity and send one-off texts to this customer.
                     </p>
+                    {directMessageQuota && (
+                      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        {directMessageQuota.remaining} of {directMessageQuota.limit} direct customer
+                        {" "}messages left this period. Resets{" "}
+                        {format(new Date(directMessageQuota.periodEnd), "MMM d, yyyy")}.
+                      </p>
+                    )}
                   </div>
                   {canSendCustomSms && (
                     <button
                       type="button"
                       onClick={() => setIsMessageModalOpen(true)}
+                      disabled={Boolean(directMessageQuota && directMessageQuota.remaining <= 0)}
                       className="btn-primary w-full sm:w-auto"
                     >
-                      Send Text
+                      {directMessageQuota && directMessageQuota.remaining <= 0
+                        ? "Direct Message Limit Reached"
+                        : "Send Text"}
                     </button>
                   )}
                 </div>
+
+                {directMessageQuota && (
+                  <div
+                    className={`mb-4 rounded-xl border px-4 py-3 text-sm ${
+                      directMessageQuota.remaining > 0
+                        ? "border-primary/20 bg-primary/[0.05] text-gray-700 dark:border-primary/30 dark:bg-primary/[0.08] dark:text-gray-200"
+                        : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300"
+                    }`}
+                  >
+                    {directMessageQuota.remaining > 0
+                      ? "Direct customer texts count against your plan’s monthly message allowance."
+                      : "This plan’s monthly direct customer message allowance has been used up for the current period."}
+                  </div>
+                )}
 
                 {!customerRecord.phone ? (
                   <p className="text-gray-500 dark:text-gray-400">
