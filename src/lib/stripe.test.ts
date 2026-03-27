@@ -54,15 +54,24 @@ describe('stripe billing config', () => {
     expect(PRICING_PLANS.PRO.compareAtPrice).toBe(99);
     expect(PRICING_PLANS.PREMIUM.price).toBe(99);
     expect(PRICING_PLANS.PREMIUM.compareAtPrice).toBe(149);
-    expect(PRICING_PLANS.PRO.features).toEqual(PRICING_PLANS.PREMIUM.features);
     expect(
       PRICING_PLANS.STARTER.features.some((feature) => /ai receptionist/i.test(feature))
     ).toBe(false);
     expect(
       PRICING_PLANS.PRO.features.some((feature) => /ai receptionist/i.test(feature))
     ).toBe(true);
-    expect(PRICING_PLANS.STARTER.limits).toEqual(PRICING_PLANS.PRO.limits);
-    expect(PRICING_PLANS.PRO.limits).toEqual(PRICING_PLANS.PREMIUM.limits);
+    expect(
+      PRICING_PLANS.STARTER.features.some((feature) => /10 staff profiles/i.test(feature))
+    ).toBe(true);
+    expect(
+      PRICING_PLANS.PRO.features.some((feature) => /50 staff profiles/i.test(feature))
+    ).toBe(true);
+    expect(
+      PRICING_PLANS.PREMIUM.features.some((feature) => /unlimited staff profiles/i.test(feature))
+    ).toBe(true);
+    expect(PRICING_PLANS.STARTER.limits.staff).toBe(10);
+    expect(PRICING_PLANS.PRO.limits.staff).toBe(50);
+    expect(PRICING_PLANS.PREMIUM.limits.staff).toBe(Infinity);
     expect(PRICING_PLANS.STARTER.selfServe).toBe(true);
     expect(PRICING_PLANS.PRO.selfServe).toBe(true);
     expect(PRICING_PLANS.PREMIUM.selfServe).toBe(true);

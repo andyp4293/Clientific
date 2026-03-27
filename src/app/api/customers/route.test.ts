@@ -24,11 +24,11 @@ vi.mock('@/lib/stripe', () => ({
   PRICING_PLANS: {
     STARTER: {
       name: 'Starter',
-      limits: { customers: 100, staff: 2, services: 10 },
+      limits: { customers: 100, staff: 10, services: 10 },
     },
     PRO: {
       name: 'Pro',
-      limits: { customers: 1000, staff: 10, services: 50 },
+      limits: { customers: 1000, staff: 50, services: 50 },
     },
     PREMIUM: {
       name: 'Premium',

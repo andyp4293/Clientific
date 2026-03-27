@@ -29,8 +29,8 @@ vi.mock('@/lib/prisma', () => ({
 vi.mock('@/lib/stripe', () => ({
   stripe: {},
   PRICING_PLANS: {
-    STARTER: { name: 'Starter', limits: { customers: 100, staff: 2, services: 10 } },
-    PRO: { name: 'Pro', limits: { customers: 1000, staff: 10, services: 50 } },
+    STARTER: { name: 'Starter', limits: { customers: 100, staff: 10, services: 10 } },
+    PRO: { name: 'Pro', limits: { customers: 1000, staff: 50, services: 50 } },
     PREMIUM: { name: 'Premium', limits: { customers: Infinity, staff: Infinity, services: Infinity } },
   },
 }));

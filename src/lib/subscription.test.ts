@@ -14,8 +14,8 @@ vi.mock('@/lib/stripe', () => ({
   stripe: {},
   PRICING_PLANS: {
     TRIAL: { name: 'Trial', limits: { customers: 0, staff: 0, services: 0 } },
-    STARTER: { name: 'Starter', limits: { customers: 100, staff: 2, services: 10 } },
-    PRO: { name: 'Pro', limits: { customers: 1000, staff: 10, services: 50 } },
+    STARTER: { name: 'Starter', limits: { customers: 100, staff: 10, services: 10 } },
+    PRO: { name: 'Pro', limits: { customers: 1000, staff: 50, services: 50 } },
     PREMIUM: { name: 'Premium', limits: { customers: Infinity, staff: Infinity, services: Infinity } },
   },
 }));
@@ -143,5 +143,59 @@ describe('checkPlanLimit', () => {
     mockFindUnique.mockResolvedValue(null);
     const result = await checkPlanLimit('biz-1', 'customers');
     expect(result.allowed).toBe(false);
+  });
+
+  it('returns allowed: true for starter plan under 10 staff profiles', async () => {
+    mockFindUnique.mockResolvedValue({
+      subscriptionPlan: 'starter',
+      _count: { customers: 0, staff: 9, services: 0 },
+    });
+    const result = await checkPlanLimit('biz-1', 'staff');
+    expect(result.allowed).toBe(true);
+    expect(result.current).toBe(9);
+    expect(result.limit).toBe(10);
+  });
+
+  it('returns allowed: false for starter plan at 10 staff profiles', async () => {
+    mockFindUnique.mockResolvedValue({
+      subscriptionPlan: 'starter',
+      _count: { customers: 0, staff: 10, services: 0 },
+    });
+    const result = await checkPlanLimit('biz-1', 'staff');
+    expect(result.allowed).toBe(false);
+    expect(result.current).toBe(10);
+    expect(result.limit).toBe(10);
+  });
+
+  it('returns allowed: true for pro plan under 50 staff profiles', async () => {
+    mockFindUnique.mockResolvedValue({
+      subscriptionPlan: 'pro',
+      _count: { customers: 0, staff: 49, services: 0 },
+    });
+    const result = await checkPlanLimit('biz-1', 'staff');
+    expect(result.allowed).toBe(true);
+    expect(result.current).toBe(49);
+    expect(result.limit).toBe(50);
+  });
+
+  it('returns allowed: false for pro plan at 50 staff profiles', async () => {
+    mockFindUnique.mockResolvedValue({
+      subscriptionPlan: 'pro',
+      _count: { customers: 0, staff: 50, services: 0 },
+    });
+    const result = await checkPlanLimit('biz-1', 'staff');
+    expect(result.allowed).toBe(false);
+    expect(result.current).toBe(50);
+    expect(result.limit).toBe(50);
+  });
+
+  it('returns allowed: true for premium plan staff regardless of size', async () => {
+    mockFindUnique.mockResolvedValue({
+      subscriptionPlan: 'premium',
+      _count: { customers: 0, staff: 9999, services: 0 },
+    });
+    const result = await checkPlanLimit('biz-1', 'staff');
+    expect(result.allowed).toBe(true);
+    expect(result.limit).toBe(Infinity);
   });
 });

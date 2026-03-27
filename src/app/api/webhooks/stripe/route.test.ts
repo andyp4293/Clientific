@@ -62,17 +62,17 @@ vi.mock('@/lib/stripe', async () => {
       STARTER: {
         name: 'Starter', price: 39, compareAtPrice: 59, yearlyPrice: 39,
         priceId: 'price_starter', yearlyPriceId: 'price_starter_yearly',
-        limits: { customers: 5000, staff: 15, services: 100 }, popular: false,
+        limits: { customers: 5000, staff: 10, services: 100 }, popular: false,
       },
       PRO: {
         name: 'Pro', price: 69, compareAtPrice: 99, yearlyPrice: 69,
         priceId: 'price_pro', yearlyPriceId: 'price_pro_yearly',
-        limits: { customers: 5000, staff: 15, services: 100 }, popular: true,
+        limits: { customers: 5000, staff: 50, services: 100 }, popular: true,
       },
       PREMIUM: {
         name: 'Premium', price: 99, compareAtPrice: 149, yearlyPrice: 99,
         priceId: 'price_premium', yearlyPriceId: 'price_premium_yearly',
-        limits: { customers: 5000, staff: 15, services: 100 }, popular: false,
+        limits: { customers: 5000, staff: Infinity, services: 100 }, popular: false,
       },
     },
   };

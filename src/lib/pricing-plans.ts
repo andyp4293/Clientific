@@ -36,18 +36,39 @@ const AI_RECEPTIONIST_FEATURES = [
 
 const STARTER_PLAN_FEATURES = [
   ...CORE_PLAN_FEATURES,
+  'Up to 10 staff profiles',
   '14-day free trial',
 ];
 
-const PRO_AND_PREMIUM_FEATURES = [
+const PRO_PLAN_FEATURES = [
   ...CORE_PLAN_FEATURES,
   ...AI_RECEPTIONIST_FEATURES,
+  'Up to 50 staff profiles',
   '14-day free trial',
 ];
 
-const SHARED_PLAN_LIMITS = {
+const PREMIUM_PLAN_FEATURES = [
+  ...CORE_PLAN_FEATURES,
+  ...AI_RECEPTIONIST_FEATURES,
+  'Unlimited staff profiles',
+  '14-day free trial',
+];
+
+const STARTER_PLAN_LIMITS = {
   customers: 5000,
-  staff: 15,
+  staff: 10,
+  services: 100,
+};
+
+const PRO_PLAN_LIMITS = {
+  customers: 5000,
+  staff: 50,
+  services: 100,
+};
+
+const PREMIUM_PLAN_LIMITS = {
+  customers: 5000,
+  staff: Infinity,
   services: 100,
 };
 
@@ -59,7 +80,7 @@ export const PRICING_PLANS: Record<PricingPlanKey, PublicPricingPlan> = {
     compareAtPrice: 59,
     yearlyPrice: 39,
     features: STARTER_PLAN_FEATURES,
-    limits: SHARED_PLAN_LIMITS,
+    limits: STARTER_PLAN_LIMITS,
     popular: false,
     selfServe: true,
     supportsYearly: false,
@@ -71,8 +92,8 @@ export const PRICING_PLANS: Record<PricingPlanKey, PublicPricingPlan> = {
     price: 69,
     compareAtPrice: 99,
     yearlyPrice: 69,
-    features: PRO_AND_PREMIUM_FEATURES,
-    limits: SHARED_PLAN_LIMITS,
+    features: PRO_PLAN_FEATURES,
+    limits: PRO_PLAN_LIMITS,
     popular: true,
     selfServe: true,
     supportsYearly: false,
@@ -84,8 +105,8 @@ export const PRICING_PLANS: Record<PricingPlanKey, PublicPricingPlan> = {
     price: 99,
     compareAtPrice: 149,
     yearlyPrice: 99,
-    features: PRO_AND_PREMIUM_FEATURES,
-    limits: SHARED_PLAN_LIMITS,
+    features: PREMIUM_PLAN_FEATURES,
+    limits: PREMIUM_PLAN_LIMITS,
     popular: false,
     selfServe: true,
     supportsYearly: false,
