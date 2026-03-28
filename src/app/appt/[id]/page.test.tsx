@@ -11,4 +11,12 @@ describe('Appointment public page source', () => {
     expect(source).toContain('data?.viewerCanManage');
     expect(source).toContain('fallbackHref="/dashboard/appointments"');
   });
+
+  it('passes the full service bundle when loading reschedule slots', () => {
+    const filePath = path.join(process.cwd(), 'src/app/appt/[id]/page.tsx');
+    const source = readFileSync(filePath, 'utf8');
+
+    expect(source).toContain("p.set('serviceIds', serviceIds.join(','))");
+    expect(source).toContain('Your reschedule request has been submitted for review.');
+  });
 });

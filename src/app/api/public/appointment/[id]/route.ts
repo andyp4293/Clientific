@@ -1,9 +1,16 @@
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { NextRequest, NextResponse } from 'next/server';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { getConfiguredAppBaseUrl } from '@/lib/app-url';
+import { validateBusinessHoursForAppointment } from '@/lib/business-hours-validation';
 import { prisma } from '@/lib/prisma';
 import { getSessionBusinessId } from '@/lib/session-business';
-import { sendAppointmentCancellation, sendAppointmentRescheduled } from '@/lib/twilio';
+import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
+import { weekdayIndexInTimeZone } from '@/lib/timezone';
+import {
+  sendAppointmentCancellation,
+  sendAppointmentConfirmation,
+} from '@/lib/twilio';
 
 export async function GET(
   _req: NextRequest,
@@ -41,7 +48,6 @@ export async function GET(
     return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
   }
 
-  // Resolve services array from serviceIds (fall back to single service)
   let services: { name: string; price: number | null }[] = [];
   if (appointment.serviceIds.length > 0) {
     services = await prisma.service.findMany({
@@ -51,7 +57,7 @@ export async function GET(
   } else if (appointment.service) {
     services = [appointment.service];
   }
-  const totalPrice = services.reduce((sum, s) => sum + (s.price ?? 0), 0);
+  const totalPrice = services.reduce((sum, service) => sum + (service.price ?? 0), 0);
 
   const session = await getServerSession(authOptions);
   const sessionBusinessId = getSessionBusinessId(session);
@@ -76,9 +82,34 @@ export async function PATCH(
     select: {
       status: true,
       startTime: true,
+      shortId: true,
+      serviceId: true,
+      serviceIds: true,
+      staffId: true,
+      staff: { select: { fullName: true } },
       service: { select: { name: true } },
-      customer: { select: { name: true, phone: true, smsConsent: true, smsOptedOut: true } },
-      business: { select: { name: true, timezone: true, vapiPhoneNumber: true } },
+      customer: {
+        select: {
+          name: true,
+          phone: true,
+          smsConsent: true,
+          smsOptedOut: true,
+        },
+      },
+      business: {
+        select: {
+          name: true,
+          timezone: true,
+          vapiPhoneNumber: true,
+          businessHours: { select: { hours: true } },
+          closureDates: {
+            select: {
+              date: true,
+              label: true,
+            },
+          },
+        },
+      },
       businessId: true,
       duration: true,
     },
@@ -92,45 +123,128 @@ export async function PATCH(
     return NextResponse.json({ error: 'Appointment already cancelled' }, { status: 409 });
   }
 
-  // Reschedule branch
   if (startTime) {
     const newStart = new Date(startTime);
-    const newEnd = new Date(newStart.getTime() + existing.duration * 60 * 1000);
+    if (Number.isNaN(newStart.getTime())) {
+      return NextResponse.json({ error: 'Invalid start time' }, { status: 400 });
+    }
 
-    const conflict = await prisma.appointment.findFirst({
-      where: {
-        businessId: existing.businessId,
-        status: { in: ['pending', 'scheduled', 'confirmed'] },
-        id: { not: id },
-        startTime: { lt: newEnd },
-        endTime: { gt: newStart },
-      },
+    const newEnd = new Date(newStart.getTime() + existing.duration * 60 * 1000);
+    const requestedServiceIds = Array.from(
+      new Set(
+        [
+          ...(Array.isArray(existing.serviceIds) ? existing.serviceIds : []),
+          ...(existing.serviceId ? [existing.serviceId] : []),
+        ].filter((value): value is string => typeof value === 'string' && value.length > 0)
+      )
+    );
+
+    const businessHoursError = validateBusinessHoursForAppointment({
+      startTime: newStart,
+      endTime: newEnd,
+      timezone: existing.business.timezone,
+      businessHours: existing.business.businessHours?.hours,
+      closureDates: existing.business.closureDates,
     });
 
-    if (conflict) {
-      return NextResponse.json({ error: 'That time slot is no longer available' }, { status: 409 });
+    if (businessHoursError) {
+      return NextResponse.json(
+        { error: businessHoursError.error },
+        { status: businessHoursError.status }
+      );
     }
+
+    if (existing.staffId) {
+      const staffError = await validateBookableStaffSelection({
+        staffId: existing.staffId,
+        businessId: existing.businessId,
+        serviceIds: requestedServiceIds,
+        dayOfWeek: weekdayIndexInTimeZone(newStart, existing.business.timezone),
+        businessHours: existing.business.businessHours?.hours,
+        timezone: existing.business.timezone,
+        startTime: newStart,
+        endTime: newEnd,
+      });
+
+      if (staffError) {
+        return NextResponse.json({ error: staffError.error }, { status: staffError.status });
+      }
+
+      const conflict = await prisma.appointment.findFirst({
+        where: {
+          businessId: existing.businessId,
+          staffId: existing.staffId,
+          status: { in: ['pending', 'scheduled', 'confirmed'] },
+          id: { not: id },
+          startTime: { lt: newEnd },
+          endTime: { gt: newStart },
+        },
+      });
+
+      if (conflict) {
+        return NextResponse.json(
+          { error: 'That time slot is no longer available' },
+          { status: 409 }
+        );
+      }
+    }
+
+    const services = requestedServiceIds.length
+      ? await prisma.service.findMany({
+          where: { id: { in: requestedServiceIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const servicesById = new Map(services.map((service) => [service.id, service.name] as const));
+    const serviceName =
+      requestedServiceIds
+        .map((serviceId) => servicesById.get(serviceId))
+        .filter((name): name is string => Boolean(name))
+        .join(', ') || existing.service?.name || 'Appointment';
 
     const appointment = await prisma.appointment.update({
       where: { id },
-      data: { startTime: newStart, endTime: newEnd },
+      data: {
+        startTime: newStart,
+        endTime: newEnd,
+        status: 'pending',
+        confirmationSent: false,
+        reminderSent: false,
+      },
     });
 
     if (existing.customer.phone && existing.customer.smsConsent && !existing.customer.smsOptedOut) {
-      sendAppointmentRescheduled(existing.customer.phone, {
+      const appBaseUrl = getConfiguredAppBaseUrl();
+      const appointmentUrl = existing.shortId ? `${appBaseUrl}/a/${existing.shortId}` : undefined;
+      sendAppointmentConfirmation(existing.customer.phone, {
         customerName: existing.customer.name,
-        serviceName: existing.service?.name || 'Appointment',
+        serviceName,
+        staffName: existing.staff?.fullName || 'our team',
+        dateTime: newStart,
         businessName: existing.business.name,
-        newDateTime: newStart,
+        duration: existing.duration,
+        appointmentUrl,
         timezone: existing.business.timezone,
         senderPhone: existing.business.vapiPhoneNumber,
-      }).catch((err) => console.warn('⚠️  Reschedule SMS failed:', err));
+      }).catch((err) => console.warn('Reschedule request SMS failed:', err));
     }
+
+    await prisma.notification.create({
+      data: {
+        businessId: existing.businessId,
+        type: 'new_appointment',
+        title: 'Appointment Reschedule Request',
+        message: `${existing.customer.name} requested to move ${serviceName} to ${newStart.toLocaleString(
+          'en-US',
+          { timeZone: existing.business.timezone ?? undefined }
+        )}`,
+        link: '/dashboard/appointments',
+      },
+    });
 
     return NextResponse.json({ appointment });
   }
 
-  // Cancellation branch
   if (status !== 'cancelled') {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
@@ -140,7 +254,6 @@ export async function PATCH(
     data: { status: 'cancelled' },
   });
 
-  // Send cancellation SMS to customer
   if (existing.customer.phone && existing.customer.smsConsent && !existing.customer.smsOptedOut) {
     sendAppointmentCancellation(existing.customer.phone, {
       customerName: existing.customer.name,
@@ -149,7 +262,7 @@ export async function PATCH(
       businessName: existing.business.name,
       timezone: existing.business.timezone ?? undefined,
       senderPhone: existing.business.vapiPhoneNumber,
-    }).catch((err) => console.warn('⚠️  Cancellation SMS failed:', err));
+    }).catch((err) => console.warn('Cancellation SMS failed:', err));
   }
 
   return NextResponse.json({ appointment });

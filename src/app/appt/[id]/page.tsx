@@ -69,13 +69,19 @@ export default function AppointmentPage() {
       }
 
       const appt: Appointment = data.appointment;
-      const serviceId = appt.serviceIds?.[0];
+      const serviceIds = Array.isArray(appt.serviceIds)
+        ? appt.serviceIds.filter((value) => typeof value === 'string' && value.length > 0)
+        : [];
+      const serviceId = serviceIds[0];
       if (!serviceId) return { slots: [] };
       const p = new URLSearchParams({
         date: rescheduleDateStr,
         serviceId,
         duration: String(appt.duration),
       });
+      if (serviceIds.length > 1) {
+        p.set('serviceIds', serviceIds.join(','));
+      }
       if (appt.staffId) p.set('staffId', appt.staffId);
       const res = await fetch(
         `/api/public/business-by-id/${appt.business.publicId}/available-slots?${p}`
@@ -197,7 +203,7 @@ export default function AppointmentPage() {
         {/* Success banner after reschedule */}
         {rescheduleDone && (
           <div className="mb-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-4 py-3 text-sm text-green-800 dark:text-green-300">
-            Your appointment has been rescheduled!
+            Your reschedule request has been submitted for review.
           </div>
         )}
 
