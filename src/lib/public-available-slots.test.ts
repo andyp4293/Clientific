@@ -152,4 +152,59 @@ describe('public available slots helper', () => {
 
     vi.useRealTimers();
   });
+
+  it('treats pending requests as unavailable time for a specifically selected staff member', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'));
+
+    vi.mocked(prisma.staff.findFirst).mockResolvedValue({
+      fullName: 'Andy',
+      workDays: [2],
+      serviceAssignments: [],
+    } as any);
+    vi.mocked(prisma.appointment.findMany).mockResolvedValue([
+      {
+        startTime: new Date('2026-03-10T14:00:00.000Z'),
+        endTime: new Date('2026-03-10T15:00:00.000Z'),
+        status: 'pending',
+      },
+    ] as any);
+
+    const result = await getPublicAvailableSlots({
+      businessLookup: { slug: 'test-salon' },
+      date: '2026-03-10',
+      serviceId: 'svc-1',
+      staffId: 'stf-1',
+    });
+
+    expect(result.unavailableSlots).toContain('2026-03-10T14:00:00.000Z');
+    expect(prisma.appointment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          staffId: 'stf-1',
+          status: { in: ['pending', 'scheduled', 'confirmed'] },
+        }),
+      })
+    );
+
+    vi.useRealTimers();
+  });
+
+  it('does not block slots from other staff when the customer chooses anyone available', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'));
+
+    const result = await getPublicAvailableSlots({
+      businessLookup: { slug: 'test-salon' },
+      date: '2026-03-10',
+      serviceId: 'svc-1',
+      staffId: 'anyone',
+    });
+
+    expect(result.slots).toContain('2026-03-10T14:00:00.000Z');
+    expect(prisma.staff.findFirst).not.toHaveBeenCalled();
+    expect(prisma.appointment.findMany).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
 });

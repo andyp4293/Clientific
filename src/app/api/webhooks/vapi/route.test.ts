@@ -542,6 +542,83 @@ describe('POST /api/webhooks/vapi', () => {
     );
   });
 
+  it('treats pending staff requests as blocking when creating a named-staff booking', async () => {
+    vi.mocked(prisma.appointment.count).mockResolvedValueOnce(1);
+
+    const res = await POST(
+      req({
+        message: {
+          type: 'tool-calls',
+          phoneNumber: { id: 'phone-1' },
+          call: { id: 'call-1', customer: { number: '+15551234567' } },
+          toolCallList: [
+            {
+              id: 'tool-1',
+              function: {
+                name: 'manage_booking',
+                arguments: {
+                  action: 'createBooking',
+                  slotTime: '2099-03-10T15:00:00.000Z',
+                  customerName: 'Jane',
+                  serviceIds: ['svc-gel', 'svc-pedi'],
+                  staffId: 'staff-1',
+                },
+              },
+            },
+          ],
+        },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.results[0].result).toContain('That time was just taken');
+    expect(prisma.appointment.count).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          staffId: 'staff-1',
+          status: { in: ['pending', 'scheduled', 'confirmed'] },
+        }),
+      })
+    );
+    expect(prisma.appointment.create).not.toHaveBeenCalled();
+  });
+
+  it('does not run staff conflict checks when the booking is for anyone available', async () => {
+    const res = await POST(
+      req({
+        message: {
+          type: 'tool-calls',
+          phoneNumber: { id: 'phone-1' },
+          call: { id: 'call-1', customer: { number: '+15551234567' } },
+          toolCallList: [
+            {
+              id: 'tool-1',
+              function: {
+                name: 'manage_booking',
+                arguments: {
+                  action: 'createBooking',
+                  slotTime: '2099-03-10T15:00:00.000Z',
+                  customerName: 'Jane',
+                  serviceIds: ['svc-gel', 'svc-pedi'],
+                },
+              },
+            },
+          ],
+        },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.results[0].result).toContain('Booking confirmed!');
+    expect(prisma.appointment.count).not.toHaveBeenCalled();
+    expect(prisma.appointment.create).toHaveBeenCalledTimes(1);
+    const createArg = vi.mocked(prisma.appointment.create).mock.calls[0]?.[0];
+    expect(createArg).toBeDefined();
+    expect(createArg?.data).not.toHaveProperty('staffId');
+  });
+
   it('blocks booking when the caller asks for someone who is not on staff', async () => {
     vi.mocked(prisma.aiCallSession.findUnique).mockResolvedValue({
       requestedStaffId: null,
