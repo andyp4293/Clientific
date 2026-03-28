@@ -36,7 +36,9 @@ describe('ReviewsPage', () => {
     render(<ReviewsPage />);
 
     expect(screen.getByDisplayValue(/\/feedback\/CF-8QXLBD/i)).toBeInTheDocument();
-    const surveyLink = screen.getByRole('link', { name: /preview/i });
+    const surveyLink = screen.getByRole('link', { name: /preview survey/i });
     expect(surveyLink).toHaveAttribute('href', '/feedback/CF-8QXLBD');
+    expect(screen.getByRole('button', { name: /copy link/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /show qr code/i })).toBeInTheDocument();
   });
 });
