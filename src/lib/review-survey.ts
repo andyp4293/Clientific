@@ -88,9 +88,9 @@ export function parseReviewSurveyToken(
   }
 }
 
-export function buildReviewSurveyUrl(slug: string, token?: string | null): string {
+export function buildReviewSurveyUrl(identifier: string, token?: string | null): string {
   const baseUrl = getConfiguredAppBaseUrl();
-  const surveyUrl = `${baseUrl}/feedback/${encodeURIComponent(slug)}`;
+  const surveyUrl = `${baseUrl}/feedback/${encodeURIComponent(identifier)}`;
 
   if (!token) return surveyUrl;
   return `${surveyUrl}?token=${encodeURIComponent(token)}`;

@@ -23,6 +23,7 @@ beforeEach(() => {
     id: 'biz-1',
     name: 'Davi Nails',
     slug: 'davi-nails',
+    publicId: 'CF-8QXLBD',
     logoUrl: null,
     googleReviewUrl: 'https://google.com/review',
     yelpUrl: null,
@@ -77,6 +78,32 @@ describe('GET /api/public/review-survey/[slug]', () => {
       id: null,
       name: 'Andy Pham',
     });
+  });
+
+  it('accepts the public store ID in the survey path and still validates the slug token', async () => {
+    mockCustomerFindFirst.mockResolvedValue({
+      id: 'cust-1',
+      name: 'Andy Pham',
+    });
+
+    const token = createReviewSurveyToken({
+      s: 'davi-nails',
+      c: 'cust-1',
+      n: 'Andy Pham',
+      e: Date.now() + 60_000,
+    });
+
+    const req = new NextRequest(
+      `http://localhost/api/public/review-survey/CF-8QXLBD?token=${encodeURIComponent(token)}`
+    );
+    const res = await GET(req, { params: Promise.resolve({ slug: 'CF-8QXLBD' }) });
+
+    expect(res.status).toBe(200);
+    expect(mockBusinessFindUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { publicId: 'CF-8QXLBD' },
+      })
+    );
   });
 });
 

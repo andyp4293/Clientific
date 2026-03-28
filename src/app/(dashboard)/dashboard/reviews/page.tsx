@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 type Business = {
   name: string;
   slug: string | null;
+  publicId: string | null;
   googleReviewUrl: string | null;
   yelpUrl: string | null;
 };
@@ -46,7 +47,13 @@ export default function ReviewsPage() {
 
   const logs = recentData?.logs ?? [];
   const hasLinks = Boolean(business?.googleReviewUrl || business?.yelpUrl);
-  const surveyLink = business?.slug ? `/feedback/${business.slug}` : null;
+  const surveyPath = business?.publicId
+    ? `/feedback/${business.publicId}`
+    : business?.slug
+      ? `/feedback/${business.slug}`
+      : null;
+  const surveyUrl =
+    surveyPath && typeof window !== 'undefined' ? `${window.location.origin}${surveyPath}` : surveyPath;
 
   return (
     <div className="space-y-6">
@@ -62,8 +69,8 @@ export default function ReviewsPage() {
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <section className="card p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
+          <div className="mb-5 flex flex-col items-start justify-between gap-3 sm:flex-row sm:gap-4">
+            <div className="min-w-0 flex-1">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Customer Survey Page
               </h2>
@@ -72,24 +79,49 @@ export default function ReviewsPage() {
                 score sends them to your public review link. Anything lower stays private and lands
                 back here as internal feedback.
               </p>
+              {business?.publicId ? (
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Store ID:{' '}
+                  <span className="font-mono font-semibold text-primary">{business.publicId}</span>
+                </p>
+              ) : null}
             </div>
-            {surveyLink ? (
-              <div className="flex flex-wrap gap-2">
-                <a
-                  href={surveyLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-primary"
-                >
-                  Open survey page
-                </a>
+            {surveyPath ? (
+              <a
+                href={surveyPath}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full flex-shrink-0 items-center justify-center gap-1.5 rounded-xl border border-primary/40 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/5 dark:hover:bg-primary/10 sm:w-auto"
+              >
+                Preview
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  />
+                </svg>
+              </a>
+            ) : null}
+          </div>
+
+          {surveyUrl ? (
+            <div className="space-y-3">
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <input
+                  type="text"
+                  value={surveyUrl}
+                  readOnly
+                  className="flex-1 rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-xs text-gray-700 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 sm:px-4 sm:text-sm"
+                />
                 <button
                   type="button"
-                  className="btn-outline"
+                  className="flex items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-primary px-4 py-2.5 text-xs font-medium text-white transition-colors hover:bg-primary-700 sm:text-sm"
                   onClick={async () => {
-                    if (!surveyLink) return;
+                    if (!surveyUrl) return;
                     try {
-                      await navigator.clipboard.writeText(`${window.location.origin}${surveyLink}`);
+                      await navigator.clipboard.writeText(surveyUrl);
                       setCopiedSurveyLink(true);
                       window.setTimeout(() => setCopiedSurveyLink(false), 1800);
                     } catch {
@@ -97,29 +129,40 @@ export default function ReviewsPage() {
                     }
                   }}
                 >
-                  {copiedSurveyLink ? 'Copied' : 'Copy survey link'}
+                  {copiedSurveyLink ? (
+                    <>
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                        />
+                      </svg>
+                      Copy
+                    </>
+                  )}
                 </button>
               </div>
-            ) : null}
-          </div>
-
-          {surveyLink ? (
-            <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/[0.05] p-4 dark:border-primary/25 dark:bg-primary/[0.08]">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                Public survey link
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                This survey uses the same public store ID pattern as your booking page.
               </p>
-              <a
-                href={surveyLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 block break-all text-sm font-medium text-gray-900 underline decoration-primary/30 underline-offset-4 hover:text-primary dark:text-gray-100"
-              >
-                {surveyLink}
-              </a>
             </div>
           ) : (
             <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-400">
-              Your business slug is still loading, so the survey link is not ready to display yet.
+              Your public survey link is not ready to display yet.
             </div>
           )}
         </section>

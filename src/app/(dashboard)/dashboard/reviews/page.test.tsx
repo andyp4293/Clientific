@@ -12,6 +12,7 @@ vi.mock('@tanstack/react-query', () => ({
           business: {
             name: 'Davi Nails',
             slug: 'davi-nails',
+            publicId: 'CF-8QXLBD',
             googleReviewUrl: null,
             yelpUrl: null,
           },
@@ -34,7 +35,8 @@ describe('ReviewsPage', () => {
   it('shows the public survey link on the reviews page', () => {
     render(<ReviewsPage />);
 
-    const surveyLink = screen.getByRole('link', { name: '/feedback/davi-nails' });
-    expect(surveyLink).toHaveAttribute('href', '/feedback/davi-nails');
+    expect(screen.getByDisplayValue(/\/feedback\/CF-8QXLBD/i)).toBeInTheDocument();
+    const surveyLink = screen.getByRole('link', { name: /preview/i });
+    expect(surveyLink).toHaveAttribute('href', '/feedback/CF-8QXLBD');
   });
 });

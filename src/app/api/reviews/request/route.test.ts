@@ -55,6 +55,7 @@ beforeEach(() => {
     id: 'biz-1',
     name: 'Davi Nails',
     slug: 'davi-nails',
+    publicId: 'CF-8QXLBD',
     googleReviewUrl: null,
     yelpUrl: null,
   });
@@ -83,7 +84,7 @@ describe('POST /api/reviews/request', () => {
       expect.objectContaining({
         businessName: 'Davi Nails',
         customerName: 'Andy Pham',
-        surveyUrl: expect.stringContaining('/feedback/davi-nails?token='),
+        surveyUrl: expect.stringContaining('/feedback/CF-8QXLBD?token='),
       })
     );
     expect(mockSmsLogCreate).toHaveBeenCalledWith(
@@ -101,6 +102,7 @@ describe('POST /api/reviews/request', () => {
       id: 'biz-1',
       name: 'Davi Nails',
       slug: null,
+      publicId: null,
       googleReviewUrl: null,
       yelpUrl: null,
     });

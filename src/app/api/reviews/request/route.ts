@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
           id: true,
           name: true,
           slug: true,
+          publicId: true,
           googleReviewUrl: true,
           yelpUrl: true,
         },
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
       n: customer.name || undefined,
       e: Date.now() + 1000 * 60 * 60 * 24 * 30,
     });
-    const surveyUrl = buildReviewSurveyUrl(business.slug, surveyToken);
+    const surveyUrl = buildReviewSurveyUrl(business.publicId || business.slug, surveyToken);
 
     const result = await sendReviewRequest(customer.phone, {
       businessName: business.name,

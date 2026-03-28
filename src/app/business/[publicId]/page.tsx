@@ -374,7 +374,7 @@ export default function BusinessInfoPage() {
               Visited recently? Share your experience directly with {business.name}.
             </p>
             <Link
-              href={`/feedback/${business.slug}`}
+              href={`/feedback/${business.publicId ?? business.slug}`}
               className="mt-4 inline-flex items-center justify-center rounded-full border border-primary/25 bg-primary/[0.08] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/[0.12] dark:border-primary/30 dark:bg-primary/[0.12]"
             >
               Leave feedback

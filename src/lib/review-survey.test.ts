@@ -45,9 +45,9 @@ describe('review survey token helpers', () => {
       e: Date.now() + 60_000,
     });
 
-    expect(buildReviewSurveyUrl('test-salon')).toContain('/feedback/test-salon');
-    expect(buildReviewSurveyUrl('test-salon', token)).toContain(
-      `/feedback/test-salon?token=${encodeURIComponent(token)}`
+    expect(buildReviewSurveyUrl('CF-123ABC')).toContain('/feedback/CF-123ABC');
+    expect(buildReviewSurveyUrl('CF-123ABC', token)).toContain(
+      `/feedback/CF-123ABC?token=${encodeURIComponent(token)}`
     );
   });
 });

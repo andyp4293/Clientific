@@ -5,13 +5,18 @@ import {
   type ReviewSurveyTokenPayload,
 } from '@/lib/review-survey';
 
-async function getBusinessBySlug(slug: string) {
+function isPublicBusinessId(value: string): boolean {
+  return /^[A-Z]{2}-[A-Z0-9]{6}$/.test(value);
+}
+
+async function getBusinessByIdentifier(identifier: string) {
   return prisma.business.findUnique({
-    where: { slug },
+    where: isPublicBusinessId(identifier) ? { publicId: identifier } : { slug: identifier },
     select: {
       id: true,
       name: true,
       slug: true,
+      publicId: true,
       logoUrl: true,
       googleReviewUrl: true,
       yelpUrl: true,
@@ -50,14 +55,14 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const { slug } = await params;
-    const business = await getBusinessBySlug(slug);
+    const { slug: identifier } = await params;
+    const business = await getBusinessByIdentifier(identifier);
 
     if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
-    const parsedToken = getParsedToken(req.nextUrl.searchParams.get('token'), slug);
+    const parsedToken = getParsedToken(req.nextUrl.searchParams.get('token'), business.slug);
     const customer = await getMatchedCustomer({
       parsedToken,
       businessId: business.id,
@@ -95,20 +100,23 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const { slug } = await params;
+    const { slug: identifier } = await params;
     const body = await req.json();
     const rating = Number(body?.rating);
     const feedback = typeof body?.feedback === 'string' ? body.feedback.trim() : '';
-    const parsedToken = getParsedToken(typeof body?.token === 'string' ? body.token : null, slug);
 
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
       return NextResponse.json({ error: 'Rating must be between 1 and 5' }, { status: 400 });
     }
 
-    const business = await getBusinessBySlug(slug);
+    const business = await getBusinessByIdentifier(identifier);
     if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
+    const parsedToken = getParsedToken(
+      typeof body?.token === 'string' ? body.token : null,
+      business.slug,
+    );
 
     const customer = await getMatchedCustomer({
       parsedToken,
