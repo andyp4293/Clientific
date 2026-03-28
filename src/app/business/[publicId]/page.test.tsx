@@ -23,6 +23,9 @@ describe('public business profile page source', () => {
     const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
 
     expect(source).toContain('Location');
+    expect(source).toContain('Customer Feedback');
+    expect(source).toContain('Leave feedback');
+    expect(source).toContain("href={`/feedback/${business.slug}`}");
     expect(source).not.toContain('mailto:');
     expect(source).not.toContain('tel:');
     expect(source).not.toContain('Mail');

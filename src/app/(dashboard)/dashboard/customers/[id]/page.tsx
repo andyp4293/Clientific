@@ -79,8 +79,6 @@ export default async function CustomerDetailPage({
   const business = await prisma.business.findUnique({
     where: { id: session.user.businessId },
     select: {
-      googleReviewUrl: true,
-      yelpUrl: true,
       customerGroups: {
         orderBy: [{ name: "asc" }],
         select: {
@@ -96,8 +94,6 @@ export default async function CustomerDetailPage({
     <CustomerDetail
       customer={customerWithServiceDisplay}
       groups={business?.customerGroups ?? []}
-      googleReviewUrl={business?.googleReviewUrl}
-      yelpUrl={business?.yelpUrl}
     />
   );
 }

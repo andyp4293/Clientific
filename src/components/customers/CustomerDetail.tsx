@@ -93,8 +93,6 @@ const messageTypeLabels: Record<string, string> = {
 export default function CustomerDetail({
   customer,
   groups,
-  googleReviewUrl,
-  yelpUrl,
 }: {
   customer: Customer;
   groups: Array<{
@@ -102,8 +100,6 @@ export default function CustomerDetail({
     name: string;
     promotionSmsEnabled: boolean;
   }>;
-  googleReviewUrl?: string | null;
-  yelpUrl?: string | null;
 }) {
   const [customerRecord, setCustomerRecord] = useState(customer);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -120,7 +116,7 @@ export default function CustomerDetail({
   const canSendCustomSms = Boolean(
     customerRecord.phone && customerRecord.smsConsent && !customerRecord.smsOptedOut
   );
-  const canRequestReview = canSendCustomSms && Boolean(googleReviewUrl || yelpUrl);
+  const canRequestReview = canSendCustomSms;
 
   const { data: smsData, isLoading: smsLoading, refetch: refetchSmsLogs } = useQuery({
     queryKey: ["sms-logs", customerRecord.id],

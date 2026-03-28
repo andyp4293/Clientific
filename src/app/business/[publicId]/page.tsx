@@ -365,6 +365,21 @@ export default function BusinessInfoPage() {
               </div>
             </section>
           )}
+
+          <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+            <h2 className="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">
+              Customer Feedback
+            </h2>
+            <p className="text-sm leading-6 text-gray-600 dark:text-gray-400">
+              Visited recently? Share your experience directly with {business.name}.
+            </p>
+            <Link
+              href={`/feedback/${business.slug}`}
+              className="mt-4 inline-flex items-center justify-center rounded-full border border-primary/25 bg-primary/[0.08] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/[0.12] dark:border-primary/30 dark:bg-primary/[0.12]"
+            >
+              Leave feedback
+            </Link>
+          </section>
         </aside>
       </div>
     </div>

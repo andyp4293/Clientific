@@ -129,8 +129,10 @@ describe('twilio sms formatting', () => {
     const message = formatReviewRequestSMS({
       customerName: 'Jane',
       businessName: 'Test Salon',
-      googleReviewUrl: 'https://example.com/review',
+      surveyUrl: 'https://clientific.app/feedback/test-salon?token=abc123',
     });
+    expect(message).toContain('quick rating');
+    expect(message).toContain('https://clientific.app/feedback/test-salon?token=abc123');
     expect(message).toContain(FOOTER);
   });
 

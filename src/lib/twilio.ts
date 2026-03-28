@@ -83,8 +83,7 @@ interface RescheduleDetails {
 interface ReviewRequestDetails {
   businessName: string;
   customerName: string;
-  googleReviewUrl?: string | null;
-  yelpUrl?: string | null;
+  surveyUrl: string;
 }
 
 interface DealClaimCodeDetails {
@@ -364,8 +363,7 @@ export async function sendAppointmentRescheduled(
 }
 
 export function formatReviewRequestSMS(details: ReviewRequestDetails): string {
-  const link = details.googleReviewUrl || details.yelpUrl || '';
-  const message = `${details.businessName}: Hi ${details.customerName}, thank you for your visit! We'd love your feedback. ${link}`;
+  const message = `${details.businessName}: Hi ${details.customerName}, thank you for your visit. We would love a quick rating and any feedback you want to share: ${details.surveyUrl}`;
   return appendSmsComplianceFooter(message);
 }
 
