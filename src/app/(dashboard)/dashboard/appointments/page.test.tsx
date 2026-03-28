@@ -31,4 +31,11 @@ describe('appointments page mobile dialog contract', () => {
     expect(source).toContain('searchPlaceholder="Search by name or phone"');
     expect(source).toContain('noResultsLabel="No customers match that search"');
   });
+
+  it('shows the assigned staff name inside month-view appointment chips', () => {
+    const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('{timeStr} {a.customer.name}');
+    expect(source).toContain('with {a.staff.fullName}');
+  });
 });

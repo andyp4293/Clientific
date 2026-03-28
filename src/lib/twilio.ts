@@ -33,6 +33,14 @@ interface AppointmentDetails {
   senderPhone?: string | null;
 }
 
+interface AppointmentBatchDetails {
+  customerName: string;
+  businessName: string;
+  appointmentCount: number;
+  appointmentUrl: string;
+  senderPhone?: string | null;
+}
+
 interface CancellationDetails {
   customerName: string;
   serviceName: string;
@@ -245,6 +253,13 @@ export function formatAppointmentBusinessConfirmedSMS(details: BusinessConfirmed
   return appendSmsComplianceFooter(withUrl);
 }
 
+export function formatAppointmentBatchConfirmationSMS(details: AppointmentBatchDetails): string {
+  const requestLabel = details.appointmentCount === 1 ? 'appointment request' : 'appointment requests';
+  const verb = details.appointmentCount === 1 ? 'is' : 'are';
+  const message = `${details.businessName}: Hi ${details.customerName}, your ${details.appointmentCount} ${requestLabel} ${verb} ready. Review each one here: ${details.appointmentUrl}`;
+  return appendSmsComplianceFooter(message);
+}
+
 export function formatAppointmentReminderSMS(details: ReminderDetails): string {
   const timeStr = formatTime(details.dateTime, details.timezone);
   const message = `Reminder: Appointment tomorrow at ${details.businessName}. ${details.serviceName} with ${details.staffName} at ${timeStr}.`;
@@ -271,6 +286,17 @@ export async function sendAppointmentConfirmation(
   return sendSMS({
     to: phone,
     message: formatAppointmentConfirmationSMS(details),
+    from: details.senderPhone ?? null,
+  });
+}
+
+export async function sendAppointmentBatchConfirmation(
+  phone: string,
+  details: AppointmentBatchDetails
+): Promise<SMSResult> {
+  return sendSMS({
+    to: phone,
+    message: formatAppointmentBatchConfirmationSMS(details),
     from: details.senderPhone ?? null,
   });
 }

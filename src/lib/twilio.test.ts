@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   appendSmsComplianceFooter,
+  formatAppointmentBatchConfirmationSMS,
   formatAppointmentBusinessConfirmedSMS,
   formatAppointmentCancellationSMS,
   formatAppointmentConfirmationSMS,
@@ -44,6 +45,19 @@ describe('twilio sms formatting', () => {
       dateTime: new Date('2026-03-10T14:00:00.000Z'),
       businessName: 'Test Salon',
     });
+    expect(message).toContain(FOOTER);
+  });
+
+  it('formats grouped appointment confirmation links', () => {
+    const message = formatAppointmentBatchConfirmationSMS({
+      customerName: 'Jane',
+      businessName: 'Test Salon',
+      appointmentCount: 3,
+      appointmentUrl: 'https://clientific.app/a/ab1.token.sig',
+    });
+
+    expect(message).toContain('3 appointment requests');
+    expect(message).toContain('https://clientific.app/a/ab1.token.sig');
     expect(message).toContain(FOOTER);
   });
 

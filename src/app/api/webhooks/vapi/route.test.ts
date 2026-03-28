@@ -6,7 +6,7 @@ vi.mock('@/lib/prisma', () => ({
     business: { findFirst: vi.fn() },
     service: { findMany: vi.fn() },
     staff: { findFirst: vi.fn() },
-    appointment: { findMany: vi.fn(), count: vi.fn(), create: vi.fn() },
+    appointment: { findMany: vi.fn(), count: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
     customer: { findFirst: vi.fn(), findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     notification: { create: vi.fn() },
     aiCallSession: { upsert: vi.fn(), findUnique: vi.fn(), deleteMany: vi.fn() },
@@ -16,6 +16,7 @@ vi.mock('@/lib/prisma', () => ({
 
 vi.mock('@/lib/twilio', () => ({
   normalizeOptionalPhoneNumber: vi.fn((value: string | null) => value),
+  sendAppointmentBatchConfirmation: vi.fn().mockResolvedValue({ success: true }),
   sendAppointmentConfirmation: vi.fn().mockResolvedValue({ success: true }),
 }));
 
@@ -24,7 +25,7 @@ vi.mock('@/lib/app-url', () => ({
 }));
 
 import { prisma } from '@/lib/prisma';
-import { sendAppointmentConfirmation } from '@/lib/twilio';
+import { sendAppointmentBatchConfirmation, sendAppointmentConfirmation } from '@/lib/twilio';
 import { POST } from './route';
 
 function req(body: Record<string, unknown>) {
@@ -104,6 +105,7 @@ describe('POST /api/webhooks/vapi', () => {
     vi.mocked(prisma.appointment.findMany).mockResolvedValue([]);
     vi.mocked(prisma.appointment.count).mockResolvedValue(0);
     vi.mocked(prisma.appointment.create).mockResolvedValue({ id: 'appt-1' } as any);
+    vi.mocked(prisma.appointment.updateMany).mockResolvedValue({ count: 0 } as any);
     vi.mocked(prisma.customer.findMany).mockResolvedValue([]);
     vi.mocked(prisma.customer.findUnique).mockResolvedValue(null);
     vi.mocked(prisma.customer.findFirst).mockResolvedValue(null);
@@ -680,6 +682,45 @@ describe('POST /api/webhooks/vapi', () => {
       })
     );
     expect(body.results[0].result).toContain('Gel Manicure and Pedicure');
+  });
+
+  it('sends one grouped confirmation link when an AI call ends after multiple bookings', async () => {
+    vi.mocked(prisma.aiCallSession.findUnique).mockResolvedValueOnce({
+      createdAt: new Date('2026-03-10T14:45:00.000Z'),
+    } as any);
+    vi.mocked(prisma.appointment.findMany).mockResolvedValueOnce([
+      { id: 'appt-1', customer: { name: 'Jane' } },
+      { id: 'appt-2', customer: { name: 'Jane' } },
+      { id: 'appt-3', customer: { name: 'Jane' } },
+    ] as any);
+
+    const res = await POST(
+      req({
+        message: {
+          type: 'status-update',
+          status: 'ended',
+          phoneNumber: { id: 'phone-1' },
+          call: {
+            id: 'call-123',
+            customer: { number: '+15551234567' },
+          },
+        },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(sendAppointmentBatchConfirmation).toHaveBeenCalledWith(
+      '5551234567',
+      expect.objectContaining({
+        businessName: 'Test Salon',
+        appointmentCount: 3,
+      })
+    );
+    expect(sendAppointmentConfirmation).not.toHaveBeenCalled();
+    expect(prisma.appointment.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['appt-1', 'appt-2', 'appt-3'] } },
+      data: { confirmationSent: true },
+    });
   });
 
   it('matches existing AI callers even when the stored customer phone omits +1', async () => {

@@ -459,8 +459,15 @@ function MonthView({
                     const c = STATUS_CONFIG[a.status] ?? STATUS_CONFIG.scheduled;
                     const timeStr = new Date(a.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: timezone });
                     return (
-                      <div key={a.id} className={`text-xs px-1 py-0.5 rounded truncate ${c.badge}`}>
-                        {timeStr} {a.customer.name}
+                      <div key={a.id} className={`rounded px-1 py-1 text-xs leading-tight ${c.badge}`}>
+                        <div className="truncate font-medium">
+                          {timeStr} {a.customer.name}
+                        </div>
+                        {a.staff?.fullName ? (
+                          <div className="truncate opacity-80">
+                            with {a.staff.fullName}
+                          </div>
+                        ) : null}
                       </div>
                     );
                   })}

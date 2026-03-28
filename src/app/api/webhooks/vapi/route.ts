@@ -7,7 +7,11 @@ import {
   buildCustomerPhoneMatchClauses,
   normalizeOptionalStoredPhoneNumber,
 } from '@/lib/phone';
-import { normalizeOptionalPhoneNumber, sendAppointmentConfirmation } from '@/lib/twilio';
+import {
+  normalizeOptionalPhoneNumber,
+  sendAppointmentBatchConfirmation,
+  sendAppointmentConfirmation,
+} from '@/lib/twilio';
 import { validateBusinessHoursForAppointment } from '@/lib/business-hours-validation';
 import { describeBusinessClosure, findBusinessClosureForDate } from '@/lib/business-closures';
 import {
@@ -23,6 +27,11 @@ import {
   getEffectiveStaffDayHours,
   normalizeBusinessHoursRecord,
 } from '@/lib/staff-schedule';
+import { createAppointmentBatchToken } from '@/lib/appointment-confirmation-batches';
+import {
+  buildAiAppointmentBatchWhereInput,
+  getBufferedAppointmentBatchWindow,
+} from '@/lib/ai-appointment-batches';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -684,6 +693,76 @@ async function clearCallSession(body: any): Promise<void> {
   });
 }
 
+async function sendGroupedAiAppointmentConfirmationForEndedCall(body: any): Promise<void> {
+  const phoneNumberId =
+    body?.message?.phoneNumber?.id ?? body?.message?.call?.phoneNumberId;
+  const callId = body?.message?.call?.id;
+  const callerPhone = normalizeOptionalStoredPhoneNumber(body?.message?.call?.customer?.number);
+
+  if (!phoneNumberId || !callId || !callerPhone) return;
+
+  const business = await findAiBusinessByPhoneNumberId(phoneNumberId);
+  if (!business) return;
+
+  const callSession = await prisma.aiCallSession.findUnique({
+    where: { callId },
+    select: { createdAt: true },
+  });
+
+  const window = getBufferedAppointmentBatchWindow(
+    callSession?.createdAt ?? new Date(Date.now() - 20 * 60 * 1000),
+    new Date()
+  );
+
+  const appointmentsNeedingConfirmation = await prisma.appointment.findMany({
+    where: {
+      ...buildAiAppointmentBatchWhereInput(business.id, callerPhone, window.startMs, window.endMs),
+      confirmationSent: false,
+    },
+    select: {
+      id: true,
+      customer: { select: { name: true } },
+    },
+    orderBy: { startTime: 'asc' },
+    take: 20,
+  });
+
+  if (appointmentsNeedingConfirmation.length === 0) return;
+
+  const appUrl = getConfiguredAppBaseUrl();
+  const token = createAppointmentBatchToken({
+    b: business.id,
+    p: callerPhone,
+    s: window.startMs,
+    e: window.endMs,
+  });
+  const confirmationUrl = `${appUrl}/a/${encodeURIComponent(token)}`;
+
+  const result = await sendAppointmentBatchConfirmation(callerPhone, {
+    customerName: appointmentsNeedingConfirmation[0].customer?.name || 'there',
+    businessName: business.name,
+    appointmentCount: appointmentsNeedingConfirmation.length,
+    appointmentUrl: confirmationUrl,
+    senderPhone: business.vapiPhoneNumber,
+  });
+
+  if (!result.success) {
+    console.error('[vapi] grouped appointment SMS send failed:', result.error);
+    return;
+  }
+
+  await prisma.appointment.updateMany({
+    where: {
+      id: {
+        in: appointmentsNeedingConfirmation.map((appointment) => appointment.id),
+      },
+    },
+    data: {
+      confirmationSent: true,
+    },
+  });
+}
+
 async function resolveRequestedStaffContext(
   business: BusinessData,
   callId: string | null,
@@ -1101,21 +1180,25 @@ async function handleCreateBooking(
     },
   });
 
-  // Send SMS confirmation non-blocking (same template as web booking)
+  // For live Vapi calls, we wait until the call ends so multiple bookings can share one link.
   if (callerPhone) {
-    const appUrl = getConfiguredAppBaseUrl();
-    const apptUrl = `${appUrl}/a/${shortId}`;
-    sendAppointmentConfirmation(callerPhone, {
-      customerName,
-      serviceName: serviceSelection.spokenLabel,
-      staffName: staffLine?.fullName || 'our team',
-      dateTime: start,
-      businessName: business.name,
-      duration: serviceSelection.totalDuration,
-      timezone: business.timezone,
-      appointmentUrl: apptUrl,
-      senderPhone: business.vapiPhoneNumber,
-    }).catch((err) => console.error('[vapi] SMS send failed:', err));
+    if (callId) {
+      console.log(`[vapi] deferred grouped confirmation for callId=${callId}`);
+    } else {
+      const appUrl = getConfiguredAppBaseUrl();
+      const apptUrl = `${appUrl}/a/${shortId}`;
+      sendAppointmentConfirmation(callerPhone, {
+        customerName,
+        serviceName: serviceSelection.spokenLabel,
+        staffName: staffLine?.fullName || 'our team',
+        dateTime: start,
+        businessName: business.name,
+        duration: serviceSelection.totalDuration,
+        timezone: business.timezone,
+        appointmentUrl: apptUrl,
+        senderPhone: business.vapiPhoneNumber,
+      }).catch((err) => console.error('[vapi] SMS send failed:', err));
+    }
   }
 
   return `Booking confirmed! ${customerName}, your ${serviceSelection.spokenLabel}${withWhom} is set for ${formattedTime}. ${business.name} will follow up shortly. Is there anything else I can help you with?`;
@@ -1381,6 +1464,7 @@ export async function POST(req: NextRequest) {
       case 'status-update':
         console.log(`[vapi] status-update status=${body?.message?.status} endedReason=${body?.message?.endedReason ?? '-'}`);
         if (body?.message?.status === 'ended') {
+          await sendGroupedAiAppointmentConfirmationForEndedCall(body);
           await clearCallSession(body);
         }
         return NextResponse.json({ received: true });
@@ -1392,6 +1476,7 @@ export async function POST(req: NextRequest) {
           error: body?.message?.inboundPhoneCallDebuggingArtifacts?.error,
           assistantRequestError: body?.message?.inboundPhoneCallDebuggingArtifacts?.assistantRequestError,
         }));
+        await sendGroupedAiAppointmentConfirmationForEndedCall(body);
         await clearCallSession(body);
         return NextResponse.json({ received: true });
 
