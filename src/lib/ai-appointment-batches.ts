@@ -27,10 +27,20 @@ export function buildAiAppointmentBatchWhereInput(
   return {
     businessId,
     source: 'ai',
-    createdAt: {
-      gte: new Date(startMs),
-      lte: new Date(endMs),
-    },
+    OR: [
+      {
+        createdAt: {
+          gte: new Date(startMs),
+          lte: new Date(endMs),
+        },
+      },
+      {
+        updatedAt: {
+          gte: new Date(startMs),
+          lte: new Date(endMs),
+        },
+      },
+    ],
     customer: {
       OR: phoneClauses,
     },
