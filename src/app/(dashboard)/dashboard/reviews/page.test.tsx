@@ -6,13 +6,15 @@ import ReviewsPage from './page';
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(({ queryKey }: { queryKey: string[] }) => {
-    if (queryKey[0] === 'business') {
+    if (queryKey[0] === 'business-info') {
       return {
         data: {
-          name: 'Davi Nails',
-          slug: 'davi-nails',
-          googleReviewUrl: null,
-          yelpUrl: null,
+          business: {
+            name: 'Davi Nails',
+            slug: 'davi-nails',
+            googleReviewUrl: null,
+            yelpUrl: null,
+          },
         },
       };
     }

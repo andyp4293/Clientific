@@ -11,6 +11,10 @@ type Business = {
   yelpUrl: string | null;
 };
 
+type BusinessResponse = {
+  business: Business;
+};
+
 type SmsLog = {
   id: string;
   createdAt: string;
@@ -21,15 +25,15 @@ type SmsLog = {
 export default function ReviewsPage() {
   const [copiedSurveyLink, setCopiedSurveyLink] = useState(false);
 
-  const { data: business } = useQuery<Business>({
-    queryKey: ['business'],
+  const { data: businessData } = useQuery<BusinessResponse>({
+    queryKey: ['business-info'],
     queryFn: async () => {
       const res = await fetch('/api/business');
       if (!res.ok) throw new Error('Failed to fetch business');
-      const body = await res.json();
-      return body.business ?? body;
+      return res.json();
     },
   });
+  const business = businessData?.business;
 
   const { data: recentData, isLoading: recentLoading } = useQuery<{ logs: SmsLog[] }>({
     queryKey: ['reviews-recent'],
