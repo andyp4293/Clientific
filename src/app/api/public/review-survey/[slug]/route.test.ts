@@ -133,8 +133,9 @@ describe('POST /api/public/review-survey/[slug]', () => {
     expect(mockNotificationCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          type: 'review_feedback',
+          type: 'review_feedback_5_star',
           title: 'New 5-star survey response',
+          link: '/dashboard/customers/cust-1',
         }),
       })
     );
@@ -170,8 +171,10 @@ describe('POST /api/public/review-survey/[slug]', () => {
     expect(mockNotificationCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
+          type: 'review_feedback_private',
           title: 'New private customer feedback',
           message: expect.stringContaining('The wait was too long.'),
+          link: '/dashboard/reviews',
         }),
       })
     );

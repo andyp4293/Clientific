@@ -4,6 +4,10 @@ import {
   parseReviewSurveyToken,
   type ReviewSurveyTokenPayload,
 } from '@/lib/review-survey';
+import {
+  REVIEW_SURVEY_PRIVATE_NOTIFICATION_TYPE,
+  REVIEW_SURVEY_TOP_RATING_NOTIFICATION_TYPE,
+} from '@/lib/review-requests';
 
 function isPublicBusinessId(value: string): boolean {
   return /^[A-Z]{2}-[A-Z0-9]{6}$/.test(value);
@@ -136,10 +140,13 @@ export async function POST(
     await prisma.notification.create({
       data: {
         businessId: business.id,
-        type: 'review_feedback',
+        type:
+          rating === 5
+            ? REVIEW_SURVEY_TOP_RATING_NOTIFICATION_TYPE
+            : REVIEW_SURVEY_PRIVATE_NOTIFICATION_TYPE,
         title,
         message,
-        link: '/dashboard/reviews',
+        link: customer ? `/dashboard/customers/${customer.id}` : '/dashboard/reviews',
       },
     });
 

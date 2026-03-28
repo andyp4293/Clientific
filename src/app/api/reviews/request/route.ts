@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
-import { buildReviewSurveyUrl, createReviewSurveyToken } from '@/lib/review-survey';
-import { sendReviewRequest } from '@/lib/twilio';
+import { sendReviewSurveyRequestForCustomer } from '@/lib/review-requests';
 
 export async function POST(req: NextRequest) {
   try {
@@ -58,29 +57,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Business survey link is unavailable' }, { status: 400 });
     }
 
-    const surveyToken = createReviewSurveyToken({
-      s: business.slug,
-      c: customer.id,
-      n: customer.name || undefined,
-      e: Date.now() + 1000 * 60 * 60 * 24 * 30,
-    });
-    const surveyUrl = buildReviewSurveyUrl(business.publicId || business.slug, surveyToken);
-
-    const result = await sendReviewRequest(customer.phone, {
-      businessName: business.name,
-      customerName: customer.name,
-      surveyUrl,
-    });
-
-    await prisma.smsLog.create({
-      data: {
-        businessId: business.id,
-        toPhone: customer.phone,
-        message: result.success ? 'Review survey request sent' : `Failed: ${result.error}`,
-        messageType: 'review_request',
-        status: result.success ? 'sent' : 'failed',
-        twilioSid: result.sid ?? null,
-        errorMessage: result.error ?? null,
+    const result = await sendReviewSurveyRequestForCustomer({
+      business,
+      customer: {
+        id: customer.id,
+        name: customer.name,
+        phone: customer.phone,
+        smsConsent: customer.smsConsent,
+        smsOptedOut: customer.smsOptedOut,
       },
     });
 
@@ -88,7 +72,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: result.error || 'Failed to send SMS' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, surveyUrl });
+    return NextResponse.json({ success: true, surveyUrl: result.surveyUrl });
   } catch (error: any) {
     console.error('POST /api/reviews/request error:', error);
     return NextResponse.json(

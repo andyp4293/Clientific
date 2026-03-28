@@ -131,6 +131,7 @@ describe('twilio sms formatting', () => {
       businessName: 'Test Salon',
       surveyUrl: 'https://clientific.app/feedback/test-salon?token=abc123',
     });
+    expect(message).toContain('thanks for visiting today');
     expect(message).toContain('quick rating');
     expect(message).toContain('https://clientific.app/feedback/test-salon?token=abc123');
     expect(message).toContain(FOOTER);

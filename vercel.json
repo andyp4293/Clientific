@@ -6,6 +6,10 @@
   "regions": ["iad1"],
   "crons": [
     {
+      "path": "/api/cron/review-requests",
+      "schedule": "*/30 * * * *"
+    },
+    {
       "path": "/api/cron/referral-payouts",
       "schedule": "17 5 * * *"
     },

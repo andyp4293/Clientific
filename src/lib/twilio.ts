@@ -15,7 +15,7 @@ interface SendSMSParams {
   from?: string | null;
 }
 
-interface SMSResult {
+export interface SMSResult {
   success: boolean;
   sid?: string;
   error?: string;
@@ -363,7 +363,7 @@ export async function sendAppointmentRescheduled(
 }
 
 export function formatReviewRequestSMS(details: ReviewRequestDetails): string {
-  const message = `${details.businessName}: Hi ${details.customerName}, thank you for your visit. We would love a quick rating and any feedback you want to share: ${details.surveyUrl}`;
+  const message = `${details.businessName}: Hi ${details.customerName}, thanks for visiting today. We would love a quick rating and any feedback you want to share: ${details.surveyUrl}`;
   return appendSmsComplianceFooter(message);
 }
 

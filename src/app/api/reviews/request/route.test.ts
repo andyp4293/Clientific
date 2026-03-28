@@ -13,24 +13,23 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     customer: { findUnique: vi.fn() },
     business: { findUnique: vi.fn() },
-    smsLog: { create: vi.fn() },
   },
 }));
 
-vi.mock('@/lib/twilio', () => ({
-  sendReviewRequest: vi.fn(),
+vi.mock('@/lib/review-requests', () => ({
+  sendReviewSurveyRequestForCustomer: vi.fn(),
 }));
 
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-import { sendReviewRequest } from '@/lib/twilio';
+import { sendReviewSurveyRequestForCustomer } from '@/lib/review-requests';
 import { POST } from './route';
 
 const mockGetServerSession = getServerSession as ReturnType<typeof vi.fn>;
 const mockCustomerFindUnique = prisma.customer.findUnique as ReturnType<typeof vi.fn>;
 const mockBusinessFindUnique = prisma.business.findUnique as ReturnType<typeof vi.fn>;
-const mockSmsLogCreate = prisma.smsLog.create as ReturnType<typeof vi.fn>;
-const mockSendReviewRequest = sendReviewRequest as ReturnType<typeof vi.fn>;
+const mockSendReviewSurveyRequestForCustomer =
+  sendReviewSurveyRequestForCustomer as ReturnType<typeof vi.fn>;
 
 function makeRequest(body: Record<string, unknown>) {
   return new NextRequest('http://localhost/api/reviews/request', {
@@ -59,11 +58,11 @@ beforeEach(() => {
     googleReviewUrl: null,
     yelpUrl: null,
   });
-  mockSendReviewRequest.mockResolvedValue({
+  mockSendReviewSurveyRequestForCustomer.mockResolvedValue({
     success: true,
     sid: 'SM123',
+    surveyUrl: 'https://clientific.app/feedback/CF-8QXLBD?token=abc123',
   });
-  mockSmsLogCreate.mockResolvedValue({ id: 'log-1' });
 });
 
 describe('POST /api/reviews/request', () => {
@@ -79,22 +78,22 @@ describe('POST /api/reviews/request', () => {
     const res = await POST(makeRequest({ customerId: 'cust-1' }));
 
     expect(res.status).toBe(200);
-    expect(mockSendReviewRequest).toHaveBeenCalledWith(
-      '+19087272437',
+    expect(mockSendReviewSurveyRequestForCustomer).toHaveBeenCalledWith(
       expect.objectContaining({
-        businessName: 'Davi Nails',
-        customerName: 'Andy Pham',
-        surveyUrl: expect.stringContaining('/feedback/CF-8QXLBD?token='),
-      })
-    );
-    expect(mockSmsLogCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          messageType: 'review_request',
-          status: 'sent',
+        business: expect.objectContaining({
+          name: 'Davi Nails',
+          slug: 'davi-nails',
+          publicId: 'CF-8QXLBD',
+        }),
+        customer: expect.objectContaining({
+          id: 'cust-1',
+          name: 'Andy Pham',
+          phone: '+19087272437',
         }),
       })
     );
+    const body = await res.json();
+    expect(body.surveyUrl).toContain('/feedback/CF-8QXLBD?token=');
   });
 
   it('returns 400 when the business survey link is unavailable', async () => {
