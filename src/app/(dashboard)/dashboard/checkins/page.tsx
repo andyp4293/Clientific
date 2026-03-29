@@ -671,7 +671,7 @@ export default function CheckInsPage() {
 
   return (
     <div data-testid="checkins-page" className="w-full space-y-5 sm:space-y-6">
-      <section className="brand-hero relative overflow-hidden rounded-[34px] border border-gray-200/80 px-5 py-6 shadow-[0_32px_90px_-50px_rgba(16,72,56,0.22)] dark:border-white/10 sm:px-7 sm:py-7">
+      <section className="brand-hero relative overflow-hidden rounded-[34px] border border-gray-200/80 px-5 py-6 shadow-[0_32px_90px_-50px_rgba(6,17,24,0.48)] dark:border-white/10 sm:px-7 sm:py-7">
         <div className="absolute -right-20 top-0 h-56 w-56 rounded-full bg-white/45 blur-3xl dark:bg-primary/20" />
         <div className="relative space-y-6">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">

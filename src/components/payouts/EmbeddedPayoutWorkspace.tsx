@@ -87,10 +87,14 @@ type WorkspaceErrorState = {
   retryable: boolean;
 };
 
+const MOBILE_CONNECT_OVERLAY_BREAKPOINT = 640;
 const DESKTOP_CONNECT_OVERLAY_BREAKPOINT = 1280;
 
 export function getConnectOverlayType(viewportWidth: number): 'dialog' | 'drawer' {
-  return viewportWidth >= DESKTOP_CONNECT_OVERLAY_BREAKPOINT ? 'drawer' : 'dialog';
+  return viewportWidth < MOBILE_CONNECT_OVERLAY_BREAKPOINT ||
+    viewportWidth >= DESKTOP_CONNECT_OVERLAY_BREAKPOINT
+    ? 'drawer'
+    : 'dialog';
 }
 
 function buildConnectAppearance(isDark: boolean, overlayType: 'dialog' | 'drawer') {

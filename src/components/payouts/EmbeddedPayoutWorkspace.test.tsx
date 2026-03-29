@@ -118,4 +118,19 @@ describe('EmbeddedPayoutWorkspace', () => {
     const config = mockLoadConnectAndInitialize.mock.calls[0][0];
     expect(config.appearance.overlays).toBe('drawer');
   });
+
+  it('uses the drawer overlay on narrow mobile widths so the payout flow feels fullscreen', async () => {
+    setViewportWidth(390);
+
+    await act(async () => {
+      render(<EmbeddedPayoutWorkspace visible onboardingComplete onRefresh={vi.fn()} />);
+    });
+
+    await waitFor(() => {
+      expect(mockLoadConnectAndInitialize).toHaveBeenCalled();
+    });
+
+    const config = mockLoadConnectAndInitialize.mock.calls[0][0];
+    expect(config.appearance.overlays).toBe('drawer');
+  });
 });
