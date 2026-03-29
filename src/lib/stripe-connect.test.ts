@@ -21,6 +21,7 @@ vi.mock('@/lib/stripe', () => ({
     },
     balanceSettings: {
       retrieve: vi.fn(),
+      update: vi.fn(),
     },
     accountLinks: {
       create: vi.fn(),
@@ -39,6 +40,7 @@ import {
   ensureBusinessConnectAccount,
   fetchConnectAccountStatus,
   isRecoverableConnectAccountError,
+  syncBusinessConnectState,
 } from './stripe-connect';
 
 const mockBusinessUpdate = prisma.business.update as ReturnType<typeof vi.fn>;
@@ -47,6 +49,7 @@ const mockAccountRetrieve = stripe.accounts.retrieve as ReturnType<typeof vi.fn>
 const mockAccountCreate = stripe.accounts.create as ReturnType<typeof vi.fn>;
 const mockAccountUpdate = stripe.accounts.update as ReturnType<typeof vi.fn>;
 const mockBalanceSettingsRetrieve = stripe.balanceSettings.retrieve as ReturnType<typeof vi.fn>;
+const mockBalanceSettingsUpdate = stripe.balanceSettings.update as ReturnType<typeof vi.fn>;
 const mockAccountLinkCreate = stripe.accountLinks.create as ReturnType<typeof vi.fn>;
 const mockAccountSessionCreate = stripe.accountSessions.create as ReturnType<typeof vi.fn>;
 
@@ -115,6 +118,18 @@ beforeEach(() => {
       },
     },
   });
+  mockBalanceSettingsUpdate.mockResolvedValue({
+    payments: {
+      payouts: {
+        schedule: {
+          interval: 'manual',
+          monthly_payout_days: [],
+          weekly_payout_days: [],
+        },
+        statement_descriptor: 'CLIENTIFIC',
+      },
+    },
+  });
   mockAccountLinkCreate.mockResolvedValue({ url: 'https://connect.stripe.test/onboarding' });
   mockAccountSessionCreate.mockResolvedValue({ client_secret: 'cas_test_secret' });
 });
@@ -151,6 +166,14 @@ describe('ensureBusinessConnectAccount', () => {
         capabilities: {
           card_payments: { requested: true },
           transfers: { requested: true },
+        },
+        settings: {
+          payouts: {
+            statement_descriptor: 'CLIENTIFIC',
+            schedule: {
+              interval: 'manual',
+            },
+          },
         },
         email: 'owner@example.com',
         metadata: expect.objectContaining({ businessId: 'biz-1' }),
@@ -495,5 +518,67 @@ describe('fetchConnectAccountStatus', () => {
     expect(status.onboardingComplete).toBe(true);
     expect(status.bankAccountConnected).toBe(true);
     expect(status.externalAccount?.last4).toBe('6789');
+  });
+});
+
+describe('syncBusinessConnectState', () => {
+  it('updates old connected-account statement descriptors to the app name', async () => {
+    mockAccountRetrieve
+      .mockResolvedValueOnce({
+        id: 'acct_live',
+        charges_enabled: true,
+        payouts_enabled: true,
+        details_submitted: true,
+        capabilities: {
+          transfers: 'active',
+        },
+      })
+      .mockResolvedValueOnce({
+        id: 'acct_live',
+        charges_enabled: true,
+        payouts_enabled: true,
+        details_submitted: true,
+        capabilities: {
+          transfers: 'active',
+        },
+        external_accounts: {
+          data: [],
+        },
+        requirements: {
+          currently_due: [],
+          eventually_due: [],
+          past_due: [],
+          pending_verification: [],
+          disabled_reason: null,
+        },
+      });
+    mockBalanceSettingsRetrieve.mockResolvedValue({
+      payments: {
+        payouts: {
+          schedule: {
+            interval: 'manual',
+            monthly_payout_days: [],
+            weekly_payout_days: [],
+          },
+          statement_descriptor: 'ANDY PHAM',
+        },
+      },
+    });
+
+    const status = await syncBusinessConnectState('biz-1', 'acct_live');
+
+    expect(mockBalanceSettingsUpdate).toHaveBeenCalledWith(
+      {
+        payments: {
+          payouts: {
+            statement_descriptor: 'CLIENTIFIC',
+          },
+        },
+      },
+      {
+        stripeAccount: 'acct_live',
+      }
+    );
+    expect(status.payoutSchedule.statementDescriptor).toBe('CLIENTIFIC');
   });
 });

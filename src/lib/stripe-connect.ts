@@ -76,8 +76,8 @@ export function isConnectAccountReady(
   );
 }
 
-function buildStatementDescriptor(name: string) {
-  const sanitized = name
+function buildStatementDescriptor() {
+  const sanitized = APP_NAME
     .normalize('NFKD')
     .replace(/[^\x00-\x7F]/g, '')
     .toUpperCase()
@@ -87,6 +87,46 @@ function buildStatementDescriptor(name: string) {
 
   const truncated = sanitized.slice(0, 22).trim();
   return truncated.length >= 5 ? truncated : APP_NAME.toUpperCase();
+}
+
+async function syncConnectStatementDescriptor(
+  accountId: string,
+  payoutSchedule: ConnectPayoutScheduleSummary
+) {
+  const expectedStatementDescriptor = buildStatementDescriptor();
+  const currentStatementDescriptor = payoutSchedule.statementDescriptor?.trim() ?? null;
+
+  if (currentStatementDescriptor === expectedStatementDescriptor) {
+    return payoutSchedule;
+  }
+
+  try {
+    const updatedBalanceSettings = await stripe.balanceSettings.update(
+      {
+        payments: {
+          payouts: {
+            statement_descriptor: expectedStatementDescriptor,
+          },
+        },
+      },
+      {
+        stripeAccount: accountId,
+      }
+    );
+
+    const updatedPayouts = updatedBalanceSettings.payments?.payouts;
+    const updatedSchedule = updatedPayouts?.schedule;
+
+    return {
+      interval: updatedSchedule?.interval ?? payoutSchedule.interval,
+      monthlyPayoutDays: updatedSchedule?.monthly_payout_days ?? payoutSchedule.monthlyPayoutDays,
+      weeklyPayoutDays: updatedSchedule?.weekly_payout_days ?? payoutSchedule.weeklyPayoutDays,
+      statementDescriptor: updatedPayouts?.statement_descriptor ?? expectedStatementDescriptor,
+    };
+  } catch (error) {
+    console.error('Failed to sync Stripe payout statement descriptor:', error);
+    return payoutSchedule;
+  }
 }
 
 function isLegacyApplicationManagedAccount(account: Stripe.Account) {
@@ -179,7 +219,7 @@ function buildConnectAccountRefreshParams(
     business_profile: buildConnectBusinessProfile(business, appUrl),
     settings: {
       payouts: {
-        statement_descriptor: buildStatementDescriptor(business.name),
+        statement_descriptor: buildStatementDescriptor(),
       },
     },
   };
@@ -350,13 +390,21 @@ export async function syncBusinessConnectState(
     stripe.accounts.retrieve(accountId),
     fetchConnectAccountStatus(accountId),
   ]);
+  const payoutSchedule = await syncConnectStatementDescriptor(accountId, status.payoutSchedule);
+  const syncedStatus =
+    payoutSchedule === status.payoutSchedule
+      ? status
+      : {
+          ...status,
+          payoutSchedule,
+        };
 
   await Promise.all([
     syncBusinessConnectAccount(businessId, account),
-    syncBusinessBankAccount(businessId, status.externalAccount),
+    syncBusinessBankAccount(businessId, syncedStatus.externalAccount),
   ]);
 
-  return status;
+  return syncedStatus;
 }
 
 /**
@@ -419,7 +467,7 @@ export async function ensureBusinessConnectAccount(
     },
     settings: {
       payouts: {
-        statement_descriptor: buildStatementDescriptor(business.name),
+        statement_descriptor: buildStatementDescriptor(),
         schedule: {
           interval: 'manual',
         },

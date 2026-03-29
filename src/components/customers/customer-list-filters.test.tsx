@@ -4,15 +4,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import CustomerList from "./CustomerList";
 
-const { mockFetch, mockPush, mockSearchParams } = vi.hoisted(() => ({
+const { mockFetch, mockPush, mockReplace, mockSearchParams } = vi.hoisted(() => ({
   mockFetch: vi.fn(),
   mockPush: vi.fn(),
+  mockReplace: vi.fn(),
   mockSearchParams: vi.fn(() => new URLSearchParams()),
 }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: mockPush,
+    replace: mockReplace,
   }),
   useSearchParams: () => mockSearchParams(),
 }));
@@ -212,5 +214,29 @@ describe("CustomerList filters", () => {
     fireEvent.click(screen.getByRole("button", { name: /janet doe/i }));
 
     expect(searchInput).toHaveValue("Janet Doe");
+  });
+
+  it("keeps the latest typed search text when a slower route update arrives", () => {
+    const { rerender } = render(
+      <CustomerList
+        customers={[baseCustomer]}
+        groups={customerGroups}
+        initialSearch="90"
+      />,
+    );
+
+    const searchInput = screen.getByPlaceholderText(/search by name, email, or phone/i);
+
+    fireEvent.change(searchInput, { target: { value: "9087" } });
+
+    rerender(
+      <CustomerList
+        customers={[baseCustomer]}
+        groups={customerGroups}
+        initialSearch="908"
+      />,
+    );
+
+    expect(searchInput).toHaveValue("9087");
   });
 });

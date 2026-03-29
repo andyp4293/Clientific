@@ -266,10 +266,6 @@ export default function CustomerList({
   }));
 
   useEffect(() => {
-    setSearch(initialSearch);
-  }, [initialSearch]);
-
-  useEffect(() => {
     setCustomerRecords(customers);
   }, [customers]);
 
@@ -296,7 +292,7 @@ export default function CustomerList({
       }
 
       startTransition(() => {
-        router.push(buildCustomersHref(params));
+        router.replace(buildCustomersHref(params));
       });
     }, SEARCH_QUERY_SYNC_DELAY_MS);
 
