@@ -163,6 +163,9 @@ describe('CheckInsPage', () => {
     expect(overlay).not.toBeNull();
     expect(screen.getByText('Check in customer')).toBeInTheDocument();
     expect(screen.getByLabelText('Customer phone number')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('(___) ___-____')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('(555) 123-4567')).not.toBeInTheDocument();
+    expect(screen.queryByText('Phone first. Everything else second.')).not.toBeInTheDocument();
     expect(screen.getByText('Delete')).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /^(?:[0-9]|Clear|Delete)$/ })).toHaveLength(12);
     expect(screen.queryByText('What happens')).not.toBeInTheDocument();
@@ -310,6 +313,7 @@ describe('CheckInsPage', () => {
 
     expect(screen.getByText('Add service or staff when needed')).toBeInTheDocument();
     expect(screen.getAllByTestId('custom-select')).toHaveLength(2);
+    expect(screen.queryByText('Capture detail only when it matters.')).not.toBeInTheDocument();
     expect(screen.queryByText('Amount spent (optional)')).not.toBeInTheDocument();
   });
 });

@@ -338,51 +338,6 @@ export default function CheckInsPage() {
           publicId: businessInfoData.business.publicId,
         }
       : null;
-  const quickStepMeta = useMemo(() => {
-    switch (quickStep) {
-      case "new":
-        return {
-          kicker: "New customer",
-          title: "Add the name and keep moving",
-          body: quickPhoneDisplay
-            ? `No record matched ${quickPhoneDisplay}. Name is required. Email is optional.`
-            : "Add a name now. Email can wait.",
-          items: ["Name required", "Email optional", "Saved for next time"],
-        };
-      case "multiple":
-        return {
-          kicker: "Multiple matches",
-          title: "Choose the right profile",
-          body: quickPhoneDisplay
-            ? `More than one customer matched ${quickPhoneDisplay}. Pick one to finish the check-in.`
-            : "Select the customer to finish the check-in.",
-          items: ["Phone and email shown", "Last visit visible", "Create new if needed"],
-        };
-      case "success":
-        return {
-          kicker: "Checked in",
-          title: "Ready for the next arrival",
-          body: quickSuccess
-            ? `${quickSuccess.customerName} was checked in at ${formatSuccessTime(quickSuccess.checkInTime, timezone)}.`
-            : "The front desk is ready for the next customer.",
-          items: [
-            quickSuccess?.createdCustomer
-              ? "New customer saved"
-              : "Existing profile matched",
-            quickSuccess?.phoneDisplay ?? "Phone captured",
-            `Resets in ${successCountdown}s`,
-          ],
-        };
-      case "phone":
-      default:
-        return {
-          kicker: "Quick mode",
-          title: "Phone first. Everything else second.",
-          body: "Enter a mobile number. Add more detail only when the visit needs it.",
-          items: ["Keyboard ready", "Keypad ready", "Detailed mode stays optional"],
-        };
-    }
-  }, [quickPhoneDisplay, quickStep, quickSuccess, successCountdown, timezone]);
 
   const resetQuickFlow = useCallback(() => {
     setQuickStep("phone");
@@ -1049,45 +1004,7 @@ export default function CheckInsPage() {
 
             <div className="min-h-0 flex-1 overflow-y-auto">
               {mode === "quick" ? (
-                <section className="grid min-h-full gap-0 xl:grid-cols-[0.84fr,1.16fr]">
-                  <div className="brand-hero hidden border-r border-gray-200/80 px-8 py-9 dark:border-white/10 xl:flex xl:flex-col xl:justify-between">
-                    <div className="space-y-6">
-                      <div className="space-y-3">
-                        <p className="brand-hero-kicker text-xs font-semibold uppercase tracking-[0.28em]">
-                          {quickStepMeta.kicker}
-                        </p>
-                        <h2 className="text-4xl font-bold leading-tight text-gray-950 dark:text-white">
-                          {quickStepMeta.title}
-                        </h2>
-                        <p className="brand-hero-muted max-w-xl text-base leading-7">
-                          {quickStepMeta.body}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        {quickStepMeta.items.map((item) => (
-                          <span
-                            key={item}
-                            className="inline-flex rounded-full border border-gray-200/80 bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-gray-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-200"
-                          >
-                            {item}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="brand-hero-card rounded-[26px] p-5">
-                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-                        Desk note
-                      </p>
-                      <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-white/80">
-                        Quick mode is the default path. Use detailed entry only
-                        when the visit needs service or staff attached at
-                        check-in.
-                      </p>
-                    </div>
-                  </div>
-
+                <section className="min-h-full">
                   <div className="px-4 py-5 sm:px-6 sm:py-6 xl:px-8 xl:py-9">
                     {quickStep === "phone" ? (
                       <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center gap-6">
@@ -1116,12 +1033,12 @@ export default function CheckInsPage() {
                               >
                                 Customer phone number
                               </label>
-                              <div className="mt-3 flex min-h-[78px] items-center gap-3 rounded-[24px] border border-gray-200/80 bg-gray-50/85 px-5 transition focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 dark:border-white/10 dark:bg-white/[0.06]">
-                                <span className="shrink-0 text-2xl font-semibold tracking-tight text-gray-500 dark:text-gray-300">
-                                  +1
-                                </span>
-                                <input
-                                  id="quick-checkin-phone"
+                          <div className="mt-3 flex min-h-[78px] items-center gap-3 rounded-[24px] border border-gray-200/80 bg-gray-50/85 px-5 transition focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 dark:border-white/10 dark:bg-white/[0.06]">
+                            <span className="shrink-0 text-2xl font-semibold tracking-tight text-gray-500 dark:text-gray-300">
+                              +1
+                            </span>
+                            <input
+                              id="quick-checkin-phone"
                                   type="tel"
                                   inputMode="numeric"
                                   autoFocus
@@ -1132,8 +1049,8 @@ export default function CheckInsPage() {
                                     )
                                   }
                                   onKeyDown={handleQuickPhoneInputKeyDown}
-                                  placeholder="(555) 123-4567"
-                                  className="w-full border-0 bg-transparent px-0 text-3xl font-bold tracking-tight text-gray-950 outline-none placeholder:text-gray-400 focus:ring-0 dark:text-white dark:placeholder:text-gray-500"
+                                  placeholder="(___) ___-____"
+                                  className="w-full border-0 bg-transparent px-0 text-3xl font-bold tracking-[-0.04em] text-gray-950 outline-none placeholder:text-gray-400 focus:ring-0 dark:text-white dark:placeholder:text-gray-500"
                                 />
                               </div>
                             </div>
@@ -1146,16 +1063,6 @@ export default function CheckInsPage() {
                             </button>
                           </div>
 
-                          <div className="mt-4 flex flex-wrap gap-2">
-                            <span className="inline-flex rounded-full border border-gray-200/80 bg-gray-50/85 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-gray-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-200">
-                              {quickDigits.length}/10 digits
-                            </span>
-                            <span className="inline-flex rounded-full border border-gray-200/80 bg-gray-50/85 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-gray-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-200">
-                              {quickPhoneReady
-                                ? "Ready to continue"
-                                : "Waiting for 10 digits"}
-                            </span>
-                          </div>
                         </div>
 
                         <div className="grid grid-cols-3 gap-3">
@@ -1185,9 +1092,8 @@ export default function CheckInsPage() {
                             {quickLookupError}
                           </div>
                         ) : (
-                          <p className="text-sm text-gray-600 dark:text-gray-300">
-                            Use the keyboard or keypad to enter a 10-digit
-                            mobile number.
+                          <p className="text-center text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Type from the keyboard or use the keypad below.
                           </p>
                         )}
 
@@ -1487,46 +1393,10 @@ export default function CheckInsPage() {
                   </div>
                 </section>
               ) : (
-                <section className="grid min-h-full gap-0 xl:grid-cols-[0.88fr,1.12fr]">
-                  <div className="brand-hero hidden border-r border-gray-200/80 px-8 py-9 dark:border-white/10 xl:flex xl:flex-col xl:justify-between">
-                    <div className="space-y-5">
-                      <div className="space-y-3">
-                        <p className="brand-hero-kicker text-xs font-semibold uppercase tracking-[0.28em]">
-                          Detailed entry
-                        </p>
-                        <h2 className="text-4xl font-bold leading-tight text-gray-950 dark:text-white">
-                          Capture detail only when it matters.
-                        </h2>
-                        <p className="brand-hero-muted max-w-xl text-base leading-7">
-                          Customer is required. Service and staff stay optional
-                          until the visit needs attribution.
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        <span className="inline-flex rounded-full border border-gray-200/80 bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-gray-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-200">
-                          Search by name or phone
-                        </span>
-                        <span className="inline-flex rounded-full border border-gray-200/80 bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-gray-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-200">
-                          Service optional
-                        </span>
-                        <span className="inline-flex rounded-full border border-gray-200/80 bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-gray-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-200">
-                          Staff optional
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="brand-hero-card rounded-[26px] p-5">
-                      <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-white/80">
-                        Use this when a walk-in already needs attribution at
-                        the front desk.
-                      </p>
-                    </div>
-                  </div>
-
+                <section className="min-h-full">
                   <div className="px-4 py-5 sm:px-6 sm:py-6 xl:px-8 xl:py-9">
                     <div className="mx-auto max-w-3xl">
-                      <div className="space-y-2 xl:hidden">
+                      <div className="space-y-2">
                         <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">
                           Detailed entry
                         </p>
@@ -1536,18 +1406,6 @@ export default function CheckInsPage() {
                         <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">
                           Customer is required. Everything else stays optional.
                         </p>
-                      </div>
-
-                      <div className="mt-6 flex flex-wrap gap-2">
-                        <span className="inline-flex rounded-full border border-gray-200/80 bg-white/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300">
-                          Customer required
-                        </span>
-                        <span className="inline-flex rounded-full border border-gray-200/80 bg-white/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300">
-                          Service optional
-                        </span>
-                        <span className="inline-flex rounded-full border border-gray-200/80 bg-white/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300">
-                          Staff optional
-                        </span>
                       </div>
 
                       <form
