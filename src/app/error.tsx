@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { APP_SUPPORT_PATH } from '@/lib/brand';
+import { maybeRecoverFromNavigationError } from '@/lib/error-recovery';
 
 export default function Error({
   error,
@@ -14,6 +15,15 @@ export default function Error({
   useEffect(() => {
     // Log error to console for debugging (not shown to user)
     console.error('Application error:', error);
+
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    maybeRecoverFromNavigationError(error, {
+      storage: window.sessionStorage,
+      reload: () => window.location.reload(),
+    });
   }, [error]);
 
   return (
@@ -69,4 +79,3 @@ export default function Error({
     </div>
   );
 }
-
