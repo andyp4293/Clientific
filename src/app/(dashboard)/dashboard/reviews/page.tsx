@@ -26,7 +26,7 @@ type SmsLog = {
 
 export default function ReviewsPage() {
   const [copiedSurveyLink, setCopiedSurveyLink] = useState(false);
-  const [showQr, setShowQr] = useState(false);
+  const [showQr, setShowQr] = useState(true);
   const qrRef = useRef<HTMLDivElement>(null);
 
   const { data: businessData } = useQuery<BusinessResponse>({

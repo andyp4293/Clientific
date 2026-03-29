@@ -39,6 +39,7 @@ describe('ReviewsPage', () => {
     const surveyLink = screen.getByRole('link', { name: /preview survey/i });
     expect(surveyLink).toHaveAttribute('href', '/feedback/CF-8QXLBD');
     expect(screen.getByRole('button', { name: /copy link/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /show qr code/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /hide qr code/i })).toBeInTheDocument();
+    expect(screen.getByText(/survey qr code/i)).toBeInTheDocument();
   });
 });
