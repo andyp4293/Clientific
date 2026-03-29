@@ -5,6 +5,11 @@ import {
   formatPhoneForDisplay,
   normalizeOptionalStoredPhoneNumber,
 } from '@/lib/phone';
+import {
+  customerHasTopSurveyRating,
+  REVIEW_SURVEY_FOLLOW_UP_DELAY_MS,
+  scheduleCheckInReviewSurveyRequest,
+} from '@/lib/review-requests';
 import { updateCustomerSegment } from '@/lib/segment';
 
 export type CheckInCustomerSummary = {
@@ -220,6 +225,69 @@ export async function createBusinessCheckIn({
       totalSpent: amountSpent ? { increment: amountSpent } : undefined,
     },
   });
+
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      publicId: true,
+    },
+  });
+
+  if (!checkIn.customer.phone || !checkIn.customer.smsConsent || checkIn.customer.smsOptedOut) {
+    await prisma.checkIn.update({
+      where: { id: checkIn.id },
+      data: {
+        feedbackRequestedAt: now,
+      },
+    });
+  } else if (!business?.slug || (!business.publicId && !business.slug)) {
+    await prisma.checkIn.update({
+      where: { id: checkIn.id },
+      data: {
+        feedbackRequestedAt: now,
+      },
+    });
+  } else if (
+    await customerHasTopSurveyRating({
+      businessId,
+      customerId: customer.id,
+    })
+  ) {
+    await prisma.checkIn.update({
+      where: { id: checkIn.id },
+      data: {
+        feedbackRequestedAt: now,
+      },
+    });
+  } else {
+    const surveySendAt = new Date(now.getTime() + REVIEW_SURVEY_FOLLOW_UP_DELAY_MS);
+    const scheduledSurvey = await scheduleCheckInReviewSurveyRequest({
+      business,
+      customer: {
+        id: checkIn.customer.id,
+        name: checkIn.customer.name,
+        phone: checkIn.customer.phone,
+        smsConsent: checkIn.customer.smsConsent,
+        smsOptedOut: checkIn.customer.smsOptedOut,
+      },
+      sendAt: surveySendAt,
+    });
+
+    if (scheduledSurvey.success) {
+      await prisma.checkIn.update({
+        where: { id: checkIn.id },
+        data: {
+          feedbackRequested: true,
+          feedbackRequestedAt: surveySendAt,
+        },
+      });
+    } else {
+      console.error('Failed to schedule post-check-in survey request:', scheduledSurvey.error);
+    }
+  }
 
   updateCustomerSegment(customer.id).catch(console.error);
 

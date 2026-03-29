@@ -4,7 +4,6 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     smsLog: { create: vi.fn() },
     notification: { findFirst: vi.fn() },
-    checkIn: { findMany: vi.fn(), update: vi.fn() },
   },
 }));
 
@@ -16,28 +15,31 @@ vi.mock('@/lib/twilio', async () => {
   };
 });
 
+vi.mock('@/lib/review-request-scheduler', () => ({
+  scheduleReviewRequest: vi.fn(),
+}));
+
 import { prisma } from '@/lib/prisma';
 import { sendReviewRequest } from '@/lib/twilio';
+import { scheduleReviewRequest } from '@/lib/review-request-scheduler';
 import {
   customerHasTopSurveyRating,
-  processPendingCheckInReviewRequests,
   REVIEW_SURVEY_TOP_RATING_NOTIFICATION_TYPE,
+  scheduleCheckInReviewSurveyRequest,
   sendReviewSurveyRequestForCustomer,
 } from './review-requests';
 
 const mockSmsLogCreate = prisma.smsLog.create as ReturnType<typeof vi.fn>;
 const mockNotificationFindFirst = prisma.notification.findFirst as ReturnType<typeof vi.fn>;
-const mockCheckInFindMany = prisma.checkIn.findMany as ReturnType<typeof vi.fn>;
-const mockCheckInUpdate = prisma.checkIn.update as ReturnType<typeof vi.fn>;
 const mockSendReviewRequest = sendReviewRequest as ReturnType<typeof vi.fn>;
+const mockScheduleReviewRequest = scheduleReviewRequest as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockSmsLogCreate.mockResolvedValue({ id: 'log-1' });
   mockNotificationFindFirst.mockResolvedValue(null);
-  mockCheckInFindMany.mockResolvedValue([]);
-  mockCheckInUpdate.mockResolvedValue({ id: 'checkin-1' });
   mockSendReviewRequest.mockResolvedValue({ success: true, sid: 'SM123' });
+  mockScheduleReviewRequest.mockResolvedValue({ success: true, sid: 'SM456' });
 });
 
 describe('sendReviewSurveyRequestForCustomer', () => {
@@ -105,6 +107,50 @@ describe('sendReviewSurveyRequestForCustomer', () => {
   });
 });
 
+describe('scheduleCheckInReviewSurveyRequest', () => {
+  it('schedules the review request for later and logs the request as scheduled', async () => {
+    const sendAt = new Date('2026-03-28T18:00:00.000Z');
+
+    const result = await scheduleCheckInReviewSurveyRequest({
+      business: {
+        id: 'biz-1',
+        name: 'Davi Nails',
+        slug: 'davi-nails',
+        publicId: 'CF-8QXLBD',
+      },
+      customer: {
+        id: 'cust-1',
+        name: 'Andy Pham',
+        phone: '+19087272437',
+        smsConsent: true,
+        smsOptedOut: false,
+      },
+      sendAt,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.surveyUrl).toContain('/feedback/CF-8QXLBD?token=');
+    expect(mockScheduleReviewRequest).toHaveBeenCalledWith(
+      '+19087272437',
+      expect.objectContaining({
+        businessName: 'Davi Nails',
+        customerName: 'Andy Pham',
+        surveyUrl: expect.stringContaining('/feedback/CF-8QXLBD?token='),
+      }),
+      sendAt
+    );
+    expect(mockSmsLogCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: 'scheduled',
+          twilioSid: 'SM456',
+          message: 'Review survey request scheduled',
+        }),
+      })
+    );
+  });
+});
+
 describe('customerHasTopSurveyRating', () => {
   it('checks for a prior 5-star notification tied to the customer', async () => {
     mockNotificationFindFirst.mockResolvedValueOnce({ id: 'notif-1' });
@@ -124,178 +170,5 @@ describe('customerHasTopSurveyRating', () => {
         },
       })
     );
-  });
-});
-
-describe('processPendingCheckInReviewRequests', () => {
-  const now = new Date('2026-03-28T16:00:00.000Z');
-
-  it('sends survey texts for eligible check-ins older than two hours and marks them handled', async () => {
-    mockCheckInFindMany.mockResolvedValueOnce([
-      {
-        id: 'checkin-1',
-        checkInTime: new Date('2026-03-28T13:30:00.000Z'),
-        business: {
-          id: 'biz-1',
-          name: 'Davi Nails',
-          slug: 'davi-nails',
-          publicId: 'CF-8QXLBD',
-        },
-        customer: {
-          id: 'cust-1',
-          name: 'Andy Pham',
-          phone: '+19087272437',
-          smsConsent: true,
-          smsOptedOut: false,
-        },
-      },
-    ]);
-
-    const result = await processPendingCheckInReviewRequests({ now });
-
-    expect(result).toEqual(
-      expect.objectContaining({
-        scanned: 1,
-        sent: 1,
-        skippedTopRated: 0,
-        failed: 0,
-      })
-    );
-    expect(mockCheckInFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          feedbackRequestedAt: null,
-          checkInTime: { lte: new Date('2026-03-28T14:00:00.000Z') },
-        }),
-      })
-    );
-    expect(mockCheckInUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: 'checkin-1' },
-        data: {
-          feedbackRequested: true,
-          feedbackRequestedAt: now,
-        },
-      })
-    );
-  });
-
-  it('skips customers who already gave a 5-star survey and still marks the check-in handled', async () => {
-    mockCheckInFindMany.mockResolvedValueOnce([
-      {
-        id: 'checkin-1',
-        checkInTime: new Date('2026-03-28T13:30:00.000Z'),
-        business: {
-          id: 'biz-1',
-          name: 'Davi Nails',
-          slug: 'davi-nails',
-          publicId: 'CF-8QXLBD',
-        },
-        customer: {
-          id: 'cust-1',
-          name: 'Andy Pham',
-          phone: '+19087272437',
-          smsConsent: true,
-          smsOptedOut: false,
-        },
-      },
-    ]);
-    mockNotificationFindFirst.mockResolvedValueOnce({ id: 'notif-1' });
-
-    const result = await processPendingCheckInReviewRequests({ now });
-
-    expect(result).toEqual(
-      expect.objectContaining({
-        scanned: 1,
-        sent: 0,
-        skippedTopRated: 1,
-      })
-    );
-    expect(mockSendReviewRequest).not.toHaveBeenCalled();
-    expect(mockCheckInUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: 'checkin-1' },
-        data: {
-          feedbackRequestedAt: now,
-        },
-      })
-    );
-  });
-
-  it('skips customers who cannot be texted and marks the check-in handled', async () => {
-    mockCheckInFindMany.mockResolvedValueOnce([
-      {
-        id: 'checkin-1',
-        checkInTime: new Date('2026-03-28T13:30:00.000Z'),
-        business: {
-          id: 'biz-1',
-          name: 'Davi Nails',
-          slug: 'davi-nails',
-          publicId: 'CF-8QXLBD',
-        },
-        customer: {
-          id: 'cust-1',
-          name: 'Andy Pham',
-          phone: null,
-          smsConsent: true,
-          smsOptedOut: false,
-        },
-      },
-    ]);
-
-    const result = await processPendingCheckInReviewRequests({ now });
-
-    expect(result).toEqual(
-      expect.objectContaining({
-        scanned: 1,
-        skippedNoPhoneOrConsent: 1,
-      })
-    );
-    expect(mockSendReviewRequest).not.toHaveBeenCalled();
-    expect(mockCheckInUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: 'checkin-1' },
-        data: {
-          feedbackRequestedAt: now,
-        },
-      })
-    );
-  });
-
-  it('leaves the check-in pending for retry when Twilio send fails', async () => {
-    mockCheckInFindMany.mockResolvedValueOnce([
-      {
-        id: 'checkin-1',
-        checkInTime: new Date('2026-03-28T13:30:00.000Z'),
-        business: {
-          id: 'biz-1',
-          name: 'Davi Nails',
-          slug: 'davi-nails',
-          publicId: 'CF-8QXLBD',
-        },
-        customer: {
-          id: 'cust-1',
-          name: 'Andy Pham',
-          phone: '+19087272437',
-          smsConsent: true,
-          smsOptedOut: false,
-        },
-      },
-    ]);
-    mockSendReviewRequest.mockResolvedValueOnce({
-      success: false,
-      error: 'Twilio unavailable',
-    });
-
-    const result = await processPendingCheckInReviewRequests({ now });
-
-    expect(result).toEqual(
-      expect.objectContaining({
-        scanned: 1,
-        sent: 0,
-        failed: 1,
-      })
-    );
-    expect(mockCheckInUpdate).not.toHaveBeenCalled();
   });
 });

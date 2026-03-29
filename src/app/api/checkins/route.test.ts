@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: { findUnique: vi.fn() },
-    checkIn: { findMany: vi.fn(), create: vi.fn() },
+    checkIn: { findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
     customer: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
@@ -18,9 +18,18 @@ vi.mock('@/app/api/auth/[...nextauth]/route', () => ({ authOptions: {} }));
 vi.mock('@/lib/segment', () => ({ updateCustomerSegment: vi.fn(() => Promise.resolve()) }));
 vi.mock('@/lib/timezone', () => ({ businessDayStart: vi.fn((date: string) => new Date(date)) }));
 vi.mock('@/lib/subscription', () => ({ requireActiveSubscription: vi.fn() }));
+vi.mock('@/lib/review-requests', () => ({
+  REVIEW_SURVEY_FOLLOW_UP_DELAY_MS: 2 * 60 * 60 * 1000,
+  customerHasTopSurveyRating: vi.fn(),
+  scheduleCheckInReviewSurveyRequest: vi.fn(),
+}));
 
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
+import {
+  customerHasTopSurveyRating,
+  scheduleCheckInReviewSurveyRequest,
+} from '@/lib/review-requests';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { GET, POST } from './route';
 
@@ -29,10 +38,14 @@ const mockRequireActiveSubscription = requireActiveSubscription as ReturnType<ty
 const mockBusiness = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockCheckInFindMany = prisma.checkIn.findMany as ReturnType<typeof vi.fn>;
 const mockCheckInCreate = prisma.checkIn.create as ReturnType<typeof vi.fn>;
+const mockCheckInUpdate = prisma.checkIn.update as ReturnType<typeof vi.fn>;
 const mockCustomerFindMany = prisma.customer.findMany as ReturnType<typeof vi.fn>;
 const mockCustomerFindFirst = prisma.customer.findFirst as ReturnType<typeof vi.fn>;
 const mockCustomerCreate = prisma.customer.create as ReturnType<typeof vi.fn>;
 const mockCustomerUpdate = prisma.customer.update as ReturnType<typeof vi.fn>;
+const mockCustomerHasTopSurveyRating = customerHasTopSurveyRating as ReturnType<typeof vi.fn>;
+const mockScheduleCheckInReviewSurveyRequest =
+  scheduleCheckInReviewSurveyRequest as ReturnType<typeof vi.fn>;
 
 const activeSession = { user: { businessId: 'biz-1' } };
 
@@ -47,6 +60,13 @@ function makeRequest(body: Record<string, unknown>) {
 beforeEach(() => {
   vi.resetAllMocks();
   mockRequireActiveSubscription.mockResolvedValue(null);
+  mockCheckInUpdate.mockResolvedValue({ id: 'ci-1' });
+  mockCustomerHasTopSurveyRating.mockResolvedValue(false);
+  mockScheduleCheckInReviewSurveyRequest.mockResolvedValue({
+    success: true,
+    surveyUrl: 'https://clientific.app/feedback/CF-8QXLBD?token=abc123',
+    sid: 'SM123',
+  });
 });
 
 describe('GET /api/checkins', () => {
@@ -158,6 +178,12 @@ describe('POST /api/checkins', () => {
 
   it('creates a new customer from phone-first check-in and stores normalized phone data', async () => {
     mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValue({
+      id: 'biz-1',
+      name: 'Davi Nails',
+      slug: 'davi-nails',
+      publicId: 'CF-8QXLBD',
+    });
     mockCustomerFindMany.mockResolvedValue([]);
     mockCustomerCreate.mockResolvedValue({ id: 'cust-new' });
     mockCustomerFindFirst.mockResolvedValue({
@@ -189,6 +215,118 @@ describe('POST /api/checkins', () => {
           email: 'customer@example.com',
           phone: '8482612613',
           phoneLookupKey: '8482612613',
+        }),
+      })
+    );
+  });
+
+  it('schedules a review survey two hours after a textable check-in when the customer has not already left a 5-star rating', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValue({
+      id: 'biz-1',
+      name: 'Davi Nails',
+      slug: 'davi-nails',
+      publicId: 'CF-8QXLBD',
+    });
+    mockCustomerFindMany.mockResolvedValue([
+      { id: 'cust-1', name: 'Andy', phone: '8482612613', phoneLookupKey: '8482612613' },
+    ]);
+    mockCustomerFindFirst.mockResolvedValue({
+      id: 'cust-1',
+      phone: '8482612613',
+      phoneLookupKey: '8482612613',
+    });
+    mockCheckInCreate.mockResolvedValue({
+      id: 'ci-1',
+      customer: {
+        id: 'cust-1',
+        name: 'Andy',
+        phone: '8482612613',
+        smsConsent: true,
+        smsOptedOut: false,
+      },
+      service: null,
+      staff: null,
+    });
+    mockCustomerUpdate.mockResolvedValue({ id: 'cust-1' });
+
+    const res = await POST(makeRequest({ phone: '8482612613' }));
+
+    expect(res.status).toBe(200);
+    expect(mockCustomerHasTopSurveyRating).toHaveBeenCalledWith({
+      businessId: 'biz-1',
+      customerId: 'cust-1',
+    });
+    expect(mockScheduleCheckInReviewSurveyRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        business: expect.objectContaining({
+          id: 'biz-1',
+          name: 'Davi Nails',
+          slug: 'davi-nails',
+          publicId: 'CF-8QXLBD',
+        }),
+        customer: expect.objectContaining({
+          id: 'cust-1',
+          name: 'Andy',
+          phone: '8482612613',
+        }),
+        sendAt: expect.any(Date),
+      })
+    );
+    expect(mockCheckInUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'ci-1' },
+        data: expect.objectContaining({
+          feedbackRequested: true,
+        }),
+      })
+    );
+  });
+
+  it('does not schedule a review survey when the customer has already left a 5-star rating before', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValue({
+      id: 'biz-1',
+      name: 'Davi Nails',
+      slug: 'davi-nails',
+      publicId: 'CF-8QXLBD',
+    });
+    mockCustomerHasTopSurveyRating.mockResolvedValue(true);
+    mockCustomerFindMany.mockResolvedValue([
+      { id: 'cust-1', name: 'Andy', phone: '8482612613', phoneLookupKey: '8482612613' },
+    ]);
+    mockCustomerFindFirst.mockResolvedValue({
+      id: 'cust-1',
+      phone: '8482612613',
+      phoneLookupKey: '8482612613',
+    });
+    mockCheckInCreate.mockResolvedValue({
+      id: 'ci-1',
+      customer: {
+        id: 'cust-1',
+        name: 'Andy',
+        phone: '8482612613',
+        smsConsent: true,
+        smsOptedOut: false,
+      },
+      service: null,
+      staff: null,
+    });
+    mockCustomerUpdate.mockResolvedValue({ id: 'cust-1' });
+
+    const res = await POST(makeRequest({ phone: '8482612613' }));
+
+    expect(res.status).toBe(200);
+    expect(mockCustomerHasTopSurveyRating).toHaveBeenCalledWith({
+      businessId: 'biz-1',
+      customerId: 'cust-1',
+    });
+    expect(mockScheduleCheckInReviewSurveyRequest).not.toHaveBeenCalled();
+    expect(mockCheckInUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'ci-1' },
+        data: expect.objectContaining({
+          feedbackRequestedAt: expect.any(Date),
         }),
       })
     );

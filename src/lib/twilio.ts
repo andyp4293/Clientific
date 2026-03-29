@@ -21,6 +21,8 @@ export interface SMSResult {
   error?: string;
 }
 
+type TwilioClient = ReturnType<typeof twilio>;
+
 interface AppointmentDetails {
   customerName: string;
   serviceName: string;
@@ -151,6 +153,32 @@ export function appendSmsComplianceFooter(message: string): string {
 
 export function formatPhoneNumber(phone: string): string {
   return normalizePhoneNumber(phone);
+}
+
+function getTwilioCredentials() {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim();
+  const authToken = process.env.TWILIO_AUTH_TOKEN?.trim();
+
+  if (!accountSid || !authToken) {
+    return null;
+  }
+
+  return { accountSid, authToken };
+}
+
+function getPlatformSenderNumber() {
+  return isValidPhoneNumber(PLATFORM_SMS_NUMBER)
+    ? formatPhoneNumber(PLATFORM_SMS_NUMBER)
+    : null;
+}
+
+function getTwilioClient(): TwilioClient | null {
+  const credentials = getTwilioCredentials();
+  if (!credentials) {
+    return null;
+  }
+
+  return twilio(credentials.accountSid, credentials.authToken);
 }
 
 function formatTime(date: Date, timezone?: string): string {

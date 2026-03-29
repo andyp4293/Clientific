@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: { findUnique: vi.fn() },
-    checkIn: { create: vi.fn() },
+    checkIn: { create: vi.fn(), update: vi.fn() },
     customer: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
@@ -16,18 +16,31 @@ vi.mock('@/lib/prisma', () => ({
 
 vi.mock('@/lib/segment', () => ({ updateCustomerSegment: vi.fn(() => Promise.resolve()) }));
 vi.mock('@/lib/subscription', () => ({ requireActiveSubscription: vi.fn().mockResolvedValue(null) }));
+vi.mock('@/lib/review-requests', () => ({
+  REVIEW_SURVEY_FOLLOW_UP_DELAY_MS: 2 * 60 * 60 * 1000,
+  customerHasTopSurveyRating: vi.fn(),
+  scheduleCheckInReviewSurveyRequest: vi.fn(),
+}));
 
 import { prisma } from '@/lib/prisma';
+import {
+  customerHasTopSurveyRating,
+  scheduleCheckInReviewSurveyRequest,
+} from '@/lib/review-requests';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { GET, POST } from './route';
 
 const mockBusinessFindUnique = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockCheckInCreate = prisma.checkIn.create as ReturnType<typeof vi.fn>;
+const mockCheckInUpdate = prisma.checkIn.update as ReturnType<typeof vi.fn>;
 const mockCustomerFindMany = prisma.customer.findMany as ReturnType<typeof vi.fn>;
 const mockCustomerFindFirst = prisma.customer.findFirst as ReturnType<typeof vi.fn>;
 const mockCustomerCreate = prisma.customer.create as ReturnType<typeof vi.fn>;
 const mockCustomerUpdate = prisma.customer.update as ReturnType<typeof vi.fn>;
 const mockRequireActiveSubscription = requireActiveSubscription as ReturnType<typeof vi.fn>;
+const mockCustomerHasTopSurveyRating = customerHasTopSurveyRating as ReturnType<typeof vi.fn>;
+const mockScheduleCheckInReviewSurveyRequest =
+  scheduleCheckInReviewSurveyRequest as ReturnType<typeof vi.fn>;
 
 function makeParams(publicId = 'pub_123') {
   return { params: Promise.resolve({ publicId }) };
@@ -45,6 +58,13 @@ describe('public check-in route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRequireActiveSubscription.mockResolvedValue(null);
+    mockCheckInUpdate.mockResolvedValue({ id: 'ci-1' });
+    mockCustomerHasTopSurveyRating.mockResolvedValue(false);
+    mockScheduleCheckInReviewSurveyRequest.mockResolvedValue({
+      success: true,
+      surveyUrl: 'https://clientific.app/feedback/CF-8QXLBD?token=abc123',
+      sid: 'SM123',
+    });
     mockBusinessFindUnique.mockResolvedValue({
       id: 'biz-1',
       name: 'Test Salon',
