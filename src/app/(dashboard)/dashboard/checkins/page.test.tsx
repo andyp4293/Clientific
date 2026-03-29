@@ -316,4 +316,83 @@ describe('CheckInsPage', () => {
     expect(screen.queryByText('Capture detail only when it matters.')).not.toBeInTheDocument();
     expect(screen.queryByText('Amount spent (optional)')).not.toBeInTheDocument();
   });
+
+  it('can transition from the loading shell to the live page without a hook-order crash', () => {
+    let checkinsLoading = true;
+    let businessInfoLoading = true;
+
+    mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
+      const key = config?.queryKey?.[0];
+
+      if (key === 'checkins') {
+        return {
+          data: checkinsLoading
+            ? undefined
+            : {
+                checkIns: [],
+                timezone: 'America/New_York',
+              },
+          isLoading: checkinsLoading,
+        };
+      }
+
+      if (key === 'business-info') {
+        return {
+          data: businessInfoLoading
+            ? undefined
+            : {
+                business: {
+                  name: 'Test Salon',
+                  publicId: 'pub_123',
+                },
+              },
+          isLoading: businessInfoLoading,
+        };
+      }
+
+      if (key === 'customers') {
+        return {
+          data: {
+            customers: [],
+          },
+          isLoading: false,
+        };
+      }
+
+      if (key === 'services') {
+        return {
+          data: {
+            services: [],
+          },
+          isLoading: false,
+        };
+      }
+
+      if (key === 'staff') {
+        return {
+          data: {
+            staff: [],
+          },
+          isLoading: false,
+        };
+      }
+
+      return { data: undefined, isLoading: false };
+    });
+
+    mockMutations(
+      { mutateAsync: vi.fn(), isPending: false, isError: false },
+      { mutateAsync: vi.fn(), isPending: false }
+    );
+
+    const { rerender } = render(<CheckInsPage />);
+
+    expect(screen.getByTestId('checkins-page-loading')).toBeInTheDocument();
+
+    checkinsLoading = false;
+    businessInfoLoading = false;
+
+    expect(() => rerender(<CheckInsPage />)).not.toThrow();
+    expect(screen.getByTestId('checkins-page')).toBeInTheDocument();
+  });
 });

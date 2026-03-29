@@ -331,9 +331,6 @@ export default function CheckInsPage() {
     [checkIns],
   );
 
-  if (isLoadingCheckIns || isLoadingBusinessInfo) {
-    return <DashboardPageLoading data-testid="checkins-page-loading" />;
-  }
   const latestCheckInLabel = latestCheckIn
     ? formatSuccessTime(latestCheckIn.checkInTime, timezone)
     : "No check-ins yet";
@@ -674,6 +671,10 @@ export default function CheckInsPage() {
   const quickIsBusy = lookupCustomer.isPending || createCheckIn.isPending;
   const detailedIsBusy = createCheckIn.isPending && mode === "detailed";
   const successProgressPercent = `${(successCountdown / SUCCESS_RESET_SECONDS) * 100}%`;
+
+  if (isLoadingCheckIns || isLoadingBusinessInfo) {
+    return <DashboardPageLoading data-testid="checkins-page-loading" />;
+  }
 
   return (
     <div data-testid="checkins-page" className="w-full space-y-5 sm:space-y-6">
