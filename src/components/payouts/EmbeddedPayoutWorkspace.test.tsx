@@ -21,11 +21,21 @@ vi.mock('@stripe/react-connect-js', () => ({
 
 import { EmbeddedPayoutWorkspace } from './EmbeddedPayoutWorkspace';
 
+function setViewportWidth(width: number) {
+  Object.defineProperty(window, 'innerWidth', {
+    value: width,
+    writable: true,
+    configurable: true,
+  });
+  window.dispatchEvent(new Event('resize'));
+}
+
 describe('EmbeddedPayoutWorkspace', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = 'pk_test_123';
     document.documentElement.className = '';
+    setViewportWidth(1024);
     mockLoadConnectAndInitialize.mockReturnValue({ id: 'connect-instance' });
     vi.stubGlobal(
       'fetch',
@@ -62,6 +72,7 @@ describe('EmbeddedPayoutWorkspace', () => {
     });
 
     const config = mockLoadConnectAndInitialize.mock.calls[0][0];
+    expect(config.appearance.overlays).toBe('dialog');
     expect(config.appearance.variables.colorBackground).toBe('#F3F8F7');
     expect(config.appearance.variables.formBackgroundColor).toBe('#F3F8F7');
     expect(config.appearance.variables.borderRadius).toBe('0px');
@@ -91,5 +102,20 @@ describe('EmbeddedPayoutWorkspace', () => {
     expect(screen.getByTestId('connect-payouts')).toBeInTheDocument();
     expect(screen.getByTestId('connect-account-management')).toBeInTheDocument();
     expect(screen.queryByTestId('connect-balances')).not.toBeInTheDocument();
+  });
+
+  it('switches to the larger drawer overlay automatically on desktop widths', async () => {
+    setViewportWidth(1440);
+
+    await act(async () => {
+      render(<EmbeddedPayoutWorkspace visible onboardingComplete onRefresh={vi.fn()} />);
+    });
+
+    await waitFor(() => {
+      expect(mockLoadConnectAndInitialize).toHaveBeenCalled();
+    });
+
+    const config = mockLoadConnectAndInitialize.mock.calls[0][0];
+    expect(config.appearance.overlays).toBe('drawer');
   });
 });

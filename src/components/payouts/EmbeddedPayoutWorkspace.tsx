@@ -87,9 +87,15 @@ type WorkspaceErrorState = {
   retryable: boolean;
 };
 
-function buildConnectAppearance(isDark: boolean) {
+const DESKTOP_CONNECT_OVERLAY_BREAKPOINT = 1280;
+
+export function getConnectOverlayType(viewportWidth: number): 'dialog' | 'drawer' {
+  return viewportWidth >= DESKTOP_CONNECT_OVERLAY_BREAKPOINT ? 'drawer' : 'dialog';
+}
+
+function buildConnectAppearance(isDark: boolean, overlayType: 'dialog' | 'drawer') {
   return {
-    overlays: 'dialog' as const,
+    overlays: overlayType,
     variables: {
       colorPrimary: '#0F8A63',
       colorBackground: isDark ? '#111F26' : '#F3F8F7',
@@ -361,6 +367,9 @@ export function EmbeddedPayoutWorkspace({
   const [isInitializing, setIsInitializing] = useState(false);
   const [refreshSeed, setRefreshSeed] = useState(0);
   const [isDark, setIsDark] = useState(false);
+  const [overlayType, setOverlayType] = useState<'dialog' | 'drawer'>(() =>
+    typeof window === 'undefined' ? 'dialog' : getConnectOverlayType(window.innerWidth)
+  );
 
   useEffect(() => {
     const checkTheme = () => setIsDark(document.documentElement.classList.contains('dark'));
@@ -368,6 +377,13 @@ export function EmbeddedPayoutWorkspace({
     const observer = new MutationObserver(checkTheme);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const syncOverlayType = () => setOverlayType(getConnectOverlayType(window.innerWidth));
+    syncOverlayType();
+    window.addEventListener('resize', syncOverlayType);
+    return () => window.removeEventListener('resize', syncOverlayType);
   }, []);
 
   useEffect(() => {
@@ -414,7 +430,7 @@ export function EmbeddedPayoutWorkspace({
         const clientSecret = body.clientSecret as string;
         const instance = loadConnectAndInitialize({
           publishableKey,
-          appearance: buildConnectAppearance(isDark),
+          appearance: buildConnectAppearance(isDark, overlayType),
           fetchClientSecret: async () => clientSecret,
         });
 
@@ -442,7 +458,7 @@ export function EmbeddedPayoutWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [isDark, publishableKey, refreshSeed, visible]);
+  }, [isDark, overlayType, publishableKey, refreshSeed, visible]);
 
   if (!visible) {
     return null;
