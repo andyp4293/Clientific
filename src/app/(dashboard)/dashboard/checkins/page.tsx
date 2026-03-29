@@ -12,11 +12,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   CalendarDays,
-  CheckCircle2,
-  Clock3,
   Search,
-  Smartphone,
-  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -722,147 +718,63 @@ export default function CheckInsPage() {
     <div data-testid="checkins-page" className="w-full space-y-5 sm:space-y-6">
       <section className="brand-hero relative overflow-hidden rounded-[34px] border border-gray-200/80 px-5 py-6 shadow-[0_32px_90px_-50px_rgba(16,72,56,0.22)] dark:border-white/10 sm:px-7 sm:py-7">
         <div className="absolute -right-20 top-0 h-56 w-56 rounded-full bg-white/45 blur-3xl dark:bg-primary/20" />
-        <div className="relative grid gap-6 xl:grid-cols-[minmax(0,1.1fr),minmax(340px,0.9fr)]">
-          <div className="space-y-6">
-            <span className="brand-hero-chip inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]">
-              <Smartphone className="h-3.5 w-3.5" />
-              Live front desk
-            </span>
-
-            <div className="max-w-3xl space-y-4">
-              <p className="brand-hero-kicker text-xs font-semibold uppercase tracking-[0.28em]">
-                Check-ins
-              </p>
-              <h1 className="text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">
-                Clean check-ins for a modern front desk.
-              </h1>
-              <p className="brand-hero-muted max-w-2xl text-sm leading-6 sm:text-base">
-                Keep the default flow fast: phone first, match automatically,
-                then add service or staff only when the visit actually needs
-                more detail.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <button
-                type="button"
-                onClick={openQuickModal}
-                className="btn-primary min-h-[52px] gap-2 px-5 text-sm sm:text-base"
-              >
-                Quick check-in
-                <ArrowRight className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={openDetailedModal}
-                className="btn-secondary min-h-[52px] gap-2 px-5 text-sm sm:text-base"
-              >
-                Detailed entry
-                <Search className="h-4 w-4" />
-              </button>
-            </div>
+        <div className="relative space-y-6">
+          <div className="max-w-3xl space-y-3">
+            <h1 className="text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">
+              Check ins
+            </h1>
+            <p className="brand-hero-muted max-w-2xl text-sm leading-6 sm:text-base">
+              Quick check-in is the default. Use detailed entry only when you
+              need more detail.
+            </p>
           </div>
 
-          <div className="brand-hero-card flex flex-col justify-between rounded-[28px] p-5 sm:p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">
-                  Today
-                </p>
-                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-gray-950 dark:text-white">
-                  {selectedDateLabel}
-                </h2>
-              </div>
-              <span className="inline-flex rounded-full border border-primary/20 bg-primary/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-                Live log
-              </span>
-            </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={openQuickModal}
+              className="btn-primary min-h-[52px] gap-2 px-5 text-sm sm:text-base"
+            >
+              Quick check-in
+              <ArrowRight className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={openDetailedModal}
+              className="btn-secondary min-h-[52px] gap-2 px-5 text-sm sm:text-base"
+            >
+              Detailed entry
+              <Search className="h-4 w-4" />
+            </button>
+          </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-              <div className="rounded-[24px] border border-gray-200/80 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
-                      Logged
-                    </p>
-                    <p className="mt-2 text-3xl font-bold tracking-tight text-gray-950 dark:text-white">
-                      {checkIns.length}
-                    </p>
-                  </div>
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-                    <CheckCircle2 className="h-5 w-5" />
-                  </div>
-                </div>
-              </div>
-              <div className="rounded-[24px] border border-gray-200/80 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
-                      Customers
-                    </p>
-                    <p className="mt-2 text-3xl font-bold tracking-tight text-gray-950 dark:text-white">
-                      {uniqueGuests}
-                    </p>
-                  </div>
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-                    <Users className="h-5 w-5" />
-                  </div>
-                </div>
-              </div>
-              <div className="rounded-[24px] border border-gray-200/80 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
-                      Latest
-                    </p>
-                    <p className="mt-2 text-xl font-bold tracking-tight text-gray-950 dark:text-white">
-                      {latestCheckInLabel}
-                    </p>
-                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                      {latestCheckIn
-                        ? latestCheckIn.customer.name
-                        : "No check-ins yet"}
-                    </p>
-                  </div>
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-                    <Clock3 className="h-5 w-5" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-[24px] border border-gray-200/80 bg-white/70 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-[24px] border border-gray-200/80 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
-                Default behavior
+                Logged
               </p>
-              <div className="mt-4 grid gap-3">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-                    <Smartphone className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-950 dark:text-white">
-                      Quick check-in is the default
-                    </p>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                      Enter a phone number, match the customer, and move on.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-                    <Search className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-950 dark:text-white">
-                      Detailed entry stays optional
-                    </p>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                      Open it only when the visit needs service or staff.
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <p className="mt-2 text-3xl font-bold tracking-tight text-gray-950 dark:text-white">
+                {checkIns.length}
+              </p>
+            </div>
+            <div className="rounded-[24px] border border-gray-200/80 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                Customers
+              </p>
+              <p className="mt-2 text-3xl font-bold tracking-tight text-gray-950 dark:text-white">
+                {uniqueGuests}
+              </p>
+            </div>
+            <div className="rounded-[24px] border border-gray-200/80 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                Latest
+              </p>
+              <p className="mt-2 text-xl font-bold tracking-tight text-gray-950 dark:text-white">
+                {latestCheckInLabel}
+              </p>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                {latestCheckIn ? latestCheckIn.customer.name : "No check-ins yet"}
+              </p>
             </div>
           </div>
         </div>

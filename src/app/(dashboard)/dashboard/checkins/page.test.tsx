@@ -143,7 +143,9 @@ describe('CheckInsPage', () => {
     expect(screen.queryByText('Average ticket')).not.toBeInTheDocument();
     expect(screen.queryByText(/walk-in revenue/i)).not.toBeInTheDocument();
     expect(screen.queryByText('Three beats from arrival to done')).not.toBeInTheDocument();
-    expect(screen.getByText('Clean check-ins for a modern front desk.')).toBeInTheDocument();
+    expect(screen.queryByText(/^Check-ins$/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Default behavior')).not.toBeInTheDocument();
+    expect(screen.getByText('Check ins')).toBeInTheDocument();
     expect(screen.getByTestId('in-store-checkin-panel')).toHaveTextContent('Test Salon:pub_123');
   });
 
