@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { DashboardPageLoading } from '@/components/layout/DashboardPageLoading';
 import AddressAutocomplete, { type AddressComponents } from '@/components/ui/AddressAutocomplete';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -506,11 +507,7 @@ export default function SettingsPage() {
   ]);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <DashboardPageLoading />;
   }
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
@@ -1583,4 +1580,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-

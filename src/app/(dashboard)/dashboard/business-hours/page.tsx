@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { DashboardPageLoading } from '@/components/layout/DashboardPageLoading';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { TimePicker } from '@/components/ui/TimePicker';
 
@@ -227,11 +228,7 @@ export default function BusinessHoursPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-primary"></div>
-      </div>
-    );
+    return <DashboardPageLoading />;
   }
 
   return (

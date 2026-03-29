@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { DashboardPageLoading } from "@/components/layout/DashboardPageLoading";
 import { CustomSelect } from "@/components/ui/CustomSelect";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -1134,11 +1135,7 @@ export default function ServicesPage() {
   const isLoading = isLoadingServices || isLoadingStaff || isLoadingGroups;
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <DashboardPageLoading />;
   }
   return (
     <div className="space-y-6">

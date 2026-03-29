@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { DashboardPageLoading } from '@/components/layout/DashboardPageLoading';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import {
@@ -140,7 +141,7 @@ export default function AppointmentsPage() {
     },
   });
 
-  const { data: staffData } = useQuery({
+  const { data: staffData, isLoading: isLoadingStaff } = useQuery({
     queryKey: ['staff'],
     queryFn: async () => {
       const res = await fetch('/api/staff');
@@ -157,6 +158,10 @@ export default function AppointmentsPage() {
   const filteredAppointments = selectedStaffId
     ? appointments.filter(a => a.staff?.id === selectedStaffId)
     : appointments;
+
+  if (isLoading || isLoadingStaff) {
+    return <DashboardPageLoading />;
+  }
 
   const counts = {
     confirmed: filteredAppointments.filter(a => a.status === 'confirmed').length,
@@ -287,12 +292,7 @@ export default function AppointmentsPage() {
       </div>
 
       {/* Appointments */}
-      {isLoading ? (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-16 text-center">
-          <div className="w-7 h-7 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-400 dark:text-gray-500">Loading appointments…</p>
-        </div>
-      ) : view === 'day' ? (
+      {view === 'day' ? (
         filteredAppointments.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-16 text-center">
             <div className="w-12 h-12 bg-gray-50 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">

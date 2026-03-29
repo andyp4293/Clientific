@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { DashboardPageLoading } from '@/components/layout/DashboardPageLoading';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -56,6 +57,10 @@ export default function AnalyticsPage() {
   const customerSegments = data?.customerSegments ?? [];
   const maxServiceCount = topServices[0]?.count ?? 1;
 
+  if (isLoading) {
+    return <DashboardPageLoading />;
+  }
+
   return (
     <div className="space-y-6">
       {/* Header + Range Pills */}
@@ -81,39 +86,34 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+      <>
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard label="Total Revenue" value={`$${stats.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+          <StatCard label="Appointments" value={stats.totalAppointments.toString()} />
+          <StatCard label="New Customers" value={stats.newCustomers.toString()} />
+          <StatCard label="Avg per Visit" value={`$${stats.avgRevenuePerVisit.toFixed(2)}`} />
         </div>
-      ) : (
-        <>
-          {/* KPI Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard label="Total Revenue" value={`$${stats.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
-            <StatCard label="Appointments" value={stats.totalAppointments.toString()} />
-            <StatCard label="New Customers" value={stats.newCustomers.toString()} />
-            <StatCard label="Avg per Visit" value={`$${stats.avgRevenuePerVisit.toFixed(2)}`} />
-          </div>
 
-          {/* Revenue Chart */}
-          <div className="card p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Revenue by Week</h2>
-            {revenueByWeek.length === 0 || revenueByWeek.every((w: any) => w.revenue === 0) ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400 py-8 text-center">No revenue data for this period.</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={revenueByWeek} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
-                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#6b7280' }} />
-                  <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} tickFormatter={(v) => `$${v}`} />
-                  <Tooltip formatter={(v) => [`$${Number(v).toFixed(2)}`, 'Revenue']} />
-                  <Bar dataKey="revenue" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+        {/* Revenue Chart */}
+        <div className="card p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Revenue by Week</h2>
+          {revenueByWeek.length === 0 || revenueByWeek.every((w: any) => w.revenue === 0) ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400 py-8 text-center">No revenue data for this period.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={revenueByWeek} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
+                <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#6b7280' }} />
+                <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} tickFormatter={(v) => `$${v}`} />
+                <Tooltip formatter={(v) => [`$${Number(v).toFixed(2)}`, 'Revenue']} />
+                <Bar dataKey="revenue" fill="#2563eb" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Appointments by Status */}
             <div className="card p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Appointments by Status</h2>
@@ -191,9 +191,8 @@ export default function AnalyticsPage() {
                 ))}
               </div>
             )}
-          </div>
-        </>
-      )}
+        </div>
+      </>
     </div>
   );
 }

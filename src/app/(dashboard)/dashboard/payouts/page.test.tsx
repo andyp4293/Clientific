@@ -125,6 +125,35 @@ beforeEach(() => {
 });
 
 describe('PayoutsPage', () => {
+  it('shows a full-page loading shell while payout data is still resolving', () => {
+    mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
+      const key = config?.queryKey?.[0];
+
+      if (key === 'deal-earnings') {
+        return {
+          data: undefined,
+          isLoading: true,
+        };
+      }
+
+      if (key === 'connect-payouts') {
+        return {
+          data: undefined,
+          isLoading: true,
+          refetch: vi.fn(),
+        };
+      }
+
+      return { data: undefined, isLoading: false };
+    });
+
+    render(<PayoutsPage />);
+
+    expect(screen.getByTestId('payouts-page-loading')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /start secure setup/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/finish payout setup/i)).not.toBeInTheDocument();
+  });
+
   it('uses the full desktop page shell', () => {
     render(<PayoutsPage />);
 

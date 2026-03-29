@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { QRCodeCanvas } from 'qrcode.react';
+import { DashboardPageLoading } from '@/components/layout/DashboardPageLoading';
 
 type Business = {
   name: string;
@@ -29,7 +30,7 @@ export default function ReviewsPage() {
   const [showQr, setShowQr] = useState(true);
   const qrRef = useRef<HTMLDivElement>(null);
 
-  const { data: businessData } = useQuery<BusinessResponse>({
+  const { data: businessData, isLoading: businessLoading } = useQuery<BusinessResponse>({
     queryKey: ['business-info'],
     queryFn: async () => {
       const res = await fetch('/api/business');
@@ -57,6 +58,10 @@ export default function ReviewsPage() {
       : null;
   const surveyUrl =
     surveyPath && typeof window !== 'undefined' ? `${window.location.origin}${surveyPath}` : surveyPath;
+
+  if (businessLoading || recentLoading) {
+    return <DashboardPageLoading data-testid="reviews-page-loading" />;
+  }
 
   const handleCopySurveyLink = async () => {
     if (!surveyUrl) return;

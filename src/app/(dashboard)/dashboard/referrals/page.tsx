@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Gift, Copy, Download, Users, CheckCircle, Clock, TrendingUp } from 'lucide-react';
+import { DashboardPageLoading } from '@/components/layout/DashboardPageLoading';
 import { REFERRAL_COMMISSION_DISPLAY, STANDARD_TRIAL_DAYS } from '@/lib/referral-config';
 
 interface Referral {
@@ -74,6 +75,10 @@ export default function ReferralsPage() {
     data?.referrals?.filter(r => r.status === 'active' || r.status === 'credited').length ?? 0;
   const pendingCount = data?.referrals?.filter(r => r.status === 'pending').length ?? 0;
   const totalCredits = data?.totalCredits ?? 0;
+
+  if (isLoading) {
+    return <DashboardPageLoading data-testid="referrals-page-loading" />;
+  }
 
   return (
     <div data-testid="referrals-page" className="p-4 md:p-6 max-w-2xl mx-auto pb-28 md:pb-8">

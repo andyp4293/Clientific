@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { DashboardPageLoading } from '@/components/layout/DashboardPageLoading';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import InStoreCapturePanel from '@/components/campaigns/InStoreCapturePanel';
@@ -78,6 +79,10 @@ export default function DealsPage() {
     const q = lookupQuery.trim().toLowerCase(); if (!q) return [];
     return purchases.filter((purchase) => [purchase.customerName, purchase.customerPhone, purchase.customerEmail ?? '', purchase.redemptionCode ?? '', purchase.dealTitle].join(' ').toLowerCase().includes(q));
   }, [purchases, lookupQuery]);
+
+  if (isLoading) {
+    return <DashboardPageLoading />;
+  }
 
   const createMutation = useMutation({
     mutationFn: async (payload: typeof form) => {
@@ -294,9 +299,7 @@ export default function DealsPage() {
           </div>
         </div>
       )}
-      {isLoading ? (
-        <div className="space-y-3">{[1, 2].map((item) => <div key={item} className="h-28 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800" />)}</div>
-      ) : deals.length === 0 ? (
+      {deals.length === 0 ? (
         <div className="card p-12 text-center"><p className="text-sm text-gray-500 dark:text-gray-400">No deals yet. Create your first purchased deal with the New Deal button.</p></div>
       ) : (
         <div className="space-y-3">

@@ -15,6 +15,7 @@ import {
   Search,
 } from "lucide-react";
 import { toast } from "sonner";
+import { DashboardPageLoading } from "@/components/layout/DashboardPageLoading";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { CustomSelect } from "@/components/ui/CustomSelect";
 import InStoreCheckInPanel from "@/components/checkins/InStoreCheckInPanel";
@@ -257,7 +258,8 @@ export default function CheckInsPage() {
       },
     });
 
-  const { data: businessInfoData } = useQuery<BusinessInfoResponse>({
+  const { data: businessInfoData, isLoading: isLoadingBusinessInfo } =
+    useQuery<BusinessInfoResponse>({
     queryKey: ["business-info"],
     queryFn: async () => {
       const res = await fetch("/api/business");
@@ -328,6 +330,10 @@ export default function CheckInsPage() {
       }, null),
     [checkIns],
   );
+
+  if (isLoadingCheckIns || isLoadingBusinessInfo) {
+    return <DashboardPageLoading data-testid="checkins-page-loading" />;
+  }
   const latestCheckInLabel = latestCheckIn
     ? formatSuccessTime(latestCheckIn.checkInTime, timezone)
     : "No check-ins yet";

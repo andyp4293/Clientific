@@ -3,6 +3,7 @@
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { DashboardPageLoading } from '@/components/layout/DashboardPageLoading';
 import {
   collectOutstandingRequirementKeys,
   EmbeddedPayoutWorkspace,
@@ -247,6 +248,11 @@ export default function PayoutsPage() {
   const earningsSummaryDescription = isReferralOnly
     ? 'Track recorded referral commissions in one place.'
     : 'Track deal purchases and referral commissions in one place.';
+  const isPageLoading = connectLoading || earningsLoading;
+
+  if (isPageLoading) {
+    return <DashboardPageLoading data-testid="payouts-page-loading" />;
+  }
 
   return (
     <div data-testid="payouts-page" className="w-full space-y-6 pb-28 md:pb-8">
