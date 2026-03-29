@@ -55,20 +55,21 @@ export default function InStoreCheckInPanel({
                 Kiosk link
               </p>
               <h2 className="mt-2 text-xl font-semibold text-gray-950 dark:text-white">
-                Open the check-in flow on any device
+                Share the check-in flow
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600 dark:text-gray-300">
-                One URL and QR code for the front-desk phone, tablet, or kiosk.
+                One link and QR code for the front desk, tablet, or self-serve
+                kiosk.
               </p>
             </div>
           </div>
 
           <span className="inline-flex w-fit rounded-full border border-primary/20 bg-primary/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-            {business ? "Kiosk ready" : "Loading"}
+            {business ? "Live" : "Loading"}
           </span>
         </div>
 
-        <div className="mt-5 grid gap-5 lg:grid-cols-[1.15fr,0.85fr]">
+        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr),280px]">
           <div className="space-y-4">
             <div className="rounded-[26px] border border-gray-200/80 bg-white/80 p-4 shadow-[0_20px_45px_-35px_rgba(16,72,56,0.32)] dark:border-white/10 dark:bg-white/[0.04]">
               <label
@@ -112,29 +113,22 @@ export default function InStoreCheckInPanel({
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-[22px] border border-gray-200/80 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                  01 Open
+                  Front Desk
                 </p>
                 <p className="mt-2 text-sm font-medium text-gray-950 dark:text-white">
-                  Launch the link on the front-desk device.
+                  Open the link on the kiosk, tablet, or front-desk phone.
                 </p>
               </div>
               <div className="rounded-[22px] border border-gray-200/80 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                  02 Save
+                  Self-Serve
                 </p>
                 <p className="mt-2 text-sm font-medium text-gray-950 dark:text-white">
-                  Pin it to the Home Screen or launcher.
-                </p>
-              </div>
-              <div className="rounded-[22px] border border-gray-200/80 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                  03 Check in
-                </p>
-                <p className="mt-2 text-sm font-medium text-gray-950 dark:text-white">
-                  Customers enter their phone number and go.
+                  Use the QR code when you want guests to launch it
+                  themselves.
                 </p>
               </div>
             </div>
@@ -144,10 +138,10 @@ export default function InStoreCheckInPanel({
             <div className="flex items-center justify-between gap-3">
               <div className="text-left">
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
-                  QR launch
+                  QR code
                 </p>
                 <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                  Scan to open the same check-in flow instantly.
+                  Scan to open the same check-in page instantly.
                 </p>
               </div>
             </div>

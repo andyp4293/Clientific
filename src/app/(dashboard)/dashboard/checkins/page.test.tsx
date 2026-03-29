@@ -142,6 +142,8 @@ describe('CheckInsPage', () => {
     expect(screen.queryByText('Revenue tracked')).not.toBeInTheDocument();
     expect(screen.queryByText('Average ticket')).not.toBeInTheDocument();
     expect(screen.queryByText(/walk-in revenue/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('Three beats from arrival to done')).not.toBeInTheDocument();
+    expect(screen.getByText('Clean check-ins for a modern front desk.')).toBeInTheDocument();
     expect(screen.getByTestId('in-store-checkin-panel')).toHaveTextContent('Test Salon:pub_123');
   });
 
@@ -202,7 +204,7 @@ describe('CheckInsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Save this number once and move on')).toBeInTheDocument();
+      expect(screen.getByText('Add the customer name')).toBeInTheDocument();
     });
 
     expect(lookupMutation.mutateAsync).toHaveBeenCalledWith('8482612613');
@@ -304,7 +306,7 @@ describe('CheckInsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Detailed entry' }));
 
-    expect(screen.getByText('Manual check-in details')).toBeInTheDocument();
+    expect(screen.getByText('Add service or staff when needed')).toBeInTheDocument();
     expect(screen.getAllByTestId('custom-select')).toHaveLength(2);
     expect(screen.queryByText('Amount spent (optional)')).not.toBeInTheDocument();
   });

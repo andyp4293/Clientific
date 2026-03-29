@@ -16,7 +16,6 @@ import {
   Clock3,
   Search,
   Smartphone,
-  UserPlus2,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -348,55 +347,43 @@ export default function CheckInsPage() {
       case "new":
         return {
           kicker: "New customer",
-          title: "Create the customer profile",
+          title: "Add the name and keep moving",
           body: quickPhoneDisplay
-            ? `We could not match ${quickPhoneDisplay}. Add a name now and the next visit stays instant.`
-            : "Add a name and optional email so the next visit is faster.",
-          items: [
-            "Name is required",
-            "Email stays optional",
-            "Saved for future check-ins",
-          ],
+            ? `No record matched ${quickPhoneDisplay}. Name is required. Email is optional.`
+            : "Add a name now. Email can wait.",
+          items: ["Name required", "Email optional", "Saved for next time"],
         };
       case "multiple":
         return {
           kicker: "Multiple matches",
-          title: "Resolve the duplicate match",
+          title: "Choose the right profile",
           body: quickPhoneDisplay
-            ? `More than one record matches ${quickPhoneDisplay}. Choose the right profile to finish the check-in.`
-            : "Choose the matching profile to finish the check-in.",
-          items: [
-            "Phone and email stay visible",
-            "Last visit is shown",
-            "Create a fresh profile if needed",
-          ],
+            ? `More than one customer matched ${quickPhoneDisplay}. Pick one to finish the check-in.`
+            : "Select the customer to finish the check-in.",
+          items: ["Phone and email shown", "Last visit visible", "Create new if needed"],
         };
       case "success":
         return {
-          kicker: "Done",
-          title: "Ready for the next customer",
+          kicker: "Checked in",
+          title: "Ready for the next arrival",
           body: quickSuccess
             ? `${quickSuccess.customerName} was checked in at ${formatSuccessTime(quickSuccess.checkInTime, timezone)}.`
             : "The front desk is ready for the next customer.",
           items: [
             quickSuccess?.createdCustomer
-              ? "New customer profile saved"
-              : "Existing profile matched instantly",
-            quickSuccess?.phoneDisplay ?? "Phone number captured",
-            `Auto resets in ${successCountdown} second${successCountdown === 1 ? "" : "s"}`,
+              ? "New customer saved"
+              : "Existing profile matched",
+            quickSuccess?.phoneDisplay ?? "Phone captured",
+            `Resets in ${successCountdown}s`,
           ],
         };
       case "phone":
       default:
         return {
-          kicker: "Quick check-in",
-          title: "Fast lane for walk-ins",
-          body: "Enter a mobile number and keep the front desk line moving.",
-          items: [
-            "Returning customers check in instantly",
-            "New numbers only need a name once",
-            "Keyboard and keypad both work",
-          ],
+          kicker: "Quick mode",
+          title: "Phone first. Everything else second.",
+          body: "Enter a mobile number. Add more detail only when the visit needs it.",
+          items: ["Keyboard ready", "Keypad ready", "Detailed mode stays optional"],
         };
     }
   }, [quickPhoneDisplay, quickStep, quickSuccess, successCountdown, timezone]);
@@ -735,33 +722,24 @@ export default function CheckInsPage() {
     <div data-testid="checkins-page" className="w-full space-y-5 sm:space-y-6">
       <section className="brand-hero relative overflow-hidden rounded-[34px] border border-gray-200/80 px-5 py-6 shadow-[0_32px_90px_-50px_rgba(16,72,56,0.22)] dark:border-white/10 sm:px-7 sm:py-7">
         <div className="absolute -right-20 top-0 h-56 w-56 rounded-full bg-white/45 blur-3xl dark:bg-primary/20" />
-        <div className="relative grid gap-6 xl:grid-cols-[minmax(0,1.2fr),minmax(320px,0.8fr)]">
-          <div className="space-y-5">
-            <div className="flex flex-wrap gap-2">
-              <span className="brand-hero-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]">
-                <Smartphone className="h-3.5 w-3.5" />
-                Front desk
-              </span>
-              <span className="brand-hero-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Phone-first
-              </span>
-              <span className="brand-hero-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]">
-                <CalendarDays className="h-3.5 w-3.5" />
-                Daily log
-              </span>
-            </div>
+        <div className="relative grid gap-6 xl:grid-cols-[minmax(0,1.1fr),minmax(340px,0.9fr)]">
+          <div className="space-y-6">
+            <span className="brand-hero-chip inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]">
+              <Smartphone className="h-3.5 w-3.5" />
+              Live front desk
+            </span>
 
-            <div className="max-w-3xl space-y-3">
+            <div className="max-w-3xl space-y-4">
               <p className="brand-hero-kicker text-xs font-semibold uppercase tracking-[0.28em]">
                 Check-ins
               </p>
               <h1 className="text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">
-                Front-desk check-ins, without the clutter.
+                Clean check-ins for a modern front desk.
               </h1>
               <p className="brand-hero-muted max-w-2xl text-sm leading-6 sm:text-base">
-                Keep walk-ins moving with a phone-first flow, then add service
-                or staff only when you need the extra detail.
+                Keep the default flow fast: phone first, match automatically,
+                then add service or staff only when the visit actually needs
+                more detail.
               </p>
             </div>
 
@@ -783,19 +761,32 @@ export default function CheckInsPage() {
                 <Search className="h-4 w-4" />
               </button>
             </div>
+          </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="brand-hero-card rounded-[24px] p-4">
+          <div className="brand-hero-card flex flex-col justify-between rounded-[28px] p-5 sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">
+                  Today
+                </p>
+                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-gray-950 dark:text-white">
+                  {selectedDateLabel}
+                </h2>
+              </div>
+              <span className="inline-flex rounded-full border border-primary/20 bg-primary/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                Live log
+              </span>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+              <div className="rounded-[24px] border border-gray-200/80 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
                       Logged
                     </p>
-                    <p className="mt-3 text-3xl font-bold tracking-tight text-gray-950 dark:text-white">
+                    <p className="mt-2 text-3xl font-bold tracking-tight text-gray-950 dark:text-white">
                       {checkIns.length}
-                    </p>
-                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                      {selectedDateLabel}
                     </p>
                   </div>
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/12 text-primary">
@@ -803,17 +794,14 @@ export default function CheckInsPage() {
                   </div>
                 </div>
               </div>
-              <div className="brand-hero-card rounded-[24px] p-4">
+              <div className="rounded-[24px] border border-gray-200/80 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
                       Customers
                     </p>
-                    <p className="mt-3 text-3xl font-bold tracking-tight text-gray-950 dark:text-white">
+                    <p className="mt-2 text-3xl font-bold tracking-tight text-gray-950 dark:text-white">
                       {uniqueGuests}
-                    </p>
-                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                      Unique check-ins on this view
                     </p>
                   </div>
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/12 text-primary">
@@ -821,19 +809,19 @@ export default function CheckInsPage() {
                   </div>
                 </div>
               </div>
-              <div className="brand-hero-card rounded-[24px] p-4">
+              <div className="rounded-[24px] border border-gray-200/80 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
-                      Latest activity
+                      Latest
                     </p>
-                    <p className="mt-3 text-2xl font-bold tracking-tight text-gray-950 dark:text-white">
+                    <p className="mt-2 text-xl font-bold tracking-tight text-gray-950 dark:text-white">
                       {latestCheckInLabel}
                     </p>
                     <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                       {latestCheckIn
                         ? latestCheckIn.customer.name
-                        : "No customers logged yet"}
+                        : "No check-ins yet"}
                     </p>
                   </div>
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/12 text-primary">
@@ -842,56 +830,37 @@ export default function CheckInsPage() {
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="brand-hero-card flex flex-col justify-between rounded-[28px] p-5 sm:p-6">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">
-                Flow
+            <div className="mt-5 rounded-[24px] border border-gray-200/80 bg-white/70 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                Default behavior
               </p>
-              <h2 className="mt-3 text-2xl font-semibold tracking-tight text-gray-950 dark:text-white">
-                Built for a clean SaaS-style front desk.
-              </h2>
-            </div>
-
-            <div className="mt-6 space-y-4">
-              <div className="flex items-start gap-3 rounded-[22px] border border-gray-200/80 bg-white/55 px-4 py-4 dark:border-white/10 dark:bg-white/[0.05]">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-                  <Smartphone className="h-4 w-4" />
+              <div className="mt-4 grid gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+                    <Smartphone className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-950 dark:text-white">
+                      Quick check-in is the default
+                    </p>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                      Enter a phone number, match the customer, and move on.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-950 dark:text-white">
-                    Quick lane
-                  </p>
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                    Enter a phone number, match instantly, and move on.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 rounded-[22px] border border-gray-200/80 bg-white/55 px-4 py-4 dark:border-white/10 dark:bg-white/[0.05]">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-                  <UserPlus2 className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-950 dark:text-white">
-                    New number
-                  </p>
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                    Capture a name once and the next check-in stays fast.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 rounded-[22px] border border-gray-200/80 bg-white/55 px-4 py-4 dark:border-white/10 dark:bg-white/[0.05]">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-                  <Search className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-950 dark:text-white">
-                    Detailed lane
-                  </p>
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                    Add service and staff when the visit needs more context.
-                  </p>
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+                    <Search className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-950 dark:text-white">
+                      Detailed entry stays optional
+                    </p>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                      Open it only when the visit needs service or staff.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -899,89 +868,7 @@ export default function CheckInsPage() {
         </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(300px,0.72fr),minmax(0,1.28fr)]">
-        <section className="card rounded-[30px] p-5 sm:p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">
-                Workflow
-              </p>
-              <h2 className="mt-2 text-xl font-semibold text-gray-950 dark:text-white">
-                Three beats from arrival to done
-              </h2>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-gray-600 dark:text-gray-300">
-                The front desk gets a clean phone-first flow, with service and
-                staff details ready when needed.
-              </p>
-            </div>
-            <span className="inline-flex w-fit rounded-full border border-primary/20 bg-primary/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              Fast lane
-            </span>
-          </div>
-
-          <div className="mt-5 grid gap-3">
-            <div className="flex items-start gap-4 rounded-[24px] border border-gray-200/80 bg-white/75 px-4 py-4 dark:border-white/10 dark:bg-white/[0.04]">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-sm font-semibold text-primary">
-                01
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-950 dark:text-white">
-                  Enter a mobile number
-                </p>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                  Keyboard or keypad, always focused on the 10-digit number.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4 rounded-[24px] border border-gray-200/80 bg-white/75 px-4 py-4 dark:border-white/10 dark:bg-white/[0.04]">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-sm font-semibold text-primary">
-                02
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-950 dark:text-white">
-                  Match or create the profile
-                </p>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                  Existing customers go straight through. New numbers only need
-                  a name once.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4 rounded-[24px] border border-gray-200/80 bg-white/75 px-4 py-4 dark:border-white/10 dark:bg-white/[0.04]">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-sm font-semibold text-primary">
-                03
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-950 dark:text-white">
-                  Drop into detailed mode when needed
-                </p>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                  Attach service or staff details without slowing down the
-                  default flow.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-[24px] border border-gray-200/80 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
-                Keyboard ready
-              </p>
-              <p className="mt-2 text-sm font-medium text-gray-950 dark:text-white">
-                Type numbers, press Enter, or tap the keypad.
-              </p>
-            </div>
-            <div className="rounded-[24px] border border-gray-200/80 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
-                Detailed mode
-              </p>
-              <p className="mt-2 text-sm font-medium text-gray-950 dark:text-white">
-                Service and staff stay optional until the visit needs them.
-              </p>
-            </div>
-          </div>
-        </section>
+      <div className="grid grid-cols-1 gap-4">
         <InStoreCheckInPanel business={inStoreBusiness} />
       </div>
 
@@ -1004,10 +891,6 @@ export default function CheckInsPage() {
                 <h2 className="mt-2 text-xl font-semibold text-gray-950 dark:text-white">
                   Check-ins for {selectedDateLabel}
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                  Review customer activity, attached services, and staff
-                  assignments in one clean view.
-                </p>
               </div>
             </div>
 
@@ -1266,53 +1149,27 @@ export default function CheckInsPage() {
                         </p>
                       </div>
 
-                      <div className="space-y-3">
-                        {quickStepMeta.items.map((item, index) => (
-                          <div
+                      <div className="flex flex-wrap gap-2">
+                        {quickStepMeta.items.map((item) => (
+                          <span
                             key={item}
-                            className="brand-hero-card flex items-start gap-4 rounded-[26px] px-5 py-4"
+                            className="inline-flex rounded-full border border-gray-200/80 bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-gray-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-200"
                           >
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-sm font-semibold text-primary">
-                              {String(index + 1).padStart(2, "0")}
-                            </div>
-                            <p className="text-sm leading-6 text-gray-700 dark:text-white/80">
-                              {item}
-                            </p>
-                          </div>
+                            {item}
+                          </span>
                         ))}
                       </div>
                     </div>
 
                     <div className="brand-hero-card rounded-[26px] p-5">
                       <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-                        Shortcuts
+                        Desk note
                       </p>
-                      <div className="mt-4 grid gap-3">
-                        <div className="rounded-[22px] border border-gray-200/80 bg-white/55 px-4 py-3 dark:border-white/10 dark:bg-white/[0.05]">
-                          <p className="text-sm font-semibold text-gray-950 dark:text-white">
-                            Number keys
-                          </p>
-                          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                            Type directly from the keyboard.
-                          </p>
-                        </div>
-                        <div className="rounded-[22px] border border-gray-200/80 bg-white/55 px-4 py-3 dark:border-white/10 dark:bg-white/[0.05]">
-                          <p className="text-sm font-semibold text-gray-950 dark:text-white">
-                            Enter
-                          </p>
-                          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                            Continue as soon as the number is ready.
-                          </p>
-                        </div>
-                        <div className="rounded-[22px] border border-gray-200/80 bg-white/55 px-4 py-3 dark:border-white/10 dark:bg-white/[0.05]">
-                          <p className="text-sm font-semibold text-gray-950 dark:text-white">
-                            Backspace key
-                          </p>
-                          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                            Backspace or tap the keypad to fix digits.
-                          </p>
-                        </div>
-                      </div>
+                      <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-white/80">
+                        Quick mode is the default path. Use detailed entry only
+                        when the visit needs service or staff attached at
+                        check-in.
+                      </p>
                     </div>
                   </div>
 
@@ -1320,14 +1177,6 @@ export default function CheckInsPage() {
                     {quickStep === "phone" ? (
                       <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center gap-6">
                         <div className="space-y-3">
-                          <div className="flex flex-wrap gap-2">
-                            <span className="inline-flex rounded-full border border-gray-200/80 bg-white/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300">
-                              10-digit mobile
-                            </span>
-                            <span className="inline-flex rounded-full border border-gray-200/80 bg-white/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300">
-                              Keyboard ready
-                            </span>
-                          </div>
                           <div className="space-y-2">
                             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">
                               Quick check-in
@@ -1336,9 +1185,9 @@ export default function CheckInsPage() {
                               Check in customer
                             </h2>
                             <p className="max-w-2xl text-sm leading-6 text-gray-600 dark:text-gray-300">
-                              Type a phone number or use the keypad below.
-                              Returning customers check in instantly. New
-                              numbers only need a name once.
+                              Enter a mobile number. Existing customers go
+                              straight through. New numbers only need a name
+                              once.
                             </p>
                           </div>
                         </div>
@@ -1382,25 +1231,15 @@ export default function CheckInsPage() {
                             </button>
                           </div>
 
-                          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                            <div className="rounded-[20px] border border-gray-200/70 bg-gray-50/80 p-3 dark:border-white/10 dark:bg-white/[0.04]">
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                                Digits entered
-                              </p>
-                              <p className="mt-2 text-sm font-semibold text-gray-950 dark:text-white">
-                                {quickDigits.length}/10
-                              </p>
-                            </div>
-                            <div className="rounded-[20px] border border-gray-200/70 bg-gray-50/80 p-3 dark:border-white/10 dark:bg-white/[0.04]">
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                                Status
-                              </p>
-                              <p className="mt-2 text-sm font-semibold text-gray-950 dark:text-white">
-                                {quickPhoneReady
-                                  ? "Ready to continue"
-                                  : "Waiting for 10 digits"}
-                              </p>
-                            </div>
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            <span className="inline-flex rounded-full border border-gray-200/80 bg-gray-50/85 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-gray-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-200">
+                              {quickDigits.length}/10 digits
+                            </span>
+                            <span className="inline-flex rounded-full border border-gray-200/80 bg-gray-50/85 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-gray-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-200">
+                              {quickPhoneReady
+                                ? "Ready to continue"
+                                : "Waiting for 10 digits"}
+                            </span>
                           </div>
                         </div>
 
@@ -1432,8 +1271,8 @@ export default function CheckInsPage() {
                           </div>
                         ) : (
                           <p className="text-sm text-gray-600 dark:text-gray-300">
-                            Type on the keyboard or tap the keypad to enter the
-                            customer&apos;s 10-digit mobile number.
+                            Use the keyboard or keypad to enter a 10-digit
+                            mobile number.
                           </p>
                         )}
 
@@ -1464,11 +1303,11 @@ export default function CheckInsPage() {
                             New customer
                           </p>
                           <h2 className="text-3xl font-bold text-gray-950 dark:text-white">
-                            Save this number once and move on
+                            Add the customer name
                           </h2>
                           <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">
-                            We could not find {quickPhoneDisplay}. Add a name so
-                            this customer can be checked in faster next time.
+                            No match for {quickPhoneDisplay}. Save the name
+                            once, then keep the line moving.
                           </p>
                         </div>
 
@@ -1476,102 +1315,80 @@ export default function CheckInsPage() {
                           onSubmit={handleQuickCreateCustomer}
                           className="space-y-5"
                         >
-                          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr),260px]">
-                            <div className="rounded-[28px] border border-gray-200/80 bg-white/85 p-5 dark:border-white/10 dark:bg-white/[0.04]">
-                              <div className="grid gap-5 sm:grid-cols-2">
-                                <div>
-                                  <label
-                                    className="label"
-                                    htmlFor="quick-customer-name"
-                                  >
-                                    Full name{" "}
-                                    <span className="text-red-500">*</span>
-                                  </label>
-                                  <input
-                                    id="quick-customer-name"
-                                    type="text"
-                                    value={newCustomerForm.name}
-                                    onChange={(event) =>
-                                      setNewCustomerForm((current) => ({
-                                        ...current,
-                                        name: event.target.value,
-                                      }))
-                                    }
-                                    className="input min-h-[56px] text-base"
-                                    placeholder="Jane Smith"
-                                    autoFocus
-                                  />
-                                </div>
-                                <div>
-                                  <label
-                                    className="label"
-                                    htmlFor="quick-customer-phone"
-                                  >
-                                    Mobile number
-                                  </label>
-                                  <input
-                                    id="quick-customer-phone"
-                                    value={
-                                      quickPhoneDisplay || quickFormattedPhone
-                                    }
-                                    readOnly
-                                    className="input min-h-[56px] cursor-default bg-gray-100/80 dark:bg-white/[0.06]"
-                                  />
-                                </div>
-                              </div>
-                              <div className="mt-5">
+                          <div className="flex flex-wrap gap-2">
+                            <span className="inline-flex rounded-full border border-gray-200/80 bg-white/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300">
+                              {quickPhoneDisplay || quickFormattedPhone}
+                            </span>
+                            <span className="inline-flex rounded-full border border-gray-200/80 bg-white/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300">
+                              Name required
+                            </span>
+                            <span className="inline-flex rounded-full border border-gray-200/80 bg-white/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300">
+                              Email optional
+                            </span>
+                          </div>
+
+                          <div className="rounded-[28px] border border-gray-200/80 bg-white/85 p-5 dark:border-white/10 dark:bg-white/[0.04]">
+                            <div className="grid gap-5 sm:grid-cols-2">
+                              <div>
                                 <label
                                   className="label"
-                                  htmlFor="quick-customer-email"
+                                  htmlFor="quick-customer-name"
                                 >
-                                  Email (optional)
+                                  Full name{" "}
+                                  <span className="text-red-500">*</span>
                                 </label>
                                 <input
-                                  id="quick-customer-email"
-                                  type="email"
-                                  value={newCustomerForm.email}
+                                  id="quick-customer-name"
+                                  type="text"
+                                  value={newCustomerForm.name}
                                   onChange={(event) =>
                                     setNewCustomerForm((current) => ({
                                       ...current,
-                                      email: event.target.value,
+                                      name: event.target.value,
                                     }))
                                   }
                                   className="input min-h-[56px] text-base"
-                                  placeholder="customer@example.com"
+                                  placeholder="Jane Smith"
+                                  autoFocus
+                                />
+                              </div>
+                              <div>
+                                <label
+                                  className="label"
+                                  htmlFor="quick-customer-phone"
+                                >
+                                  Mobile number
+                                </label>
+                                <input
+                                  id="quick-customer-phone"
+                                  value={
+                                    quickPhoneDisplay || quickFormattedPhone
+                                  }
+                                  readOnly
+                                  className="input min-h-[56px] cursor-default bg-gray-100/80 dark:bg-white/[0.06]"
                                 />
                               </div>
                             </div>
-
-                            <div className="rounded-[28px] border border-gray-200/80 bg-white/85 p-5 dark:border-white/10 dark:bg-white/[0.04]">
-                              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
-                                What gets saved
-                              </p>
-                              <div className="mt-4 space-y-3">
-                                <div className="rounded-[20px] border border-gray-200/70 bg-gray-50/80 p-3 dark:border-white/10 dark:bg-white/[0.04]">
-                                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                                    Number
-                                  </p>
-                                  <p className="mt-2 text-sm font-semibold text-gray-950 dark:text-white">
-                                    {quickPhoneDisplay || quickFormattedPhone}
-                                  </p>
-                                </div>
-                                <div className="rounded-[20px] border border-gray-200/70 bg-gray-50/80 p-3 dark:border-white/10 dark:bg-white/[0.04]">
-                                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                                    Required
-                                  </p>
-                                  <p className="mt-2 text-sm font-semibold text-gray-950 dark:text-white">
-                                    Full name
-                                  </p>
-                                </div>
-                                <div className="rounded-[20px] border border-gray-200/70 bg-gray-50/80 p-3 dark:border-white/10 dark:bg-white/[0.04]">
-                                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                                    Optional
-                                  </p>
-                                  <p className="mt-2 text-sm font-semibold text-gray-950 dark:text-white">
-                                    Email address
-                                  </p>
-                                </div>
-                              </div>
+                            <div className="mt-5">
+                              <label
+                                className="label"
+                                htmlFor="quick-customer-email"
+                              >
+                                Email (optional)
+                              </label>
+                              <input
+                                id="quick-customer-email"
+                                type="email"
+                                value={newCustomerForm.email}
+                                onChange={(event) =>
+                                  setNewCustomerForm((current) => ({
+                                    ...current,
+                                    email: event.target.value,
+                                  }))
+                                }
+                                className="input min-h-[56px] text-base"
+                                placeholder="customer@example.com"
+                              />
                             </div>
                           </div>
 
@@ -1763,49 +1580,31 @@ export default function CheckInsPage() {
                           Detailed entry
                         </p>
                         <h2 className="text-4xl font-bold leading-tight text-gray-950 dark:text-white">
-                          Add service and staff in the same check-in.
+                          Capture detail only when it matters.
                         </h2>
                         <p className="brand-hero-muted max-w-xl text-base leading-7">
-                          Use this mode when the front desk needs more detail
-                          without losing the speed of the default flow.
+                          Customer is required. Service and staff stay optional
+                          until the visit needs attribution.
                         </p>
                       </div>
 
-                      <div className="space-y-3">
-                        <div className="brand-hero-card rounded-[26px] p-5">
-                          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-                            Best for
-                          </p>
-                          <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-white/80">
-                            Walk-ins that already need a service attached.
-                          </p>
-                        </div>
-                        <div className="brand-hero-card rounded-[26px] p-5">
-                          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-                            Staff aware
-                          </p>
-                          <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-white/80">
-                            Assign the visit right away when ownership matters.
-                          </p>
-                        </div>
-                        <div className="brand-hero-card rounded-[26px] p-5">
-                          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-                            Search once
-                          </p>
-                          <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-white/80">
-                            Search by name or phone with the same normalized
-                            matching as the quick flow.
-                          </p>
-                        </div>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="inline-flex rounded-full border border-gray-200/80 bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-gray-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-200">
+                          Search by name or phone
+                        </span>
+                        <span className="inline-flex rounded-full border border-gray-200/80 bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-gray-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-200">
+                          Service optional
+                        </span>
+                        <span className="inline-flex rounded-full border border-gray-200/80 bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-gray-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-200">
+                          Staff optional
+                        </span>
                       </div>
                     </div>
 
                     <div className="brand-hero-card rounded-[26px] p-5">
-                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-                        Tip
-                      </p>
                       <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-white/80">
-                        Customer is required. Service and staff stay optional.
+                        Use this when a walk-in already needs attribution at
+                        the front desk.
                       </p>
                     </div>
                   </div>
@@ -1817,11 +1616,10 @@ export default function CheckInsPage() {
                           Detailed entry
                         </p>
                         <h2 className="text-3xl font-bold text-gray-950 dark:text-white">
-                          Manual check-in details
+                          Add service or staff when needed
                         </h2>
                         <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">
-                          Use this when the front desk needs to attach service
-                          or staff details at the same time.
+                          Customer is required. Everything else stays optional.
                         </p>
                       </div>
 
