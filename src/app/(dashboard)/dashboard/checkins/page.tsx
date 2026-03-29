@@ -719,34 +719,41 @@ export default function CheckInsPage() {
       <section className="brand-hero relative overflow-hidden rounded-[34px] border border-gray-200/80 px-5 py-6 shadow-[0_32px_90px_-50px_rgba(16,72,56,0.22)] dark:border-white/10 sm:px-7 sm:py-7">
         <div className="absolute -right-20 top-0 h-56 w-56 rounded-full bg-white/45 blur-3xl dark:bg-primary/20" />
         <div className="relative space-y-6">
-          <div className="max-w-3xl space-y-3">
-            <h1 className="text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">
-              Check ins
-            </h1>
-            <p className="brand-hero-muted max-w-2xl text-sm leading-6 sm:text-base">
-              Quick check-in is the default. Use detailed entry only when you
-              need more detail.
-            </p>
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div className="max-w-3xl space-y-3">
+              <h1 className="text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">
+                Check ins
+              </h1>
+              <p className="brand-hero-muted max-w-2xl text-sm leading-6 sm:text-base">
+                Fast, phone-first check-ins with the device link and QR in one
+                place.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={openQuickModal}
+                className="btn-primary min-h-[52px] gap-2 px-5 text-sm sm:text-base"
+              >
+                Quick check-in
+                <ArrowRight className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={openDetailedModal}
+                className="btn-secondary min-h-[52px] gap-2 px-5 text-sm sm:text-base"
+              >
+                Detailed entry
+                <Search className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <button
-              type="button"
-              onClick={openQuickModal}
-              className="btn-primary min-h-[52px] gap-2 px-5 text-sm sm:text-base"
-            >
-              Quick check-in
-              <ArrowRight className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={openDetailedModal}
-              className="btn-secondary min-h-[52px] gap-2 px-5 text-sm sm:text-base"
-            >
-              Detailed entry
-              <Search className="h-4 w-4" />
-            </button>
-          </div>
+          <InStoreCheckInPanel
+            business={inStoreBusiness}
+            variant="embedded"
+          />
 
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-[24px] border border-gray-200/80 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
@@ -779,10 +786,6 @@ export default function CheckInsPage() {
           </div>
         </div>
       </section>
-
-      <div className="grid grid-cols-1 gap-4">
-        <InStoreCheckInPanel business={inStoreBusiness} />
-      </div>
 
       <section className="card overflow-hidden rounded-[30px]">
         <div className="border-b border-gray-200/80 bg-gradient-to-r from-white/65 via-white/35 to-transparent px-5 py-5 dark:border-white/10 dark:from-white/[0.04] dark:via-white/[0.02] dark:to-transparent sm:px-6">
