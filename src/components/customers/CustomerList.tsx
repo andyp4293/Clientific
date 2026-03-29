@@ -15,6 +15,8 @@ import {
   type CustomerVisitFilter,
 } from "@/lib/customer-filter-options";
 
+type CustomerTab = "customers" | "groups";
+
 type Customer = {
   id: string;
   name: string;
@@ -54,6 +56,11 @@ interface CustomerListProps {
   initialSmsFilter?: CustomerSmsFilter | "";
   initialContactFilter?: CustomerContactFilter | "";
   initialVisitFilter?: CustomerVisitFilter | "";
+  initialTab?: CustomerTab;
+  currentPage?: number;
+  pageSize?: number;
+  totalCustomers?: number;
+  totalPages?: number;
 }
 
 const smsFilterOptions: Array<{ value: CustomerSmsFilter; label: string }> = [
@@ -193,6 +200,28 @@ function renderCustomerGroups(customer: Pick<Customer, "groupMemberships">) {
   );
 }
 
+function buildPaginationItems(currentPage: number, totalPages: number) {
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const pages = new Set<number>([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+  const visiblePages = Array.from(pages)
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((a, b) => a - b);
+
+  const items: Array<number | "ellipsis"> = [];
+  visiblePages.forEach((page, index) => {
+    const previousPage = visiblePages[index - 1];
+    if (previousPage && page - previousPage > 1) {
+      items.push("ellipsis");
+    }
+    items.push(page);
+  });
+
+  return items;
+}
+
 export default function CustomerList({
   customers,
   groups,
@@ -201,6 +230,11 @@ export default function CustomerList({
   initialSmsFilter = "",
   initialContactFilter = "",
   initialVisitFilter = "",
+  initialTab = "customers",
+  currentPage = 1,
+  pageSize = customers.length || 25,
+  totalCustomers = customers.length,
+  totalPages = 1,
 }: CustomerListProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -218,6 +252,10 @@ export default function CustomerList({
   }));
 
   useEffect(() => {
+    setSearch(initialSearch);
+  }, [initialSearch]);
+
+  useEffect(() => {
     setCustomerRecords(customers);
   }, [customers]);
 
@@ -228,6 +266,7 @@ export default function CustomerList({
   const updateQueryParam = (key: string, value?: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("segment");
+    params.delete("page");
     if (value) {
       params.set(key, value);
     } else {
@@ -252,6 +291,30 @@ export default function CustomerList({
   const clearAllFilters = () => {
     setSearch("");
     router.push("/dashboard/customers");
+  };
+
+  const handleTabChange = (tab: CustomerTab) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === "groups") {
+      params.set("tab", "groups");
+    } else {
+      params.delete("tab");
+    }
+    router.push(buildCustomersHref(params));
+  };
+
+  const handlePageChange = (page: number) => {
+    if (page < 1 || page > totalPages || page === currentPage) {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+    if (page === 1) {
+      params.delete("page");
+    } else {
+      params.set("page", String(page));
+    }
+    router.push(buildCustomersHref(params));
   };
 
   const openCreateGroupModal = () => {
@@ -352,6 +415,12 @@ export default function CustomerList({
     setEditingGroup((current) => (current?.id === groupId ? null : current));
   };
 
+  const activeTab = initialTab;
+  const paginationItems = buildPaginationItems(currentPage, totalPages);
+  const resultsStart = totalCustomers === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const resultsEnd =
+    totalCustomers === 0 ? 0 : resultsStart + Math.max(customerRecords.length - 1, 0);
+
   const renderCustomerActions = (customer: Customer, compact = false) => (
     <div
       className={
@@ -431,232 +500,211 @@ export default function CustomerList({
 
   return (
     <>
-      <div className="space-y-4 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-800">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-          <div className="flex-1">
-            <input
-              type="text"
-              placeholder="Search by name, email, or phone..."
-              value={search}
-              onChange={(event) => handleSearch(event.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
-            />
-          </div>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="btn-primary whitespace-nowrap"
-          >
-            + Add Customer
-          </button>
-        </div>
-
-        <div className="space-y-3 rounded-[28px] border border-gray-200 bg-gradient-to-br from-white via-white to-gray-50/80 p-4 dark:border-gray-700 dark:from-gray-800 dark:via-gray-800 dark:to-gray-900/60">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary dark:bg-primary/15">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.8}
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.73-.157-1.424-.44-2.05M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.73.157-1.424.44-2.05m0 0a5 5 0 019.12 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  Customer groups
-                </h2>
-                <p className="mt-0.5 text-xs font-medium uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                  {groupRecords.length} saved
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={openCreateGroupModal}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white/95 px-4 py-3 text-sm font-semibold text-gray-900 shadow-[0_1px_0_rgba(255,255,255,0.55)] transition-colors hover:border-primary/30 hover:bg-primary/[0.05] hover:text-primary dark:border-gray-700 dark:bg-gray-900/85 dark:text-gray-100 dark:shadow-none dark:hover:border-primary/40 dark:hover:bg-primary/[0.08] dark:hover:text-primary sm:w-auto sm:rounded-full sm:px-4 sm:py-2.5"
+      <section className="card relative overflow-hidden rounded-[30px] p-4 sm:p-5">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/35 to-transparent" />
+        <div className="relative space-y-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div
+              role="tablist"
+              aria-label="Customer sections"
+              className="inline-flex w-fit rounded-full border border-gray-200/80 bg-white/70 p-1 shadow-sm dark:border-white/10 dark:bg-white/[0.04]"
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary dark:bg-primary/15">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14m7-7H5" />
-                </svg>
-              </span>
-              <span className="text-left leading-none">
-                <span className="block sm:hidden">New group</span>
-                <span className="hidden sm:block">Add group</span>
-              </span>
-            </button>
-          </div>
-
-          {groupRecords.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-gray-300/90 bg-white/75 px-4 py-5 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-400">
-              No groups yet.
-            </div>
-          ) : (
-            <div className="grid gap-3 xl:grid-cols-3">
-              {groupRecords.map((group) => (
-                <button
-                  key={group.id}
-                  type="button"
-                  onClick={() => openEditGroupModal(group)}
-                  className="group rounded-2xl border border-gray-200 bg-white/90 p-4 text-left transition-colors hover:border-primary/30 hover:bg-primary/[0.04] dark:border-gray-700 dark:bg-gray-900/70 dark:hover:border-primary/40 dark:hover:bg-primary/[0.08]"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
-                        {group.name}
-                      </p>
-                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        {group._count?.memberships ?? 0} customer
-                        {(group._count?.memberships ?? 0) === 1 ? "" : "s"}
-                      </p>
-                    </div>
-                    <svg
-                      className="mt-0.5 h-4 w-4 shrink-0 text-gray-300 transition-colors group-hover:text-primary dark:text-gray-600"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                        group.promotionSmsEnabled
-                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                          : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                      }`}
-                    >
-                      {group.promotionSmsEnabled ? "Promotion SMS on" : "Promotion SMS off"}
-                    </span>
-                    <span className="text-xs font-semibold text-gray-400 transition-colors group-hover:text-primary dark:text-gray-500">
-                      Edit
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-4 rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-1">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Filter customers
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Narrow by group, texting status, contact details, and visit history.
-              </p>
-            </div>
-
-            {hasActiveFilters && (
               <button
-                onClick={clearAllFilters}
-                className="inline-flex items-center justify-center rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "customers"}
+                onClick={() => handleTabChange("customers")}
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === "customers"
+                    ? "bg-primary text-white shadow-sm"
+                    : "text-gray-600 hover:text-gray-950 dark:text-gray-300 dark:hover:text-white"
+                }`}
               >
-                Clear all filters
+                Customers
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs ${
+                    activeTab === "customers"
+                      ? "bg-white/15 text-white"
+                      : "bg-gray-100 text-gray-600 dark:bg-white/[0.06] dark:text-gray-300"
+                  }`}
+                >
+                  {totalCustomers}
+                </span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "groups"}
+                onClick={() => handleTabChange("groups")}
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === "groups"
+                    ? "bg-primary text-white shadow-sm"
+                    : "text-gray-600 hover:text-gray-950 dark:text-gray-300 dark:hover:text-white"
+                }`}
+              >
+                Groups
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs ${
+                    activeTab === "groups"
+                      ? "bg-white/15 text-white"
+                      : "bg-gray-100 text-gray-600 dark:bg-white/[0.06] dark:text-gray-300"
+                  }`}
+                >
+                  {groupRecords.length}
+                </span>
+              </button>
+            </div>
+
+            {activeTab === "customers" ? (
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="btn-primary whitespace-nowrap"
+              >
+                + Add Customer
+              </button>
+            ) : (
+              <button
+                onClick={openCreateGroupModal}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white/95 px-4 py-3 text-sm font-semibold text-gray-900 shadow-[0_1px_0_rgba(255,255,255,0.55)] transition-colors hover:border-primary/30 hover:bg-primary/[0.05] hover:text-primary dark:border-gray-700 dark:bg-gray-900/85 dark:text-gray-100 dark:shadow-none dark:hover:border-primary/40 dark:hover:bg-primary/[0.08] dark:hover:text-primary sm:w-auto sm:rounded-full sm:px-4 sm:py-2.5"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary dark:bg-primary/15">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14m7-7H5" />
+                  </svg>
+                </span>
+                <span className="text-left leading-none">
+                  <span className="block sm:hidden">New group</span>
+                  <span className="hidden sm:block">Add group</span>
+                </span>
               </button>
             )}
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <label className="space-y-1">
-              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                Group
-              </span>
-              <CustomSelect
-                ariaLabel="Customer group"
-                value={initialGroupFilter}
-                onChange={(value) => updateQueryParam("group", value || undefined)}
-                className="input w-full"
-                placeholder="All groups"
-                options={groupFilterOptions}
-              />
-            </label>
+          {activeTab === "customers" ? (
+            <div className="space-y-4">
+              <div className="rounded-[28px] border border-gray-200/80 bg-white/72 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                <input
+                  type="text"
+                  placeholder="Search by name, email, or phone..."
+                  value={search}
+                  onChange={(event) => handleSearch(event.target.value)}
+                  className="input w-full"
+                />
+              </div>
 
-            <label className="space-y-1">
-              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                SMS status
-              </span>
-              <CustomSelect
-                ariaLabel="SMS status"
-                value={initialSmsFilter}
-                onChange={(value) => updateQueryParam("sms", value || undefined)}
-                className="input w-full"
-                placeholder="All SMS statuses"
-                options={smsFilterOptions}
-              />
-            </label>
+              <div className="space-y-4 rounded-[28px] border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="space-y-1">
+                    <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      Filter customers
+                    </h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Narrow by group, texting status, contact details, and visit history.
+                    </p>
+                  </div>
 
-            <label className="space-y-1">
-              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                Contact details
-              </span>
-              <CustomSelect
-                ariaLabel="Contact details"
-                value={initialContactFilter}
-                onChange={(value) =>
-                  updateQueryParam("contact", value || undefined)
-                }
-                className="input w-full"
-                placeholder="All contacts"
-                options={contactFilterOptions}
-              />
-            </label>
+                  {hasActiveFilters && (
+                    <button
+                      onClick={clearAllFilters}
+                      className="inline-flex items-center justify-center rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                    >
+                      Clear all filters
+                    </button>
+                  )}
+                </div>
 
-            <label className="space-y-1">
-              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                Visit history
-              </span>
-              <CustomSelect
-                ariaLabel="Visit history"
-                value={initialVisitFilter}
-                onChange={(value) => updateQueryParam("visit", value || undefined)}
-                className="input w-full"
-                placeholder="All visits"
-                options={visitFilterOptions}
-              />
-            </label>
-          </div>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <label className="space-y-1">
+                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                      Group
+                    </span>
+                    <CustomSelect
+                      ariaLabel="Customer group"
+                      value={initialGroupFilter}
+                      onChange={(value) => updateQueryParam("group", value || undefined)}
+                      className="input w-full"
+                      placeholder="All groups"
+                      options={groupFilterOptions}
+                    />
+                  </label>
 
-          {hasActiveFilters && (
-            <div className="flex flex-wrap gap-2">
-              {initialSearch && (
-                <span className="inline-flex rounded-full bg-white px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                  Search: {initialSearch}
-                </span>
-              )}
-              {initialGroupFilter && (
-                <span className="inline-flex rounded-full bg-white px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                  Group: {groups.find((group) => group.id === initialGroupFilter)?.name ?? "Unknown"}
-                </span>
-              )}
-              {initialSmsFilter && (
-                <span className="inline-flex rounded-full bg-white px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                  SMS: {smsFilterOptions.find((option) => option.value === initialSmsFilter)?.label}
-                </span>
-              )}
-              {initialContactFilter && (
-                <span className="inline-flex rounded-full bg-white px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                  Contact: {contactFilterOptions.find((option) => option.value === initialContactFilter)?.label}
-                </span>
-              )}
-              {initialVisitFilter && (
-                <span className="inline-flex rounded-full bg-white px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                  Visits: {visitFilterOptions.find((option) => option.value === initialVisitFilter)?.label}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+                  <label className="space-y-1">
+                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                      SMS status
+                    </span>
+                    <CustomSelect
+                      ariaLabel="SMS status"
+                      value={initialSmsFilter}
+                      onChange={(value) => updateQueryParam("sms", value || undefined)}
+                      className="input w-full"
+                      placeholder="All SMS statuses"
+                      options={smsFilterOptions}
+                    />
+                  </label>
 
-      <div className="overflow-hidden rounded-lg bg-white shadow-sm dark:bg-gray-800">
-        {customers.length === 0 ? (
-          <div className="py-12 text-center">
+                  <label className="space-y-1">
+                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                      Contact details
+                    </span>
+                    <CustomSelect
+                      ariaLabel="Contact details"
+                      value={initialContactFilter}
+                      onChange={(value) => updateQueryParam("contact", value || undefined)}
+                      className="input w-full"
+                      placeholder="All contacts"
+                      options={contactFilterOptions}
+                    />
+                  </label>
+
+                  <label className="space-y-1">
+                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                      Visit history
+                    </span>
+                    <CustomSelect
+                      ariaLabel="Visit history"
+                      value={initialVisitFilter}
+                      onChange={(value) => updateQueryParam("visit", value || undefined)}
+                      className="input w-full"
+                      placeholder="All visits"
+                      options={visitFilterOptions}
+                    />
+                  </label>
+                </div>
+
+                {hasActiveFilters && (
+                  <div className="flex flex-wrap gap-2">
+                    {initialSearch && (
+                      <span className="inline-flex rounded-full bg-white px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                        Search: {initialSearch}
+                      </span>
+                    )}
+                    {initialGroupFilter && (
+                      <span className="inline-flex rounded-full bg-white px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                        Group: {groups.find((group) => group.id === initialGroupFilter)?.name ?? "Unknown"}
+                      </span>
+                    )}
+                    {initialSmsFilter && (
+                      <span className="inline-flex rounded-full bg-white px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                        SMS: {smsFilterOptions.find((option) => option.value === initialSmsFilter)?.label}
+                      </span>
+                    )}
+                    {initialContactFilter && (
+                      <span className="inline-flex rounded-full bg-white px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                        Contact: {contactFilterOptions.find((option) => option.value === initialContactFilter)?.label}
+                      </span>
+                    )}
+                    {initialVisitFilter && (
+                      <span className="inline-flex rounded-full bg-white px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                        Visits: {visitFilterOptions.find((option) => option.value === initialVisitFilter)?.label}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="overflow-hidden rounded-[28px] border border-gray-200/80 bg-white/78 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
+                {customerRecords.length === 0 ? (
+                  <div className="py-12 text-center">
             <svg
               className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500"
               fill="none"
@@ -912,7 +960,130 @@ export default function CustomerList({
             </div>
           </>
         )}
-      </div>
+                {totalCustomers > 0 ? (
+                  <div className="flex flex-col gap-3 border-t border-gray-200/80 px-4 py-4 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Showing {resultsStart}-{resultsEnd} of {totalCustomers} customers
+                    </p>
+
+                    {totalPages > 1 ? (
+                      <nav
+                        aria-label="Customers pagination"
+                        className="flex items-center gap-2 self-start sm:self-auto"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handlePageChange(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-sm font-semibold text-gray-700 transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-200"
+                          aria-label="Previous page"
+                        >
+                          &larr;
+                        </button>
+                        {paginationItems.map((item, index) =>
+                          item === "ellipsis" ? (
+                            <span
+                              key={`ellipsis-${index}`}
+                              className="inline-flex h-10 w-10 items-center justify-center text-sm text-gray-400"
+                            >
+                              ...
+                            </span>
+                          ) : (
+                            <button
+                              key={item}
+                              type="button"
+                              onClick={() => handlePageChange(item)}
+                              aria-current={item === currentPage ? "page" : undefined}
+                              className={`inline-flex h-10 min-w-[2.5rem] items-center justify-center rounded-full px-3 text-sm font-semibold transition ${
+                                item === currentPage
+                                  ? "bg-primary text-white shadow-sm"
+                                  : "border border-gray-200 bg-white text-gray-700 hover:border-primary/30 hover:text-primary dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-200"
+                              }`}
+                            >
+                              {item}
+                            </button>
+                          ),
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handlePageChange(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-sm font-semibold text-gray-700 transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-200"
+                          aria-label="Next page"
+                        >
+                          &rarr;
+                        </button>
+                      </nav>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4 rounded-[28px] border border-gray-200 bg-gradient-to-br from-white via-white to-gray-50/80 p-4 dark:border-gray-700 dark:from-gray-800 dark:via-gray-800 dark:to-gray-900/60">
+              <div className="space-y-1">
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  Customer groups
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Organize customers into reusable audiences for promotions and outreach.
+                </p>
+              </div>
+
+              {groupRecords.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-gray-300/90 bg-white/75 px-4 py-5 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-400">
+                  No groups yet.
+                </div>
+              ) : (
+                <div className="grid gap-3 xl:grid-cols-3">
+                  {groupRecords.map((group) => (
+                    <button
+                      key={group.id}
+                      type="button"
+                      onClick={() => openEditGroupModal(group)}
+                      className="group rounded-2xl border border-gray-200 bg-white/90 p-4 text-left transition-colors hover:border-primary/30 hover:bg-primary/[0.04] dark:border-gray-700 dark:bg-gray-900/70 dark:hover:border-primary/40 dark:hover:bg-primary/[0.08]"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            {group.name}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            {group._count?.memberships ?? 0} customer
+                            {(group._count?.memberships ?? 0) === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                        <svg
+                          className="mt-0.5 h-4 w-4 shrink-0 text-gray-300 transition-colors group-hover:text-primary dark:text-gray-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                      <div className="mt-4 flex items-center justify-between gap-3">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            group.promotionSmsEnabled
+                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                              : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                          }`}
+                        >
+                          {group.promotionSmsEnabled ? "Promotion SMS on" : "Promotion SMS off"}
+                        </span>
+                        <span className="text-xs font-semibold text-gray-400 transition-colors group-hover:text-primary dark:text-gray-500">
+                          Edit
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
 
       <AddCustomerModal
         isOpen={isAddModalOpen}

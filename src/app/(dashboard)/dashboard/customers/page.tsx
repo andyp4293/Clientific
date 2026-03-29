@@ -10,6 +10,8 @@ import type {
   CustomerVisitFilter,
 } from "@/lib/customer-filter-options";
 
+const CUSTOMERS_PAGE_SIZE = 25;
+
 export default async function CustomersPage({
   searchParams,
 }: {
@@ -19,6 +21,8 @@ export default async function CustomersPage({
     sms?: CustomerSmsFilter;
     contact?: CustomerContactFilter;
     visit?: CustomerVisitFilter;
+    page?: string;
+    tab?: "customers" | "groups";
   }>;
 }) {
   const session = await getServerSession(authOptions);
@@ -29,6 +33,9 @@ export default async function CustomersPage({
 
   const businessId = session.user.businessId;
   const params = await searchParams;
+  const requestedPage = Number.parseInt(params.page ?? "1", 10);
+  const currentPage =
+    Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const where = buildCustomerWhereClause({
     businessId,
     search: params.search,
@@ -38,7 +45,8 @@ export default async function CustomersPage({
     visit: params.visit,
   });
 
-  const [customers, groups] = await Promise.all([
+  const [totalCustomers, customers, groups] = await Promise.all([
+    prisma.customer.count({ where }),
     prisma.customer.findMany({
       where,
       include: {
@@ -57,6 +65,8 @@ export default async function CustomersPage({
         },
       },
       orderBy: { createdAt: "desc" },
+      skip: (currentPage - 1) * CUSTOMERS_PAGE_SIZE,
+      take: CUSTOMERS_PAGE_SIZE,
     }),
     prisma.customerGroup.findMany({
       where: { businessId },
@@ -70,6 +80,7 @@ export default async function CustomersPage({
       orderBy: [{ name: "asc" }],
     }),
   ]);
+  const totalPages = Math.max(1, Math.ceil(totalCustomers / CUSTOMERS_PAGE_SIZE));
 
   return (
     <div className="space-y-6">
@@ -90,6 +101,11 @@ export default async function CustomersPage({
         initialSmsFilter={params.sms}
         initialContactFilter={params.contact}
         initialVisitFilter={params.visit}
+        initialTab={params.tab === "groups" ? "groups" : "customers"}
+        currentPage={Math.min(currentPage, totalPages)}
+        pageSize={CUSTOMERS_PAGE_SIZE}
+        totalCustomers={totalCustomers}
+        totalPages={totalPages}
       />
     </div>
   );

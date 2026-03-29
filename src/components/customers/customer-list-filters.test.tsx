@@ -128,20 +128,49 @@ describe("CustomerList filters", () => {
   });
 
   it("shows customer group filter controls and group cards", () => {
-    render(<CustomerList customers={[baseCustomer]} groups={customerGroups} />);
+    render(
+      <CustomerList
+        customers={[baseCustomer]}
+        groups={customerGroups}
+        initialTab="groups"
+      />,
+    );
 
     expect(screen.getByText("Customer groups")).toBeInTheDocument();
     expect(screen.getByText("VIP Regulars")).toBeInTheDocument();
     expect(screen.getByText("Promotion SMS on")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /customer group/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /groups/i })).toHaveAttribute("aria-selected", "true");
   });
 
   it("renders the add group action as a full-width mobile button with the new label", () => {
-    render(<CustomerList customers={[baseCustomer]} groups={[]} />);
+    render(<CustomerList customers={[baseCustomer]} groups={[]} initialTab="groups" />);
 
     const addGroupButton = screen.getByRole("button", { name: /new group/i });
     expect(addGroupButton.className).toContain("w-full");
     expect(addGroupButton.className).toContain("rounded-2xl");
     expect(screen.getByText("New group")).toBeInTheDocument();
+  });
+
+  it("renders tab buttons and paginates the customer table with numbered buttons", () => {
+    mockSearchParams.mockReturnValue(new URLSearchParams("search=jane"));
+
+    render(
+      <CustomerList
+        customers={[baseCustomer]}
+        groups={customerGroups}
+        currentPage={2}
+        pageSize={25}
+        totalCustomers={68}
+        totalPages={3}
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: /customers/i })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: /groups/i })).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByText("Showing 26-26 of 68 customers")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "3" }));
+
+    expect(mockPush).toHaveBeenCalledWith("/dashboard/customers?search=jane&page=3");
   });
 });
