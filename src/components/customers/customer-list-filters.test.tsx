@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import CustomerList from "./CustomerList";
 
-const { mockPush, mockSearchParams } = vi.hoisted(() => ({
+const { mockFetch, mockPush, mockSearchParams } = vi.hoisted(() => ({
+  mockFetch: vi.fn(),
   mockPush: vi.fn(),
   mockSearchParams: vi.fn(() => new URLSearchParams()),
 }));
@@ -65,6 +66,11 @@ describe("CustomerList filters", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSearchParams.mockReturnValue(new URLSearchParams());
+    vi.stubGlobal("fetch", mockFetch);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ customers: [] }),
+    });
   });
 
   it("renders broader filter controls and active filter chips", () => {
@@ -172,5 +178,39 @@ describe("CustomerList filters", () => {
     fireEvent.click(screen.getByRole("button", { name: "3" }));
 
     expect(mockPush).toHaveBeenCalledWith("/dashboard/customers?search=jane&page=3");
+  });
+
+  it("shows a check-in style customer search dropdown with live matches", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        customers: [
+          {
+            id: "cust-2",
+            name: "Janet Doe",
+            email: "janet@example.com",
+            phone: "+15557654321",
+          },
+        ],
+      }),
+    });
+
+    render(<CustomerList customers={[baseCustomer]} groups={customerGroups} />);
+
+    const searchInput = screen.getByPlaceholderText(/search by name, email, or phone/i);
+
+    fireEvent.focus(searchInput);
+    fireEvent.change(searchInput, { target: { value: "ja" } });
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith("/api/customers?search=ja&limit=8", expect.any(Object));
+    });
+
+    expect(await screen.findByText("Janet Doe")).toBeInTheDocument();
+    expect(screen.getByText("(555) 765-4321")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /janet doe/i }));
+
+    expect(searchInput).toHaveValue("Janet Doe");
   });
 });

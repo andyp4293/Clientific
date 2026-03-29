@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
@@ -9,6 +9,7 @@ import CustomerGroupModal from "./CustomerGroupModal";
 import EditCustomerModal from "./EditCustomerModal";
 import SendCustomerMessageModal from "./SendCustomerMessageModal";
 import { CustomSelect } from "@/components/ui/CustomSelect";
+import { formatPhoneForDisplay } from "@/lib/phone";
 import {
   type CustomerContactFilter,
   type CustomerSmsFilter,
@@ -48,6 +49,8 @@ type CustomerGroup = {
   };
 };
 
+type CustomerSearchMatch = Pick<Customer, "id" | "name" | "email" | "phone">;
+
 interface CustomerListProps {
   customers: Customer[];
   groups: CustomerGroup[];
@@ -80,6 +83,10 @@ const visitFilterOptions: Array<{ value: CustomerVisitFilter; label: string }> =
   { value: "visited", label: "Visited before" },
   { value: "never", label: "Never visited" },
 ];
+
+const SEARCH_DROPDOWN_MIN_LENGTH = 2;
+const SEARCH_DROPDOWN_LIMIT = 8;
+const SEARCH_QUERY_SYNC_DELAY_MS = 250;
 
 function buildCustomersHref(params: URLSearchParams) {
   const query = params.toString();
@@ -238,14 +245,21 @@ export default function CustomerList({
 }: CustomerListProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const activeTab = initialTab;
   const [search, setSearch] = useState(initialSearch);
   const [customerRecords, setCustomerRecords] = useState(customers);
   const [groupRecords, setGroupRecords] = useState(groups);
+  const [searchMatches, setSearchMatches] = useState<CustomerSearchMatch[]>([]);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [hasSearchLoaded, setHasSearchLoaded] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<CustomerGroup | null>(null);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [messagingCustomer, setMessagingCustomer] = useState<Customer | null>(null);
+  const searchCacheRef = useRef<Map<string, CustomerSearchMatch[]>>(new Map());
+  const searchBlurTimeoutRef = useRef<number | null>(null);
   const groupFilterOptions = groupRecords.map((group) => ({
     value: group.id,
     label: group.name,
@@ -263,6 +277,105 @@ export default function CustomerList({
     setGroupRecords(groups);
   }, [groups]);
 
+  useEffect(() => {
+    const normalizedSearch = search.trim();
+    const normalizedInitialSearch = initialSearch.trim();
+
+    if (normalizedSearch === normalizedInitialSearch) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("segment");
+      params.delete("page");
+      if (normalizedSearch) {
+        params.set("search", normalizedSearch);
+      } else {
+        params.delete("search");
+      }
+
+      startTransition(() => {
+        router.push(buildCustomersHref(params));
+      });
+    }, SEARCH_QUERY_SYNC_DELAY_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [initialSearch, router, search, searchParams]);
+
+  useEffect(() => {
+    if (activeTab !== "customers" || !isSearchFocused) {
+      setSearchMatches([]);
+      setIsSearchLoading(false);
+      setHasSearchLoaded(false);
+      return;
+    }
+
+    const query = search.trim();
+
+    if (query.length < SEARCH_DROPDOWN_MIN_LENGTH) {
+      setSearchMatches([]);
+      setIsSearchLoading(false);
+      setHasSearchLoaded(false);
+      return;
+    }
+
+    const cacheKey = query.toLowerCase();
+    const cachedMatches = searchCacheRef.current.get(cacheKey);
+    if (cachedMatches) {
+      setSearchMatches(cachedMatches);
+      setIsSearchLoading(false);
+      setHasSearchLoaded(true);
+      return;
+    }
+
+    const abortController = new AbortController();
+
+    async function loadSearchMatches() {
+      setIsSearchLoading(true);
+      setHasSearchLoaded(false);
+
+      try {
+        const response = await fetch(
+          `/api/customers?search=${encodeURIComponent(query)}&limit=${SEARCH_DROPDOWN_LIMIT}`,
+          { signal: abortController.signal },
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch customer matches");
+        }
+
+        const payload = (await response.json()) as { customers?: CustomerSearchMatch[] };
+        const matches = Array.isArray(payload.customers) ? payload.customers : [];
+
+        searchCacheRef.current.set(cacheKey, matches);
+        setSearchMatches(matches);
+      } catch (error) {
+        if (!abortController.signal.aborted) {
+          setSearchMatches([]);
+        }
+      } finally {
+        if (!abortController.signal.aborted) {
+          setIsSearchLoading(false);
+          setHasSearchLoaded(true);
+        }
+      }
+    }
+
+    void loadSearchMatches();
+
+    return () => abortController.abort();
+  }, [activeTab, isSearchFocused, search]);
+
+  useEffect(
+    () => () => {
+      if (searchBlurTimeoutRef.current) {
+        window.clearTimeout(searchBlurTimeoutRef.current);
+      }
+    },
+    [],
+  );
+
   const updateQueryParam = (key: string, value?: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("segment");
@@ -277,11 +390,37 @@ export default function CustomerList({
 
   const handleSearch = (value: string) => {
     setSearch(value);
-    updateQueryParam("search", value || undefined);
+  };
+
+  const handleSearchFocus = () => {
+    if (searchBlurTimeoutRef.current) {
+      window.clearTimeout(searchBlurTimeoutRef.current);
+      searchBlurTimeoutRef.current = null;
+    }
+    setIsSearchFocused(true);
+  };
+
+  const handleSearchBlur = () => {
+    if (searchBlurTimeoutRef.current) {
+      window.clearTimeout(searchBlurTimeoutRef.current);
+    }
+    searchBlurTimeoutRef.current = window.setTimeout(() => {
+      setIsSearchFocused(false);
+      searchBlurTimeoutRef.current = null;
+    }, 120);
+  };
+
+  const handleSearchMatchSelect = (customer: CustomerSearchMatch) => {
+    if (searchBlurTimeoutRef.current) {
+      window.clearTimeout(searchBlurTimeoutRef.current);
+      searchBlurTimeoutRef.current = null;
+    }
+    setSearch(customer.name);
+    setIsSearchFocused(false);
   };
 
   const hasActiveFilters = Boolean(
-    initialSearch ||
+    search ||
       initialGroupFilter ||
       initialSmsFilter ||
       initialContactFilter ||
@@ -333,6 +472,7 @@ export default function CustomerList({
   };
 
   const handleCustomerCreated = (customer: Customer) => {
+    searchCacheRef.current.clear();
     setCustomerRecords((current) => [
       {
         ...customer,
@@ -350,6 +490,7 @@ export default function CustomerList({
   };
 
   const handleCustomerSaved = (customer: Customer) => {
+    searchCacheRef.current.clear();
     setCustomerRecords((current) =>
       current.map((entry) =>
         entry.id === customer.id
@@ -374,6 +515,7 @@ export default function CustomerList({
   };
 
   const handleCustomerDeleted = (customerId: string) => {
+    searchCacheRef.current.clear();
     setCustomerRecords((current) => current.filter((customer) => customer.id !== customerId));
     setEditingCustomer((current) => (current?.id === customerId ? null : current));
     setMessagingCustomer((current) => (current?.id === customerId ? null : current));
@@ -415,7 +557,6 @@ export default function CustomerList({
     setEditingGroup((current) => (current?.id === groupId ? null : current));
   };
 
-  const activeTab = initialTab;
   const paginationItems = buildPaginationItems(currentPage, totalPages);
   const resultsStart = totalCustomers === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const resultsEnd =
@@ -588,8 +729,67 @@ export default function CustomerList({
                   placeholder="Search by name, email, or phone..."
                   value={search}
                   onChange={(event) => handleSearch(event.target.value)}
+                  onFocus={handleSearchFocus}
+                  onBlur={handleSearchBlur}
+                  autoComplete="off"
+                  role="combobox"
+                  aria-expanded={
+                    isSearchFocused && search.trim().length >= SEARCH_DROPDOWN_MIN_LENGTH
+                  }
+                  aria-controls="customer-search-dropdown"
+                  aria-autocomplete="list"
                   className="input w-full"
                 />
+                {search.trim().length > 0 &&
+                search.trim().length < SEARCH_DROPDOWN_MIN_LENGTH ? (
+                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                    Type at least 2 characters to search.
+                  </p>
+                ) : null}
+                {isSearchFocused && search.trim().length >= SEARCH_DROPDOWN_MIN_LENGTH ? (
+                  <div
+                    id="customer-search-dropdown"
+                    className="mt-3 max-h-64 overflow-y-auto rounded-[24px] border border-gray-200/80 bg-white/80 dark:border-white/10 dark:bg-white/[0.04]"
+                  >
+                    {isSearchLoading ? (
+                      <div className="px-4 py-5 text-sm text-gray-600 dark:text-gray-300">
+                        Searching customers...
+                      </div>
+                    ) : searchMatches.length > 0 ? (
+                      searchMatches.map((customer) => {
+                        const selected =
+                          search.trim().toLowerCase() === customer.name.trim().toLowerCase();
+
+                        return (
+                          <button
+                            key={customer.id}
+                            type="button"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => handleSearchMatchSelect(customer)}
+                            className={`w-full border-b border-gray-200/70 px-4 py-4 text-left transition last:border-b-0 dark:border-white/10 ${
+                              selected
+                                ? "bg-primary/10"
+                                : "hover:bg-gray-50/80 dark:hover:bg-white/[0.04]"
+                            }`}
+                          >
+                            <p className="text-sm font-semibold text-gray-950 dark:text-white">
+                              {customer.name}
+                            </p>
+                            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                              {customer.phone
+                                ? formatPhoneForDisplay(customer.phone)
+                                : customer.email || "No contact info"}
+                            </p>
+                          </button>
+                        );
+                      })
+                    ) : hasSearchLoaded ? (
+                      <div className="px-4 py-5 text-sm text-gray-600 dark:text-gray-300">
+                        No customers match that search yet.
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
 
               <div className="space-y-4 rounded-[28px] border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
@@ -673,9 +873,9 @@ export default function CustomerList({
 
                 {hasActiveFilters && (
                   <div className="flex flex-wrap gap-2">
-                    {initialSearch && (
+                    {search && (
                       <span className="inline-flex rounded-full bg-white px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                        Search: {initialSearch}
+                        Search: {search}
                       </span>
                     )}
                     {initialGroupFilter && (

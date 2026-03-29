@@ -58,6 +58,7 @@ const mockGetServerSession = getServerSession as ReturnType<typeof vi.fn>;
 const mockBusinessFindUnique = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockCustomerGroupFindMany = prisma.customerGroup.findMany as ReturnType<typeof vi.fn>;
 const mockCustomerFindFirst = prisma.customer.findFirst as ReturnType<typeof vi.fn>;
+const mockCustomerFindMany = prisma.customer.findMany as ReturnType<typeof vi.fn>;
 const mockCustomerCreate = prisma.customer.create as ReturnType<typeof vi.fn>;
 
 function makeRequest(body: Record<string, unknown> = { name: 'Test Customer' }) {
@@ -77,7 +78,7 @@ describe('POST /api/customers', () => {
     mockGetServerSession.mockResolvedValue({
       user: { businessId: 'biz-1', email: 'test@test.com' },
     });
-    vi.mocked(prisma.customer.findMany).mockResolvedValue([] as any);
+    mockCustomerFindMany.mockResolvedValue([] as any);
 
     const res = await GET(new NextRequest('http://localhost/api/customers?group=group-1'));
 
@@ -98,6 +99,25 @@ describe('POST /api/customers', () => {
         }),
         include: expect.objectContaining({
           groupMemberships: expect.any(Object),
+        }),
+      })
+    );
+  });
+
+  it('GET applies the optional search dropdown limit when requested', async () => {
+    mockGetServerSession.mockResolvedValue({
+      user: { businessId: 'biz-1', email: 'test@test.com' },
+    });
+    mockCustomerFindMany.mockResolvedValue([] as any);
+
+    const res = await GET(new NextRequest('http://localhost/api/customers?search=jan&limit=8'));
+
+    expect(res.status).toBe(200);
+    expect(mockCustomerFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        take: 8,
+        where: expect.objectContaining({
+          businessId: 'biz-1',
         }),
       })
     );

@@ -26,6 +26,12 @@ export async function GET(request: NextRequest) {
     const sms = searchParams.get("sms");
     const contact = searchParams.get("contact");
     const visit = searchParams.get("visit");
+    const limitParam = searchParams.get("limit");
+    const requestedLimit = limitParam ? Number.parseInt(limitParam, 10) : NaN;
+    const take =
+      Number.isFinite(requestedLimit) && requestedLimit > 0
+        ? Math.min(requestedLimit, 50)
+        : undefined;
 
     const where = buildCustomerWhereClause({
       businessId: session.user.businessId,
@@ -60,6 +66,7 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: { createdAt: "desc" },
+      take,
     });
 
     return NextResponse.json({ customers });
