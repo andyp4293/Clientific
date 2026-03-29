@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
+import { getServicesCacheTag } from '@/lib/cache-tags';
+import { revalidateTag } from 'next/cache';
 
 // POST /api/services/reorder - Update service sort order
 export async function POST(request: Request) {
@@ -47,6 +49,8 @@ export async function POST(request: Request) {
         })
       )
     );
+
+    revalidateTag(getServicesCacheTag(business.id), 'max');
 
     return NextResponse.json({ success: true });
   } catch (error) {

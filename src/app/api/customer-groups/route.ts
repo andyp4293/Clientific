@@ -7,6 +7,33 @@ import {
   CUSTOMER_GROUP_NAME_MAX_LENGTH,
   normalizeCustomerGroupName,
 } from "@/lib/customer-groups";
+import {
+  getCustomerGroupsCacheTag,
+  SHARED_REFERENCE_DATA_REVALIDATE_SECONDS,
+} from "@/lib/cache-tags";
+import { revalidateTag, unstable_cache } from "next/cache";
+
+function getCachedCustomerGroups(businessId: string) {
+  return unstable_cache(
+    () =>
+      prisma.customerGroup.findMany({
+        where: { businessId },
+        include: {
+          _count: {
+            select: {
+              memberships: true,
+            },
+          },
+        },
+        orderBy: [{ name: "asc" }],
+      }),
+    [getCustomerGroupsCacheTag(businessId)],
+    {
+      tags: [getCustomerGroupsCacheTag(businessId)],
+      revalidate: SHARED_REFERENCE_DATA_REVALIDATE_SECONDS,
+    },
+  )();
+}
 
 export async function GET() {
   try {
@@ -16,17 +43,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const groups = await prisma.customerGroup.findMany({
-      where: { businessId: session.user.businessId },
-      include: {
-        _count: {
-          select: {
-            memberships: true,
-          },
-        },
-      },
-      orderBy: [{ name: "asc" }],
-    });
+    const groups = await getCachedCustomerGroups(session.user.businessId);
 
     return NextResponse.json({ groups });
   } catch (error) {
@@ -93,6 +110,8 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    revalidateTag(getCustomerGroupsCacheTag(session.user.businessId), "max");
 
     return NextResponse.json({ group }, { status: 201 });
   } catch (error) {

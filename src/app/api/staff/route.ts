@@ -6,6 +6,8 @@ import { requireActiveSubscription, checkPlanLimit } from '@/lib/subscription';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { normalizeStaffWorkHours, sanitizeStaffWorkHoursForSave } from '@/lib/staff-schedule';
 import { normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
+import { getStaffCacheTag, SHARED_REFERENCE_DATA_REVALIDATE_SECONDS } from '@/lib/cache-tags';
+import { revalidateTag, unstable_cache } from 'next/cache';
 
 const STAFF_SELECT = {
   id: true,
@@ -48,6 +50,25 @@ function mapStaff(member: {
   };
 }
 
+function getCachedStaff(businessId: string) {
+  return unstable_cache(
+    async () => {
+      const staff = await prisma.staff.findMany({
+        where: { businessId },
+        orderBy: { fullName: 'asc' },
+        select: STAFF_SELECT,
+      });
+
+      return staff.map(mapStaff);
+    },
+    [getStaffCacheTag(businessId)],
+    {
+      tags: [getStaffCacheTag(businessId)],
+      revalidate: SHARED_REFERENCE_DATA_REVALIDATE_SECONDS,
+    },
+  )();
+}
+
 // GET - List all staff members for the business
 export async function GET(req: NextRequest) {
   try {
@@ -57,13 +78,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const staff = await prisma.staff.findMany({
-      where: { businessId: session.user.id },
-      orderBy: { fullName: 'asc' },
-      select: STAFF_SELECT,
-    });
+    const staff = await getCachedStaff(session.user.id);
 
-    return NextResponse.json({ staff: staff.map(mapStaff) });
+    return NextResponse.json({ staff });
   } catch (error: any) {
     console.error('Error fetching staff:', error);
     return NextResponse.json({ error: 'Failed to fetch staff' }, { status: 500 });
@@ -157,6 +174,8 @@ export async function POST(req: NextRequest) {
 
       return created;
     });
+
+    revalidateTag(getStaffCacheTag(session.user.id), 'max');
 
     return NextResponse.json({ staff: mapStaff(staff) }, { status: 201 });
   } catch (error: any) {

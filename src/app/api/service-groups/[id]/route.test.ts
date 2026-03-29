@@ -19,6 +19,7 @@ vi.mock('@/lib/subscription', () => ({
 }));
 
 import { getServerSession } from 'next-auth';
+import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { DELETE, PATCH } from './route';
 
@@ -72,6 +73,8 @@ describe('PATCH /api/service-groups/[id]', () => {
         data: expect.objectContaining({ name: 'Manicures' }),
       })
     );
+    expect(revalidateTag).toHaveBeenCalledWith('service-groups-biz-1', 'max');
+    expect(revalidateTag).toHaveBeenCalledWith('services-biz-1', 'max');
   });
 });
 
@@ -87,5 +90,7 @@ describe('DELETE /api/service-groups/[id]', () => {
     });
     expect(res.status).toBe(200);
     expect(mockDelete).toHaveBeenCalledWith({ where: { id: 'g1' } });
+    expect(revalidateTag).toHaveBeenCalledWith('service-groups-biz-1', 'max');
+    expect(revalidateTag).toHaveBeenCalledWith('services-biz-1', 'max');
   });
 });

@@ -25,6 +25,7 @@ vi.mock('@/lib/prisma', () => ({
 }));
 
 import { getServerSession } from 'next-auth';
+import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { GET, PATCH } from './route';
 
@@ -120,6 +121,7 @@ describe('/api/business-hours', () => {
         { businessId: 'biz-1', date: '2026-12-25', label: 'Christmas Day' },
       ],
     });
+    expect(revalidateTag).toHaveBeenCalledWith('business-hours-biz-1', 'max');
   });
 
   it('rejects invalid closed dates', async () => {

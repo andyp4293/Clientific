@@ -7,6 +7,8 @@ import { requireActiveSubscription } from '@/lib/subscription';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { normalizeStaffWorkHours, sanitizeStaffWorkHoursForSave } from '@/lib/staff-schedule';
 import { normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
+import { getStaffCacheTag } from '@/lib/cache-tags';
+import { revalidateTag } from 'next/cache';
 
 const STAFF_SELECT = {
   id: true,
@@ -115,6 +117,8 @@ export async function PATCH(
     });
 
     const { serviceAssignments, active, workHours: nextWorkHours, ...rest } = staff;
+    revalidateTag(getStaffCacheTag(session.user.id), 'max');
+
     return NextResponse.json({
       staff: {
         ...rest,
@@ -175,6 +179,8 @@ export async function DELETE(
       prisma.checkIn.updateMany({ where: { staffId: id }, data: { staffId: null } }),
       prisma.staff.delete({ where: { id } }),
     ]);
+
+    revalidateTag(getStaffCacheTag(session.user.id), 'max');
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

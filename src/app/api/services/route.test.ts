@@ -22,6 +22,7 @@ vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
 vi.mock('@/app/api/auth/[...nextauth]/route', () => ({ authOptions: {} }));
 
 import { getServerSession } from 'next-auth';
+import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { GET, POST } from './route';
 
@@ -158,6 +159,8 @@ describe('POST /api/services', () => {
     const body = await res.json();
     expect(body.service.id).toBe('svc-1');
     expect(body.service.isActive).toBe(true);
+    expect(revalidateTag).toHaveBeenCalledWith('services-biz-1', 'max');
+    expect(revalidateTag).toHaveBeenCalledWith('service-groups-biz-1', 'max');
   });
 
   it('returns 400 when groupId is not owned by business', async () => {
@@ -202,5 +205,7 @@ describe('POST /api/services', () => {
         }),
       })
     );
+    expect(revalidateTag).toHaveBeenCalledWith('services-biz-1', 'max');
+    expect(revalidateTag).toHaveBeenCalledWith('service-groups-biz-1', 'max');
   });
 });

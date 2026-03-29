@@ -24,6 +24,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 import { getServerSession } from "next-auth";
+import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { DELETE, PUT } from "./route";
 
@@ -76,6 +77,7 @@ describe("/api/customer-groups/[id]", () => {
         },
       })
     );
+    expect(revalidateTag).toHaveBeenCalledWith("customer-groups-biz-1", "max");
   });
 
   it("DELETE removes the group", async () => {
@@ -85,6 +87,7 @@ describe("/api/customer-groups/[id]", () => {
     expect(prisma.customerGroup.delete).toHaveBeenCalledWith({
       where: { id: "group-1" },
     });
+    expect(revalidateTag).toHaveBeenCalledWith("customer-groups-biz-1", "max");
   });
 
   it("PUT rejects names longer than the supported UI limit", async () => {

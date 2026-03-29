@@ -4,6 +4,11 @@ import { prisma } from '@/lib/prisma';
 import { normalizeBusinessClosureDates } from '@/lib/business-closures';
 import { normalizeBusinessHoursRecord } from '@/lib/staff-schedule';
 import { authOptions } from '../auth/[...nextauth]/route';
+import {
+  BUSINESS_HOURS_REVALIDATE_SECONDS,
+  getBusinessHoursCacheTag,
+} from '@/lib/cache-tags';
+import { revalidateTag, unstable_cache } from 'next/cache';
 
 type HoursArrayItem = {
   dayOfWeek: number;
@@ -42,6 +47,36 @@ async function requireBusinessId(): Promise<string | NextResponse> {
   return session.user.id;
 }
 
+function getCachedBusinessHours(businessId: string) {
+  return unstable_cache(
+    async () => {
+      const [businessHours, closureDates] = await Promise.all([
+        prisma.businessHours.findUnique({
+          where: { businessId },
+        }),
+        prisma.businessClosureDate.findMany({
+          where: { businessId },
+          orderBy: { date: 'asc' },
+          select: {
+            date: true,
+            label: true,
+          },
+        }),
+      ]);
+
+      return {
+        businessHours: businessHours ? parseHoursRecord(businessHours.hours) : getDefaultHours(),
+        closureDates,
+      };
+    },
+    [getBusinessHoursCacheTag(businessId)],
+    {
+      tags: [getBusinessHoursCacheTag(businessId)],
+      revalidate: BUSINESS_HOURS_REVALIDATE_SECONDS,
+    },
+  )();
+}
+
 export async function GET(_req: NextRequest) {
   try {
     const businessIdOrResponse = await requireBusinessId();
@@ -50,24 +85,7 @@ export async function GET(_req: NextRequest) {
     }
 
     const businessId = businessIdOrResponse;
-    const [businessHours, closureDates] = await Promise.all([
-      prisma.businessHours.findUnique({
-        where: { businessId },
-      }),
-      prisma.businessClosureDate.findMany({
-        where: { businessId },
-        orderBy: { date: 'asc' },
-        select: {
-          date: true,
-          label: true,
-        },
-      }),
-    ]);
-
-    return NextResponse.json({
-      businessHours: businessHours ? parseHoursRecord(businessHours.hours) : getDefaultHours(),
-      closureDates,
-    });
+    return NextResponse.json(await getCachedBusinessHours(businessId));
   } catch (error: any) {
     console.error('Error fetching business hours:', error);
     return NextResponse.json(
@@ -135,6 +153,8 @@ export async function PATCH(req: NextRequest) {
         }
       }
     });
+
+    revalidateTag(getBusinessHoursCacheTag(businessId), 'max');
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

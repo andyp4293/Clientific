@@ -7,6 +7,11 @@ import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
 import { canAccessAiReceptionist } from '@/lib/plan-access';
+import {
+  getBusinessCacheTag,
+  SHARED_REFERENCE_DATA_REVALIDATE_SECONDS,
+} from '@/lib/cache-tags';
+import { revalidateTag, unstable_cache } from 'next/cache';
 import twilio from 'twilio';
 
 type TwilioProvisionedNumber = {
@@ -213,6 +218,64 @@ async function vapiRequest(method: string, path: string, body?: object) {
   return res.status === 204 || res.status === 404 ? null : res.json();
 }
 
+function getCachedBusinessDetails(businessId: string) {
+  return unstable_cache(
+    () =>
+      prisma.business.findUnique({
+        where: { id: businessId },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          publicId: true,
+          email: true,
+          businessType: true,
+          ownerPhone: true,
+          phone: true,
+          businessEmail: true,
+          street: true,
+          city: true,
+          state: true,
+          zipCode: true,
+          country: true,
+          timezone: true,
+          logoUrl: true,
+          publicProfileHeadline: true,
+          publicProfileAbout: true,
+          publicProfileShowPhone: true,
+          publicProfileShowEmail: true,
+          publicProfileShowAddress: true,
+          publicProfileShowHours: true,
+          publicProfileShowServices: true,
+          publicProfileShowTeam: true,
+          publicProfileShowSocialLinks: true,
+          enableOnlineBooking: true,
+          subscriptionPlan: true,
+          subscriptionStatus: true,
+          trialEndsAt: true,
+          googleReviewUrl: true,
+          facebookPageUrl: true,
+          yelpUrl: true,
+          instagramUrl: true,
+          aiReceptionistEnabled: true,
+          aiReceptionistPhone: true,
+          aiReceptionistGreeting: true,
+          aiReceptionistFaq: true,
+          smsAiEnabled: true,
+          smsAiPhoneNumber: true,
+          smsAiGreeting: true,
+          vapiPhoneNumber: true,
+          notifyNewBookingEmail: true,
+        },
+      }),
+    [getBusinessCacheTag(businessId)],
+    {
+      tags: [getBusinessCacheTag(businessId)],
+      revalidate: SHARED_REFERENCE_DATA_REVALIDATE_SECONDS,
+    },
+  )();
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -221,53 +284,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const business = await prisma.business.findUnique({
-      where: { id: session.user.id },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        publicId: true,
-        email: true,
-        businessType: true,
-        ownerPhone: true,
-        phone: true,
-        businessEmail: true,
-        street: true,
-        city: true,
-        state: true,
-        zipCode: true,
-        country: true,
-        timezone: true,
-        logoUrl: true,
-        publicProfileHeadline: true,
-        publicProfileAbout: true,
-        publicProfileShowPhone: true,
-        publicProfileShowEmail: true,
-        publicProfileShowAddress: true,
-        publicProfileShowHours: true,
-        publicProfileShowServices: true,
-        publicProfileShowTeam: true,
-        publicProfileShowSocialLinks: true,
-        enableOnlineBooking: true,
-        subscriptionPlan: true,
-        subscriptionStatus: true,
-        trialEndsAt: true,
-        googleReviewUrl: true,
-        facebookPageUrl: true,
-        yelpUrl: true,
-        instagramUrl: true,
-        aiReceptionistEnabled: true,
-        aiReceptionistPhone: true,
-        aiReceptionistGreeting: true,
-        aiReceptionistFaq: true,
-        smsAiEnabled: true,
-        smsAiPhoneNumber: true,
-        smsAiGreeting: true,
-        vapiPhoneNumber: true,
-        notifyNewBookingEmail: true,
-      },
-    });
+    const business = await getCachedBusinessDetails(session.user.id);
 
     if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
@@ -799,6 +816,8 @@ export async function PATCH(req: NextRequest) {
       },
     });
 
+    revalidateTag(getBusinessCacheTag(session.user.id), 'max');
+
     return NextResponse.json({ business });
   } catch (error: any) {
     console.error('Update business error:', error);
@@ -808,4 +827,3 @@ export async function PATCH(req: NextRequest) {
     );
   }
 }
-

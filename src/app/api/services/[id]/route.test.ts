@@ -21,6 +21,7 @@ vi.mock('@/lib/subscription', () => ({
 }));
 
 import { getServerSession } from 'next-auth';
+import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { PATCH } from './route';
 
@@ -92,5 +93,7 @@ describe('PATCH /api/services/[id]', () => {
         }),
       })
     );
+    expect(revalidateTag).toHaveBeenCalledWith('services-biz-1', 'max');
+    expect(revalidateTag).toHaveBeenCalledWith('service-groups-biz-1', 'max');
   });
 });

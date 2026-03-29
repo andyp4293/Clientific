@@ -4,6 +4,33 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription, checkPlanLimit } from '@/lib/subscription';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
+import {
+  getServiceGroupsCacheTag,
+  getServicesCacheTag,
+  SHARED_REFERENCE_DATA_REVALIDATE_SECONDS,
+} from '@/lib/cache-tags';
+import { revalidateTag, unstable_cache } from 'next/cache';
+
+function getCachedServices(businessId: string) {
+  return unstable_cache(
+    async () => {
+      const services = await prisma.service.findMany({
+        where: { businessId },
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+      });
+
+      return services.map((service) => ({
+        ...service,
+        isActive: service.active,
+      }));
+    },
+    [getServicesCacheTag(businessId)],
+    {
+      tags: [getServicesCacheTag(businessId)],
+      revalidate: SHARED_REFERENCE_DATA_REVALIDATE_SECONDS,
+    },
+  )();
+}
 
 // GET /api/services - Get all services for the business
 export async function GET() {
@@ -23,17 +50,9 @@ export async function GET() {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
-    const services = await prisma.service.findMany({
-      where: { businessId: business.id },
-      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-    });
+    const services = await getCachedServices(business.id);
 
-    const servicesWithIsActive = services.map((service) => ({
-      ...service,
-      isActive: service.active,
-    }));
-
-    return NextResponse.json({ services: servicesWithIsActive });
+    return NextResponse.json({ services });
   } catch (error) {
     console.error('Failed to fetch services:', error);
     return NextResponse.json(
@@ -132,6 +151,9 @@ export async function POST(request: Request) {
       ...service,
       isActive: service.active,
     };
+
+    revalidateTag(getServicesCacheTag(business.id), 'max');
+    revalidateTag(getServiceGroupsCacheTag(business.id), 'max');
 
     return NextResponse.json({ service: serviceWithIsActive }, { status: 201 });
   } catch (error) {

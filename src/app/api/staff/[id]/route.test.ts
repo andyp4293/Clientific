@@ -39,6 +39,7 @@ vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
 vi.mock('@/app/api/auth/[...nextauth]/route', () => ({ authOptions: {} }));
 
 import { getServerSession } from 'next-auth';
+import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { PATCH, DELETE } from './route';
 
@@ -149,6 +150,7 @@ describe('PATCH /api/staff/[id]', () => {
     const body = await res.json();
     expect(body.staff.fullName).toBe('Jane Updated');
     expect(body.staff.serviceIds).toEqual([]);
+    expect(revalidateTag).toHaveBeenCalledWith('staff-biz-1', 'max');
   });
 
   it('replaces service assignments when serviceIds provided', async () => {
@@ -199,6 +201,7 @@ describe('PATCH /api/staff/[id]', () => {
     });
     const body = await res.json();
     expect(body.staff.serviceIds).toEqual(['svc-1', 'svc-2']);
+    expect(revalidateTag).toHaveBeenCalledWith('staff-biz-1', 'max');
   });
 
   it('stores custom work-hour overrides on update', async () => {
@@ -269,6 +272,7 @@ describe('PATCH /api/staff/[id]', () => {
         },
       },
     });
+    expect(revalidateTag).toHaveBeenCalledWith('staff-biz-1', 'max');
   });
 });
 
@@ -338,6 +342,7 @@ describe('DELETE /api/staff/[id]', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
+    expect(revalidateTag).toHaveBeenCalledWith('staff-biz-1', 'max');
   });
 
   it('clears staffId from past appointments before deleting', async () => {
@@ -367,5 +372,6 @@ describe('DELETE /api/staff/[id]', () => {
       data: { staffId: null },
     });
     expect(mockDelete).toHaveBeenCalledWith({ where: { id: 'staff-1' } });
+    expect(revalidateTag).toHaveBeenCalledWith('staff-biz-1', 'max');
   });
 });

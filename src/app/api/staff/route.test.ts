@@ -27,6 +27,7 @@ vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
 vi.mock('@/app/api/auth/[...nextauth]/route', () => ({ authOptions: {} }));
 
 import { getServerSession } from 'next-auth';
+import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { GET, POST } from './route';
 
@@ -180,6 +181,7 @@ describe('POST /api/staff', () => {
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.staff.id).toBe('staff-1');
+    expect(revalidateTag).toHaveBeenCalledWith('staff-biz-1', 'max');
   });
 
   it('creates staff for premium even with a very large existing staff count', async () => {
@@ -219,6 +221,7 @@ describe('POST /api/staff', () => {
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.staff.id).toBe('staff-premium-1');
+    expect(revalidateTag).toHaveBeenCalledWith('staff-biz-1', 'max');
   });
 
   it('stores custom work hours while leaving business-hour defaults implicit', async () => {
@@ -284,5 +287,6 @@ describe('POST /api/staff', () => {
         }),
       })
     );
+    expect(revalidateTag).toHaveBeenCalledWith('staff-biz-1', 'max');
   });
 });

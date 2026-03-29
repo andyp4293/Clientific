@@ -7,6 +7,8 @@ import {
   CUSTOMER_GROUP_NAME_MAX_LENGTH,
   normalizeCustomerGroupName,
 } from "@/lib/customer-groups";
+import { getCustomerGroupsCacheTag } from "@/lib/cache-tags";
+import { revalidateTag } from "next/cache";
 
 async function getOwnedGroup(id: string, businessId: string) {
   return prisma.customerGroup.findFirst({
@@ -91,6 +93,8 @@ export async function PUT(
       },
     });
 
+    revalidateTag(getCustomerGroupsCacheTag(session.user.businessId), "max");
+
     return NextResponse.json({ group });
   } catch (error) {
     console.error("PUT /api/customer-groups/[id] error:", error);
@@ -122,6 +126,8 @@ export async function DELETE(
     await prisma.customerGroup.delete({
       where: { id },
     });
+
+    revalidateTag(getCustomerGroupsCacheTag(session.user.businessId), "max");
 
     return NextResponse.json({ success: true });
   } catch (error) {

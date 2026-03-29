@@ -4,6 +4,28 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
+import {
+  getServiceGroupsCacheTag,
+  getServicesCacheTag,
+  SHARED_REFERENCE_DATA_REVALIDATE_SECONDS,
+} from '@/lib/cache-tags';
+import { revalidateTag, unstable_cache } from 'next/cache';
+
+function getCachedServiceGroups(businessId: string) {
+  return unstable_cache(
+    () =>
+      prisma.serviceGroup.findMany({
+        where: { businessId },
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+        include: { _count: { select: { services: true } } },
+      }),
+    [getServiceGroupsCacheTag(businessId)],
+    {
+      tags: [getServiceGroupsCacheTag(businessId)],
+      revalidate: SHARED_REFERENCE_DATA_REVALIDATE_SECONDS,
+    },
+  )();
+}
 
 // GET /api/service-groups - Get all groups for the business
 export async function GET() {
@@ -23,11 +45,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
-    const groups = await prisma.serviceGroup.findMany({
-      where: { businessId: business.id },
-      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-      include: { _count: { select: { services: true } } },
-    });
+    const groups = await getCachedServiceGroups(business.id);
 
     return NextResponse.json({ groups });
   } catch (error) {
@@ -85,6 +103,9 @@ export async function POST(request: Request) {
       },
       include: { _count: { select: { services: true } } },
     });
+
+    revalidateTag(getServiceGroupsCacheTag(business.id), 'max');
+    revalidateTag(getServicesCacheTag(business.id), 'max');
 
     return NextResponse.json({ group }, { status: 201 });
   } catch (error) {

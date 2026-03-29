@@ -4,6 +4,8 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
+import { getServiceGroupsCacheTag, getServicesCacheTag } from '@/lib/cache-tags';
+import { revalidateTag } from 'next/cache';
 
 // PATCH /api/service-groups/[id] - Rename or update sort order
 export async function PATCH(
@@ -62,6 +64,9 @@ export async function PATCH(
       include: { _count: { select: { services: true } } },
     });
 
+    revalidateTag(getServiceGroupsCacheTag(business.id), 'max');
+    revalidateTag(getServicesCacheTag(business.id), 'max');
+
     return NextResponse.json({ group });
   } catch (error) {
     console.error('Failed to update service group:', error);
@@ -105,6 +110,9 @@ export async function DELETE(
     await prisma.serviceGroup.delete({
       where: { id },
     });
+
+    revalidateTag(getServiceGroupsCacheTag(business.id), 'max');
+    revalidateTag(getServicesCacheTag(business.id), 'max');
 
     return NextResponse.json({ success: true });
   } catch (error) {

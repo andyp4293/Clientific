@@ -4,6 +4,8 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
+import { getServiceGroupsCacheTag, getServicesCacheTag } from '@/lib/cache-tags';
+import { revalidateTag } from 'next/cache';
 
 // PATCH /api/services/[id] - Update a service
 export async function PATCH(
@@ -95,6 +97,9 @@ export async function PATCH(
       isActive: service.active,
     };
 
+    revalidateTag(getServicesCacheTag(business.id), 'max');
+    revalidateTag(getServiceGroupsCacheTag(business.id), 'max');
+
     return NextResponse.json({ service: serviceWithIsActive });
   } catch (error) {
     console.error('Failed to update service:', error);
@@ -157,6 +162,9 @@ export async function DELETE(
     await prisma.service.delete({
       where: { id },
     });
+
+    revalidateTag(getServicesCacheTag(business.id), 'max');
+    revalidateTag(getServiceGroupsCacheTag(business.id), 'max');
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -51,6 +51,7 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch as any;
 
 import { getServerSession } from 'next-auth';
+import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { GET, PATCH } from './route';
 
@@ -164,6 +165,7 @@ describe('PATCH /api/business', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.business.name).toBe('Updated Salon');
+    expect(revalidateTag).toHaveBeenCalledWith('business-biz-1', 'max');
   });
 
   it('returns 403 when a Starter account tries to update AI receptionist settings', async () => {

@@ -24,6 +24,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 import { getServerSession } from "next-auth";
+import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { GET, POST } from "./route";
 
@@ -76,6 +77,7 @@ describe("/api/customer-groups", () => {
         },
       })
     );
+    expect(revalidateTag).toHaveBeenCalledWith("customer-groups-biz-1", "max");
   });
 
   it("POST rejects duplicate names case-insensitively", async () => {
