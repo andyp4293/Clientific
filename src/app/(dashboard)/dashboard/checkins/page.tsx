@@ -1,12 +1,29 @@
-'use client';
+"use client";
 
-import { FormEvent, KeyboardEvent as ReactKeyboardEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { DatePicker } from '@/components/ui/DatePicker';
-import { CustomSelect } from '@/components/ui/CustomSelect';
-import InStoreCheckInPanel from '@/components/checkins/InStoreCheckInPanel';
-import { formatPhoneForDisplay } from '@/lib/phone';
+import {
+  FormEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  ArrowRight,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  Search,
+  Smartphone,
+  UserPlus2,
+  Users,
+} from "lucide-react";
+import { toast } from "sonner";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { CustomSelect } from "@/components/ui/CustomSelect";
+import InStoreCheckInPanel from "@/components/checkins/InStoreCheckInPanel";
+import { formatPhoneForDisplay } from "@/lib/phone";
 
 type Customer = {
   id: string;
@@ -37,9 +54,9 @@ type CheckIn = {
 };
 
 type LookupResponse =
-  | { status: 'new'; normalizedPhone: string; displayPhone: string }
-  | { status: 'existing'; customer: Customer }
-  | { status: 'multiple'; customers: Customer[] };
+  | { status: "new"; normalizedPhone: string; displayPhone: string }
+  | { status: "existing"; customer: Customer }
+  | { status: "multiple"; customers: Customer[] };
 
 type CheckInsResponse = {
   checkIns: CheckIn[];
@@ -65,8 +82,8 @@ type BusinessInfoResponse = {
   };
 };
 
-type QuickStep = 'phone' | 'new' | 'multiple' | 'success';
-type CheckInMode = 'quick' | 'detailed';
+type QuickStep = "phone" | "new" | "multiple" | "success";
+type CheckInMode = "quick" | "detailed";
 
 type QuickSuccessState = {
   customerName: string;
@@ -77,20 +94,33 @@ type QuickSuccessState = {
 
 const PHONE_MAX_LENGTH = 10;
 const SUCCESS_RESET_SECONDS = 8;
-const DEFAULT_FORM_DATA = { customerId: '', serviceId: '', staffId: '' };
-const DEFAULT_NEW_CUSTOMER_FORM = { name: '', email: '' };
-const KEYPAD_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clear', '0', 'back'] as const;
+const DEFAULT_FORM_DATA = { customerId: "", serviceId: "", staffId: "" };
+const DEFAULT_NEW_CUSTOMER_FORM = { name: "", email: "" };
+const KEYPAD_KEYS = [
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "clear",
+  "0",
+  "back",
+] as const;
 
 function formatDateLocal(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
-    date.getDate()
-  ).padStart(2, '0')}`;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+    date.getDate(),
+  ).padStart(2, "0")}`;
 }
 
 function sanitizePhoneDigits(value: string) {
-  const digits = value.replace(/\D/g, '');
-  if (digits.length === 0) return '';
-  if (digits.startsWith('1') && digits.length > 10) {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 0) return "";
+  if (digits.startsWith("1") && digits.length > 10) {
     return digits.slice(1, 11);
   }
   return digits.slice(0, 10);
@@ -98,10 +128,12 @@ function sanitizePhoneDigits(value: string) {
 
 function formatPhoneEntry(value: string) {
   const digits = sanitizePhoneDigits(value);
-  const normalized = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
-  if (!normalized) return '';
+  const normalized =
+    digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  if (!normalized) return "";
   if (normalized.length <= 3) return normalized;
-  if (normalized.length <= 6) return `(${normalized.slice(0, 3)}) ${normalized.slice(3)}`;
+  if (normalized.length <= 6)
+    return `(${normalized.slice(0, 3)}) ${normalized.slice(3)}`;
   return `(${normalized.slice(0, 3)}) ${normalized.slice(3, 6)}-${normalized.slice(6, 10)}`;
 }
 
@@ -110,29 +142,43 @@ function canLookupPhone(value: string) {
 }
 
 function formatSuccessTime(isoString: string, timezone: string) {
-  return new Date(isoString).toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
+  return new Date(isoString).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
     timeZone: timezone,
   });
 }
 
-function formatLastVisit(isoString: string | null | undefined, timezone: string) {
-  if (!isoString) return 'No previous visit yet';
-  return new Date(isoString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
+function formatLastVisit(
+  isoString: string | null | undefined,
+  timezone: string,
+) {
+  if (!isoString) return "No previous visit yet";
+  return new Date(isoString).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
     timeZone: timezone,
   });
+}
+
+function getInitials(name: string) {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+
+  return initials || "?";
 }
 
 function isEditableTarget(target: EventTarget | null) {
   return (
     target instanceof HTMLElement &&
-    (target.tagName === 'INPUT' ||
-      target.tagName === 'TEXTAREA' ||
-      target.tagName === 'SELECT' ||
+    (target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.tagName === "SELECT" ||
       target.isContentEditable)
   );
 }
@@ -141,7 +187,7 @@ function KeypadButton({
   label,
   hint,
   onClick,
-  className = '',
+  className = "",
 }: {
   label: string;
   hint?: string;
@@ -156,7 +202,9 @@ function KeypadButton({
     >
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent opacity-0 transition group-hover:opacity-100" />
       <div className="flex h-full flex-col items-center justify-center gap-1 px-3 py-4">
-        <span className="text-2xl font-semibold text-gray-950 dark:text-white">{label}</span>
+        <span className="text-2xl font-semibold text-gray-950 dark:text-white">
+          {label}
+        </span>
         {hint ? (
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
             {hint}
@@ -171,76 +219,123 @@ export default function CheckInsPage() {
   const queryClient = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [mode, setMode] = useState<CheckInMode>('quick');
-  const [quickStep, setQuickStep] = useState<QuickStep>('phone');
-  const [quickDigits, setQuickDigits] = useState('');
-  const [quickPhoneDisplay, setQuickPhoneDisplay] = useState('');
-  const [quickMatchedCustomers, setQuickMatchedCustomers] = useState<Customer[]>([]);
+  const [mode, setMode] = useState<CheckInMode>("quick");
+  const [quickStep, setQuickStep] = useState<QuickStep>("phone");
+  const [quickDigits, setQuickDigits] = useState("");
+  const [quickPhoneDisplay, setQuickPhoneDisplay] = useState("");
+  const [quickMatchedCustomers, setQuickMatchedCustomers] = useState<
+    Customer[]
+  >([]);
   const [quickLookupError, setQuickLookupError] = useState<string | null>(null);
-  const [quickSuccess, setQuickSuccess] = useState<QuickSuccessState | null>(null);
-  const [successCountdown, setSuccessCountdown] = useState(SUCCESS_RESET_SECONDS);
-  const [newCustomerForm, setNewCustomerForm] = useState(DEFAULT_NEW_CUSTOMER_FORM);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [quickSuccess, setQuickSuccess] = useState<QuickSuccessState | null>(
+    null,
+  );
+  const [successCountdown, setSuccessCountdown] = useState(
+    SUCCESS_RESET_SECONDS,
+  );
+  const [newCustomerForm, setNewCustomerForm] = useState(
+    DEFAULT_NEW_CUSTOMER_FORM,
+  );
+  const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState(DEFAULT_FORM_DATA);
 
-  const selectedDateKey = useMemo(() => formatDateLocal(selectedDate), [selectedDate]);
-  const quickFormattedPhone = useMemo(() => formatPhoneEntry(quickDigits), [quickDigits]);
-  const quickPhoneReady = useMemo(() => canLookupPhone(quickDigits), [quickDigits]);
+  const selectedDateKey = useMemo(
+    () => formatDateLocal(selectedDate),
+    [selectedDate],
+  );
+  const quickFormattedPhone = useMemo(
+    () => formatPhoneEntry(quickDigits),
+    [quickDigits],
+  );
+  const quickPhoneReady = useMemo(
+    () => canLookupPhone(quickDigits),
+    [quickDigits],
+  );
 
-  const { data: checkInsData, isLoading: isLoadingCheckIns } = useQuery<CheckInsResponse>({
-    queryKey: ['checkins', selectedDateKey],
-    queryFn: async () => {
-      const res = await fetch(`/api/checkins?date=${selectedDateKey}`);
-      if (!res.ok) throw new Error('Failed to fetch check-ins');
-      return res.json();
-    },
-  });
+  const { data: checkInsData, isLoading: isLoadingCheckIns } =
+    useQuery<CheckInsResponse>({
+      queryKey: ["checkins", selectedDateKey],
+      queryFn: async () => {
+        const res = await fetch(`/api/checkins?date=${selectedDateKey}`);
+        if (!res.ok) throw new Error("Failed to fetch check-ins");
+        return res.json();
+      },
+    });
 
   const { data: businessInfoData } = useQuery<BusinessInfoResponse>({
-    queryKey: ['business-info'],
+    queryKey: ["business-info"],
     queryFn: async () => {
-      const res = await fetch('/api/business');
-      if (!res.ok) throw new Error('Failed to fetch business info');
+      const res = await fetch("/api/business");
+      if (!res.ok) throw new Error("Failed to fetch business info");
       return res.json();
     },
   });
 
   const { data: customersData } = useQuery<CustomersResponse>({
-    queryKey: ['customers', searchTerm],
+    queryKey: ["customers", searchTerm],
     queryFn: async () => {
-      const res = await fetch(`/api/customers?search=${encodeURIComponent(searchTerm)}`);
-      if (!res.ok) throw new Error('Failed to fetch customers');
+      const res = await fetch(
+        `/api/customers?search=${encodeURIComponent(searchTerm)}`,
+      );
+      if (!res.ok) throw new Error("Failed to fetch customers");
       return res.json();
     },
-    enabled: showModal && mode === 'detailed' && searchTerm.trim().length >= 2,
+    enabled: showModal && mode === "detailed" && searchTerm.trim().length >= 2,
   });
 
   const { data: servicesData } = useQuery<ServicesResponse>({
-    queryKey: ['services'],
+    queryKey: ["services"],
     queryFn: async () => {
-      const res = await fetch('/api/services');
-      if (!res.ok) throw new Error('Failed to fetch services');
+      const res = await fetch("/api/services");
+      if (!res.ok) throw new Error("Failed to fetch services");
       return res.json();
     },
-    enabled: showModal && mode === 'detailed',
+    enabled: showModal && mode === "detailed",
   });
 
   const { data: staffData } = useQuery<StaffResponse>({
-    queryKey: ['staff'],
+    queryKey: ["staff"],
     queryFn: async () => {
-      const res = await fetch('/api/staff');
-      if (!res.ok) throw new Error('Failed to fetch staff');
+      const res = await fetch("/api/staff");
+      if (!res.ok) throw new Error("Failed to fetch staff");
       return res.json();
     },
-    enabled: showModal && mode === 'detailed',
+    enabled: showModal && mode === "detailed",
   });
 
   const checkIns = checkInsData?.checkIns ?? [];
-  const timezone = checkInsData?.timezone ?? 'America/New_York';
+  const timezone = checkInsData?.timezone ?? "America/New_York";
   const customers = customersData?.customers ?? [];
   const services = servicesData?.services ?? [];
   const staff = staffData?.staff ?? [];
-  const uniqueGuests = useMemo(() => new Set(checkIns.map((checkIn) => checkIn.customer.id)).size, [checkIns]);
+  const selectedDateLabel = useMemo(
+    () =>
+      selectedDate.toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      }),
+    [selectedDate],
+  );
+  const uniqueGuests = useMemo(
+    () => new Set(checkIns.map((checkIn) => checkIn.customer.id)).size,
+    [checkIns],
+  );
+  const latestCheckIn = useMemo(
+    () =>
+      checkIns.reduce<CheckIn | null>((latest, current) => {
+        if (!latest) return current;
+        return new Date(current.checkInTime).getTime() >
+          new Date(latest.checkInTime).getTime()
+          ? current
+          : latest;
+      }, null),
+    [checkIns],
+  );
+  const latestCheckInLabel = latestCheckIn
+    ? formatSuccessTime(latestCheckIn.checkInTime, timezone)
+    : "No check-ins yet";
   const inStoreBusiness =
     businessInfoData?.business?.publicId && businessInfoData.business.name
       ? {
@@ -248,11 +343,68 @@ export default function CheckInsPage() {
           publicId: businessInfoData.business.publicId,
         }
       : null;
+  const quickStepMeta = useMemo(() => {
+    switch (quickStep) {
+      case "new":
+        return {
+          kicker: "New customer",
+          title: "Create the customer profile",
+          body: quickPhoneDisplay
+            ? `We could not match ${quickPhoneDisplay}. Add a name now and the next visit stays instant.`
+            : "Add a name and optional email so the next visit is faster.",
+          items: [
+            "Name is required",
+            "Email stays optional",
+            "Saved for future check-ins",
+          ],
+        };
+      case "multiple":
+        return {
+          kicker: "Multiple matches",
+          title: "Resolve the duplicate match",
+          body: quickPhoneDisplay
+            ? `More than one record matches ${quickPhoneDisplay}. Choose the right profile to finish the check-in.`
+            : "Choose the matching profile to finish the check-in.",
+          items: [
+            "Phone and email stay visible",
+            "Last visit is shown",
+            "Create a fresh profile if needed",
+          ],
+        };
+      case "success":
+        return {
+          kicker: "Done",
+          title: "Ready for the next customer",
+          body: quickSuccess
+            ? `${quickSuccess.customerName} was checked in at ${formatSuccessTime(quickSuccess.checkInTime, timezone)}.`
+            : "The front desk is ready for the next customer.",
+          items: [
+            quickSuccess?.createdCustomer
+              ? "New customer profile saved"
+              : "Existing profile matched instantly",
+            quickSuccess?.phoneDisplay ?? "Phone number captured",
+            `Auto resets in ${successCountdown} second${successCountdown === 1 ? "" : "s"}`,
+          ],
+        };
+      case "phone":
+      default:
+        return {
+          kicker: "Quick check-in",
+          title: "Fast lane for walk-ins",
+          body: "Enter a mobile number and keep the front desk line moving.",
+          items: [
+            "Returning customers check in instantly",
+            "New numbers only need a name once",
+            "Keyboard and keypad both work",
+          ],
+        };
+    }
+  }, [quickPhoneDisplay, quickStep, quickSuccess, successCountdown, timezone]);
 
   const resetQuickFlow = useCallback(() => {
-    setQuickStep('phone');
-    setQuickDigits('');
-    setQuickPhoneDisplay('');
+    setQuickStep("phone");
+    setQuickDigits("");
+    setQuickPhoneDisplay("");
     setQuickMatchedCustomers([]);
     setQuickLookupError(null);
     setQuickSuccess(null);
@@ -261,33 +413,33 @@ export default function CheckInsPage() {
   }, []);
 
   const resetDetailedFlow = useCallback(() => {
-    setSearchTerm('');
+    setSearchTerm("");
     setFormData(DEFAULT_FORM_DATA);
   }, []);
 
   const openQuickModal = useCallback(() => {
     resetQuickFlow();
-    setMode('quick');
+    setMode("quick");
     setShowModal(true);
   }, [resetQuickFlow]);
 
   const openDetailedModal = useCallback(() => {
     resetDetailedFlow();
-    setMode('detailed');
+    setMode("detailed");
     setShowModal(true);
   }, [resetDetailedFlow]);
 
   const closeModal = useCallback(() => {
     setShowModal(false);
-    setMode('quick');
+    setMode("quick");
     resetQuickFlow();
     resetDetailedFlow();
   }, [resetDetailedFlow, resetQuickFlow]);
 
   const invalidateCheckInQueries = useCallback(async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['checkins'] }),
-      queryClient.invalidateQueries({ queryKey: ['customers'] }),
+      queryClient.invalidateQueries({ queryKey: ["checkins"] }),
+      queryClient.invalidateQueries({ queryKey: ["customers"] }),
     ]);
   }, [queryClient]);
 
@@ -301,16 +453,18 @@ export default function CheckInsPage() {
       staffId?: string;
       amountSpent?: number;
     }) => {
-      const res = await fetch('/api/checkins', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/checkins", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const error = new Error(body.error || 'Failed to create check-in');
-        (error as Error & { code?: string; customers?: Customer[] }).code = body.code;
-        (error as Error & { code?: string; customers?: Customer[] }).customers = body.customers;
+        const error = new Error(body.error || "Failed to create check-in");
+        (error as Error & { code?: string; customers?: Customer[] }).code =
+          body.code;
+        (error as Error & { code?: string; customers?: Customer[] }).customers =
+          body.customers;
         throw error;
       }
       return body as { checkIn: CheckIn };
@@ -319,21 +473,32 @@ export default function CheckInsPage() {
 
   const lookupCustomer = useMutation({
     mutationFn: async (phone: string) => {
-      const res = await fetch(`/api/checkins/lookup?phone=${encodeURIComponent(phone)}`);
+      const res = await fetch(
+        `/api/checkins/lookup?phone=${encodeURIComponent(phone)}`,
+      );
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error || 'Failed to look up customer');
+      if (!res.ok) throw new Error(body.error || "Failed to look up customer");
       return body as LookupResponse;
     },
   });
 
   const finalizeQuickCheckIn = useCallback(
     async (
-      payload: { customerId?: string; phone?: string; customerName?: string; customerEmail?: string },
-      meta: { customerName: string; phoneDisplay: string; createdCustomer: boolean }
+      payload: {
+        customerId?: string;
+        phone?: string;
+        customerName?: string;
+        customerEmail?: string;
+      },
+      meta: {
+        customerName: string;
+        phoneDisplay: string;
+        createdCustomer: boolean;
+      },
     ) => {
       const result = await createCheckIn.mutateAsync(payload);
       await invalidateCheckInQueries();
-      setQuickStep('success');
+      setQuickStep("success");
       setQuickSuccess({
         customerName: meta.customerName,
         phoneDisplay: meta.phoneDisplay,
@@ -341,47 +506,61 @@ export default function CheckInsPage() {
         checkInTime: result.checkIn.checkInTime,
       });
       setQuickLookupError(null);
-      toast.success('Customer checked in');
+      toast.success("Customer checked in");
     },
-    [createCheckIn, invalidateCheckInQueries]
+    [createCheckIn, invalidateCheckInQueries],
   );
 
   const handleQuickLookup = useCallback(async () => {
     if (!quickPhoneReady) {
-      setQuickLookupError('Enter a valid 10-digit US phone number to continue.');
+      setQuickLookupError(
+        "Enter a valid 10-digit US phone number to continue.",
+      );
       return;
     }
     setQuickLookupError(null);
     setQuickMatchedCustomers([]);
     try {
       const response = await lookupCustomer.mutateAsync(quickDigits);
-      if (response.status === 'new') {
+      if (response.status === "new") {
         setQuickPhoneDisplay(response.displayPhone || quickFormattedPhone);
-        setQuickStep('new');
+        setQuickStep("new");
         return;
       }
-      if (response.status === 'multiple') {
+      if (response.status === "multiple") {
         setQuickPhoneDisplay(quickFormattedPhone);
         setQuickMatchedCustomers(response.customers);
-        setQuickStep('multiple');
+        setQuickStep("multiple");
         return;
       }
       await finalizeQuickCheckIn(
         { customerId: response.customer.id, phone: quickDigits },
         {
           customerName: response.customer.name,
-          phoneDisplay: formatPhoneForDisplay(response.customer.phone) || quickFormattedPhone,
+          phoneDisplay:
+            formatPhoneForDisplay(response.customer.phone) ||
+            quickFormattedPhone,
           createdCustomer: false,
-        }
+        },
       );
     } catch (error) {
-      setQuickLookupError(error instanceof Error ? error.message : 'Failed to look up customer');
+      setQuickLookupError(
+        error instanceof Error ? error.message : "Failed to look up customer",
+      );
     }
-  }, [finalizeQuickCheckIn, lookupCustomer, quickDigits, quickFormattedPhone, quickPhoneReady]);
+  }, [
+    finalizeQuickCheckIn,
+    lookupCustomer,
+    quickDigits,
+    quickFormattedPhone,
+    quickPhoneReady,
+  ]);
 
   const appendQuickDigit = useCallback((digit: string) => {
     setQuickLookupError(null);
-    setQuickDigits((current) => sanitizePhoneDigits(`${current}${digit}`.slice(0, PHONE_MAX_LENGTH)));
+    setQuickDigits((current) =>
+      sanitizePhoneDigits(`${current}${digit}`.slice(0, PHONE_MAX_LENGTH)),
+    );
   }, []);
   const handleQuickPhoneInputChange = useCallback((value: string) => {
     setQuickLookupError(null);
@@ -393,46 +572,57 @@ export default function CheckInsPage() {
   }, []);
   const clearQuickDigits = useCallback(() => {
     setQuickLookupError(null);
-    setQuickDigits('');
+    setQuickDigits("");
   }, []);
 
   useEffect(() => {
-    if (!showModal || mode !== 'quick' || quickStep !== 'phone') return;
+    if (!showModal || mode !== "quick" || quickStep !== "phone") return;
     function handleKeyDown(event: KeyboardEvent) {
       if (isEditableTarget(event.target)) return;
-      if (event.key >= '0' && event.key <= '9') {
+      if (event.key >= "0" && event.key <= "9") {
         event.preventDefault();
         appendQuickDigit(event.key);
         return;
       }
-      if (event.key === 'Backspace' || event.key === 'Delete') {
+      if (event.key === "Backspace" || event.key === "Delete") {
         event.preventDefault();
         backspaceQuickDigit();
         return;
       }
-      if (event.key === 'Enter' && quickPhoneReady) {
+      if (event.key === "Enter" && quickPhoneReady) {
         event.preventDefault();
         void handleQuickLookup();
       }
     }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [appendQuickDigit, backspaceQuickDigit, handleQuickLookup, mode, quickPhoneReady, quickStep, showModal]);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    appendQuickDigit,
+    backspaceQuickDigit,
+    handleQuickLookup,
+    mode,
+    quickPhoneReady,
+    quickStep,
+    showModal,
+  ]);
 
   const handleQuickPhoneInputKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLInputElement>) => {
-      if (event.key === 'Enter' && quickPhoneReady) {
+      if (event.key === "Enter" && quickPhoneReady) {
         event.preventDefault();
         void handleQuickLookup();
       }
     },
-    [handleQuickLookup, quickPhoneReady]
+    [handleQuickLookup, quickPhoneReady],
   );
 
   useEffect(() => {
     if (!quickSuccess) return;
     setSuccessCountdown(SUCCESS_RESET_SECONDS);
-    const interval = window.setInterval(() => setSuccessCountdown((current) => Math.max(current - 1, 0)), 1000);
+    const interval = window.setInterval(
+      () => setSuccessCountdown((current) => Math.max(current - 1, 0)),
+      1000,
+    );
     return () => window.clearInterval(interval);
   }, [quickSuccess]);
 
@@ -444,57 +634,81 @@ export default function CheckInsPage() {
 
   const handleQuickKeypadPress = useCallback(
     (key: (typeof KEYPAD_KEYS)[number]) => {
-      if (key === 'clear') return clearQuickDigits();
-      if (key === 'back') return backspaceQuickDigit();
+      if (key === "clear") return clearQuickDigits();
+      if (key === "back") return backspaceQuickDigit();
       appendQuickDigit(key);
     },
-    [appendQuickDigit, backspaceQuickDigit, clearQuickDigits]
+    [appendQuickDigit, backspaceQuickDigit, clearQuickDigits],
   );
 
-  const handleQuickCreateCustomer = useCallback(async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const trimmedName = newCustomerForm.name.trim();
-    if (!trimmedName) {
-      setQuickLookupError('Customer name is required for a new phone number.');
-      return;
-    }
-    try {
-      await finalizeQuickCheckIn(
-        {
-          phone: quickDigits,
-          customerName: trimmedName,
-          customerEmail: newCustomerForm.email.trim() || undefined,
-        },
-        {
-          customerName: trimmedName,
-          phoneDisplay: quickPhoneDisplay || quickFormattedPhone,
-          createdCustomer: true,
-        }
-      );
-    } catch (error) {
-      setQuickLookupError(error instanceof Error ? error.message : 'Failed to check in customer');
-    }
-  }, [finalizeQuickCheckIn, newCustomerForm.email, newCustomerForm.name, quickDigits, quickFormattedPhone, quickPhoneDisplay]);
+  const handleQuickCreateCustomer = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const trimmedName = newCustomerForm.name.trim();
+      if (!trimmedName) {
+        setQuickLookupError(
+          "Customer name is required for a new phone number.",
+        );
+        return;
+      }
+      try {
+        await finalizeQuickCheckIn(
+          {
+            phone: quickDigits,
+            customerName: trimmedName,
+            customerEmail: newCustomerForm.email.trim() || undefined,
+          },
+          {
+            customerName: trimmedName,
+            phoneDisplay: quickPhoneDisplay || quickFormattedPhone,
+            createdCustomer: true,
+          },
+        );
+      } catch (error) {
+        setQuickLookupError(
+          error instanceof Error
+            ? error.message
+            : "Failed to check in customer",
+        );
+      }
+    },
+    [
+      finalizeQuickCheckIn,
+      newCustomerForm.email,
+      newCustomerForm.name,
+      quickDigits,
+      quickFormattedPhone,
+      quickPhoneDisplay,
+    ],
+  );
 
-  const handleQuickMatchSelect = useCallback(async (customer: Customer) => {
-    try {
-      await finalizeQuickCheckIn(
-        { customerId: customer.id, phone: quickDigits },
-        {
-          customerName: customer.name,
-          phoneDisplay: formatPhoneForDisplay(customer.phone) || quickPhoneDisplay,
-          createdCustomer: false,
-        }
-      );
-    } catch (error) {
-      setQuickLookupError(error instanceof Error ? error.message : 'Failed to check in customer');
-    }
-  }, [finalizeQuickCheckIn, quickDigits, quickPhoneDisplay]);
+  const handleQuickMatchSelect = useCallback(
+    async (customer: Customer) => {
+      try {
+        await finalizeQuickCheckIn(
+          { customerId: customer.id, phone: quickDigits },
+          {
+            customerName: customer.name,
+            phoneDisplay:
+              formatPhoneForDisplay(customer.phone) || quickPhoneDisplay,
+            createdCustomer: false,
+          },
+        );
+      } catch (error) {
+        setQuickLookupError(
+          error instanceof Error
+            ? error.message
+            : "Failed to check in customer",
+        );
+      }
+    },
+    [finalizeQuickCheckIn, quickDigits, quickPhoneDisplay],
+  );
 
   const handleDetailedSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!formData.customerId) {
-      toast.error('Choose a customer first');
+      toast.error("Choose a customer first");
       return;
     }
     try {
@@ -504,51 +718,266 @@ export default function CheckInsPage() {
         staffId: formData.staffId || undefined,
       });
       await invalidateCheckInQueries();
-      toast.success('Customer checked in');
+      toast.success("Customer checked in");
       closeModal();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to create check-in');
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create check-in",
+      );
     }
   };
 
   const quickIsBusy = lookupCustomer.isPending || createCheckIn.isPending;
-  const detailedIsBusy = createCheckIn.isPending && mode === 'detailed';
+  const detailedIsBusy = createCheckIn.isPending && mode === "detailed";
   const successProgressPercent = `${(successCountdown / SUCCESS_RESET_SECONDS) * 100}%`;
 
   return (
-    <div data-testid="checkins-page" className="w-full space-y-4 sm:space-y-6">
-      <section className="brand-hero rounded-[32px] border border-gray-200/80 p-5 shadow-[0_32px_90px_-50px_rgba(16,72,56,0.22)] dark:border-white/10 sm:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl space-y-3">
-            <p className="brand-hero-kicker text-xs font-semibold uppercase tracking-[0.28em]">Front desk flow</p>
-            <div className="space-y-2">
-              <h1 className="text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">Check customers in with just a phone number</h1>
-              <p className="brand-hero-muted max-w-2xl text-sm leading-6 sm:text-base">Built for a fast front desk. Existing customers move straight to a thank-you screen. New numbers only need a name and optional email before they are saved.</p>
+    <div data-testid="checkins-page" className="w-full space-y-5 sm:space-y-6">
+      <section className="brand-hero relative overflow-hidden rounded-[34px] border border-gray-200/80 px-5 py-6 shadow-[0_32px_90px_-50px_rgba(16,72,56,0.22)] dark:border-white/10 sm:px-7 sm:py-7">
+        <div className="absolute -right-20 top-0 h-56 w-56 rounded-full bg-white/45 blur-3xl dark:bg-primary/20" />
+        <div className="relative grid gap-6 xl:grid-cols-[minmax(0,1.2fr),minmax(320px,0.8fr)]">
+          <div className="space-y-5">
+            <div className="flex flex-wrap gap-2">
+              <span className="brand-hero-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]">
+                <Smartphone className="h-3.5 w-3.5" />
+                Front desk
+              </span>
+              <span className="brand-hero-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Phone-first
+              </span>
+              <span className="brand-hero-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]">
+                <CalendarDays className="h-3.5 w-3.5" />
+                Daily log
+              </span>
+            </div>
+
+            <div className="max-w-3xl space-y-3">
+              <p className="brand-hero-kicker text-xs font-semibold uppercase tracking-[0.28em]">
+                Check-ins
+              </p>
+              <h1 className="text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">
+                Front-desk check-ins, without the clutter.
+              </h1>
+              <p className="brand-hero-muted max-w-2xl text-sm leading-6 sm:text-base">
+                Keep walk-ins moving with a phone-first flow, then add service
+                or staff only when you need the extra detail.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={openQuickModal}
+                className="btn-primary min-h-[52px] gap-2 px-5 text-sm sm:text-base"
+              >
+                Quick check-in
+                <ArrowRight className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={openDetailedModal}
+                className="btn-secondary min-h-[52px] gap-2 px-5 text-sm sm:text-base"
+              >
+                Detailed entry
+                <Search className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="brand-hero-card rounded-[24px] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                      Logged
+                    </p>
+                    <p className="mt-3 text-3xl font-bold tracking-tight text-gray-950 dark:text-white">
+                      {checkIns.length}
+                    </p>
+                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                      {selectedDateLabel}
+                    </p>
+                  </div>
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+                    <CheckCircle2 className="h-5 w-5" />
+                  </div>
+                </div>
+              </div>
+              <div className="brand-hero-card rounded-[24px] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                      Customers
+                    </p>
+                    <p className="mt-3 text-3xl font-bold tracking-tight text-gray-950 dark:text-white">
+                      {uniqueGuests}
+                    </p>
+                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                      Unique check-ins on this view
+                    </p>
+                  </div>
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+                    <Users className="h-5 w-5" />
+                  </div>
+                </div>
+              </div>
+              <div className="brand-hero-card rounded-[24px] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                      Latest activity
+                    </p>
+                    <p className="mt-3 text-2xl font-bold tracking-tight text-gray-950 dark:text-white">
+                      {latestCheckInLabel}
+                    </p>
+                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                      {latestCheckIn
+                        ? latestCheckIn.customer.name
+                        : "No customers logged yet"}
+                    </p>
+                  </div>
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+                    <Clock3 className="h-5 w-5" />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <button type="button" onClick={openQuickModal} className="btn-primary min-h-[52px] px-5 text-sm sm:text-base">Quick check-in</button>
-            <button type="button" onClick={openDetailedModal} className="btn-secondary min-h-[52px] px-5 text-sm sm:text-base">Detailed entry</button>
+
+          <div className="brand-hero-card flex flex-col justify-between rounded-[28px] p-5 sm:p-6">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">
+                Flow
+              </p>
+              <h2 className="mt-3 text-2xl font-semibold tracking-tight text-gray-950 dark:text-white">
+                Built for a clean SaaS-style front desk.
+              </h2>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <div className="flex items-start gap-3 rounded-[22px] border border-gray-200/80 bg-white/55 px-4 py-4 dark:border-white/10 dark:bg-white/[0.05]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+                  <Smartphone className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-950 dark:text-white">
+                    Quick lane
+                  </p>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                    Enter a phone number, match instantly, and move on.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 rounded-[22px] border border-gray-200/80 bg-white/55 px-4 py-4 dark:border-white/10 dark:bg-white/[0.05]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+                  <UserPlus2 className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-950 dark:text-white">
+                    New number
+                  </p>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                    Capture a name once and the next check-in stays fast.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 rounded-[22px] border border-gray-200/80 bg-white/55 px-4 py-4 dark:border-white/10 dark:bg-white/[0.05]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+                  <Search className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-950 dark:text-white">
+                    Detailed lane
+                  </p>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                    Add service and staff when the visit needs more context.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(300px,0.72fr),minmax(0,1.28fr)]">
         <section className="card rounded-[30px] p-5 sm:p-6">
-          <div className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Today&apos;s front desk view</p>
-              <h2 className="mt-2 text-xl font-semibold text-gray-950 dark:text-white">Quick glance</h2>
-              <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">Track how many customers came through today, then launch the in-store link on any front-desk device.</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">
+                Workflow
+              </p>
+              <h2 className="mt-2 text-xl font-semibold text-gray-950 dark:text-white">
+                Three beats from arrival to done
+              </h2>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-gray-600 dark:text-gray-300">
+                The front desk gets a clean phone-first flow, with service and
+                staff details ready when needed.
+              </p>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-[24px] border border-gray-200/70 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Today&apos;s check-ins</p><p className="mt-3 text-3xl font-bold text-gray-950 dark:text-white">{checkIns.length}</p></div>
-              <div className="rounded-[24px] border border-gray-200/70 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Unique customers</p><p className="mt-3 text-3xl font-bold text-gray-950 dark:text-white">{uniqueGuests}</p></div>
+            <span className="inline-flex w-fit rounded-full border border-primary/20 bg-primary/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              Fast lane
+            </span>
+          </div>
+
+          <div className="mt-5 grid gap-3">
+            <div className="flex items-start gap-4 rounded-[24px] border border-gray-200/80 bg-white/75 px-4 py-4 dark:border-white/10 dark:bg-white/[0.04]">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-sm font-semibold text-primary">
+                01
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-950 dark:text-white">
+                  Enter a mobile number
+                </p>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                  Keyboard or keypad, always focused on the 10-digit number.
+                </p>
+              </div>
             </div>
-            <div className="rounded-[24px] border border-gray-200/70 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Front desk note</p>
-              <p className="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                Check-ins stay phone-first, with the U.S. country code shown automatically so the front desk can focus on the 10-digit mobile number.
+            <div className="flex items-start gap-4 rounded-[24px] border border-gray-200/80 bg-white/75 px-4 py-4 dark:border-white/10 dark:bg-white/[0.04]">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-sm font-semibold text-primary">
+                02
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-950 dark:text-white">
+                  Match or create the profile
+                </p>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                  Existing customers go straight through. New numbers only need
+                  a name once.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-4 rounded-[24px] border border-gray-200/80 bg-white/75 px-4 py-4 dark:border-white/10 dark:bg-white/[0.04]">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-sm font-semibold text-primary">
+                03
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-950 dark:text-white">
+                  Drop into detailed mode when needed
+                </p>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                  Attach service or staff details without slowing down the
+                  default flow.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-[24px] border border-gray-200/80 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                Keyboard ready
+              </p>
+              <p className="mt-2 text-sm font-medium text-gray-950 dark:text-white">
+                Type numbers, press Enter, or tap the keypad.
+              </p>
+            </div>
+            <div className="rounded-[24px] border border-gray-200/80 bg-white/75 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                Detailed mode
+              </p>
+              <p className="mt-2 text-sm font-medium text-gray-950 dark:text-white">
+                Service and staff stay optional until the visit needs them.
               </p>
             </div>
           </div>
@@ -557,19 +986,45 @@ export default function CheckInsPage() {
       </div>
 
       <section className="card overflow-hidden rounded-[30px]">
-        <div className="border-b border-gray-200 px-5 py-5 dark:border-gray-800 sm:px-6">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">Daily view</p>
-              <h2 className="text-lg font-semibold text-gray-950 dark:text-white">Check-ins for {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</h2>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">Filter by day to review customers, attached services, and staff assignments from the front desk.</p>
+        <div className="border-b border-gray-200/80 bg-gradient-to-r from-white/65 via-white/35 to-transparent px-5 py-5 dark:border-white/10 dark:from-white/[0.04] dark:via-white/[0.02] dark:to-transparent sm:px-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex rounded-full border border-gray-200/80 bg-white/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300">
+                  {checkIns.length} logged
+                </span>
+                <span className="inline-flex rounded-full border border-gray-200/80 bg-white/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300">
+                  {uniqueGuests} customers
+                </span>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">
+                  Daily log
+                </p>
+                <h2 className="mt-2 text-xl font-semibold text-gray-950 dark:text-white">
+                  Check-ins for {selectedDateLabel}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                  Review customer activity, attached services, and staff
+                  assignments in one clean view.
+                </p>
+              </div>
             </div>
+
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <div className="rounded-[24px] border border-gray-200/70 bg-white/70 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Date</label>
+              <div className="rounded-[24px] border border-gray-200/80 bg-white/75 p-4 shadow-[0_20px_45px_-35px_rgba(16,72,56,0.3)] dark:border-white/10 dark:bg-white/[0.04]">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                  Date
+                </label>
                 <DatePicker value={selectedDate} onChange={setSelectedDate} />
               </div>
-              <button type="button" onClick={openQuickModal} className="btn-outline text-sm">Start next check-in</button>
+              <button
+                type="button"
+                onClick={openQuickModal}
+                className="btn-outline min-h-[48px] text-sm"
+              >
+                Start next check-in
+              </button>
             </div>
           </div>
         </div>
@@ -581,52 +1036,149 @@ export default function CheckInsPage() {
         ) : checkIns.length === 0 ? (
           <div className="p-10 text-center sm:p-14">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
+              <CalendarDays className="h-8 w-8" />
             </div>
-            <p className="mt-4 text-base font-medium text-gray-950 dark:text-white">No check-ins for this date yet</p>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">Use the quick keypad flow when the next customer arrives.</p>
+            <p className="mt-4 text-base font-medium text-gray-950 dark:text-white">
+              No check-ins for this date yet
+            </p>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              Use the quick keypad flow when the next customer arrives.
+            </p>
+            <button
+              type="button"
+              onClick={openQuickModal}
+              className="btn-primary mt-5 min-h-[48px] px-5 text-sm"
+            >
+              Start check-in
+            </button>
           </div>
         ) : (
           <>
-            <div className="divide-y divide-gray-200 dark:divide-gray-800 sm:hidden">
+            <div className="grid gap-4 p-4 sm:hidden">
               {checkIns.map((checkIn) => (
-                <article key={checkIn.id} className="space-y-3 p-4">
+                <article
+                  key={checkIn.id}
+                  className="rounded-[28px] border border-gray-200/80 bg-white/80 p-4 shadow-[0_22px_55px_-42px_rgba(16,72,56,0.38)] dark:border-white/10 dark:bg-white/[0.04]"
+                >
                   <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-base font-semibold text-gray-950 dark:text-white">{checkIn.customer.name}</p>
-                      {checkIn.customer.phone ? <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{formatPhoneForDisplay(checkIn.customer.phone)}</p> : null}
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-sm font-semibold text-primary">
+                        {getInitials(checkIn.customer.name)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-base font-semibold text-gray-950 dark:text-white">
+                          {checkIn.customer.name}
+                        </p>
+                        <p className="mt-1 truncate text-sm text-gray-600 dark:text-gray-300">
+                          {checkIn.customer.phone
+                            ? formatPhoneForDisplay(checkIn.customer.phone)
+                            : "No phone on file"}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-200">{new Date(checkIn.checkInTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: timezone })}</p>
+                    <span className="inline-flex shrink-0 rounded-full border border-gray-200/80 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-700 dark:border-white/10 dark:bg-white/[0.06] dark:text-gray-200">
+                      {new Date(checkIn.checkInTime).toLocaleTimeString(
+                        "en-US",
+                        {
+                          hour: "numeric",
+                          minute: "2-digit",
+                          timeZone: timezone,
+                        },
+                      )}
+                    </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-2xl border border-gray-200/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Service</p><p className="mt-2 text-sm font-medium text-gray-950 dark:text-white">{checkIn.service?.name || 'Not tracked'}</p></div>
-                    <div className="rounded-2xl border border-gray-200/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.04]"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Staff</p><p className="mt-2 text-sm font-medium text-gray-950 dark:text-white">{checkIn.staff?.fullName || 'Open front desk'}</p></div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="rounded-[20px] border border-gray-200/70 bg-gray-50/80 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                        Service
+                      </p>
+                      <p className="mt-2 text-sm font-medium text-gray-950 dark:text-white">
+                        {checkIn.service?.name || "Not tracked"}
+                      </p>
+                    </div>
+                    <div className="rounded-[20px] border border-gray-200/70 bg-gray-50/80 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                        Staff
+                      </p>
+                      <p className="mt-2 text-sm font-medium text-gray-950 dark:text-white">
+                        {checkIn.staff?.fullName || "Open front desk"}
+                      </p>
+                    </div>
                   </div>
                 </article>
               ))}
             </div>
 
-            <div className="hidden overflow-x-auto sm:block">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-                <thead className="bg-gray-50/85 dark:bg-gray-900/70">
+            <div className="hidden overflow-x-auto px-4 pb-4 pt-1 sm:block">
+              <table className="min-w-full">
+                <thead>
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Time</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Customer</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Phone</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Service</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Staff</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                      Time
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                      Customer
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                      Phone
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                      Service
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                      Staff
+                    </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                <tbody className="divide-y divide-gray-200/80 dark:divide-white/10">
                   {checkIns.map((checkIn) => (
-                    <tr key={checkIn.id} className="hover:bg-white/60 dark:hover:bg-white/[0.03]">
-                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-950 dark:text-white">{new Date(checkIn.checkInTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: timezone })}</td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-950 dark:text-white">{checkIn.customer.name}</td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{checkIn.customer.phone ? formatPhoneForDisplay(checkIn.customer.phone) : '-'}</td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{checkIn.service?.name || '-'}</td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{checkIn.staff?.fullName || '-'}</td>
+                    <tr
+                      key={checkIn.id}
+                      className="transition hover:bg-white/55 dark:hover:bg-white/[0.03]"
+                    >
+                      <td className="whitespace-nowrap px-4 py-4 align-middle">
+                        <span className="inline-flex rounded-full border border-gray-200/80 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-700 dark:border-white/10 dark:bg-white/[0.06] dark:text-gray-200">
+                          {new Date(checkIn.checkInTime).toLocaleTimeString(
+                            "en-US",
+                            {
+                              hour: "numeric",
+                              minute: "2-digit",
+                              timeZone: timezone,
+                            },
+                          )}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 align-middle">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/12 text-sm font-semibold text-primary">
+                            {getInitials(checkIn.customer.name)}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-950 dark:text-white">
+                              {checkIn.customer.name}
+                            </p>
+                            <p className="mt-1 text-xs uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                              Customer
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-600 dark:text-gray-300">
+                        {checkIn.customer.phone
+                          ? formatPhoneForDisplay(checkIn.customer.phone)
+                          : "-"}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4">
+                        <span className="inline-flex rounded-full border border-gray-200/80 bg-gray-50/90 px-3 py-1 text-sm text-gray-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-200">
+                          {checkIn.service?.name || "Not tracked"}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4">
+                        <span className="inline-flex rounded-full border border-gray-200/80 bg-gray-50/90 px-3 py-1 text-sm text-gray-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-200">
+                          {checkIn.staff?.fullName || "Open front desk"}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -637,34 +1189,161 @@ export default function CheckInsPage() {
       </section>
 
       {showModal ? (
-        <div data-mobile-overlay="true" className="fixed inset-0 z-[70] bg-black/55 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
+        <div
+          data-mobile-overlay="true"
+          className="fixed inset-0 z-[70] bg-black/55 p-0 sm:flex sm:items-center sm:justify-center sm:p-4"
+        >
           <div className="relative flex h-full w-full flex-col overflow-hidden bg-[rgb(var(--color-gray-50))] text-gray-950 dark:bg-[rgb(var(--color-gray-900))] dark:text-gray-50 sm:max-h-[92vh] sm:max-w-6xl sm:rounded-[32px] sm:border sm:border-gray-200/80 sm:shadow-[0_36px_90px_-48px_rgba(6,17,24,0.55)] dark:border-white/10">
-            <div className="flex items-center justify-between border-b border-gray-200/80 px-4 py-4 dark:border-white/10 sm:px-6">
-              <div className="inline-flex rounded-full border border-gray-200/80 bg-white/70 p-1 text-sm shadow-sm dark:border-white/10 dark:bg-white/[0.05]">
-                <button type="button" onClick={() => { resetQuickFlow(); setMode('quick'); }} className={`rounded-full px-4 py-2 font-medium transition ${mode === 'quick' ? 'bg-primary text-white shadow-sm' : 'text-gray-600 hover:text-gray-950 dark:text-gray-300 dark:hover:text-white'}`}>Quick check-in</button>
-                <button type="button" onClick={() => { resetDetailedFlow(); setMode('detailed'); }} className={`rounded-full px-4 py-2 font-medium transition ${mode === 'detailed' ? 'bg-primary text-white shadow-sm' : 'text-gray-600 hover:text-gray-950 dark:text-gray-300 dark:hover:text-white'}`}>Detailed entry</button>
+            <div className="border-b border-gray-200/80 bg-white/80 px-4 py-4 backdrop-blur-xl dark:border-white/10 dark:bg-[rgb(var(--color-gray-900))]/80 sm:px-6">
+              <div className="flex items-center justify-between gap-4">
+                <div className="inline-flex rounded-full border border-gray-200/80 bg-white/70 p-1 text-sm shadow-sm dark:border-white/10 dark:bg-white/[0.05]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetQuickFlow();
+                      setMode("quick");
+                    }}
+                    className={`rounded-full px-4 py-2 font-medium transition ${
+                      mode === "quick"
+                        ? "bg-primary text-white shadow-sm"
+                        : "text-gray-600 hover:text-gray-950 dark:text-gray-300 dark:hover:text-white"
+                    }`}
+                  >
+                    Quick check-in
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetDetailedFlow();
+                      setMode("detailed");
+                    }}
+                    className={`rounded-full px-4 py-2 font-medium transition ${
+                      mode === "detailed"
+                        ? "bg-primary text-white shadow-sm"
+                        : "text-gray-600 hover:text-gray-950 dark:text-gray-300 dark:hover:text-white"
+                    }`}
+                  >
+                    Detailed entry
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white/80 text-gray-500 transition hover:text-gray-950 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300 dark:hover:text-white"
+                  aria-label="Close check-in modal"
+                >
+                  <svg
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
               </div>
-              <button type="button" onClick={closeModal} className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white/80 text-gray-500 transition hover:text-gray-950 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300 dark:hover:text-white" aria-label="Close check-in modal">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {mode === 'quick' ? (
-                <section className="flex min-h-full">
-                  <div className="flex min-h-full w-full flex-col px-4 py-5 sm:px-6 sm:py-6 xl:px-8 xl:py-9">
-                    {quickStep === 'phone' ? (
-                      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center space-y-6">
-                        <div className="space-y-3">
-                          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">Quick check-in</p>
-                          <h2 className="text-3xl font-bold text-gray-950 dark:text-white sm:text-4xl">Check in customer</h2>
-                          <p className="max-w-2xl text-sm leading-6 text-gray-600 dark:text-gray-300">
-                            Type a phone number or use the keypad below. Returning customers check in instantly. New numbers only need a name once.
+              {mode === "quick" ? (
+                <section className="grid min-h-full gap-0 xl:grid-cols-[0.84fr,1.16fr]">
+                  <div className="brand-hero hidden border-r border-gray-200/80 px-8 py-9 dark:border-white/10 xl:flex xl:flex-col xl:justify-between">
+                    <div className="space-y-6">
+                      <div className="space-y-3">
+                        <p className="brand-hero-kicker text-xs font-semibold uppercase tracking-[0.28em]">
+                          {quickStepMeta.kicker}
+                        </p>
+                        <h2 className="text-4xl font-bold leading-tight text-gray-950 dark:text-white">
+                          {quickStepMeta.title}
+                        </h2>
+                        <p className="brand-hero-muted max-w-xl text-base leading-7">
+                          {quickStepMeta.body}
+                        </p>
+                      </div>
+
+                      <div className="space-y-3">
+                        {quickStepMeta.items.map((item, index) => (
+                          <div
+                            key={item}
+                            className="brand-hero-card flex items-start gap-4 rounded-[26px] px-5 py-4"
+                          >
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-sm font-semibold text-primary">
+                              {String(index + 1).padStart(2, "0")}
+                            </div>
+                            <p className="text-sm leading-6 text-gray-700 dark:text-white/80">
+                              {item}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="brand-hero-card rounded-[26px] p-5">
+                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                        Shortcuts
+                      </p>
+                      <div className="mt-4 grid gap-3">
+                        <div className="rounded-[22px] border border-gray-200/80 bg-white/55 px-4 py-3 dark:border-white/10 dark:bg-white/[0.05]">
+                          <p className="text-sm font-semibold text-gray-950 dark:text-white">
+                            Number keys
+                          </p>
+                          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                            Type directly from the keyboard.
                           </p>
                         </div>
-                        <div className="rounded-[30px] border border-gray-200/80 bg-white/80 p-5 shadow-[0_24px_60px_-40px_rgba(16,72,56,0.35)] dark:border-white/10 dark:bg-white/[0.04] sm:p-6">
+                        <div className="rounded-[22px] border border-gray-200/80 bg-white/55 px-4 py-3 dark:border-white/10 dark:bg-white/[0.05]">
+                          <p className="text-sm font-semibold text-gray-950 dark:text-white">
+                            Enter
+                          </p>
+                          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                            Continue as soon as the number is ready.
+                          </p>
+                        </div>
+                        <div className="rounded-[22px] border border-gray-200/80 bg-white/55 px-4 py-3 dark:border-white/10 dark:bg-white/[0.05]">
+                          <p className="text-sm font-semibold text-gray-950 dark:text-white">
+                            Backspace key
+                          </p>
+                          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                            Backspace or tap the keypad to fix digits.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="px-4 py-5 sm:px-6 sm:py-6 xl:px-8 xl:py-9">
+                    {quickStep === "phone" ? (
+                      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center gap-6">
+                        <div className="space-y-3">
+                          <div className="flex flex-wrap gap-2">
+                            <span className="inline-flex rounded-full border border-gray-200/80 bg-white/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300">
+                              10-digit mobile
+                            </span>
+                            <span className="inline-flex rounded-full border border-gray-200/80 bg-white/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300">
+                              Keyboard ready
+                            </span>
+                          </div>
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">
+                              Quick check-in
+                            </p>
+                            <h2 className="text-3xl font-bold text-gray-950 dark:text-white sm:text-4xl">
+                              Check in customer
+                            </h2>
+                            <p className="max-w-2xl text-sm leading-6 text-gray-600 dark:text-gray-300">
+                              Type a phone number or use the keypad below.
+                              Returning customers check in instantly. New
+                              numbers only need a name once.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="rounded-[30px] border border-gray-200/80 bg-white/85 p-5 shadow-[0_24px_60px_-40px_rgba(16,72,56,0.35)] dark:border-white/10 dark:bg-white/[0.04] sm:p-6">
                           <div className="flex items-start justify-between gap-4">
                             <div className="min-w-0 flex-1">
                               <label
@@ -683,7 +1362,11 @@ export default function CheckInsPage() {
                                   inputMode="numeric"
                                   autoFocus
                                   value={quickFormattedPhone}
-                                  onChange={(event) => handleQuickPhoneInputChange(event.target.value)}
+                                  onChange={(event) =>
+                                    handleQuickPhoneInputChange(
+                                      event.target.value,
+                                    )
+                                  }
                                   onKeyDown={handleQuickPhoneInputKeyDown}
                                   placeholder="(555) 123-4567"
                                   className="w-full border-0 bg-transparent px-0 text-3xl font-bold tracking-tight text-gray-950 outline-none placeholder:text-gray-400 focus:ring-0 dark:text-white dark:placeholder:text-gray-500"
@@ -698,78 +1381,374 @@ export default function CheckInsPage() {
                               Clear
                             </button>
                           </div>
+
+                          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-[20px] border border-gray-200/70 bg-gray-50/80 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                                Digits entered
+                              </p>
+                              <p className="mt-2 text-sm font-semibold text-gray-950 dark:text-white">
+                                {quickDigits.length}/10
+                              </p>
+                            </div>
+                            <div className="rounded-[20px] border border-gray-200/70 bg-gray-50/80 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                                Status
+                              </p>
+                              <p className="mt-2 text-sm font-semibold text-gray-950 dark:text-white">
+                                {quickPhoneReady
+                                  ? "Ready to continue"
+                                  : "Waiting for 10 digits"}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-3">{KEYPAD_KEYS.map((key) => <KeypadButton key={key} label={key === 'clear' ? 'Clear' : key === 'back' ? 'Delete' : key} hint={key === 'back' ? 'Backspace' : undefined} onClick={() => handleQuickKeypadPress(key)} className={key === 'clear' || key === 'back' ? 'text-primary' : ''} />)}</div>
-                        {quickLookupError ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">{quickLookupError}</div> : <p className="text-sm text-gray-600 dark:text-gray-300">Type on the keyboard or tap the keypad to enter the customer&apos;s 10-digit mobile number.</p>}
+
+                        <div className="grid grid-cols-3 gap-3">
+                          {KEYPAD_KEYS.map((key) => (
+                            <KeypadButton
+                              key={key}
+                              label={
+                                key === "clear"
+                                  ? "Clear"
+                                  : key === "back"
+                                    ? "Delete"
+                                    : key
+                              }
+                              hint={key === "back" ? "Backspace" : undefined}
+                              onClick={() => handleQuickKeypadPress(key)}
+                              className={
+                                key === "clear" || key === "back"
+                                  ? "text-primary"
+                                  : ""
+                              }
+                            />
+                          ))}
+                        </div>
+
+                        {quickLookupError ? (
+                          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">
+                            {quickLookupError}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-600 dark:text-gray-300">
+                            Type on the keyboard or tap the keypad to enter the
+                            customer&apos;s 10-digit mobile number.
+                          </p>
+                        )}
+
                         <div className="flex flex-col gap-3 sm:flex-row">
-                          <button type="button" onClick={closeModal} className="btn-outline min-h-[58px] flex-1">Cancel</button>
-                          <button type="button" onClick={() => void handleQuickLookup()} disabled={!quickPhoneReady || quickIsBusy} className="btn-primary min-h-[58px] flex-1 disabled:cursor-not-allowed disabled:opacity-60">{quickIsBusy ? 'Checking number...' : 'Continue'}</button>
+                          <button
+                            type="button"
+                            onClick={closeModal}
+                            className="btn-outline min-h-[58px] flex-1"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleQuickLookup()}
+                            disabled={!quickPhoneReady || quickIsBusy}
+                            className="btn-primary min-h-[58px] flex-1 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {quickIsBusy ? "Checking number..." : "Continue"}
+                          </button>
                         </div>
                       </div>
                     ) : null}
 
-                    {quickStep === 'new' ? (
-                      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center space-y-6">
-                        <div className="space-y-3"><p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">New customer</p><h2 className="text-3xl font-bold text-gray-950 dark:text-white">Save this number once and move on</h2><p className="text-sm leading-6 text-gray-600 dark:text-gray-300">We could not find {quickPhoneDisplay}. Add a name so this customer can be checked in faster next time.</p></div>
-                        <form onSubmit={handleQuickCreateCustomer} className="space-y-5">
-                          <div className="rounded-[28px] border border-gray-200/80 bg-white/80 p-5 dark:border-white/10 dark:bg-white/[0.04]">
-                            <div className="grid gap-5 sm:grid-cols-2">
-                              <div><label className="label" htmlFor="quick-customer-name">Full name <span className="text-red-500">*</span></label><input id="quick-customer-name" type="text" value={newCustomerForm.name} onChange={(event) => setNewCustomerForm((current) => ({ ...current, name: event.target.value }))} className="input min-h-[56px] text-base" placeholder="Jane Smith" autoFocus /></div>
-                              <div><label className="label" htmlFor="quick-customer-phone">Mobile number</label><input id="quick-customer-phone" value={quickPhoneDisplay || quickFormattedPhone} readOnly className="input min-h-[56px] cursor-default bg-gray-100/80 dark:bg-white/[0.06]" /></div>
+                    {quickStep === "new" ? (
+                      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center space-y-6">
+                        <div className="space-y-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">
+                            New customer
+                          </p>
+                          <h2 className="text-3xl font-bold text-gray-950 dark:text-white">
+                            Save this number once and move on
+                          </h2>
+                          <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">
+                            We could not find {quickPhoneDisplay}. Add a name so
+                            this customer can be checked in faster next time.
+                          </p>
+                        </div>
+
+                        <form
+                          onSubmit={handleQuickCreateCustomer}
+                          className="space-y-5"
+                        >
+                          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr),260px]">
+                            <div className="rounded-[28px] border border-gray-200/80 bg-white/85 p-5 dark:border-white/10 dark:bg-white/[0.04]">
+                              <div className="grid gap-5 sm:grid-cols-2">
+                                <div>
+                                  <label
+                                    className="label"
+                                    htmlFor="quick-customer-name"
+                                  >
+                                    Full name{" "}
+                                    <span className="text-red-500">*</span>
+                                  </label>
+                                  <input
+                                    id="quick-customer-name"
+                                    type="text"
+                                    value={newCustomerForm.name}
+                                    onChange={(event) =>
+                                      setNewCustomerForm((current) => ({
+                                        ...current,
+                                        name: event.target.value,
+                                      }))
+                                    }
+                                    className="input min-h-[56px] text-base"
+                                    placeholder="Jane Smith"
+                                    autoFocus
+                                  />
+                                </div>
+                                <div>
+                                  <label
+                                    className="label"
+                                    htmlFor="quick-customer-phone"
+                                  >
+                                    Mobile number
+                                  </label>
+                                  <input
+                                    id="quick-customer-phone"
+                                    value={
+                                      quickPhoneDisplay || quickFormattedPhone
+                                    }
+                                    readOnly
+                                    className="input min-h-[56px] cursor-default bg-gray-100/80 dark:bg-white/[0.06]"
+                                  />
+                                </div>
+                              </div>
+                              <div className="mt-5">
+                                <label
+                                  className="label"
+                                  htmlFor="quick-customer-email"
+                                >
+                                  Email (optional)
+                                </label>
+                                <input
+                                  id="quick-customer-email"
+                                  type="email"
+                                  value={newCustomerForm.email}
+                                  onChange={(event) =>
+                                    setNewCustomerForm((current) => ({
+                                      ...current,
+                                      email: event.target.value,
+                                    }))
+                                  }
+                                  className="input min-h-[56px] text-base"
+                                  placeholder="customer@example.com"
+                                />
+                              </div>
                             </div>
-                            <div className="mt-5"><label className="label" htmlFor="quick-customer-email">Email (optional)</label><input id="quick-customer-email" type="email" value={newCustomerForm.email} onChange={(event) => setNewCustomerForm((current) => ({ ...current, email: event.target.value }))} className="input min-h-[56px] text-base" placeholder="customer@example.com" /></div>
+
+                            <div className="rounded-[28px] border border-gray-200/80 bg-white/85 p-5 dark:border-white/10 dark:bg-white/[0.04]">
+                              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                                What gets saved
+                              </p>
+                              <div className="mt-4 space-y-3">
+                                <div className="rounded-[20px] border border-gray-200/70 bg-gray-50/80 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                                    Number
+                                  </p>
+                                  <p className="mt-2 text-sm font-semibold text-gray-950 dark:text-white">
+                                    {quickPhoneDisplay || quickFormattedPhone}
+                                  </p>
+                                </div>
+                                <div className="rounded-[20px] border border-gray-200/70 bg-gray-50/80 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                                    Required
+                                  </p>
+                                  <p className="mt-2 text-sm font-semibold text-gray-950 dark:text-white">
+                                    Full name
+                                  </p>
+                                </div>
+                                <div className="rounded-[20px] border border-gray-200/70 bg-gray-50/80 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                                    Optional
+                                  </p>
+                                  <p className="mt-2 text-sm font-semibold text-gray-950 dark:text-white">
+                                    Email address
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                          {quickLookupError ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">{quickLookupError}</div> : null}
+
+                          {quickLookupError ? (
+                            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">
+                              {quickLookupError}
+                            </div>
+                          ) : null}
+
                           <div className="flex flex-col-reverse gap-3 sm:flex-row">
-                            <button type="button" onClick={resetQuickFlow} className="btn-outline min-h-[58px] flex-1">Back</button>
-                            <button type="submit" disabled={quickIsBusy} className="btn-primary min-h-[58px] flex-1 disabled:cursor-not-allowed disabled:opacity-60">{quickIsBusy ? 'Saving customer...' : 'Save and check in'}</button>
+                            <button
+                              type="button"
+                              onClick={resetQuickFlow}
+                              className="btn-outline min-h-[58px] flex-1"
+                            >
+                              Back
+                            </button>
+                            <button
+                              type="submit"
+                              disabled={quickIsBusy}
+                              className="btn-primary min-h-[58px] flex-1 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {quickIsBusy
+                                ? "Saving customer..."
+                                : "Save and check in"}
+                            </button>
                           </div>
                         </form>
                       </div>
                     ) : null}
 
-                    {quickStep === 'multiple' ? (
-                      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center space-y-6">
-                        <div className="space-y-3"><p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">Pick the right customer</p><h2 className="text-3xl font-bold text-gray-950 dark:text-white">We found more than one record for {quickPhoneDisplay}</h2><p className="text-sm leading-6 text-gray-600 dark:text-gray-300">Choose the correct customer and we will finish the check-in right away.</p></div>
+                    {quickStep === "multiple" ? (
+                      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center space-y-6">
+                        <div className="space-y-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">
+                            Pick the right customer
+                          </p>
+                          <h2 className="text-3xl font-bold text-gray-950 dark:text-white">
+                            We found more than one record for{" "}
+                            {quickPhoneDisplay}
+                          </h2>
+                          <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">
+                            Choose the correct customer and we will finish the
+                            check-in right away.
+                          </p>
+                        </div>
+
                         <div className="grid gap-3">
                           {quickMatchedCustomers.map((customer) => (
-                            <button key={customer.id} type="button" onClick={() => void handleQuickMatchSelect(customer)} className="rounded-[26px] border border-gray-200/80 bg-white/80 px-5 py-4 text-left shadow-[0_20px_50px_-36px_rgba(16,72,56,0.4)] transition hover:border-primary/30 hover:bg-primary/5 dark:border-white/10 dark:bg-white/[0.04] dark:hover:border-primary/40">
-                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                  <p className="text-lg font-semibold text-gray-950 dark:text-white">{customer.name}</p>
-                                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{formatPhoneForDisplay(customer.phone) || quickPhoneDisplay}</p>
-                                  {customer.email ? <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{customer.email}</p> : null}
+                            <button
+                              key={customer.id}
+                              type="button"
+                              onClick={() =>
+                                void handleQuickMatchSelect(customer)
+                              }
+                              className="rounded-[26px] border border-gray-200/80 bg-white/85 px-5 py-4 text-left shadow-[0_20px_50px_-36px_rgba(16,72,56,0.4)] transition hover:border-primary/30 hover:bg-primary/5 dark:border-white/10 dark:bg-white/[0.04] dark:hover:border-primary/40"
+                            >
+                              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex min-w-0 items-start gap-3">
+                                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-sm font-semibold text-primary">
+                                    {getInitials(customer.name)}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-lg font-semibold text-gray-950 dark:text-white">
+                                      {customer.name}
+                                    </p>
+                                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                                      {formatPhoneForDisplay(customer.phone) ||
+                                        quickPhoneDisplay}
+                                    </p>
+                                    {customer.email ? (
+                                      <p className="mt-1 truncate text-sm text-gray-500 dark:text-gray-400">
+                                        {customer.email}
+                                      </p>
+                                    ) : null}
+                                  </div>
                                 </div>
-                                <div className="text-sm text-gray-600 dark:text-gray-300"><span className="block text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">Last visit</span><span className="mt-2 block font-medium text-gray-950 dark:text-white">{formatLastVisit(customer.lastVisit, timezone)}</span></div>
+                                <div className="text-sm text-gray-600 dark:text-gray-300">
+                                  <span className="block text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                                    Last visit
+                                  </span>
+                                  <span className="mt-2 block font-medium text-gray-950 dark:text-white">
+                                    {formatLastVisit(
+                                      customer.lastVisit,
+                                      timezone,
+                                    )}
+                                  </span>
+                                </div>
                               </div>
                             </button>
                           ))}
                         </div>
-                        {quickLookupError ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">{quickLookupError}</div> : null}
+
+                        {quickLookupError ? (
+                          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">
+                            {quickLookupError}
+                          </div>
+                        ) : null}
+
                         <div className="flex flex-col gap-3 sm:flex-row">
-                          <button type="button" onClick={resetQuickFlow} className="btn-outline min-h-[58px] flex-1">Back to keypad</button>
-                          <button type="button" onClick={() => { setQuickMatchedCustomers([]); setQuickStep('new'); }} className="btn-secondary min-h-[58px] flex-1">None of these customers</button>
+                          <button
+                            type="button"
+                            onClick={resetQuickFlow}
+                            className="btn-outline min-h-[58px] flex-1"
+                          >
+                            Back to keypad
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setQuickMatchedCustomers([]);
+                              setQuickStep("new");
+                            }}
+                            className="btn-secondary min-h-[58px] flex-1"
+                          >
+                            None of these customers
+                          </button>
                         </div>
                       </div>
                     ) : null}
 
-                    {quickStep === 'success' && quickSuccess ? (
+                    {quickStep === "success" && quickSuccess ? (
                       <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center space-y-6 text-center">
                         <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-primary/12 text-primary">
-                          <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M5 13l4 4L19 7" />
+                          <svg
+                            className="h-12 w-12"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2.4}
+                              d="M5 13l4 4L19 7"
+                            />
                           </svg>
                         </div>
                         <div className="space-y-3">
-                          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">Check-in complete</p>
-                          <h2 className="text-4xl font-bold tracking-tight text-gray-950 dark:text-white">Thanks, {quickSuccess.customerName.split(/\s+/)[0]}.</h2>
-                          <p className="text-base leading-7 text-gray-600 dark:text-gray-300">Checked in at {formatSuccessTime(quickSuccess.checkInTime, timezone)} using {quickSuccess.phoneDisplay}.</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-300">{quickSuccess.createdCustomer ? 'This was a brand new customer record, so the front desk will be faster next time.' : 'We found the existing customer record and moved the visit through instantly.'}</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">
+                            Check-in complete
+                          </p>
+                          <h2 className="text-4xl font-bold tracking-tight text-gray-950 dark:text-white">
+                            Thanks, {quickSuccess.customerName.split(/\s+/)[0]}.
+                          </h2>
+                          <p className="text-base leading-7 text-gray-600 dark:text-gray-300">
+                            Checked in at{" "}
+                            {formatSuccessTime(
+                              quickSuccess.checkInTime,
+                              timezone,
+                            )}{" "}
+                            using {quickSuccess.phoneDisplay}.
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-300">
+                            {quickSuccess.createdCustomer
+                              ? "This was a brand new customer record, so the front desk will be faster next time."
+                              : "We found the existing customer record and moved the visit through instantly."}
+                          </p>
                         </div>
                         <div className="rounded-[28px] border border-primary/20 bg-primary/8 p-5 text-left">
-                          <p className="text-sm font-semibold text-gray-950 dark:text-white">Ready for the next customer in {successCountdown} second{successCountdown === 1 ? '' : 's'}.</p>
-                          <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-200/80 dark:bg-gray-800"><div className="h-full rounded-full bg-primary transition-[width] duration-700 ease-linear" style={{ width: successProgressPercent }} /></div>
-                          <button type="button" onClick={resetQuickFlow} className="btn-primary mt-4 min-h-[52px] w-full">Check in another customer</button>
+                          <p className="text-sm font-semibold text-gray-950 dark:text-white">
+                            Ready for the next customer in {successCountdown}{" "}
+                            second{successCountdown === 1 ? "" : "s"}.
+                          </p>
+                          <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-200/80 dark:bg-gray-800">
+                            <div
+                              className="h-full rounded-full bg-primary transition-[width] duration-700 ease-linear"
+                              style={{ width: successProgressPercent }}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={resetQuickFlow}
+                            className="btn-primary mt-4 min-h-[52px] w-full"
+                          >
+                            Check in another customer
+                          </button>
                         </div>
                       </div>
                     ) : null}
@@ -780,43 +1759,222 @@ export default function CheckInsPage() {
                   <div className="brand-hero hidden border-r border-gray-200/80 px-8 py-9 dark:border-white/10 xl:flex xl:flex-col xl:justify-between">
                     <div className="space-y-5">
                       <div className="space-y-3">
-                        <p className="brand-hero-kicker text-xs font-semibold uppercase tracking-[0.28em]">Manual front desk entry</p>
-                        <h2 className="text-4xl font-bold leading-tight text-gray-950 dark:text-white">Add service and staff details in one pass.</h2>
-                        <p className="brand-hero-muted max-w-xl text-base leading-7">Use this mode when the front desk wants more detail than the fast keypad flow, while keeping the same clean visit history.</p>
+                        <p className="brand-hero-kicker text-xs font-semibold uppercase tracking-[0.28em]">
+                          Detailed entry
+                        </p>
+                        <h2 className="text-4xl font-bold leading-tight text-gray-950 dark:text-white">
+                          Add service and staff in the same check-in.
+                        </h2>
+                        <p className="brand-hero-muted max-w-xl text-base leading-7">
+                          Use this mode when the front desk needs more detail
+                          without losing the speed of the default flow.
+                        </p>
                       </div>
-                      <div className="brand-hero-card rounded-[26px] p-5"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Best for</p><ul className="mt-4 space-y-3 text-sm leading-6 text-gray-700 dark:text-white/80"><li>Walk-ins who already need a service attached.</li><li>Visits where staff assignment matters right away.</li><li>Front desks that want cleaner visit notes beyond the fast keypad flow.</li></ul></div>
+
+                      <div className="space-y-3">
+                        <div className="brand-hero-card rounded-[26px] p-5">
+                          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                            Best for
+                          </p>
+                          <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-white/80">
+                            Walk-ins that already need a service attached.
+                          </p>
+                        </div>
+                        <div className="brand-hero-card rounded-[26px] p-5">
+                          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                            Staff aware
+                          </p>
+                          <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-white/80">
+                            Assign the visit right away when ownership matters.
+                          </p>
+                        </div>
+                        <div className="brand-hero-card rounded-[26px] p-5">
+                          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                            Search once
+                          </p>
+                          <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-white/80">
+                            Search by name or phone with the same normalized
+                            matching as the quick flow.
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="brand-hero-card rounded-[26px] p-5"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Tip</p><p className="mt-3 text-sm leading-6 text-gray-700 dark:text-white/80">Search by either name or phone. The same normalized phone matching is used here too.</p></div>
+
+                    <div className="brand-hero-card rounded-[26px] p-5">
+                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                        Tip
+                      </p>
+                      <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-white/80">
+                        Customer is required. Service and staff stay optional.
+                      </p>
+                    </div>
                   </div>
+
                   <div className="px-4 py-5 sm:px-6 sm:py-6 xl:px-8 xl:py-9">
                     <div className="mx-auto max-w-3xl">
                       <div className="space-y-2 xl:hidden">
-                        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">Detailed entry</p>
-                        <h2 className="text-3xl font-bold text-gray-950 dark:text-white">Manual check-in details</h2>
-                        <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">Use this when the front desk needs to attach service or staff details at the same time.</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">
+                          Detailed entry
+                        </p>
+                        <h2 className="text-3xl font-bold text-gray-950 dark:text-white">
+                          Manual check-in details
+                        </h2>
+                        <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">
+                          Use this when the front desk needs to attach service
+                          or staff details at the same time.
+                        </p>
                       </div>
-                      <form onSubmit={handleDetailedSubmit} className="mt-6 space-y-5">
-                        <div>
-                          <label className="label" htmlFor="detailed-search">Customer <span className="text-red-500">*</span></label>
-                          <input id="detailed-search" type="text" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} className="input" placeholder="Search by name or phone..." autoComplete="off" />
-                          {searchTerm.trim().length > 0 && searchTerm.trim().length < 2 ? <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">Type at least 2 characters to search.</p> : null}
+
+                      <div className="mt-6 flex flex-wrap gap-2">
+                        <span className="inline-flex rounded-full border border-gray-200/80 bg-white/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300">
+                          Customer required
+                        </span>
+                        <span className="inline-flex rounded-full border border-gray-200/80 bg-white/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300">
+                          Service optional
+                        </span>
+                        <span className="inline-flex rounded-full border border-gray-200/80 bg-white/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300">
+                          Staff optional
+                        </span>
+                      </div>
+
+                      <form
+                        onSubmit={handleDetailedSubmit}
+                        className="mt-6 space-y-5"
+                      >
+                        <div className="rounded-[28px] border border-gray-200/80 bg-white/85 p-5 dark:border-white/10 dark:bg-white/[0.04]">
+                          <label className="label" htmlFor="detailed-search">
+                            Customer <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            id="detailed-search"
+                            type="text"
+                            value={searchTerm}
+                            onChange={(event) =>
+                              setSearchTerm(event.target.value)
+                            }
+                            className="input"
+                            placeholder="Search by name or phone..."
+                            autoComplete="off"
+                          />
+                          {searchTerm.trim().length > 0 &&
+                          searchTerm.trim().length < 2 ? (
+                            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                              Type at least 2 characters to search.
+                            </p>
+                          ) : null}
                           {searchTerm.trim().length >= 2 ? (
                             <div className="mt-3 max-h-64 overflow-y-auto rounded-[24px] border border-gray-200/80 bg-white/80 dark:border-white/10 dark:bg-white/[0.04]">
-                              {customers.length > 0 ? customers.map((customer) => {
-                                const selected = formData.customerId === customer.id;
-                                return <button key={customer.id} type="button" onClick={() => { setFormData((current) => ({ ...current, customerId: customer.id })); setSearchTerm(customer.name); }} className={`w-full border-b border-gray-200/70 px-4 py-4 text-left transition last:border-b-0 dark:border-white/10 ${selected ? 'bg-primary/10' : 'hover:bg-gray-50/80 dark:hover:bg-white/[0.04]'}`}><p className="text-sm font-semibold text-gray-950 dark:text-white">{customer.name}</p><p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{customer.phone ? formatPhoneForDisplay(customer.phone) : customer.email || 'No contact info'}</p></button>;
-                              }) : <div className="px-4 py-5 text-sm text-gray-600 dark:text-gray-300">No customers match that search yet.</div>}
+                              {customers.length > 0 ? (
+                                customers.map((customer) => {
+                                  const selected =
+                                    formData.customerId === customer.id;
+                                  return (
+                                    <button
+                                      key={customer.id}
+                                      type="button"
+                                      onClick={() => {
+                                        setFormData((current) => ({
+                                          ...current,
+                                          customerId: customer.id,
+                                        }));
+                                        setSearchTerm(customer.name);
+                                      }}
+                                      className={`w-full border-b border-gray-200/70 px-4 py-4 text-left transition last:border-b-0 dark:border-white/10 ${
+                                        selected
+                                          ? "bg-primary/10"
+                                          : "hover:bg-gray-50/80 dark:hover:bg-white/[0.04]"
+                                      }`}
+                                    >
+                                      <p className="text-sm font-semibold text-gray-950 dark:text-white">
+                                        {customer.name}
+                                      </p>
+                                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                                        {customer.phone
+                                          ? formatPhoneForDisplay(
+                                              customer.phone,
+                                            )
+                                          : customer.email || "No contact info"}
+                                      </p>
+                                    </button>
+                                  );
+                                })
+                              ) : (
+                                <div className="px-4 py-5 text-sm text-gray-600 dark:text-gray-300">
+                                  No customers match that search yet.
+                                </div>
+                              )}
                             </div>
                           ) : null}
                         </div>
+
                         <div className="grid gap-5 sm:grid-cols-2">
-                          <div><label className="label" htmlFor="detailed-service">Service (optional)</label><CustomSelect id="detailed-service" value={formData.serviceId} onChange={(serviceId) => { setFormData((current) => ({ ...current, serviceId })); }} placeholder="No service" options={services.map((service) => ({ value: service.id, label: service.name }))} /></div>
-                          <div><label className="label" htmlFor="detailed-staff">Staff (optional)</label><CustomSelect id="detailed-staff" value={formData.staffId} onChange={(value) => setFormData((current) => ({ ...current, staffId: value }))} placeholder="No staff" options={staff.map((member) => ({ value: member.id, label: member.fullName }))} /></div>
+                          <div className="rounded-[28px] border border-gray-200/80 bg-white/85 p-5 dark:border-white/10 dark:bg-white/[0.04]">
+                            <label className="label" htmlFor="detailed-service">
+                              Service (optional)
+                            </label>
+                            <CustomSelect
+                              id="detailed-service"
+                              value={formData.serviceId}
+                              onChange={(serviceId) => {
+                                setFormData((current) => ({
+                                  ...current,
+                                  serviceId,
+                                }));
+                              }}
+                              placeholder="No service"
+                              options={services.map((service) => ({
+                                value: service.id,
+                                label: service.name,
+                              }))}
+                            />
+                          </div>
+                          <div className="rounded-[28px] border border-gray-200/80 bg-white/85 p-5 dark:border-white/10 dark:bg-white/[0.04]">
+                            <label className="label" htmlFor="detailed-staff">
+                              Staff (optional)
+                            </label>
+                            <CustomSelect
+                              id="detailed-staff"
+                              value={formData.staffId}
+                              onChange={(value) =>
+                                setFormData((current) => ({
+                                  ...current,
+                                  staffId: value,
+                                }))
+                              }
+                              placeholder="No staff"
+                              options={staff.map((member) => ({
+                                value: member.id,
+                                label: member.fullName,
+                              }))}
+                            />
+                          </div>
                         </div>
-                        {createCheckIn.isError ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">{createCheckIn.error instanceof Error ? createCheckIn.error.message : 'Failed to create check-in'}</div> : null}
+
+                        {createCheckIn.isError ? (
+                          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">
+                            {createCheckIn.error instanceof Error
+                              ? createCheckIn.error.message
+                              : "Failed to create check-in"}
+                          </div>
+                        ) : null}
+
                         <div className="flex flex-col-reverse gap-3 sm:flex-row">
-                          <button type="button" onClick={closeModal} className="btn-outline min-h-[56px] flex-1">Cancel</button>
-                          <button type="submit" disabled={!formData.customerId || detailedIsBusy} className="btn-primary min-h-[56px] flex-1 font-semibold disabled:cursor-not-allowed disabled:opacity-60">{detailedIsBusy ? 'Saving check-in...' : 'Save check-in'}</button>
+                          <button
+                            type="button"
+                            onClick={closeModal}
+                            className="btn-outline min-h-[56px] flex-1"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={!formData.customerId || detailedIsBusy}
+                            className="btn-primary min-h-[56px] flex-1 font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {detailedIsBusy
+                              ? "Saving check-in..."
+                              : "Save check-in"}
+                          </button>
                         </div>
                       </form>
                     </div>
