@@ -4,7 +4,11 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { getSessionBusinessId } from '@/lib/session-business';
 import { getAppBaseUrlFromRequest } from '@/lib/app-url';
-import { createConnectAccountSession, ensureBusinessConnectAccount } from '@/lib/stripe-connect';
+import {
+  createConnectAccountSession,
+  ensureBusinessConnectAccount,
+  syncBusinessConnectState,
+} from '@/lib/stripe-connect';
 
 function normalizeAccountSessionError(error: unknown) {
   const message =
@@ -70,6 +74,7 @@ export async function POST(req: NextRequest) {
       business,
       getAppBaseUrlFromRequest(req.url)
     );
+    await syncBusinessConnectState(business.id, account.id);
     const accountSession = await createConnectAccountSession(account);
 
     return NextResponse.json({

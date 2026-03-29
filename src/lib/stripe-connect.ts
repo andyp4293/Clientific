@@ -90,43 +90,72 @@ function buildStatementDescriptor() {
 }
 
 async function syncConnectStatementDescriptor(
-  accountId: string,
+  account: Stripe.Account,
   payoutSchedule: ConnectPayoutScheduleSummary
 ) {
   const expectedStatementDescriptor = buildStatementDescriptor();
   const currentStatementDescriptor = payoutSchedule.statementDescriptor?.trim() ?? null;
+  const currentAccountStatementDescriptor =
+    account.settings?.payouts?.statement_descriptor?.trim() ?? null;
 
-  if (currentStatementDescriptor === expectedStatementDescriptor) {
-    return payoutSchedule;
-  }
-
-  try {
-    const updatedBalanceSettings = await stripe.balanceSettings.update(
-      {
-        payments: {
-          payouts: {
-            statement_descriptor: expectedStatementDescriptor,
-          },
-        },
-      },
-      {
-        stripeAccount: accountId,
-      }
-    );
-
-    const updatedPayouts = updatedBalanceSettings.payments?.payouts;
-    const updatedSchedule = updatedPayouts?.schedule;
-
+  if (
+    currentStatementDescriptor === expectedStatementDescriptor &&
+    currentAccountStatementDescriptor === expectedStatementDescriptor
+  ) {
     return {
-      interval: updatedSchedule?.interval ?? payoutSchedule.interval,
-      monthlyPayoutDays: updatedSchedule?.monthly_payout_days ?? payoutSchedule.monthlyPayoutDays,
-      weeklyPayoutDays: updatedSchedule?.weekly_payout_days ?? payoutSchedule.weeklyPayoutDays,
-      statementDescriptor: updatedPayouts?.statement_descriptor ?? expectedStatementDescriptor,
+      account,
+      payoutSchedule,
     };
-  } catch (error) {
-    console.error('Failed to sync Stripe payout statement descriptor:', error);
-    return payoutSchedule;
   }
+
+  const [updatedAccountResult, updatedBalanceSettingsResult] = await Promise.allSettled([
+    currentAccountStatementDescriptor === expectedStatementDescriptor
+      ? Promise.resolve(account)
+      : stripe.accounts.update(account.id, {
+          settings: {
+            payouts: {
+              statement_descriptor: expectedStatementDescriptor,
+            },
+          },
+        }),
+    currentStatementDescriptor === expectedStatementDescriptor
+      ? Promise.resolve<Stripe.BalanceSettings | null>(null)
+      : stripe.balanceSettings.update(
+          {
+            payments: {
+              payouts: {
+                statement_descriptor: expectedStatementDescriptor,
+              },
+            },
+          },
+          {
+            stripeAccount: account.id,
+          }
+        ),
+  ]);
+
+  if (updatedAccountResult.status === 'rejected') {
+    console.error('Failed to sync Stripe account statement descriptor:', updatedAccountResult.reason);
+  }
+
+  if (updatedBalanceSettingsResult.status === 'rejected') {
+    console.error(
+      'Failed to sync Stripe payout statement descriptor:',
+      updatedBalanceSettingsResult.reason
+    );
+  }
+
+  return {
+    account:
+      updatedAccountResult.status === 'fulfilled'
+        ? updatedAccountResult.value
+        : account,
+    payoutSchedule:
+      updatedBalanceSettingsResult.status === 'fulfilled' &&
+      updatedBalanceSettingsResult.value
+        ? normalizePayoutSchedule(updatedBalanceSettingsResult.value)
+        : payoutSchedule,
+  };
 }
 
 function isLegacyApplicationManagedAccount(account: Stripe.Account) {
@@ -390,7 +419,10 @@ export async function syncBusinessConnectState(
     stripe.accounts.retrieve(accountId),
     fetchConnectAccountStatus(accountId),
   ]);
-  const payoutSchedule = await syncConnectStatementDescriptor(accountId, status.payoutSchedule);
+  const { account: syncedAccount, payoutSchedule } = await syncConnectStatementDescriptor(
+    account,
+    status.payoutSchedule
+  );
   const syncedStatus =
     payoutSchedule === status.payoutSchedule
       ? status
@@ -400,7 +432,7 @@ export async function syncBusinessConnectState(
         };
 
   await Promise.all([
-    syncBusinessConnectAccount(businessId, account),
+    syncBusinessConnectAccount(businessId, syncedAccount),
     syncBusinessBankAccount(businessId, syncedStatus.externalAccount),
   ]);
 

@@ -13,6 +13,7 @@ vi.mock('@/lib/prisma', () => ({
 vi.mock('@/lib/stripe-connect', () => ({
   createConnectAccountSession: vi.fn(),
   ensureBusinessConnectAccount: vi.fn(),
+  syncBusinessConnectState: vi.fn(),
 }));
 
 import { getServerSession } from 'next-auth';
@@ -21,6 +22,7 @@ import { prisma } from '@/lib/prisma';
 import {
   createConnectAccountSession,
   ensureBusinessConnectAccount,
+  syncBusinessConnectState,
 } from '@/lib/stripe-connect';
 import { POST } from './route';
 
@@ -29,6 +31,7 @@ const mockGetBusinessId = getSessionBusinessId as ReturnType<typeof vi.fn>;
 const mockFindUnique = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockCreateSession = createConnectAccountSession as ReturnType<typeof vi.fn>;
 const mockEnsureConnect = ensureBusinessConnectAccount as ReturnType<typeof vi.fn>;
+const mockSyncConnectState = syncBusinessConnectState as ReturnType<typeof vi.fn>;
 
 function makeRequest() {
   return new NextRequest('http://localhost/api/stripe/connect/account-session', {
@@ -58,6 +61,9 @@ beforeEach(() => {
     },
   });
   mockCreateSession.mockResolvedValue({ client_secret: 'cas_test_secret' });
+  mockSyncConnectState.mockResolvedValue({
+    accountId: 'acct_123',
+  });
 });
 
 describe('POST /api/stripe/connect/account-session', () => {
@@ -80,6 +86,7 @@ describe('POST /api/stripe/connect/account-session', () => {
     expect(body.clientSecret).toBe('cas_test_secret');
     expect(body.accountId).toBe('acct_123');
     expect(mockEnsureConnect).toHaveBeenCalled();
+    expect(mockSyncConnectState).toHaveBeenCalledWith('biz-1', 'acct_123');
     expect(mockCreateSession).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'acct_123',

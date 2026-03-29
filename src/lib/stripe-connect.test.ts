@@ -532,6 +532,11 @@ describe('syncBusinessConnectState', () => {
         capabilities: {
           transfers: 'active',
         },
+        settings: {
+          payouts: {
+            statement_descriptor: 'ANDY PHAM',
+          },
+        },
       })
       .mockResolvedValueOnce({
         id: 'acct_live',
@@ -567,6 +572,13 @@ describe('syncBusinessConnectState', () => {
 
     const status = await syncBusinessConnectState('biz-1', 'acct_live');
 
+    expect(mockAccountUpdate).toHaveBeenCalledWith('acct_live', {
+      settings: {
+        payouts: {
+          statement_descriptor: 'CLIENTIFIC',
+        },
+      },
+    });
     expect(mockBalanceSettingsUpdate).toHaveBeenCalledWith(
       {
         payments: {
