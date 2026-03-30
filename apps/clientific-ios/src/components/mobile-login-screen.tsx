@@ -14,14 +14,12 @@ type MobileLoginScreenProps = {
   error: string | null;
   isLoading: boolean;
   onSubmit: (email: string, password: string) => Promise<void>;
-  onOpenWorkspace: () => void;
 };
 
 export function MobileLoginScreen({
   error,
   isLoading,
   onSubmit,
-  onOpenWorkspace,
 }: MobileLoginScreenProps) {
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
@@ -31,11 +29,10 @@ export function MobileLoginScreen({
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-        <Text style={[styles.eyebrow, { color: theme.accent }]}>Clientific Mobile</Text>
-        <Text style={[styles.title, { color: theme.text }]}>Sign in natively</Text>
+        <Text style={[styles.eyebrow, { color: theme.accent }]}>Business sign in</Text>
+        <Text style={[styles.title, { color: theme.text }]}>Welcome back</Text>
         <Text style={[styles.subtitle, { color: theme.mutedText }]}>
-          We&apos;re starting the iPhone app with a real native login and dashboard, then
-          replacing the rest screen by screen.
+          Sign in to manage referrals, funds, and the day ahead without dropping into the desktop dashboard.
         </Text>
 
         {error ? (
@@ -98,18 +95,9 @@ export function MobileLoginScreen({
           )}
         </Pressable>
 
-        <Pressable
-          accessibilityRole="button"
-          onPress={onOpenWorkspace}
-          style={[
-            styles.secondaryButton,
-            { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
-          ]}
-          testID="mobile-open-workspace">
-          <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
-            Open full workspace
-          </Text>
-        </Pressable>
+        <Text style={[styles.footnote, { color: theme.mutedText }]}>
+          Built for businesses and referral partners, not the customer booking flow.
+        </Text>
       </View>
     </View>
   );
@@ -181,15 +169,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
   },
-  secondaryButton: {
-    minHeight: 52,
-    borderRadius: 18,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
+  footnote: {
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

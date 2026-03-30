@@ -7,9 +7,10 @@ vi.mock('@/lib/mobile-session', () => ({
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: { findUnique: vi.fn() },
-    customer: { count: vi.fn() },
     checkIn: { count: vi.fn() },
     appointment: { findMany: vi.fn() },
+    referral: { count: vi.fn() },
+    referralCommission: { aggregate: vi.fn() },
   },
 }));
 vi.mock('@/lib/timezone', () => ({
@@ -23,9 +24,10 @@ import { GET } from './route';
 const mockGetBearerToken = getBearerToken as ReturnType<typeof vi.fn>;
 const mockVerifyMobileSessionToken = verifyMobileSessionToken as ReturnType<typeof vi.fn>;
 const mockFindBusiness = prisma.business.findUnique as ReturnType<typeof vi.fn>;
-const mockCustomerCount = prisma.customer.count as ReturnType<typeof vi.fn>;
 const mockCheckInCount = prisma.checkIn.count as ReturnType<typeof vi.fn>;
 const mockFindAppointments = prisma.appointment.findMany as ReturnType<typeof vi.fn>;
+const mockReferralCount = prisma.referral.count as ReturnType<typeof vi.fn>;
+const mockReferralAggregate = prisma.referralCommission.aggregate as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -35,6 +37,7 @@ beforeEach(() => {
     id: 'biz-1',
     email: 'owner@clientific.app',
     name: 'Clientific Studio',
+    businessType: 'Salon',
     timezone: 'America/New_York',
     trialEndsAt: null,
     phone: '+15551234567',
@@ -43,10 +46,11 @@ beforeEach(() => {
     state: 'NY',
     zipCode: '10001',
     country: 'US',
+    stripeConnectAccountId: 'acct_1',
+    stripeConnectChargesEnabled: true,
+    stripeConnectPayoutsEnabled: true,
+    stripeConnectDetailsSubmitted: true,
   });
-  mockCustomerCount
-    .mockResolvedValueOnce(42)
-    .mockResolvedValueOnce(6);
   mockCheckInCount.mockResolvedValue(3);
   mockFindAppointments.mockResolvedValue([
     {
@@ -57,10 +61,18 @@ beforeEach(() => {
       service: { name: 'Haircut' },
     },
   ]);
+  mockReferralCount
+    .mockResolvedValueOnce(2)
+    .mockResolvedValueOnce(1);
+  mockReferralAggregate.mockResolvedValue({
+    _sum: {
+      amountDollars: 87,
+    },
+  });
 });
 
 describe('GET /api/mobile/dashboard/summary', () => {
-  it('returns a native dashboard summary for a valid mobile token', async () => {
+  it('returns a business-first mobile home summary for a valid mobile token', async () => {
     const response = await GET(
       new Request('https://www.clientific.app/api/mobile/dashboard/summary', {
         headers: { authorization: 'Bearer token' },
@@ -71,11 +83,19 @@ describe('GET /api/mobile/dashboard/summary', () => {
     const body = await response.json();
     expect(body.business.name).toBe('Clientific Studio');
     expect(body.metrics[0]).toEqual({
-      label: 'Customers',
-      value: 42,
-      helper: '+6 this month',
+      label: 'Booked today',
+      value: '1',
+      helper: 'Appointment',
     });
-    expect(body.upcomingAppointments[0].customerName).toBe('Jordan Lee');
+    expect(body.referralSnapshot).toEqual(
+      expect.objectContaining({
+        activeCount: 2,
+        pendingCount: 1,
+        lifetimeCredits: 87,
+        payoutReady: true,
+      }),
+    );
+    expect(body.todayAppointments[0].customerName).toBe('Jordan Lee');
   });
 
   it('returns 401 when the bearer token is missing', async () => {

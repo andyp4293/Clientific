@@ -11,29 +11,83 @@ export type MobileBusiness = {
   id: string;
   email: string;
   name: string;
+  businessType?: string | null;
   onboardingComplete: boolean;
 };
 
-export type MobileMetric = {
+export type MobileHomeMetric = {
   label: string;
-  value: number;
+  value: string;
   helper: string;
 };
 
-export type MobileUpcomingAppointment = {
+export type MobileTodayAppointment = {
   id: string;
   customerName: string;
   serviceName: string;
   status: string;
-  startTime: string;
   startTimeLabel: string;
 };
 
-export type MobileDashboardSummary = {
+export type MobileHomeSummary = {
   business: MobileBusiness;
-  metrics: MobileMetric[];
-  upcomingAppointments: MobileUpcomingAppointment[];
+  metrics: MobileHomeMetric[];
+  todayAppointments: MobileTodayAppointment[];
+  referralSnapshot: {
+    activeCount: number;
+    pendingCount: number;
+    lifetimeCredits: number;
+    payoutReady: boolean;
+    setupMessage: string | null;
+  };
   trialDaysRemaining: number | null;
+};
+
+export type MobileReferralEntry = {
+  id: string;
+  refereeName: string;
+  startedAtLabel: string;
+  statusLabel: string;
+  creditAmountLabel: string;
+};
+
+export type MobileReferralsSummary = {
+  business: MobileBusiness;
+  referralCode: string | null;
+  payoutReady: boolean;
+  payoutSetupMessage: string | null;
+  totalCredits: number;
+  activeCount: number;
+  pendingCount: number;
+  referrals: MobileReferralEntry[];
+};
+
+export type MobileFundsPayout = {
+  id: string;
+  amountLabel: string;
+  arrivalDateLabel: string;
+  destinationLabel: string;
+  statusLabel: string;
+};
+
+export type MobileFundsSummary = {
+  business: MobileBusiness;
+  notConnected: boolean;
+  payoutReady: boolean;
+  onboardingComplete: boolean;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  availableBalanceLabel: string;
+  pendingBalanceLabel: string;
+  dealPendingTransferLabel: string;
+  referralPendingTransferLabel: string;
+  dealTransferredLabel: string;
+  referralTransferredLabel: string;
+  bankAccountSummary: string | null;
+  payoutScheduleSummary: string;
+  setupMessage: string | null;
+  requirementTasks: string[];
+  recentPayouts: MobileFundsPayout[];
 };
 
 export type MobileLoginResponse = {
@@ -76,8 +130,24 @@ export async function loginWithClientific(input: {
   });
 }
 
-export async function fetchMobileDashboardSummary(token: string) {
-  return requestJson<MobileDashboardSummary>('/api/mobile/dashboard/summary', {
+export async function fetchMobileHomeSummary(token: string) {
+  return requestJson<MobileHomeSummary>('/api/mobile/dashboard/summary', {
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function fetchMobileReferrals(token: string) {
+  return requestJson<MobileReferralsSummary>('/api/mobile/referrals', {
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function fetchMobileFunds(token: string) {
+  return requestJson<MobileFundsSummary>('/api/mobile/funds', {
     headers: {
       authorization: `Bearer ${token}`,
     },

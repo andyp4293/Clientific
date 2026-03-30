@@ -11,7 +11,6 @@ describe('MobileLoginScreen', () => {
         error={null}
         isLoading={false}
         onSubmit={onSubmit}
-        onOpenWorkspace={jest.fn()}
       />,
     );
 
@@ -28,7 +27,6 @@ describe('MobileLoginScreen', () => {
         error="Email or password is incorrect"
         isLoading={false}
         onSubmit={jest.fn().mockResolvedValue(undefined)}
-        onOpenWorkspace={jest.fn()}
       />,
     );
 

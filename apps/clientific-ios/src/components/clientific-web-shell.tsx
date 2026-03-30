@@ -111,7 +111,7 @@ export function ClientificWebShell() {
         <View style={[styles.webFallback, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={[styles.brand, { color: theme.text }]}>Clientific</Text>
           <Text style={[styles.fallbackText, { color: theme.mutedText }]}>
-            This mobile app shell is meant for the iPhone build. Use the live web app at{' '}
+            This route opens the live Clientific web experience at{' '}
             {getHostLabel(DEFAULT_WEB_APP_URL)}.
           </Text>
           <Pressable
@@ -128,7 +128,7 @@ export function ClientificWebShell() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
       <View style={[styles.chrome, { backgroundColor: theme.background, borderColor: theme.border }]}>
         <View style={styles.brandBlock}>
-          <Text style={[styles.brandEyebrow, { color: theme.accent }]}>Clientific iOS</Text>
+          <Text style={[styles.brandEyebrow, { color: theme.accent }]}>Clientific Mobile</Text>
           <Text style={[styles.brand, { color: theme.text }]}>Everything from the web app</Text>
           <Text style={[styles.pathLabel, { color: theme.mutedText }]} numberOfLines={1}>
             {getPathLabel(currentUrl)}
@@ -203,7 +203,7 @@ export function ClientificWebShell() {
             setHasLoadError(true);
             setIsLoading(false);
           }}
-          applicationNameForUserAgent="Clientific iOS"
+          applicationNameForUserAgent="Clientific Mobile"
           style={styles.webView}
         />
 

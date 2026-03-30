@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { startOfMonth } from 'date-fns';
 import { prisma } from '@/lib/prisma';
 import { isBusinessOnboardingComplete } from '@/lib/onboarding';
+import { getReferralSharingStatus } from '@/lib/referral-sharing';
 import { getBearerToken, verifyMobileSessionToken } from '@/lib/mobile-session';
 import { localToUTC } from '@/lib/timezone';
 
@@ -24,6 +24,15 @@ function formatTimeLabel(isoString: string, timezone: string) {
   });
 }
 
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
 export async function GET(request: Request) {
   const token = getBearerToken(request);
   if (!token) {
@@ -31,7 +40,12 @@ export async function GET(request: Request) {
   }
 
   try {
-    const session = await verifyMobileSessionToken(token);
+    let session: Awaited<ReturnType<typeof verifyMobileSessionToken>>;
+    try {
+      session = await verifyMobileSessionToken(token);
+    } catch {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const business = await prisma.business.findUnique({
       where: { id: session.businessId },
@@ -39,6 +53,7 @@ export async function GET(request: Request) {
         id: true,
         email: true,
         name: true,
+        businessType: true,
         timezone: true,
         trialEndsAt: true,
         phone: true,
@@ -47,6 +62,10 @@ export async function GET(request: Request) {
         state: true,
         zipCode: true,
         country: true,
+        stripeConnectAccountId: true,
+        stripeConnectChargesEnabled: true,
+        stripeConnectPayoutsEnabled: true,
+        stripeConnectDetailsSubmitted: true,
       },
     });
 
@@ -57,14 +76,10 @@ export async function GET(request: Request) {
     const todayKey = formatLocalDate(new Date(), business.timezone);
     const startOfToday = localToUTC(todayKey, 0, 0, business.timezone);
     const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000 - 1);
-    const monthStart = startOfMonth(new Date());
+    const referralSharing = getReferralSharingStatus(business);
 
-    const [totalCustomers, newCustomersThisMonth, checkInsToday, appointmentsToday] =
+    const [checkInsToday, appointmentsToday, activeReferrals, pendingReferrals, earnedCredits] =
       await Promise.all([
-        prisma.customer.count({ where: { businessId: business.id } }),
-        prisma.customer.count({
-          where: { businessId: business.id, createdAt: { gte: monthStart } },
-        }),
         prisma.checkIn.count({
           where: { businessId: business.id, checkInTime: { gte: startOfToday, lte: endOfToday } },
         }),
@@ -81,6 +96,28 @@ export async function GET(request: Request) {
             service: { select: { name: true } },
           },
         }),
+        prisma.referral.count({
+          where: {
+            referrerId: business.id,
+            status: { in: ['active', 'credited'] },
+          },
+        }),
+        prisma.referral.count({
+          where: {
+            referrerId: business.id,
+            status: 'pending',
+          },
+        }),
+        prisma.referralCommission.aggregate({
+          where: {
+            referral: {
+              referrerId: business.id,
+            },
+          },
+          _sum: {
+            amountDollars: true,
+          },
+        }),
       ]);
 
     const trialDaysRemaining = business.trialEndsAt
@@ -92,48 +129,56 @@ export async function GET(request: Request) {
           ),
         )
       : null;
+    const lifetimeCredits = earnedCredits._sum.amountDollars ?? 0;
 
     return NextResponse.json({
       business: {
         id: business.id,
         email: business.email,
         name: business.name,
+        businessType: business.businessType,
         onboardingComplete: isBusinessOnboardingComplete(business),
       },
       metrics: [
         {
-          label: 'Customers',
-          value: totalCustomers,
-          helper: `+${newCustomersThisMonth} this month`,
+          label: 'Booked today',
+          value: String(appointmentsToday.length),
+          helper: appointmentsToday.length === 1 ? 'Appointment' : 'Appointments',
         },
         {
-          label: 'Appointments Today',
-          value: appointmentsToday.length,
-          helper: 'Scheduled',
+          label: 'Checked in',
+          value: String(checkInsToday),
+          helper: 'Guests today',
         },
         {
-          label: 'Check-Ins',
-          value: checkInsToday,
-          helper: 'Today',
+          label: 'Active referrals',
+          value: String(activeReferrals),
+          helper: pendingReferrals > 0 ? `${pendingReferrals} in setup` : 'Ready to earn',
         },
         {
-          label: 'New Customers',
-          value: newCustomersThisMonth,
-          helper: 'This month',
+          label: 'Earned',
+          value: formatCurrency(lifetimeCredits),
+          helper: 'Referral credits',
         },
       ],
-      upcomingAppointments: appointmentsToday.map((appointment) => ({
+      todayAppointments: appointmentsToday.map((appointment) => ({
         id: appointment.id,
         customerName: appointment.customer.name,
         serviceName: appointment.service?.name ?? 'Service',
         status: appointment.status,
-        startTime: appointment.startTime,
         startTimeLabel: formatTimeLabel(appointment.startTime.toISOString(), business.timezone),
       })),
+      referralSnapshot: {
+        activeCount: activeReferrals,
+        pendingCount: pendingReferrals,
+        lifetimeCredits,
+        payoutReady: referralSharing.ready,
+        setupMessage: referralSharing.ready ? null : referralSharing.message,
+      },
       trialDaysRemaining,
     });
   } catch (error) {
     console.error('GET /api/mobile/dashboard/summary error:', error);
-    return NextResponse.json({ error: 'Unable to load mobile dashboard' }, { status: 401 });
+    return NextResponse.json({ error: 'Unable to load mobile home' }, { status: 500 });
   }
 }
