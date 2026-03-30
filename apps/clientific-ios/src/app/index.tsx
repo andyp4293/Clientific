@@ -1,6 +1,6 @@
 import React from 'react';
-import { ClientificWebShell } from '@/components/clientific-web-shell';
+import { ClientificNativeApp } from '@/components/clientific-native-app';
 
 export default function HomeScreen() {
-  return <ClientificWebShell />;
+  return <ClientificNativeApp />;
 }

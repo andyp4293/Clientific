@@ -2,8 +2,8 @@ import NextAuth, { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import { prisma } from '@/lib/prisma';
-import { verifyPassword } from '@/lib/utils';
 import { isBusinessOnboardingComplete } from '@/lib/onboarding';
+import { authenticateBusinessCredentials } from '@/lib/business-auth';
 
 const ONBOARDING_SELECT = {
   id: true,
@@ -21,49 +21,12 @@ const providers: NextAuthOptions['providers'] = [
     credentials: {
       email: { label: 'Email', type: 'email' },
       password: { label: 'Password', type: 'password' },
-    },      async authorize(credentials) {
-      try {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error('Please enter your email and password');
-        }
-
-        const business = await prisma.business.findUnique({
-          where: { email: credentials.email.toLowerCase() },
-        });
-
-        if (!business) {
-          throw new Error('Email or password is incorrect');
-        }
-
-        const isValid = await verifyPassword(credentials.password, business.passwordHash);
-
-        if (!isValid) {
-          throw new Error('Email or password is incorrect');
-        }
-
-        if (!business.emailVerifiedAt) {
-          throw new Error('EmailNotVerified');
-        }
-
-        return {
-          id: business.id,
-          email: business.email,
-          name: business.name,
-          businessId: business.id,
-          onboardingComplete: isBusinessOnboardingComplete(business),
-        };
-      } catch (error: any) {
-        // Log the actual error for debugging (server-side only)
-        console.error('Auth error:', error);
-        
-        // Don't expose database connection errors to users
-        if (error.message.includes('prisma') || error.message.includes('database')) {
-          throw new Error('Service temporarily unavailable');
-        }
-        
-        // Re-throw user-friendly errors
-        throw error;
-      }
+    },
+    async authorize(credentials) {
+      return authenticateBusinessCredentials({
+        email: credentials?.email,
+        password: credentials?.password,
+      });
     },
   }),
 ];

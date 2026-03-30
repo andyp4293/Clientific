@@ -6,7 +6,14 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     setupFiles: ['./src/__tests__/setup.ts'],
-    exclude: ['e2e/**', 'node_modules/**', '.next/**', 'apps/**/node_modules/**', 'apps/**/dist/**'],
+    exclude: [
+      'e2e/**',
+      'node_modules/**',
+      '.next/**',
+      'apps/**/node_modules/**',
+      'apps/**/dist/**',
+      'apps/**/src/__tests__/**',
+    ],
     environmentMatchGlobs: [
       ['src/__tests__/components/**', 'jsdom'],
     ],
