@@ -89,6 +89,14 @@ function buildStatementDescriptor() {
   return truncated.length >= 5 ? truncated : APP_NAME.toUpperCase();
 }
 
+function canUpdateAccountStatementDescriptor(account: Stripe.Account) {
+  return !(
+    account.details_submitted ||
+    account.payouts_enabled ||
+    hasActiveConnectMoneyMovement(account)
+  );
+}
+
 async function syncConnectStatementDescriptor(
   account: Stripe.Account,
   payoutSchedule: ConnectPayoutScheduleSummary
@@ -97,11 +105,13 @@ async function syncConnectStatementDescriptor(
   const currentStatementDescriptor = payoutSchedule.statementDescriptor?.trim() ?? null;
   const currentAccountStatementDescriptor =
     account.settings?.payouts?.statement_descriptor?.trim() ?? null;
+  const shouldUpdateAccountStatementDescriptor =
+    currentAccountStatementDescriptor !== expectedStatementDescriptor &&
+    canUpdateAccountStatementDescriptor(account);
+  const shouldUpdatePayoutStatementDescriptor =
+    currentStatementDescriptor !== expectedStatementDescriptor;
 
-  if (
-    currentStatementDescriptor === expectedStatementDescriptor &&
-    currentAccountStatementDescriptor === expectedStatementDescriptor
-  ) {
+  if (!shouldUpdateAccountStatementDescriptor && !shouldUpdatePayoutStatementDescriptor) {
     return {
       account,
       payoutSchedule,
@@ -109,7 +119,7 @@ async function syncConnectStatementDescriptor(
   }
 
   const [updatedAccountResult, updatedBalanceSettingsResult] = await Promise.allSettled([
-    currentAccountStatementDescriptor === expectedStatementDescriptor
+    !shouldUpdateAccountStatementDescriptor
       ? Promise.resolve(account)
       : stripe.accounts.update(account.id, {
           settings: {
@@ -118,7 +128,7 @@ async function syncConnectStatementDescriptor(
             },
           },
         }),
-    currentStatementDescriptor === expectedStatementDescriptor
+    !shouldUpdatePayoutStatementDescriptor
       ? Promise.resolve<Stripe.BalanceSettings | null>(null)
       : stripe.balanceSettings.update(
           {

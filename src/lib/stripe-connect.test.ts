@@ -522,7 +522,7 @@ describe('fetchConnectAccountStatus', () => {
 });
 
 describe('syncBusinessConnectState', () => {
-  it('updates old connected-account statement descriptors to the app name', async () => {
+  it('does not retry immutable account-level statement descriptor updates after activation', async () => {
     mockAccountRetrieve
       .mockResolvedValueOnce({
         id: 'acct_live',
@@ -572,7 +572,73 @@ describe('syncBusinessConnectState', () => {
 
     const status = await syncBusinessConnectState('biz-1', 'acct_live');
 
-    expect(mockAccountUpdate).toHaveBeenCalledWith('acct_live', {
+    expect(mockAccountUpdate).not.toHaveBeenCalled();
+    expect(mockBalanceSettingsUpdate).toHaveBeenCalledWith(
+      {
+        payments: {
+          payouts: {
+            statement_descriptor: 'CLIENTIFIC',
+          },
+        },
+      },
+      {
+        stripeAccount: 'acct_live',
+      }
+    );
+    expect(status.payoutSchedule.statementDescriptor).toBe('CLIENTIFIC');
+  });
+
+  it('still updates the account-level statement descriptor before the account is activated', async () => {
+    mockAccountRetrieve
+      .mockResolvedValueOnce({
+        id: 'acct_setup',
+        charges_enabled: false,
+        payouts_enabled: false,
+        details_submitted: false,
+        capabilities: {
+          transfers: 'inactive',
+        },
+        settings: {
+          payouts: {
+            statement_descriptor: 'ANDY PHAM',
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        id: 'acct_setup',
+        charges_enabled: false,
+        payouts_enabled: false,
+        details_submitted: false,
+        capabilities: {
+          transfers: 'inactive',
+        },
+        external_accounts: {
+          data: [],
+        },
+        requirements: {
+          currently_due: [],
+          eventually_due: [],
+          past_due: [],
+          pending_verification: [],
+          disabled_reason: null,
+        },
+      });
+    mockBalanceSettingsRetrieve.mockResolvedValue({
+      payments: {
+        payouts: {
+          schedule: {
+            interval: 'manual',
+            monthly_payout_days: [],
+            weekly_payout_days: [],
+          },
+          statement_descriptor: 'ANDY PHAM',
+        },
+      },
+    });
+
+    await syncBusinessConnectState('biz-1', 'acct_setup');
+
+    expect(mockAccountUpdate).toHaveBeenCalledWith('acct_setup', {
       settings: {
         payouts: {
           statement_descriptor: 'CLIENTIFIC',
@@ -588,9 +654,8 @@ describe('syncBusinessConnectState', () => {
         },
       },
       {
-        stripeAccount: 'acct_live',
+        stripeAccount: 'acct_setup',
       }
     );
-    expect(status.payoutSchedule.statementDescriptor).toBe('CLIENTIFIC');
   });
 });
