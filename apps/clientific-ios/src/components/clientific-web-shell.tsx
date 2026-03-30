@@ -128,8 +128,8 @@ export function ClientificWebShell() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
       <View style={[styles.chrome, { backgroundColor: theme.background, borderColor: theme.border }]}>
         <View style={styles.brandBlock}>
-          <Text style={[styles.brandEyebrow, { color: theme.accent }]}>Clientific Mobile</Text>
-          <Text style={[styles.brand, { color: theme.text }]}>Everything from the web app</Text>
+          <Text style={[styles.brandEyebrow, { color: theme.accent }]}>Clientific</Text>
+          <Text style={[styles.brand, { color: theme.text }]}>Web workspace</Text>
           <Text style={[styles.pathLabel, { color: theme.mutedText }]} numberOfLines={1}>
             {getPathLabel(currentUrl)}
           </Text>
@@ -203,7 +203,7 @@ export function ClientificWebShell() {
             setHasLoadError(true);
             setIsLoading(false);
           }}
-          applicationNameForUserAgent="Clientific Mobile"
+          applicationNameForUserAgent="Clientific"
           style={styles.webView}
         />
 

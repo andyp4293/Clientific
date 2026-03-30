@@ -15,6 +15,18 @@ export type MobileBusiness = {
   onboardingComplete: boolean;
 };
 
+export type MobileBusinessProfile = MobileBusiness & {
+  ownerPhone: string | null;
+  phone: string | null;
+  businessEmail: string | null;
+  street: string | null;
+  city: string | null;
+  state: string | null;
+  zipCode: string | null;
+  country: string | null;
+  timezone: string | null;
+};
+
 export type MobileHomeMetric = {
   label: string;
   value: string;
@@ -95,6 +107,38 @@ export type MobileLoginResponse = {
   business: MobileBusiness;
 };
 
+export type MobileRegistrationInput = {
+  email: string;
+  password: string;
+  businessName: string;
+  businessType: string;
+  referralCode?: string;
+};
+
+export type MobileRegistrationResponse = {
+  success: true;
+  requiresEmailVerification: boolean;
+  verificationEmailSent: boolean;
+  business: {
+    id: string;
+    email: string;
+    name: string;
+    slug: string;
+  };
+};
+
+export type MobileOnboardingInput = {
+  ownerPhone?: string | null;
+  phone: string;
+  businessEmail?: string | null;
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  timezone: string;
+};
+
 export class ClientificApiError extends Error {
   constructor(
     message: string,
@@ -130,6 +174,33 @@ export async function loginWithClientific(input: {
   });
 }
 
+export async function registerWithClientific(input: MobileRegistrationInput) {
+  return requestJson<MobileRegistrationResponse>('/api/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function resendVerificationCode(email: string) {
+  return requestJson<{ success: true }>('/api/auth/verify-email/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function confirmVerificationCode(input: {
+  email: string;
+  code: string;
+}) {
+  return requestJson<{ success: true; email: string }>('/api/auth/verify-email/confirm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+}
+
 export async function fetchMobileHomeSummary(token: string) {
   return requestJson<MobileHomeSummary>('/api/mobile/dashboard/summary', {
     headers: {
@@ -151,6 +222,28 @@ export async function fetchMobileFunds(token: string) {
     headers: {
       authorization: `Bearer ${token}`,
     },
+  });
+}
+
+export async function fetchMobileBusinessProfile(token: string) {
+  return requestJson<{ business: MobileBusinessProfile }>('/api/mobile/business', {
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function updateMobileBusinessProfile(
+  token: string,
+  input: MobileOnboardingInput,
+) {
+  return requestJson<{ business: MobileBusinessProfile }>('/api/mobile/business', {
+    method: 'PATCH',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
   });
 }
 

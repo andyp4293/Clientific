@@ -1,6 +1,5 @@
-import React from 'react';
-import { ClientificWebShell } from '@/components/clientific-web-shell';
+import { Redirect } from 'expo-router';
 
 export default function WorkspaceScreen() {
-  return <ClientificWebShell />;
+  return <Redirect href="/" />;
 }

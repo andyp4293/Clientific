@@ -11,19 +11,31 @@ import {
 import * as SecureStore from 'expo-secure-store';
 import {
   ClientificApiError,
+  confirmVerificationCode,
+  fetchMobileBusinessProfile,
   fetchMobileFunds,
   fetchMobileHomeSummary,
   fetchMobileReferrals,
   getClientificWebUrl,
+  MobileBusinessProfile,
   MobileFundsSummary,
   MobileHomeSummary,
   MobileLoginResponse,
+  MobileOnboardingInput,
   MobileReferralsSummary,
   loginWithClientific,
+  registerWithClientific,
+  resendVerificationCode,
+  updateMobileBusinessProfile,
 } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
 import { MobileAppShell, type MobileAppTab } from '@/components/mobile-app-shell';
-import { MobileLoginScreen } from '@/components/mobile-login-screen';
+import {
+  MobileAuthScreen,
+  type MobileAuthMode,
+  type MobileRegistrationForm,
+} from '@/components/mobile-auth-screen';
+import { MobileOnboardingScreen } from '@/components/mobile-onboarding-screen';
 
 const MOBILE_SESSION_TOKEN_KEY = 'clientific.mobile.session.token';
 
@@ -44,18 +56,29 @@ export function ClientificNativeApp() {
   const theme = getClientificTheme(colorScheme);
   const [isBooting, setIsBooting] = useState(true);
   const [activeTab, setActiveTab] = useState<MobileAppTab>('home');
-  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [authMode, setAuthMode] = useState<MobileAuthMode>('sign-in');
+  const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
+  const [isResendingCode, setIsResendingCode] = useState(false);
   const [isLoadingHome, setIsLoadingHome] = useState(false);
   const [isRefreshingHome, setIsRefreshingHome] = useState(false);
+  const [isLoadingBusinessProfile, setIsLoadingBusinessProfile] = useState(false);
+  const [isSavingBusinessProfile, setIsSavingBusinessProfile] = useState(false);
   const [isLoadingReferrals, setIsLoadingReferrals] = useState(false);
   const [isRefreshingReferrals, setIsRefreshingReferrals] = useState(false);
   const [isLoadingFunds, setIsLoadingFunds] = useState(false);
   const [isRefreshingFunds, setIsRefreshingFunds] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
+  const [businessProfileError, setBusinessProfileError] = useState<string | null>(null);
   const [homeError, setHomeError] = useState<string | null>(null);
   const [referralsError, setReferralsError] = useState<string | null>(null);
   const [fundsError, setFundsError] = useState<string | null>(null);
+  const [pendingVerification, setPendingVerification] = useState<{
+    email: string;
+    password: string;
+  } | null>(null);
   const [session, setSession] = useState<MobileLoginResponse | null>(null);
+  const [businessProfile, setBusinessProfile] = useState<MobileBusinessProfile | null>(null);
   const [home, setHome] = useState<MobileHomeSummary | null>(null);
   const [referrals, setReferrals] = useState<MobileReferralsSummary | null>(null);
   const [funds, setFunds] = useState<MobileFundsSummary | null>(null);
@@ -63,14 +86,19 @@ export function ClientificNativeApp() {
   const signOut = useCallback(async (message?: string) => {
     await SecureStore.deleteItemAsync(MOBILE_SESSION_TOKEN_KEY);
     setSession(null);
+    setBusinessProfile(null);
     setHome(null);
     setReferrals(null);
     setFunds(null);
     setActiveTab('home');
+    setAuthMode('sign-in');
     setAuthError(null);
+    setAuthNotice(null);
+    setBusinessProfileError(null);
     setHomeError(null);
     setReferralsError(null);
     setFundsError(null);
+    setPendingVerification(null);
     if (message) {
       setAuthError(message);
     }
@@ -100,6 +128,10 @@ export function ClientificNativeApp() {
         const nextHome = await fetchMobileHomeSummary(token);
         setHome(nextHome);
         setSession({ token, business: nextHome.business });
+        if (nextHome.business.onboardingComplete) {
+          setBusinessProfile(null);
+          setBusinessProfileError(null);
+        }
         setHomeError(null);
       } catch (error) {
         await handleSessionError(error, 'Unable to load your mobile home.', setHomeError);
@@ -109,6 +141,27 @@ export function ClientificNativeApp() {
         } else {
           setIsLoadingHome(false);
         }
+      }
+    },
+    [handleSessionError],
+  );
+
+  const loadBusinessProfile = useCallback(
+    async (token: string) => {
+      setIsLoadingBusinessProfile(true);
+
+      try {
+        const response = await fetchMobileBusinessProfile(token);
+        setBusinessProfile(response.business);
+        setBusinessProfileError(null);
+      } catch (error) {
+        await handleSessionError(
+          error,
+          'Unable to load your business setup.',
+          setBusinessProfileError,
+        );
+      } finally {
+        setIsLoadingBusinessProfile(false);
       }
     },
     [handleSessionError],
@@ -211,6 +264,8 @@ export function ClientificNativeApp() {
 
         setHome(nextHome);
         setSession({ token, business: nextHome.business });
+        setAuthMode('sign-in');
+        setAuthNotice(null);
       } catch (error) {
         const isExpiredSession =
           error instanceof ClientificApiError && error.status === 401;
@@ -234,26 +289,200 @@ export function ClientificNativeApp() {
     };
   }, []);
 
+  const establishSession = useCallback(
+    async (email: string, password: string) => {
+      const nextSession = await loginWithClientific({ email, password });
+      await SecureStore.setItemAsync(MOBILE_SESSION_TOKEN_KEY, nextSession.token);
+      setSession(nextSession);
+      setAuthMode('sign-in');
+      setPendingVerification(null);
+      setAuthNotice(null);
+      setActiveTab('home');
+      await loadHome(nextSession.token);
+    },
+    [loadHome],
+  );
+
   const handleLogin = useCallback(async (email: string, password: string) => {
-    setIsSigningIn(true);
+    setIsSubmittingAuth(true);
     setAuthError(null);
+    setAuthNotice(null);
+    setBusinessProfileError(null);
     setHomeError(null);
     setReferralsError(null);
     setFundsError(null);
 
     try {
-      const nextSession = await loginWithClientific({ email, password });
-      await SecureStore.setItemAsync(MOBILE_SESSION_TOKEN_KEY, nextSession.token);
-      setSession(nextSession);
-      setActiveTab('home');
-      await loadHome(nextSession.token);
+      await establishSession(email.trim(), password);
     } catch (error) {
-      setAuthError(getReadableError(error, 'Unable to sign in right now.'));
+      if (
+        error instanceof ClientificApiError &&
+        error.status === 403 &&
+        error.message === 'EmailNotVerified'
+      ) {
+        setPendingVerification({
+          email: email.trim().toLowerCase(),
+          password,
+        });
+        setAuthMode('verify');
+        setAuthError('Enter the 6-digit code from your email to finish signing in.');
+      } else {
+        setAuthError(getReadableError(error, 'Unable to sign in right now.'));
+      }
     } finally {
-      setIsSigningIn(false);
+      setIsSubmittingAuth(false);
       setIsBooting(false);
     }
-  }, [loadHome]);
+  }, [establishSession]);
+
+  const handleRegister = useCallback(async (input: MobileRegistrationForm) => {
+    const trimmedEmail = input.email.trim().toLowerCase();
+    const trimmedBusinessName = input.businessName.trim();
+
+    if (!trimmedBusinessName) {
+      setAuthError('Business name is required.');
+      return;
+    }
+
+    if (!trimmedEmail) {
+      setAuthError('Email is required.');
+      return;
+    }
+
+    if (input.password.length < 8) {
+      setAuthError('Password must be at least 8 characters.');
+      return;
+    }
+
+    if (!/[0-9]/.test(input.password)) {
+      setAuthError('Password must include a number.');
+      return;
+    }
+
+    if (!/[!@#$%^&*]/.test(input.password)) {
+      setAuthError('Password must include a special character.');
+      return;
+    }
+
+    if (input.password !== input.confirmPassword) {
+      setAuthError('Passwords do not match.');
+      return;
+    }
+
+    if (!input.acceptTerms) {
+      setAuthError('You need to accept the terms to continue.');
+      return;
+    }
+
+    setIsSubmittingAuth(true);
+    setAuthError(null);
+    setAuthNotice(null);
+
+    try {
+      const response = await registerWithClientific({
+        businessName: trimmedBusinessName,
+        businessType: input.businessType,
+        email: trimmedEmail,
+        password: input.password,
+        referralCode: input.referralCode.trim() || undefined,
+      });
+
+      setPendingVerification({
+        email: trimmedEmail,
+        password: input.password,
+      });
+      setAuthMode('verify');
+      setAuthNotice(
+        response.verificationEmailSent
+          ? 'Account created. Check your email for the verification code.'
+          : 'Account created. Use resend below if the verification code did not arrive.',
+      );
+    } catch (error) {
+      setAuthError(getReadableError(error, 'Unable to create your account right now.'));
+    } finally {
+      setIsSubmittingAuth(false);
+    }
+  }, []);
+
+  const handleVerifyCode = useCallback(
+    async (email: string, code: string) => {
+      const trimmedCode = code.replace(/\D/g, '');
+      const verifiedEmail = email.trim().toLowerCase();
+
+      if (trimmedCode.length !== 6) {
+        setAuthError('Enter the 6-digit verification code.');
+        return;
+      }
+
+      setIsSubmittingAuth(true);
+      setAuthError(null);
+      setAuthNotice(null);
+
+      try {
+        await confirmVerificationCode({ email: verifiedEmail, code: trimmedCode });
+
+        if (!pendingVerification?.password || pendingVerification.email !== verifiedEmail) {
+          setAuthMode('sign-in');
+          setAuthNotice('Email verified. Sign in to continue.');
+          return;
+        }
+
+        await establishSession(verifiedEmail, pendingVerification.password);
+      } catch (error) {
+        setAuthError(getReadableError(error, 'Unable to verify your email right now.'));
+      } finally {
+        setIsSubmittingAuth(false);
+      }
+    },
+    [establishSession, pendingVerification],
+  );
+
+  const handleResendCode = useCallback(async (email: string) => {
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) {
+      setAuthError('Add your email address first.');
+      return;
+    }
+
+    setIsResendingCode(true);
+    setAuthError(null);
+    setAuthNotice(null);
+
+    try {
+      await resendVerificationCode(trimmedEmail);
+      setAuthNotice('If your account is waiting for verification, a new code is on the way.');
+    } catch (error) {
+      setAuthError(getReadableError(error, 'Unable to resend the verification code.'));
+    } finally {
+      setIsResendingCode(false);
+    }
+  }, []);
+
+  const handleSaveBusinessProfile = useCallback(
+    async (input: MobileOnboardingInput) => {
+      if (!session) {
+        return;
+      }
+
+      setIsSavingBusinessProfile(true);
+      setBusinessProfileError(null);
+
+      try {
+        const response = await updateMobileBusinessProfile(session.token, input);
+        setBusinessProfile(response.business);
+        await loadHome(session.token);
+      } catch (error) {
+        await handleSessionError(
+          error,
+          'Unable to save your business setup.',
+          setBusinessProfileError,
+        );
+      } finally {
+        setIsSavingBusinessProfile(false);
+      }
+    },
+    [handleSessionError, loadHome, session],
+  );
 
   const handleRefreshHome = useCallback(async () => {
     if (!session) {
@@ -284,6 +513,10 @@ export function ClientificNativeApp() {
       return;
     }
 
+    if (home && !home.business.onboardingComplete && !businessProfile && !isLoadingBusinessProfile) {
+      void loadBusinessProfile(session.token);
+    }
+
     if (activeTab === 'referrals' && !referrals && !isLoadingReferrals) {
       void loadReferrals(session.token);
     }
@@ -294,8 +527,12 @@ export function ClientificNativeApp() {
   }, [
     activeTab,
     funds,
+    businessProfile,
+    home,
     isLoadingFunds,
+    isLoadingBusinessProfile,
     isLoadingReferrals,
+    loadBusinessProfile,
     loadFunds,
     loadReferrals,
     referrals,
@@ -307,9 +544,9 @@ export function ClientificNativeApp() {
       <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
         <View style={[styles.loadingCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <ActivityIndicator color={theme.accent} />
-          <Text style={[styles.loadingTitle, { color: theme.text }]}>Opening Clientific</Text>
+          <Text style={[styles.loadingTitle, { color: theme.text }]}>Opening your account</Text>
           <Text style={[styles.loadingText, { color: theme.mutedText }]}>
-            Checking your sign-in and loading the business app.
+            Checking your sign-in and loading the mobile workspace.
           </Text>
         </View>
       </View>
@@ -345,10 +582,71 @@ export function ClientificNativeApp() {
 
   if (!session || !home) {
     return (
-      <MobileLoginScreen
+      <MobileAuthScreen
         error={authError}
-        isLoading={isSigningIn}
-        onSubmit={handleLogin}
+        isResendingCode={isResendingCode}
+        isSubmitting={isSubmittingAuth}
+        mode={authMode}
+        notice={authNotice}
+        verificationEmail={pendingVerification?.email ?? ''}
+        onBackToSignIn={() => {
+          setAuthMode('sign-in');
+          setAuthError(null);
+          setAuthNotice(null);
+        }}
+        onLogin={handleLogin}
+        onModeChange={(mode) => {
+          setAuthMode(mode);
+          setAuthError(null);
+          setAuthNotice(null);
+        }}
+        onRegister={handleRegister}
+        onResendCode={handleResendCode}
+        onVerify={handleVerifyCode}
+      />
+    );
+  }
+
+  if (!home.business.onboardingComplete) {
+    if (isLoadingBusinessProfile || !businessProfile) {
+      return (
+        <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+          <View
+            style={[
+              styles.loadingCard,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}>
+            <ActivityIndicator color={theme.accent} />
+            <Text style={[styles.loadingTitle, { color: theme.text }]}>Loading setup</Text>
+            <Text style={[styles.loadingText, { color: theme.mutedText }]}>
+              Pulling in the business details you still need to finish.
+            </Text>
+            {businessProfileError ? (
+              <>
+                <Text style={[styles.loadingText, { color: theme.mutedText }]}>
+                  {businessProfileError}
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => void loadBusinessProfile(session.token)}
+                  style={[styles.retryButton, { backgroundColor: theme.accent }]}
+                  testID="mobile-onboarding-retry">
+                  <Text style={styles.retryButtonText}>Try again</Text>
+                </Pressable>
+              </>
+            ) : null}
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <MobileOnboardingScreen
+        error={businessProfileError}
+        isSaving={isSavingBusinessProfile}
+        profile={businessProfile}
+        onSignOut={signOut}
+        onSubmit={handleSaveBusinessProfile}
       />
     );
   }
