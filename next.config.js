@@ -34,7 +34,7 @@ const nextConfig = {
     return [
       {
         source: '/favicon.ico',
-        destination: '/logo_black_transparent.png',
+        destination: '/icon-192.png',
         permanent: false,
       },
       {

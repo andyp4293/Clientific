@@ -2,7 +2,6 @@
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { APP_NAME } from '@/lib/brand';
-import { BRAND_LOGO_DARK_SRC, BRAND_LOGO_LIGHT_SRC } from '@/lib/brand-assets';
 import { AuthProvider } from '@/components/providers/AuthProvider';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
@@ -15,9 +14,12 @@ export const metadata: Metadata = {
   description: 'Manage customers, appointments, deals, and payouts for your service business',
   manifest: '/manifest.json',
   icons: {
-    icon: BRAND_LOGO_LIGHT_SRC,
-    apple: BRAND_LOGO_DARK_SRC,
-    shortcut: BRAND_LOGO_LIGHT_SRC,
+    icon: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/icon-192.png', sizes: '192x192', type: 'image/png' }],
+    shortcut: '/icon-192.png',
   },
   appleWebApp: {
     capable: true,

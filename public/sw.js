@@ -1,9 +1,11 @@
-const CACHE_NAME = 'clientific-v6';
+const CACHE_NAME = 'clientific-v7';
 const OFFLINE_FALLBACK_URL = '/offline.html';
 
 // Assets to cache on install (app shell)
 const PRECACHE_URLS = [
   OFFLINE_FALLBACK_URL,
+  '/icon-192.png',
+  '/icon-512.png',
   '/logo_black_transparent.png',
   '/logo_white_transparent.png',
 ];
