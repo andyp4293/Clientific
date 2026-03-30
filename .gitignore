@@ -18,6 +18,8 @@ node_modules
 # Misc
 .DS_Store
 *.pem
+.expo
+apps/**/dist
 
 # Debug
 npm-debug.log*
