@@ -344,7 +344,7 @@ export function MobileMoreScreen({
           <Text style={[styles.accountEyebrow, { color: theme.accent }]}>More</Text>
           <Text style={[styles.accountTitle, { color: theme.text }]}>{business.name}</Text>
           <Text style={[styles.accountSubtitle, { color: theme.mutedText }]}>
-            Open the rest of the business tools from the same grouped menu you see in the web app.
+            Open the rest of your business tools from one place.
           </Text>
           <View style={styles.accountMetaRow}>
             <View
@@ -396,16 +396,9 @@ export function MobileMoreScreen({
                   <View
                     style={[
                       styles.menuIconBadge,
-                      {
-                        backgroundColor:
-                          item.kind === 'native' ? theme.accentSoft : theme.surfaceMuted,
-                      },
+                      { backgroundColor: theme.accentSoft },
                     ]}>
-                    <MobileNavIcon
-                      color={item.kind === 'native' ? theme.accent : theme.text}
-                      name={item.icon}
-                      size={18}
-                    />
+                    <MobileNavIcon color={theme.accent} name={item.icon} size={18} />
                   </View>
                   <View style={styles.menuCopy}>
                     <Text style={[styles.menuTitle, { color: theme.text }]}>{item.label}</Text>
@@ -413,23 +406,7 @@ export function MobileMoreScreen({
                       {item.helper}
                     </Text>
                   </View>
-                  <View
-                    style={[
-                      styles.menuPill,
-                      {
-                        backgroundColor:
-                          item.kind === 'native' ? theme.accentSoft : theme.surfaceMuted,
-                        borderColor: theme.border,
-                      },
-                    ]}>
-                    <Text
-                      style={[
-                        styles.menuPillText,
-                        { color: item.kind === 'native' ? theme.accent : theme.text },
-                      ]}>
-                      {item.kind === 'native' ? 'App' : 'Web'}
-                    </Text>
-                  </View>
+                  <MobileNavIcon color={theme.mutedText} name="more" size={18} />
                 </Pressable>
               ))}
             </View>
@@ -728,22 +705,6 @@ const styles = StyleSheet.create({
   menuHelper: {
     fontSize: 13,
     lineHeight: 18,
-  },
-  menuPill: {
-    minWidth: 48,
-    borderWidth: 1,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  menuPillText: {
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
   },
   signOutButton: {
     minHeight: 52,

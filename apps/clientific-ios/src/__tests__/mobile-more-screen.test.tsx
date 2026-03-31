@@ -331,9 +331,12 @@ describe('MobileMoreScreen', () => {
     expect(screen.getByText('Payouts')).toBeTruthy();
     expect(screen.getByText('Billing')).toBeTruthy();
     expect(screen.getByText('Settings')).toBeTruthy();
+    expect(screen.getByText('Open the rest of your business tools from one place.')).toBeTruthy();
+    expect(screen.queryByText('App')).toBeNull();
+    expect(screen.queryByText('Web')).toBeNull();
   });
 
-  it('routes native destinations inside the app', () => {
+  it('routes app destinations inside the menu flow', () => {
     const onChangeSection = jest.fn();
 
     render(<MobileMoreScreen {...createProps({ onChangeSection })} />);
@@ -342,7 +345,7 @@ describe('MobileMoreScreen', () => {
     expect(onChangeSection).toHaveBeenCalledWith('analytics');
   });
 
-  it('opens browser-backed pages for tools that are not native yet', () => {
+  it('opens external routes for tools that are still web-backed', () => {
     const onOpenExternalRoute = jest.fn().mockResolvedValue(undefined);
 
     render(<MobileMoreScreen {...createProps({ onOpenExternalRoute })} />);
