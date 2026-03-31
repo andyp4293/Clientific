@@ -16,8 +16,10 @@ import type { MobileBusinessProfile, MobileOnboardingInput } from '@/lib/clienti
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
 
 type MobileOnboardingScreenProps = {
+  context?: 'onboarding' | 'settings';
   error: string | null;
   isSaving: boolean;
+  onBack?: () => void;
   profile: MobileBusinessProfile;
   onSignOut: () => Promise<void>;
   onSubmit: (input: MobileOnboardingInput) => Promise<void>;
@@ -44,8 +46,10 @@ function getDefaultTimezone() {
 }
 
 export function MobileOnboardingScreen({
+  context = 'onboarding',
   error,
   isSaving,
+  onBack,
   profile,
   onSignOut,
   onSubmit,
@@ -78,6 +82,14 @@ export function MobileOnboardingScreen({
     });
   }, [profile]);
 
+  const isSettingsMode = context === 'settings';
+  const eyebrow = isSettingsMode ? 'Settings' : 'Finish setup';
+  const title = isSettingsMode ? 'Business settings' : 'Complete your business profile';
+  const subtitle = isSettingsMode
+    ? 'Update your business contact and location details without leaving the app.'
+    : 'Add the business contact and location details the app needs before you jump into referrals, funds, and daily activity.';
+  const primaryActionLabel = isSettingsMode ? 'Save changes' : 'Finish setup';
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
       <KeyboardAvoidingView
@@ -89,11 +101,21 @@ export function MobileOnboardingScreen({
           style={{ backgroundColor: theme.background }}>
           <View style={styles.container}>
             <View style={styles.header}>
-              <Text style={[styles.eyebrow, { color: theme.accent }]}>Finish setup</Text>
-              <Text style={[styles.title, { color: theme.text }]}>Complete your business profile</Text>
-              <Text style={[styles.subtitle, { color: theme.mutedText }]}>
-                Add the business contact and location details the app needs before you jump into referrals, funds, and daily activity.
-              </Text>
+              {isSettingsMode && onBack ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={onBack}
+                  style={[
+                    styles.backButton,
+                    { backgroundColor: theme.surface, borderColor: theme.border },
+                  ]}
+                  testID="mobile-settings-back">
+                  <Text style={[styles.backButtonText, { color: theme.text }]}>Back</Text>
+                </Pressable>
+              ) : null}
+              <Text style={[styles.eyebrow, { color: theme.accent }]}>{eyebrow}</Text>
+              <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
+              <Text style={[styles.subtitle, { color: theme.mutedText }]}>{subtitle}</Text>
             </View>
 
             {error ? (
@@ -329,17 +351,19 @@ export function MobileOnboardingScreen({
                 {isSaving ? (
                   <ActivityIndicator color="#f8fffc" />
                 ) : (
-                  <Text style={styles.primaryButtonText}>Finish setup</Text>
+                  <Text style={styles.primaryButtonText}>{primaryActionLabel}</Text>
                 )}
               </Pressable>
 
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => void onSignOut()}
-                style={[styles.secondaryButton, { borderColor: theme.border }]}
-                testID="mobile-onboarding-signout">
-                <Text style={[styles.secondaryButtonText, { color: theme.text }]}>Sign out</Text>
-              </Pressable>
+              {!isSettingsMode ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => void onSignOut()}
+                  style={[styles.secondaryButton, { borderColor: theme.border }]}
+                  testID="mobile-onboarding-signout">
+                  <Text style={[styles.secondaryButtonText, { color: theme.text }]}>Sign out</Text>
+                </Pressable>
+              ) : null}
             </View>
           </View>
         </ScrollView>
@@ -406,6 +430,21 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: 8,
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+    minHeight: 40,
+    borderWidth: 1,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    marginBottom: 6,
+  },
+  backButtonText: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '800',
   },
   eyebrow: {
     fontSize: 12,

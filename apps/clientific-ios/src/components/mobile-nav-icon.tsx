@@ -7,9 +7,18 @@ export type MobileNavIconName =
   | 'customers'
   | 'deals'
   | 'more'
+  | 'services'
   | 'checkins'
+  | 'redeem'
+  | 'businessHours'
+  | 'aiReceptionist'
+  | 'reviews'
+  | 'analytics'
   | 'referrals'
-  | 'funds'
+  | 'payouts'
+  | 'customerView'
+  | 'billing'
+  | 'settings'
   | 'account';
 
 type MobileNavIconProps = {
@@ -24,9 +33,18 @@ const ICON_MAP: Record<MobileNavIconName, React.ComponentProps<typeof Feather>['
   customers: 'users',
   deals: 'tag',
   more: 'more-horizontal',
+  services: 'briefcase',
   checkins: 'check-square',
+  redeem: 'crosshair',
+  businessHours: 'clock',
+  aiReceptionist: 'phone-call',
+  reviews: 'star',
+  analytics: 'bar-chart-2',
   referrals: 'send',
-  funds: 'dollar-sign',
+  payouts: 'dollar-sign',
+  customerView: 'eye',
+  billing: 'credit-card',
+  settings: 'settings',
   account: 'user',
 };
 

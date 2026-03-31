@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type {
   MobileAppointmentsSummary,
   MobileBusiness,
+  MobileBusinessProfile,
   MobileCheckInLookupResponse,
   MobileCheckInMutationResponse,
   MobileCheckInSubmissionInput,
@@ -12,6 +13,7 @@ import type {
   MobileDealsSummary,
   MobileFundsSummary,
   MobileHomeSummary,
+  MobileOnboardingInput,
   MobileReferralsSummary,
 } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
@@ -29,6 +31,8 @@ type MobileAppShellProps = {
   appointments: MobileAppointmentsSummary | null;
   appointmentsError: string | null;
   business: MobileBusiness;
+  businessProfile: MobileBusinessProfile | null;
+  businessProfileError: string | null;
   checkIns: MobileCheckInsSummary | null;
   checkInsError: string | null;
   customers: MobileCustomersSummary | null;
@@ -42,6 +46,7 @@ type MobileAppShellProps = {
   homeError: string | null;
   isAppointmentsLoading: boolean;
   isAppointmentsRefreshing: boolean;
+  isBusinessProfileLoading: boolean;
   isCheckInsLoading: boolean;
   isCheckInsRefreshing: boolean;
   isCustomersLoading: boolean;
@@ -53,6 +58,7 @@ type MobileAppShellProps = {
   isHomeRefreshing: boolean;
   isReferralsLoading: boolean;
   isReferralsRefreshing: boolean;
+  isSavingBusinessProfile: boolean;
   moreSection: MobileMoreSection;
   onChangeCustomersSearchDraft: (value: string) => void;
   onChangeMoreSection: (section: MobileMoreSection) => void;
@@ -66,6 +72,7 @@ type MobileAppShellProps = {
   onNextCheckInsDate: () => void;
   onNextAppointmentsDate: () => void;
   onNextCustomersPage: () => void;
+  onOpenExternalRoute: (path: string) => Promise<void>;
   onOpenAppointments: () => void;
   onOpenCustomers: () => void;
   onOpenDeals: () => void;
@@ -74,6 +81,7 @@ type MobileAppShellProps = {
   onPreviousCheckInsDate: () => void;
   onPreviousAppointmentsDate: () => void;
   onPreviousCustomersPage: () => void;
+  onRefreshBusinessProfile: () => Promise<void>;
   onRefreshCheckIns: () => Promise<void>;
   onRefreshAppointments: () => Promise<void>;
   onRefreshCustomers: () => Promise<void>;
@@ -81,6 +89,7 @@ type MobileAppShellProps = {
   onRefreshFunds: () => Promise<void>;
   onRefreshHome: () => Promise<void>;
   onRefreshReferrals: () => Promise<void>;
+  onSaveBusinessProfile: (input: MobileOnboardingInput) => Promise<void>;
   onShareDeal: (deal: MobileDealsSummary['deals'][number]) => Promise<void>;
   onShareReferral: () => Promise<void>;
   onSignOut: () => Promise<void>;
@@ -101,6 +110,8 @@ export function MobileAppShell({
   appointments,
   appointmentsError,
   business,
+  businessProfile,
+  businessProfileError,
   checkIns,
   checkInsError,
   customers,
@@ -114,6 +125,7 @@ export function MobileAppShell({
   homeError,
   isAppointmentsLoading,
   isAppointmentsRefreshing,
+  isBusinessProfileLoading,
   isCheckInsLoading,
   isCheckInsRefreshing,
   isCustomersLoading,
@@ -125,6 +137,7 @@ export function MobileAppShell({
   isHomeRefreshing,
   isReferralsLoading,
   isReferralsRefreshing,
+  isSavingBusinessProfile,
   moreSection,
   onChangeCustomersSearchDraft,
   onChangeMoreSection,
@@ -136,6 +149,7 @@ export function MobileAppShell({
   onNextCheckInsDate,
   onNextAppointmentsDate,
   onNextCustomersPage,
+  onOpenExternalRoute,
   onOpenAppointments,
   onOpenCustomers,
   onOpenDeals,
@@ -144,6 +158,7 @@ export function MobileAppShell({
   onPreviousCheckInsDate,
   onPreviousAppointmentsDate,
   onPreviousCustomersPage,
+  onRefreshBusinessProfile,
   onRefreshCheckIns,
   onRefreshAppointments,
   onRefreshCustomers,
@@ -151,6 +166,7 @@ export function MobileAppShell({
   onRefreshFunds,
   onRefreshHome,
   onRefreshReferrals,
+  onSaveBusinessProfile,
   onShareDeal,
   onShareReferral,
   onSignOut,
@@ -225,26 +241,33 @@ export function MobileAppShell({
             <MobileMoreScreen
               activeSection={moreSection}
               business={business}
+              businessProfile={businessProfile}
+              businessProfileError={businessProfileError}
               checkIns={checkIns}
               checkInsError={checkInsError}
               funds={funds}
               fundsError={fundsError}
               home={home}
+              isBusinessProfileLoading={isBusinessProfileLoading}
               isCheckInsLoading={isCheckInsLoading}
               isCheckInsRefreshing={isCheckInsRefreshing}
               isFundsLoading={isFundsLoading}
               isFundsRefreshing={isFundsRefreshing}
               isReferralsLoading={isReferralsLoading}
               isReferralsRefreshing={isReferralsRefreshing}
+              isSavingBusinessProfile={isSavingBusinessProfile}
               onChangeSection={onChangeMoreSection}
               onCreateCheckIn={onCreateCheckIn}
               onJumpCheckInsToToday={onJumpCheckInsToToday}
               onLookupCheckIn={onLookupCheckIn}
               onNextCheckInsDate={onNextCheckInsDate}
+              onOpenExternalRoute={onOpenExternalRoute}
               onPreviousCheckInsDate={onPreviousCheckInsDate}
+              onRefreshBusinessProfile={onRefreshBusinessProfile}
               onRefreshCheckIns={onRefreshCheckIns}
               onRefreshFunds={onRefreshFunds}
               onRefreshReferrals={onRefreshReferrals}
+              onSaveBusinessProfile={onSaveBusinessProfile}
               onShareReferral={onShareReferral}
               onSignOut={onSignOut}
               referrals={referrals}
@@ -268,7 +291,13 @@ export function MobileAppShell({
               <Pressable
                 key={tab.key}
                 accessibilityRole="button"
-                onPress={() => onChangeTab(tab.key)}
+                onPress={() => {
+                  if (tab.key === 'more') {
+                    onChangeMoreSection('menu');
+                  }
+
+                  onChangeTab(tab.key);
+                }}
                 style={[
                   styles.tabButton,
                   {

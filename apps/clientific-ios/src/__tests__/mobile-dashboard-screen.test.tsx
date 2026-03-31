@@ -10,6 +10,19 @@ const business = {
   onboardingComplete: true,
 };
 
+const businessProfile = {
+  ...business,
+  ownerPhone: '+15551234567',
+  phone: '+15557654321',
+  businessEmail: 'hello@clientific.app',
+  street: '123 Main St',
+  city: 'New York',
+  state: 'NY',
+  zipCode: '10001',
+  country: 'United States',
+  timezone: 'America/New_York',
+};
+
 const home = {
   business,
   metrics: [
@@ -189,6 +202,8 @@ function renderShell() {
       appointments={appointments}
       appointmentsError={null}
       business={business}
+      businessProfile={businessProfile}
+      businessProfileError={null}
       checkIns={checkIns}
       checkInsError={null}
       customers={customers}
@@ -202,6 +217,7 @@ function renderShell() {
       homeError={null}
       isAppointmentsLoading={false}
       isAppointmentsRefreshing={false}
+      isBusinessProfileLoading={false}
       isCheckInsLoading={false}
       isCheckInsRefreshing={false}
       isCustomersLoading={false}
@@ -213,7 +229,8 @@ function renderShell() {
       isHomeRefreshing={false}
       isReferralsLoading={false}
       isReferralsRefreshing={false}
-      moreSection="checkins"
+      isSavingBusinessProfile={false}
+      moreSection="menu"
       onChangeCustomersSearchDraft={jest.fn()}
       onChangeMoreSection={jest.fn()}
       onChangeTab={jest.fn()}
@@ -224,6 +241,7 @@ function renderShell() {
       onNextCheckInsDate={jest.fn()}
       onNextAppointmentsDate={jest.fn()}
       onNextCustomersPage={jest.fn()}
+      onOpenExternalRoute={jest.fn().mockResolvedValue(undefined)}
       onOpenAppointments={jest.fn()}
       onOpenCustomers={jest.fn()}
       onOpenDeals={jest.fn()}
@@ -232,6 +250,7 @@ function renderShell() {
       onPreviousCheckInsDate={jest.fn()}
       onPreviousAppointmentsDate={jest.fn()}
       onPreviousCustomersPage={jest.fn()}
+      onRefreshBusinessProfile={jest.fn().mockResolvedValue(undefined)}
       onRefreshCheckIns={jest.fn().mockResolvedValue(undefined)}
       onRefreshAppointments={jest.fn().mockResolvedValue(undefined)}
       onRefreshCustomers={jest.fn().mockResolvedValue(undefined)}
@@ -239,6 +258,7 @@ function renderShell() {
       onRefreshFunds={jest.fn().mockResolvedValue(undefined)}
       onRefreshHome={jest.fn().mockResolvedValue(undefined)}
       onRefreshReferrals={jest.fn().mockResolvedValue(undefined)}
+      onSaveBusinessProfile={jest.fn().mockResolvedValue(undefined)}
       onShareDeal={jest.fn().mockResolvedValue(undefined)}
       onShareReferral={jest.fn().mockResolvedValue(undefined)}
       onSignOut={jest.fn().mockResolvedValue(undefined)}
@@ -269,6 +289,8 @@ describe('MobileAppShell', () => {
         appointments={appointments}
         appointmentsError={null}
         business={business}
+        businessProfile={businessProfile}
+        businessProfileError={null}
         checkIns={checkIns}
         checkInsError={null}
         customers={customers}
@@ -282,6 +304,7 @@ describe('MobileAppShell', () => {
         homeError={null}
         isAppointmentsLoading={false}
         isAppointmentsRefreshing={false}
+        isBusinessProfileLoading={false}
         isCheckInsLoading={false}
         isCheckInsRefreshing={false}
         isCustomersLoading={false}
@@ -293,7 +316,8 @@ describe('MobileAppShell', () => {
         isHomeRefreshing={false}
         isReferralsLoading={false}
         isReferralsRefreshing={false}
-        moreSection="checkins"
+        isSavingBusinessProfile={false}
+        moreSection="menu"
         onChangeCustomersSearchDraft={jest.fn()}
         onChangeMoreSection={jest.fn()}
         onChangeTab={onChangeTab}
@@ -304,6 +328,7 @@ describe('MobileAppShell', () => {
         onNextCheckInsDate={jest.fn()}
         onNextAppointmentsDate={jest.fn()}
         onNextCustomersPage={jest.fn()}
+        onOpenExternalRoute={jest.fn().mockResolvedValue(undefined)}
         onOpenAppointments={jest.fn()}
         onOpenCustomers={jest.fn()}
         onOpenDeals={jest.fn()}
@@ -312,6 +337,7 @@ describe('MobileAppShell', () => {
         onPreviousCheckInsDate={jest.fn()}
         onPreviousAppointmentsDate={jest.fn()}
         onPreviousCustomersPage={jest.fn()}
+        onRefreshBusinessProfile={jest.fn().mockResolvedValue(undefined)}
         onRefreshCheckIns={jest.fn().mockResolvedValue(undefined)}
         onRefreshAppointments={jest.fn().mockResolvedValue(undefined)}
         onRefreshCustomers={jest.fn().mockResolvedValue(undefined)}
@@ -319,6 +345,7 @@ describe('MobileAppShell', () => {
         onRefreshFunds={jest.fn().mockResolvedValue(undefined)}
         onRefreshHome={jest.fn().mockResolvedValue(undefined)}
         onRefreshReferrals={jest.fn().mockResolvedValue(undefined)}
+        onSaveBusinessProfile={jest.fn().mockResolvedValue(undefined)}
         onShareDeal={jest.fn().mockResolvedValue(undefined)}
         onShareReferral={jest.fn().mockResolvedValue(undefined)}
         onSignOut={jest.fn().mockResolvedValue(undefined)}
@@ -329,5 +356,85 @@ describe('MobileAppShell', () => {
 
     fireEvent.press(screen.getByTestId('mobile-tab-appointments'));
     expect(onChangeTab).toHaveBeenCalledWith('appointments');
+  });
+
+  it('routes the more tab back to the grouped menu', () => {
+    const onChangeTab = jest.fn();
+    const onChangeMoreSection = jest.fn();
+
+    render(
+      <MobileAppShell
+        activeTab="dashboard"
+        appointments={appointments}
+        appointmentsError={null}
+        business={business}
+        businessProfile={businessProfile}
+        businessProfileError={null}
+        checkIns={checkIns}
+        checkInsError={null}
+        customers={customers}
+        customersError={null}
+        customersSearchDraft=""
+        deals={deals}
+        dealsError={null}
+        funds={funds}
+        fundsError={null}
+        home={home}
+        homeError={null}
+        isAppointmentsLoading={false}
+        isAppointmentsRefreshing={false}
+        isBusinessProfileLoading={false}
+        isCheckInsLoading={false}
+        isCheckInsRefreshing={false}
+        isCustomersLoading={false}
+        isCustomersRefreshing={false}
+        isDealsLoading={false}
+        isDealsRefreshing={false}
+        isFundsLoading={false}
+        isFundsRefreshing={false}
+        isHomeRefreshing={false}
+        isReferralsLoading={false}
+        isReferralsRefreshing={false}
+        isSavingBusinessProfile={false}
+        moreSection="checkins"
+        onChangeCustomersSearchDraft={jest.fn()}
+        onChangeMoreSection={onChangeMoreSection}
+        onChangeTab={onChangeTab}
+        onCreateCheckIn={jest.fn().mockResolvedValue(undefined)}
+        onJumpCheckInsToToday={jest.fn()}
+        onJumpAppointmentsToToday={jest.fn()}
+        onLookupCheckIn={jest.fn().mockResolvedValue({ status: 'new', normalizedPhone: '5551234567', displayPhone: '(555) 123-4567' })}
+        onNextCheckInsDate={jest.fn()}
+        onNextAppointmentsDate={jest.fn()}
+        onNextCustomersPage={jest.fn()}
+        onOpenExternalRoute={jest.fn().mockResolvedValue(undefined)}
+        onOpenAppointments={jest.fn()}
+        onOpenCustomers={jest.fn()}
+        onOpenDeals={jest.fn()}
+        onOpenFunds={jest.fn()}
+        onOpenReferrals={jest.fn()}
+        onPreviousCheckInsDate={jest.fn()}
+        onPreviousAppointmentsDate={jest.fn()}
+        onPreviousCustomersPage={jest.fn()}
+        onRefreshBusinessProfile={jest.fn().mockResolvedValue(undefined)}
+        onRefreshCheckIns={jest.fn().mockResolvedValue(undefined)}
+        onRefreshAppointments={jest.fn().mockResolvedValue(undefined)}
+        onRefreshCustomers={jest.fn().mockResolvedValue(undefined)}
+        onRefreshDeals={jest.fn().mockResolvedValue(undefined)}
+        onRefreshFunds={jest.fn().mockResolvedValue(undefined)}
+        onRefreshHome={jest.fn().mockResolvedValue(undefined)}
+        onRefreshReferrals={jest.fn().mockResolvedValue(undefined)}
+        onSaveBusinessProfile={jest.fn().mockResolvedValue(undefined)}
+        onShareDeal={jest.fn().mockResolvedValue(undefined)}
+        onShareReferral={jest.fn().mockResolvedValue(undefined)}
+        onSignOut={jest.fn().mockResolvedValue(undefined)}
+        referrals={referrals}
+        referralsError={null}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId('mobile-tab-more'));
+    expect(onChangeMoreSection).toHaveBeenCalledWith('menu');
+    expect(onChangeTab).toHaveBeenCalledWith('more');
   });
 });

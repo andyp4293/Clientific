@@ -8,6 +8,7 @@ import {
   useColorScheme,
   View,
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import * as SecureStore from 'expo-secure-store';
 import {
   createMobileCheckIn,
@@ -83,7 +84,7 @@ export function ClientificNativeApp() {
   const theme = getClientificTheme(colorScheme);
   const [isBooting, setIsBooting] = useState(true);
   const [activeTab, setActiveTab] = useState<MobileAppTab>('dashboard');
-  const [moreSection, setMoreSection] = useState<MobileMoreSection>('checkins');
+  const [moreSection, setMoreSection] = useState<MobileMoreSection>('menu');
   const [authMode, setAuthMode] = useState<MobileAuthMode>('sign-in');
   const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
   const [isResendingCode, setIsResendingCode] = useState(false);
@@ -144,7 +145,7 @@ export function ClientificNativeApp() {
     setReferrals(null);
     setFunds(null);
     setActiveTab('dashboard');
-    setMoreSection('checkins');
+    setMoreSection('menu');
     setAuthMode('sign-in');
     setAuthError(null);
     setAuthNotice(null);
@@ -401,7 +402,7 @@ export function ClientificNativeApp() {
   );
 
   const openFundsTab = useCallback(() => {
-    setMoreSection('funds');
+    setMoreSection('payouts');
     setActiveTab('more');
     if (session && !funds && !isLoadingFunds) {
       void loadFunds(session.token);
@@ -556,7 +557,7 @@ export function ClientificNativeApp() {
       setPendingVerification(null);
       setAuthNotice(null);
       setActiveTab('dashboard');
-      setMoreSection('checkins');
+      setMoreSection('menu');
       await loadHome(nextSession.token);
     },
     [loadHome],
@@ -810,6 +811,24 @@ export function ClientificNativeApp() {
     await loadFunds(session.token, true);
   }, [loadFunds, session]);
 
+  const handleRefreshBusinessProfile = useCallback(async () => {
+    if (!session) {
+      return;
+    }
+
+    await loadBusinessProfile(session.token);
+  }, [loadBusinessProfile, session]);
+
+  const handleOpenExternalRoute = useCallback(async (path: string) => {
+    const url = `${getClientificWebUrl()}${path}`;
+
+    try {
+      await WebBrowser.openBrowserAsync(url);
+    } catch (error) {
+      setHomeError(getReadableError(error, 'Unable to open that tool right now.'));
+    }
+  }, []);
+
   const goToPreviousAppointmentsDate = useCallback(() => {
     setAppointmentsDate((currentValue) => shiftMobileDateKey(currentValue, -1));
   }, []);
@@ -917,6 +936,15 @@ export function ClientificNativeApp() {
     }
 
     if (
+      activeTab === 'more' &&
+      moreSection === 'settings' &&
+      !businessProfile &&
+      !isLoadingBusinessProfile
+    ) {
+      void loadBusinessProfile(session.token);
+    }
+
+    if (
       activeTab === 'appointments' &&
       (!appointments || appointments.selectedDate !== appointmentsDate) &&
       !isLoadingAppointments
@@ -954,7 +982,7 @@ export function ClientificNativeApp() {
       void loadReferrals(session.token);
     }
 
-    if (activeTab === 'more' && moreSection === 'funds' && !funds && !isLoadingFunds) {
+    if (activeTab === 'more' && moreSection === 'payouts' && !funds && !isLoadingFunds) {
       void loadFunds(session.token);
     }
   }, [
@@ -1107,6 +1135,8 @@ export function ClientificNativeApp() {
       appointments={appointments}
       appointmentsError={appointmentsError}
       business={home.business}
+      businessProfile={businessProfile}
+      businessProfileError={businessProfileError}
       checkIns={checkIns}
       checkInsError={checkInsError}
       customers={customers}
@@ -1120,6 +1150,7 @@ export function ClientificNativeApp() {
       homeError={homeError}
       isAppointmentsLoading={isLoadingAppointments}
       isAppointmentsRefreshing={isRefreshingAppointments}
+      isBusinessProfileLoading={isLoadingBusinessProfile}
       isCheckInsLoading={isLoadingCheckIns}
       isCheckInsRefreshing={isRefreshingCheckIns}
       isCustomersLoading={isLoadingCustomers}
@@ -1131,6 +1162,7 @@ export function ClientificNativeApp() {
       isHomeRefreshing={isRefreshingHome}
       isReferralsLoading={isLoadingReferrals}
       isReferralsRefreshing={isRefreshingReferrals}
+      isSavingBusinessProfile={isSavingBusinessProfile}
       moreSection={moreSection}
       onChangeCustomersSearchDraft={setCustomersSearchDraft}
       onChangeMoreSection={setMoreSection}
@@ -1142,6 +1174,7 @@ export function ClientificNativeApp() {
       onNextCheckInsDate={goToNextCheckInsDate}
       onNextAppointmentsDate={goToNextAppointmentsDate}
       onNextCustomersPage={goToNextCustomersPage}
+      onOpenExternalRoute={handleOpenExternalRoute}
       onOpenAppointments={openAppointmentsTab}
       onOpenCustomers={openCustomersTab}
       onOpenDeals={openDealsTab}
@@ -1150,6 +1183,7 @@ export function ClientificNativeApp() {
       onPreviousCheckInsDate={goToPreviousCheckInsDate}
       onPreviousAppointmentsDate={goToPreviousAppointmentsDate}
       onPreviousCustomersPage={goToPreviousCustomersPage}
+      onRefreshBusinessProfile={handleRefreshBusinessProfile}
       onRefreshCheckIns={handleRefreshCheckIns}
       onRefreshAppointments={handleRefreshAppointments}
       onRefreshCustomers={handleRefreshCustomers}
@@ -1157,6 +1191,7 @@ export function ClientificNativeApp() {
       onRefreshFunds={handleRefreshFunds}
       onRefreshHome={handleRefreshHome}
       onRefreshReferrals={handleRefreshReferrals}
+      onSaveBusinessProfile={handleSaveBusinessProfile}
       onShareDeal={shareDeal}
       onShareReferral={shareReferral}
       onSignOut={signOut}
