@@ -41,6 +41,19 @@ export type MobileTodayAppointment = {
   startTimeLabel: string;
 };
 
+export type MobileAppointmentEntry = {
+  id: string;
+  customerName: string;
+  serviceName: string;
+  staffName: string | null;
+  status: string;
+  statusLabel: string;
+  startTimeLabel: string;
+  endTimeLabel: string;
+  sourceLabel: string;
+  notes: string | null;
+};
+
 export type MobileHomeSummary = {
   business: MobileBusiness;
   metrics: MobileHomeMetric[];
@@ -53,6 +66,20 @@ export type MobileHomeSummary = {
     setupMessage: string | null;
   };
   trialDaysRemaining: number | null;
+};
+
+export type MobileAppointmentsSummary = {
+  business: MobileBusiness;
+  selectedDate: string;
+  dateLabel: string;
+  timezone: string;
+  counts: {
+    total: number;
+    pending: number;
+    confirmed: number;
+    scheduled: number;
+  };
+  appointments: MobileAppointmentEntry[];
 };
 
 export type MobileReferralEntry = {
@@ -100,6 +127,94 @@ export type MobileFundsSummary = {
   setupMessage: string | null;
   requirementTasks: string[];
   recentPayouts: MobileFundsPayout[];
+};
+
+export type MobileCheckInRecord = {
+  id: string;
+  customerId: string;
+  customerName: string;
+  phoneDisplay: string | null;
+  serviceName: string | null;
+  staffName: string | null;
+  amountSpentLabel: string | null;
+  checkedInAtLabel: string;
+  lastVisitLabel: string | null;
+};
+
+export type MobileCheckInsSummary = {
+  business: MobileBusiness;
+  selectedDate: string;
+  dateLabel: string;
+  timezone: string;
+  count: number;
+  latestCheckInLabel: string | null;
+  checkIns: MobileCheckInRecord[];
+};
+
+export type MobileCheckInLookupCustomer = {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  lastVisitLabel: string | null;
+  phoneDisplay: string | null;
+};
+
+export type MobileCheckInLookupResponse =
+  | {
+      status: 'new';
+      normalizedPhone: string;
+      displayPhone: string;
+    }
+  | {
+      status: 'existing';
+      customer: MobileCheckInLookupCustomer;
+    }
+  | {
+      status: 'multiple';
+      customers: MobileCheckInLookupCustomer[];
+    };
+
+export type MobileCheckInSubmissionInput = {
+  customerId?: string;
+  phone?: string;
+  customerName?: string;
+  customerEmail?: string;
+};
+
+export type MobileCheckInMutationResponse = {
+  checkIn: MobileCheckInRecord;
+};
+
+export type MobileCustomerGroupBadge = {
+  id: string;
+  name: string;
+  promotionSmsEnabled: boolean;
+};
+
+export type MobileCustomerRecord = {
+  id: string;
+  name: string;
+  email: string | null;
+  phoneDisplay: string | null;
+  joinedLabel: string;
+  lastVisitLabel: string;
+  totalSpentLabel: string;
+  smsConsent: boolean;
+  smsOptedOut: boolean;
+  dealSmsBlocked: boolean;
+  visitsCount: number;
+  groups: MobileCustomerGroupBadge[];
+};
+
+export type MobileCustomersSummary = {
+  business: MobileBusiness;
+  search: string;
+  currentPage: number;
+  totalPages: number;
+  totalCustomers: number;
+  pageSize: number;
+  customers: MobileCustomerRecord[];
 };
 
 export type MobileLoginResponse = {
@@ -209,6 +324,25 @@ export async function fetchMobileHomeSummary(token: string) {
   });
 }
 
+export async function fetchMobileAppointments(
+  token: string,
+  input?: { date?: string },
+) {
+  const query = new URLSearchParams();
+  if (input?.date) {
+    query.set('date', input.date);
+  }
+
+  return requestJson<MobileAppointmentsSummary>(
+    `/api/mobile/appointments${query.toString() ? `?${query.toString()}` : ''}`,
+    {
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+    },
+  );
+}
+
 export async function fetchMobileReferrals(token: string) {
   return requestJson<MobileReferralsSummary>('/api/mobile/referrals', {
     headers: {
@@ -223,6 +357,80 @@ export async function fetchMobileFunds(token: string) {
       authorization: `Bearer ${token}`,
     },
   });
+}
+
+export async function fetchMobileCheckIns(
+  token: string,
+  input?: { date?: string },
+) {
+  const query = new URLSearchParams();
+  if (input?.date) {
+    query.set('date', input.date);
+  }
+
+  return requestJson<MobileCheckInsSummary>(
+    `/api/mobile/checkins${query.toString() ? `?${query.toString()}` : ''}`,
+    {
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+    },
+  );
+}
+
+export async function lookupMobileCheckIn(
+  token: string,
+  phone: string,
+) {
+  const query = new URLSearchParams({ phone });
+
+  return requestJson<MobileCheckInLookupResponse>(
+    `/api/mobile/checkins/lookup?${query.toString()}`,
+    {
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+    },
+  );
+}
+
+export async function createMobileCheckIn(
+  token: string,
+  input: MobileCheckInSubmissionInput,
+) {
+  return requestJson<MobileCheckInMutationResponse>('/api/mobile/checkins', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function fetchMobileCustomers(
+  token: string,
+  input?: { page?: number; pageSize?: number; search?: string },
+) {
+  const query = new URLSearchParams();
+  if (input?.page) {
+    query.set('page', String(input.page));
+  }
+  if (input?.pageSize) {
+    query.set('pageSize', String(input.pageSize));
+  }
+  if (input?.search) {
+    query.set('search', input.search);
+  }
+
+  return requestJson<MobileCustomersSummary>(
+    `/api/mobile/customers${query.toString() ? `?${query.toString()}` : ''}`,
+    {
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+    },
+  );
 }
 
 export async function fetchMobileBusinessProfile(token: string) {

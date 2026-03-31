@@ -15,8 +15,11 @@ type MobileHomeScreenProps = {
   error: string | null;
   isRefreshing: boolean;
   summary: MobileHomeSummary;
+  onOpenCheckIns: () => void;
+  onOpenCustomers: () => void;
   onOpenFunds: () => void;
   onOpenReferrals: () => void;
+  onOpenSchedule: () => void;
   onRefresh: () => Promise<void>;
 };
 
@@ -24,8 +27,11 @@ export function MobileHomeScreen({
   error,
   isRefreshing,
   summary,
+  onOpenCheckIns,
+  onOpenCustomers,
   onOpenFunds,
   onOpenReferrals,
+  onOpenSchedule,
   onRefresh,
 }: MobileHomeScreenProps) {
   const colorScheme = useColorScheme();
@@ -129,6 +135,65 @@ export function MobileHomeScreen({
             <Text style={[styles.metricHelper, { color: theme.mutedText }]}>{metric.helper}</Text>
           </View>
         ))}
+      </View>
+
+      <View
+        style={[
+          styles.sectionCard,
+          { backgroundColor: theme.surface, borderColor: theme.border },
+        ]}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionCopy}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Run the day</Text>
+            <Text style={[styles.sectionText, { color: theme.mutedText }]}>
+              Open the same business tools you already use on the mobile dashboard.
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.quickActionGrid}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onOpenSchedule}
+            style={[
+              styles.quickActionCard,
+              { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+            ]}
+            testID="mobile-home-open-schedule">
+            <Text style={[styles.quickActionTitle, { color: theme.text }]}>Schedule</Text>
+            <Text style={[styles.quickActionText, { color: theme.mutedText }]}>
+              Review today&apos;s appointments
+            </Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={onOpenCheckIns}
+            style={[
+              styles.quickActionCard,
+              { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+            ]}
+            testID="mobile-home-open-checkins">
+            <Text style={[styles.quickActionTitle, { color: theme.text }]}>Check-ins</Text>
+            <Text style={[styles.quickActionText, { color: theme.mutedText }]}>
+              Log guest arrivals fast
+            </Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={onOpenCustomers}
+            style={[
+              styles.quickActionCard,
+              { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+            ]}
+            testID="mobile-home-open-customers">
+            <Text style={[styles.quickActionTitle, { color: theme.text }]}>Customers</Text>
+            <Text style={[styles.quickActionText, { color: theme.mutedText }]}>
+              Search and review records
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       <View
@@ -371,6 +436,25 @@ const styles = StyleSheet.create({
   snapshotMetric: {
     flex: 1,
     gap: 4,
+  },
+  quickActionGrid: {
+    gap: 10,
+  },
+  quickActionCard: {
+    borderWidth: 1,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 6,
+  },
+  quickActionTitle: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '800',
+  },
+  quickActionText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   snapshotValue: {
     fontSize: 24,
