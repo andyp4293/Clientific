@@ -245,6 +245,194 @@ export type MobileCustomersSummary = {
   customers: MobileCustomerRecord[];
 };
 
+export type MobileServicesSummary = {
+  business: MobileBusiness;
+  counts: {
+    services: number;
+    activeServices: number;
+    staff: number;
+    activeStaff: number;
+  };
+  groups: Array<{
+    id: string;
+    name: string;
+    sortOrder: number;
+    servicesCount: number;
+  }>;
+  services: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    duration: number;
+    durationLabel: string;
+    priceLabel: string;
+    isActive: boolean;
+    groupId: string | null;
+    groupName: string | null;
+    sortOrder: number;
+  }>;
+  staff: Array<{
+    id: string;
+    fullName: string;
+    email: string | null;
+    phoneDisplay: string;
+    role: string | null;
+    isActive: boolean;
+    workDaysLabel: string;
+    workHoursLabel: string;
+    serviceCount: number;
+    serviceNames: string[];
+  }>;
+};
+
+export type MobileBusinessHoursSummary = {
+  business: MobileBusiness;
+  timezone: string;
+  timezoneLabel: string;
+  openDayCount: number;
+  closureCount: number;
+  hours: Array<{
+    dayOfWeek: number;
+    label: string;
+    isOpen: boolean;
+    openTime: string | null;
+    closeTime: string | null;
+    timeRangeLabel: string;
+  }>;
+  closures: Array<{
+    date: string;
+    label: string | null;
+    formattedDate: string;
+  }>;
+};
+
+export type MobileBusinessHoursUpdateInput = {
+  hours: Array<{
+    dayOfWeek: number;
+    isOpen: boolean;
+    openTime: string | null;
+    closeTime: string | null;
+  }>;
+  closures: Array<{
+    date: string;
+    label?: string | null;
+  }>;
+};
+
+export type MobileReviewsSummary = {
+  business: MobileBusiness;
+  storeId: string | null;
+  surveyPath: string | null;
+  surveyUrl: string | null;
+  publicReviewDestinations: Array<{
+    label: string;
+    url: string;
+  }>;
+  hasPublicDestinations: boolean;
+  recentRequestsCount: number;
+  recentRequests: Array<{
+    id: string;
+    recipientLabel: string;
+    statusLabel: string;
+    createdAtLabel: string;
+  }>;
+};
+
+export type MobileAnalyticsRange = '7d' | '30d' | '90d';
+
+export type MobileAnalyticsSummary = {
+  business: MobileBusiness;
+  range: MobileAnalyticsRange;
+  stats: {
+    totalRevenue: number;
+    totalRevenueLabel: string;
+    totalAppointments: number;
+    newCustomers: number;
+    avgRevenuePerVisit: number;
+    avgRevenuePerVisitLabel: string;
+  };
+  revenueByWeek: Array<{
+    label: string;
+    revenue: number;
+    revenueLabel: string;
+  }>;
+  appointmentsByStatus: Array<{
+    status: string;
+    label: string;
+    count: number;
+  }>;
+  topServices: Array<{
+    name: string;
+    count: number;
+    share: number;
+  }>;
+  customerSegments: Array<{
+    segment: string;
+    label: string;
+    count: number;
+  }>;
+};
+
+export type MobileBillingSummary = {
+  business: MobileBusiness;
+  currentPlanName: string;
+  currentPlanPriceLabel: string;
+  planSummary: string;
+  subscriptionStatus: string;
+  subscriptionStatusLabel: string;
+  trialDaysRemaining: number | null;
+  trialEndsAtLabel: string | null;
+  nextBillingDateLabel: string | null;
+  paymentMethod: {
+    brand: string;
+    last4: string;
+    expMonth: number;
+    expYear: number;
+    label: string;
+  } | null;
+  invoices: Array<{
+    id: string;
+    amountLabel: string;
+    createdLabel: string | null;
+    status: string;
+    statusLabel: string;
+    description: string | null;
+    hostedInvoiceUrl: string | null;
+    invoicePdf: string | null;
+  }>;
+};
+
+export type MobileRedeemLookupResponse = {
+  deal: {
+    title: string;
+    discountType: string;
+    discountValue: number;
+    discountLabel: string;
+    platformFeePercent: number;
+  };
+  customer: {
+    name: string;
+    phoneDisplay: string;
+  } | null;
+  alreadyUsed: boolean;
+};
+
+export type MobileRedeemResult = {
+  success: true;
+  deal: {
+    title: string;
+    discountType: string;
+    discountValue: number;
+    discountLabel: string;
+  };
+  customer: {
+    name: string;
+    phoneDisplay: string;
+  } | null;
+  platformFee: number | null;
+  platformFeeLabel: string | null;
+};
+
 export type MobileLoginResponse = {
   token: string;
   business: MobileBusiness;
@@ -467,6 +655,110 @@ export async function fetchMobileCustomers(
       },
     },
   );
+}
+
+export async function fetchMobileServices(token: string) {
+  return requestJson<MobileServicesSummary>('/api/mobile/services', {
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function fetchMobileBusinessHours(token: string) {
+  return requestJson<MobileBusinessHoursSummary>('/api/mobile/business-hours', {
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function updateMobileBusinessHours(
+  token: string,
+  input: MobileBusinessHoursUpdateInput,
+) {
+  return requestJson<MobileBusinessHoursSummary & { success: true }>('/api/mobile/business-hours', {
+    method: 'PATCH',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function fetchMobileReviews(token: string) {
+  return requestJson<MobileReviewsSummary>('/api/mobile/reviews', {
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function fetchMobileAnalytics(
+  token: string,
+  input?: { range?: MobileAnalyticsRange },
+) {
+  const query = new URLSearchParams();
+  if (input?.range) {
+    query.set('range', input.range);
+  }
+
+  return requestJson<MobileAnalyticsSummary>(
+    `/api/mobile/analytics${query.toString() ? `?${query.toString()}` : ''}`,
+    {
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+    },
+  );
+}
+
+export async function fetchMobileBilling(token: string) {
+  return requestJson<MobileBillingSummary>('/api/mobile/billing', {
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function openMobileBillingPortal(token: string) {
+  return requestJson<{ url: string }>('/api/mobile/billing/portal', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function lookupMobileRedemption(
+  token: string,
+  code: string,
+) {
+  const query = new URLSearchParams({ code });
+
+  return requestJson<MobileRedeemLookupResponse>(
+    `/api/mobile/redeem/lookup?${query.toString()}`,
+    {
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+    },
+  );
+}
+
+export async function redeemMobileCode(
+  token: string,
+  input: { code: string; transactionAmount?: number | null },
+) {
+  return requestJson<MobileRedeemResult>('/api/mobile/redeem', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
 }
 
 export async function fetchMobileBusinessProfile(token: string) {

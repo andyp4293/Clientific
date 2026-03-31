@@ -14,7 +14,10 @@ import {
   createMobileCheckIn,
   ClientificApiError,
   confirmVerificationCode,
+  fetchMobileAnalytics,
   fetchMobileAppointments,
+  fetchMobileBilling,
+  fetchMobileBusinessHours,
   fetchMobileBusinessProfile,
   fetchMobileCheckIns,
   fetchMobileCustomers,
@@ -22,9 +25,16 @@ import {
   fetchMobileFunds,
   fetchMobileHomeSummary,
   fetchMobileReferrals,
+  fetchMobileReviews,
+  fetchMobileServices,
   getClientificWebUrl,
   lookupMobileCheckIn,
+  lookupMobileRedemption,
+  MobileAnalyticsRange,
+  MobileAnalyticsSummary,
   MobileAppointmentsSummary,
+  MobileBillingSummary,
+  MobileBusinessHoursSummary,
   MobileBusinessProfile,
   MobileCheckInSubmissionInput,
   MobileCheckInsSummary,
@@ -35,10 +45,16 @@ import {
   MobileHomeSummary,
   MobileLoginResponse,
   MobileOnboardingInput,
+  MobileRedeemResult,
   MobileReferralsSummary,
+  MobileReviewsSummary,
+  MobileServicesSummary,
   loginWithClientific,
+  openMobileBillingPortal,
+  redeemMobileCode,
   registerWithClientific,
   resendVerificationCode,
+  updateMobileBusinessHours,
   updateMobileBusinessProfile,
 } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
@@ -85,6 +101,7 @@ export function ClientificNativeApp() {
   const [isBooting, setIsBooting] = useState(true);
   const [activeTab, setActiveTab] = useState<MobileAppTab>('dashboard');
   const [moreSection, setMoreSection] = useState<MobileMoreSection>('menu');
+  const [analyticsRange, setAnalyticsRange] = useState<MobileAnalyticsRange>('30d');
   const [authMode, setAuthMode] = useState<MobileAuthMode>('sign-in');
   const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
   const [isResendingCode, setIsResendingCode] = useState(false);
@@ -104,6 +121,18 @@ export function ClientificNativeApp() {
   const [isRefreshingReferrals, setIsRefreshingReferrals] = useState(false);
   const [isLoadingFunds, setIsLoadingFunds] = useState(false);
   const [isRefreshingFunds, setIsRefreshingFunds] = useState(false);
+  const [isLoadingServices, setIsLoadingServices] = useState(false);
+  const [isRefreshingServices, setIsRefreshingServices] = useState(false);
+  const [isLoadingBusinessHours, setIsLoadingBusinessHours] = useState(false);
+  const [isRefreshingBusinessHours, setIsRefreshingBusinessHours] = useState(false);
+  const [isSavingBusinessHours, setIsSavingBusinessHours] = useState(false);
+  const [isLoadingReviews, setIsLoadingReviews] = useState(false);
+  const [isRefreshingReviews, setIsRefreshingReviews] = useState(false);
+  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
+  const [isRefreshingAnalytics, setIsRefreshingAnalytics] = useState(false);
+  const [isLoadingBilling, setIsLoadingBilling] = useState(false);
+  const [isRefreshingBilling, setIsRefreshingBilling] = useState(false);
+  const [isOpeningBillingPortal, setIsOpeningBillingPortal] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
@@ -114,6 +143,11 @@ export function ClientificNativeApp() {
   const [homeError, setHomeError] = useState<string | null>(null);
   const [referralsError, setReferralsError] = useState<string | null>(null);
   const [fundsError, setFundsError] = useState<string | null>(null);
+  const [servicesError, setServicesError] = useState<string | null>(null);
+  const [businessHoursError, setBusinessHoursError] = useState<string | null>(null);
+  const [reviewsError, setReviewsError] = useState<string | null>(null);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const [billingError, setBillingError] = useState<string | null>(null);
   const [pendingVerification, setPendingVerification] = useState<{
     email: string;
     password: string;
@@ -132,6 +166,11 @@ export function ClientificNativeApp() {
   const [home, setHome] = useState<MobileHomeSummary | null>(null);
   const [referrals, setReferrals] = useState<MobileReferralsSummary | null>(null);
   const [funds, setFunds] = useState<MobileFundsSummary | null>(null);
+  const [services, setServices] = useState<MobileServicesSummary | null>(null);
+  const [businessHours, setBusinessHours] = useState<MobileBusinessHoursSummary | null>(null);
+  const [reviews, setReviews] = useState<MobileReviewsSummary | null>(null);
+  const [analytics, setAnalytics] = useState<MobileAnalyticsSummary | null>(null);
+  const [billing, setBilling] = useState<MobileBillingSummary | null>(null);
 
   const signOut = useCallback(async (message?: string) => {
     await SecureStore.deleteItemAsync(MOBILE_SESSION_TOKEN_KEY);
@@ -144,8 +183,14 @@ export function ClientificNativeApp() {
     setHome(null);
     setReferrals(null);
     setFunds(null);
+    setServices(null);
+    setBusinessHours(null);
+    setReviews(null);
+    setAnalytics(null);
+    setBilling(null);
     setActiveTab('dashboard');
     setMoreSection('menu');
+    setAnalyticsRange('30d');
     setAuthMode('sign-in');
     setAuthError(null);
     setAuthNotice(null);
@@ -157,6 +202,16 @@ export function ClientificNativeApp() {
     setHomeError(null);
     setReferralsError(null);
     setFundsError(null);
+    setServicesError(null);
+    setBusinessHoursError(null);
+    setReviewsError(null);
+    setAnalyticsError(null);
+    setBillingError(null);
+    setServicesError(null);
+    setBusinessHoursError(null);
+    setReviewsError(null);
+    setAnalyticsError(null);
+    setBillingError(null);
     setAppointmentsDate(formatMobileDateKey(new Date()));
     setCheckInsDate(formatMobileDateKey(new Date()));
     setCustomersPage(1);
@@ -401,6 +456,131 @@ export function ClientificNativeApp() {
     [handleSessionError],
   );
 
+  const loadServices = useCallback(
+    async (token: string, isRefresh = false) => {
+      if (isRefresh) {
+        setIsRefreshingServices(true);
+      } else {
+        setIsLoadingServices(true);
+      }
+
+      try {
+        const nextServices = await fetchMobileServices(token);
+        setServices(nextServices);
+        setServicesError(null);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to load services.', setServicesError);
+      } finally {
+        if (isRefresh) {
+          setIsRefreshingServices(false);
+        } else {
+          setIsLoadingServices(false);
+        }
+      }
+    },
+    [handleSessionError],
+  );
+
+  const loadBusinessHours = useCallback(
+    async (token: string, isRefresh = false) => {
+      if (isRefresh) {
+        setIsRefreshingBusinessHours(true);
+      } else {
+        setIsLoadingBusinessHours(true);
+      }
+
+      try {
+        const nextBusinessHours = await fetchMobileBusinessHours(token);
+        setBusinessHours(nextBusinessHours);
+        setBusinessHoursError(null);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to load business hours.', setBusinessHoursError);
+      } finally {
+        if (isRefresh) {
+          setIsRefreshingBusinessHours(false);
+        } else {
+          setIsLoadingBusinessHours(false);
+        }
+      }
+    },
+    [handleSessionError],
+  );
+
+  const loadReviews = useCallback(
+    async (token: string, isRefresh = false) => {
+      if (isRefresh) {
+        setIsRefreshingReviews(true);
+      } else {
+        setIsLoadingReviews(true);
+      }
+
+      try {
+        const nextReviews = await fetchMobileReviews(token);
+        setReviews(nextReviews);
+        setReviewsError(null);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to load reviews.', setReviewsError);
+      } finally {
+        if (isRefresh) {
+          setIsRefreshingReviews(false);
+        } else {
+          setIsLoadingReviews(false);
+        }
+      }
+    },
+    [handleSessionError],
+  );
+
+  const loadAnalytics = useCallback(
+    async (token: string, range: MobileAnalyticsRange, isRefresh = false) => {
+      if (isRefresh) {
+        setIsRefreshingAnalytics(true);
+      } else {
+        setIsLoadingAnalytics(true);
+      }
+
+      try {
+        const nextAnalytics = await fetchMobileAnalytics(token, { range });
+        setAnalytics(nextAnalytics);
+        setAnalyticsError(null);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to load analytics.', setAnalyticsError);
+      } finally {
+        if (isRefresh) {
+          setIsRefreshingAnalytics(false);
+        } else {
+          setIsLoadingAnalytics(false);
+        }
+      }
+    },
+    [handleSessionError],
+  );
+
+  const loadBilling = useCallback(
+    async (token: string, isRefresh = false) => {
+      if (isRefresh) {
+        setIsRefreshingBilling(true);
+      } else {
+        setIsLoadingBilling(true);
+      }
+
+      try {
+        const nextBilling = await fetchMobileBilling(token);
+        setBilling(nextBilling);
+        setBillingError(null);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to load billing.', setBillingError);
+      } finally {
+        if (isRefresh) {
+          setIsRefreshingBilling(false);
+        } else {
+          setIsLoadingBilling(false);
+        }
+      }
+    },
+    [handleSessionError],
+  );
+
   const openFundsTab = useCallback(() => {
     setMoreSection('payouts');
     setActiveTab('more');
@@ -504,6 +684,74 @@ export function ClientificNativeApp() {
       }
     },
     [session?.business.name],
+  );
+
+  const shareReviewSurvey = useCallback(async () => {
+    if (!reviews?.surveyUrl) {
+      return;
+    }
+
+    try {
+      await Share.share({
+        message: `${session?.business.name ?? 'Clientific'} feedback link: ${reviews.surveyUrl}`,
+      });
+      setReviewsError(null);
+    } catch (error) {
+      setReviewsError(getReadableError(error, 'Unable to share the survey link.'));
+    }
+  }, [reviews?.surveyUrl, session?.business.name]);
+
+  const handleOpenBillingPortal = useCallback(async () => {
+    if (!session) {
+      return;
+    }
+
+    setIsOpeningBillingPortal(true);
+    setBillingError(null);
+
+    try {
+      const response = await openMobileBillingPortal(session.token);
+      await WebBrowser.openBrowserAsync(response.url);
+    } catch (error) {
+      await handleSessionError(error, 'Unable to open the billing portal.', setBillingError);
+    } finally {
+      setIsOpeningBillingPortal(false);
+    }
+  }, [handleSessionError, session]);
+
+  const handleLookupRedeemCode = useCallback(
+    async (code: string) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        return await lookupMobileRedemption(session.token, code);
+      } catch (error) {
+        throw new Error(getReadableError(error, 'Unable to look up that code.'));
+      }
+    },
+    [session],
+  );
+
+  const handleRedeemCode = useCallback(
+    async (input: { code: string; transactionAmount?: number | null }) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        const result = await redeemMobileCode(session.token, input);
+        await Promise.all([
+          deals ? loadDeals(session.token) : Promise.resolve(),
+          loadHome(session.token),
+        ]);
+        return result as MobileRedeemResult;
+      } catch (error) {
+        throw new Error(getReadableError(error, 'Unable to redeem that code.'));
+      }
+    },
+    [deals, loadDeals, loadHome, session],
   );
 
   useEffect(() => {
@@ -748,6 +996,43 @@ export function ClientificNativeApp() {
     [handleSessionError, loadHome, session],
   );
 
+  const handleSaveBusinessHours = useCallback(
+    async (input: {
+      hours: Array<{
+        dayOfWeek: number;
+        isOpen: boolean;
+        openTime: string | null;
+        closeTime: string | null;
+      }>;
+      closures: Array<{
+        date: string;
+        label?: string | null;
+      }>;
+    }) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      setIsSavingBusinessHours(true);
+      setBusinessHoursError(null);
+
+      try {
+        const response = await updateMobileBusinessHours(session.token, input);
+        setBusinessHours(response);
+      } catch (error) {
+        await handleSessionError(
+          error,
+          'Unable to save business hours.',
+          setBusinessHoursError,
+        );
+        throw new Error(getReadableError(error, 'Unable to save business hours.'));
+      } finally {
+        setIsSavingBusinessHours(false);
+      }
+    },
+    [handleSessionError, session],
+  );
+
   const handleRefreshHome = useCallback(async () => {
     if (!session) {
       return;
@@ -811,6 +1096,46 @@ export function ClientificNativeApp() {
     await loadFunds(session.token, true);
   }, [loadFunds, session]);
 
+  const handleRefreshServices = useCallback(async () => {
+    if (!session) {
+      return;
+    }
+
+    await loadServices(session.token, true);
+  }, [loadServices, session]);
+
+  const handleRefreshBusinessHours = useCallback(async () => {
+    if (!session) {
+      return;
+    }
+
+    await loadBusinessHours(session.token, true);
+  }, [loadBusinessHours, session]);
+
+  const handleRefreshReviews = useCallback(async () => {
+    if (!session) {
+      return;
+    }
+
+    await loadReviews(session.token, true);
+  }, [loadReviews, session]);
+
+  const handleRefreshAnalytics = useCallback(async () => {
+    if (!session) {
+      return;
+    }
+
+    await loadAnalytics(session.token, analyticsRange, true);
+  }, [analyticsRange, loadAnalytics, session]);
+
+  const handleRefreshBilling = useCallback(async () => {
+    if (!session) {
+      return;
+    }
+
+    await loadBilling(session.token, true);
+  }, [loadBilling, session]);
+
   const handleRefreshBusinessProfile = useCallback(async () => {
     if (!session) {
       return;
@@ -826,6 +1151,14 @@ export function ClientificNativeApp() {
       await WebBrowser.openBrowserAsync(url);
     } catch (error) {
       setHomeError(getReadableError(error, 'Unable to open that tool right now.'));
+    }
+  }, []);
+
+  const handleOpenExternalUrl = useCallback(async (url: string) => {
+    try {
+      await WebBrowser.openBrowserAsync(url);
+    } catch (error) {
+      setHomeError(getReadableError(error, 'Unable to open that link right now.'));
     }
   }, []);
 
@@ -954,11 +1287,38 @@ export function ClientificNativeApp() {
 
     if (
       activeTab === 'more' &&
+      moreSection === 'services' &&
+      !services &&
+      !isLoadingServices
+    ) {
+      void loadServices(session.token);
+    }
+
+    if (
+      activeTab === 'more' &&
       moreSection === 'checkins' &&
       (!checkIns || checkIns.selectedDate !== checkInsDate) &&
       !isLoadingCheckIns
     ) {
       void loadCheckIns(session.token, checkInsDate);
+    }
+
+    if (
+      activeTab === 'more' &&
+      moreSection === 'hours' &&
+      !businessHours &&
+      !isLoadingBusinessHours
+    ) {
+      void loadBusinessHours(session.token);
+    }
+
+    if (
+      activeTab === 'more' &&
+      moreSection === 'reviews' &&
+      !reviews &&
+      !isLoadingReviews
+    ) {
+      void loadReviews(session.token);
     }
 
     if (
@@ -985,10 +1345,27 @@ export function ClientificNativeApp() {
     if (activeTab === 'more' && moreSection === 'payouts' && !funds && !isLoadingFunds) {
       void loadFunds(session.token);
     }
+
+    if (
+      activeTab === 'more' &&
+      moreSection === 'analytics' &&
+      (!analytics || analytics.range !== analyticsRange) &&
+      !isLoadingAnalytics
+    ) {
+      void loadAnalytics(session.token, analyticsRange);
+    }
+
+    if (activeTab === 'more' && moreSection === 'billing' && !billing && !isLoadingBilling) {
+      void loadBilling(session.token);
+    }
   }, [
     activeTab,
+    analytics,
+    analyticsRange,
     appointments,
     appointmentsDate,
+    billing,
+    businessHours,
     businessProfile,
     checkIns,
     checkInsDate,
@@ -998,23 +1375,35 @@ export function ClientificNativeApp() {
     deals,
     funds,
     home,
+    isLoadingAnalytics,
     isLoadingAppointments,
+    isLoadingBilling,
+    isLoadingBusinessHours,
     isLoadingBusinessProfile,
     isLoadingCheckIns,
     isLoadingCustomers,
     isLoadingDeals,
     isLoadingFunds,
     isLoadingReferrals,
+    isLoadingReviews,
+    isLoadingServices,
+    loadAnalytics,
     loadAppointments,
+    loadBilling,
+    loadBusinessHours,
     loadBusinessProfile,
     loadCheckIns,
     loadCustomers,
     loadDeals,
     loadFunds,
     loadReferrals,
+    loadReviews,
+    loadServices,
     moreSection,
     referrals,
+    reviews,
     session,
+    services,
   ]);
 
   if (isBooting || (session && !home && isLoadingHome)) {
@@ -1132,9 +1521,15 @@ export function ClientificNativeApp() {
   return (
     <MobileAppShell
       activeTab={activeTab}
+      analytics={analytics}
+      analyticsError={analyticsError}
       appointments={appointments}
       appointmentsError={appointmentsError}
+      billing={billing}
+      billingError={billingError}
       business={home.business}
+      businessHours={businessHours}
+      businessHoursError={businessHoursError}
       businessProfile={businessProfile}
       businessProfileError={businessProfileError}
       checkIns={checkIns}
@@ -1148,8 +1543,16 @@ export function ClientificNativeApp() {
       fundsError={fundsError}
       home={home}
       homeError={homeError}
+      isAnalyticsLoading={isLoadingAnalytics}
+      isAnalyticsRefreshing={isRefreshingAnalytics}
       isAppointmentsLoading={isLoadingAppointments}
       isAppointmentsRefreshing={isRefreshingAppointments}
+      isBillingLoading={isLoadingBilling}
+      isBillingPortalOpening={isOpeningBillingPortal}
+      isBillingRefreshing={isRefreshingBilling}
+      isBusinessHoursLoading={isLoadingBusinessHours}
+      isBusinessHoursRefreshing={isRefreshingBusinessHours}
+      isBusinessHoursSaving={isSavingBusinessHours}
       isBusinessProfileLoading={isLoadingBusinessProfile}
       isCheckInsLoading={isLoadingCheckIns}
       isCheckInsRefreshing={isRefreshingCheckIns}
@@ -1162,7 +1565,12 @@ export function ClientificNativeApp() {
       isHomeRefreshing={isRefreshingHome}
       isReferralsLoading={isLoadingReferrals}
       isReferralsRefreshing={isRefreshingReferrals}
+      isReviewsLoading={isLoadingReviews}
+      isReviewsRefreshing={isRefreshingReviews}
       isSavingBusinessProfile={isSavingBusinessProfile}
+      isServicesLoading={isLoadingServices}
+      isServicesRefreshing={isRefreshingServices}
+      onChangeAnalyticsRange={setAnalyticsRange}
       moreSection={moreSection}
       onChangeCustomersSearchDraft={setCustomersSearchDraft}
       onChangeMoreSection={setMoreSection}
@@ -1171,10 +1579,13 @@ export function ClientificNativeApp() {
       onJumpCheckInsToToday={jumpCheckInsToToday}
       onJumpAppointmentsToToday={jumpAppointmentsToToday}
       onLookupCheckIn={handleLookupCheckIn}
+      onLookupRedeemCode={handleLookupRedeemCode}
       onNextCheckInsDate={goToNextCheckInsDate}
       onNextAppointmentsDate={goToNextAppointmentsDate}
       onNextCustomersPage={goToNextCustomersPage}
+      onOpenBillingPortal={handleOpenBillingPortal}
       onOpenExternalRoute={handleOpenExternalRoute}
+      onOpenExternalUrl={handleOpenExternalUrl}
       onOpenAppointments={openAppointmentsTab}
       onOpenCustomers={openCustomersTab}
       onOpenDeals={openDealsTab}
@@ -1183,6 +1594,10 @@ export function ClientificNativeApp() {
       onPreviousCheckInsDate={goToPreviousCheckInsDate}
       onPreviousAppointmentsDate={goToPreviousAppointmentsDate}
       onPreviousCustomersPage={goToPreviousCustomersPage}
+      onRedeemCode={handleRedeemCode}
+      onRefreshAnalytics={handleRefreshAnalytics}
+      onRefreshBilling={handleRefreshBilling}
+      onRefreshBusinessHours={handleRefreshBusinessHours}
       onRefreshBusinessProfile={handleRefreshBusinessProfile}
       onRefreshCheckIns={handleRefreshCheckIns}
       onRefreshAppointments={handleRefreshAppointments}
@@ -1191,12 +1606,20 @@ export function ClientificNativeApp() {
       onRefreshFunds={handleRefreshFunds}
       onRefreshHome={handleRefreshHome}
       onRefreshReferrals={handleRefreshReferrals}
+      onRefreshReviews={handleRefreshReviews}
+      onRefreshServices={handleRefreshServices}
+      onSaveBusinessHours={handleSaveBusinessHours}
       onSaveBusinessProfile={handleSaveBusinessProfile}
       onShareDeal={shareDeal}
       onShareReferral={shareReferral}
+      onShareReviewSurvey={shareReviewSurvey}
       onSignOut={signOut}
       referrals={referrals}
       referralsError={referralsError}
+      reviews={reviews}
+      reviewsError={reviewsError}
+      services={services}
+      servicesError={servicesError}
     />
   );
 }

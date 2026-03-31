@@ -9,7 +9,12 @@ import {
   View,
 } from 'react-native';
 import type {
+  MobileAnalyticsRange,
+  MobileAnalyticsSummary,
+  MobileBillingSummary,
   MobileBusiness,
+  MobileBusinessHoursSummary,
+  MobileBusinessHoursUpdateInput,
   MobileBusinessProfile,
   MobileCheckInLookupResponse,
   MobileCheckInMutationResponse,
@@ -18,16 +23,37 @@ import type {
   MobileFundsSummary,
   MobileHomeSummary,
   MobileOnboardingInput,
+  MobileRedeemLookupResponse,
+  MobileRedeemResult,
   MobileReferralsSummary,
+  MobileReviewsSummary,
+  MobileServicesSummary,
 } from '@/lib/clientific-api';
-import { getClientificTheme } from '@/lib/clientific-mobile-theme';
+import { MobileAnalyticsScreen } from '@/components/mobile-analytics-screen';
+import { MobileBillingScreen } from '@/components/mobile-billing-screen';
+import { MobileBusinessHoursScreen } from '@/components/mobile-business-hours-screen';
 import { MobileCheckinsScreen } from '@/components/mobile-checkins-screen';
 import { MobileFundsScreen } from '@/components/mobile-funds-screen';
 import { MobileNavIcon, type MobileNavIconName } from '@/components/mobile-nav-icon';
 import { MobileOnboardingScreen } from '@/components/mobile-onboarding-screen';
+import { MobileRedeemScreen } from '@/components/mobile-redeem-screen';
 import { MobileReferralsScreen } from '@/components/mobile-referrals-screen';
+import { MobileReviewsScreen } from '@/components/mobile-reviews-screen';
+import { MobileServicesScreen } from '@/components/mobile-services-screen';
+import { getClientificTheme } from '@/lib/clientific-mobile-theme';
 
-export type MobileMoreSection = 'menu' | 'checkins' | 'referrals' | 'payouts' | 'settings';
+export type MobileMoreSection =
+  | 'menu'
+  | 'services'
+  | 'checkins'
+  | 'redeem'
+  | 'hours'
+  | 'reviews'
+  | 'analytics'
+  | 'referrals'
+  | 'payouts'
+  | 'billing'
+  | 'settings';
 
 type MobileMoreMenuSection = 'operations' | 'growth' | 'account';
 
@@ -43,7 +69,13 @@ type MobileMoreMenuItem = {
 
 type MobileMoreScreenProps = {
   activeSection: MobileMoreSection;
+  analytics: MobileAnalyticsSummary | null;
+  analyticsError: string | null;
+  billing: MobileBillingSummary | null;
+  billingError: string | null;
   business: MobileBusiness;
+  businessHours: MobileBusinessHoursSummary | null;
+  businessHoursError: string | null;
   businessProfile: MobileBusinessProfile | null;
   businessProfileError: string | null;
   checkIns: MobileCheckInsSummary | null;
@@ -51,6 +83,14 @@ type MobileMoreScreenProps = {
   funds: MobileFundsSummary | null;
   fundsError: string | null;
   home: MobileHomeSummary;
+  isAnalyticsLoading: boolean;
+  isAnalyticsRefreshing: boolean;
+  isBillingLoading: boolean;
+  isBillingPortalOpening: boolean;
+  isBillingRefreshing: boolean;
+  isBusinessHoursLoading: boolean;
+  isBusinessHoursRefreshing: boolean;
+  isBusinessHoursSaving: boolean;
   isBusinessProfileLoading: boolean;
   isCheckInsLoading: boolean;
   isCheckInsRefreshing: boolean;
@@ -58,25 +98,48 @@ type MobileMoreScreenProps = {
   isFundsRefreshing: boolean;
   isReferralsLoading: boolean;
   isReferralsRefreshing: boolean;
+  isReviewsLoading: boolean;
+  isReviewsRefreshing: boolean;
   isSavingBusinessProfile: boolean;
+  isServicesLoading: boolean;
+  isServicesRefreshing: boolean;
+  onChangeAnalyticsRange: (range: MobileAnalyticsRange) => void;
   onChangeSection: (section: MobileMoreSection) => void;
   onCreateCheckIn: (
     input: MobileCheckInSubmissionInput,
   ) => Promise<MobileCheckInMutationResponse>;
   onJumpCheckInsToToday: () => void;
   onLookupCheckIn: (phone: string) => Promise<MobileCheckInLookupResponse>;
+  onLookupRedeemCode: (code: string) => Promise<MobileRedeemLookupResponse>;
   onNextCheckInsDate: () => void;
+  onOpenBillingPortal: () => Promise<void>;
   onOpenExternalRoute: (path: string) => Promise<void>;
+  onOpenExternalUrl: (url: string) => Promise<void>;
   onPreviousCheckInsDate: () => void;
+  onRedeemCode: (input: {
+    code: string;
+    transactionAmount?: number | null;
+  }) => Promise<MobileRedeemResult>;
+  onRefreshAnalytics: () => Promise<void>;
+  onRefreshBilling: () => Promise<void>;
+  onRefreshBusinessHours: () => Promise<void>;
   onRefreshBusinessProfile: () => Promise<void>;
   onRefreshCheckIns: () => Promise<void>;
   onRefreshFunds: () => Promise<void>;
   onRefreshReferrals: () => Promise<void>;
+  onRefreshReviews: () => Promise<void>;
+  onRefreshServices: () => Promise<void>;
+  onSaveBusinessHours: (input: MobileBusinessHoursUpdateInput) => Promise<void>;
   onSaveBusinessProfile: (input: MobileOnboardingInput) => Promise<void>;
   onShareReferral: () => Promise<void>;
+  onShareReviewSurvey: () => Promise<void>;
   onSignOut: () => Promise<void>;
   referrals: MobileReferralsSummary | null;
   referralsError: string | null;
+  reviews: MobileReviewsSummary | null;
+  reviewsError: string | null;
+  services: MobileServicesSummary | null;
+  servicesError: string | null;
 };
 
 const MENU_SECTION_LABELS: Record<MobileMoreMenuSection, string> = {
@@ -89,11 +152,11 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
   {
     key: 'services',
     label: 'Services & Staff',
-    helper: 'Update menus, staff, and booking setup.',
+    helper: 'Review the live menu, pricing, and staff setup.',
     icon: 'services',
-    kind: 'web',
+    kind: 'native',
     section: 'operations',
-    target: '/dashboard/services',
+    target: 'services',
   },
   {
     key: 'checkins',
@@ -109,18 +172,18 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
     label: 'Redeem',
     helper: 'Redeem purchased deals and confirm claims.',
     icon: 'redeem',
-    kind: 'web',
+    kind: 'native',
     section: 'operations',
-    target: '/dashboard/redeem',
+    target: 'redeem',
   },
   {
     key: 'business-hours',
     label: 'Business Hours & Closures',
     helper: 'Control hours, closures, and availability windows.',
     icon: 'businessHours',
-    kind: 'web',
+    kind: 'native',
     section: 'operations',
-    target: '/dashboard/business-hours',
+    target: 'hours',
   },
   {
     key: 'ai-receptionist',
@@ -145,18 +208,18 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
     label: 'Reviews',
     helper: 'Share your survey flow and review prompts.',
     icon: 'reviews',
-    kind: 'web',
+    kind: 'native',
     section: 'growth',
-    target: '/dashboard/reviews',
+    target: 'reviews',
   },
   {
     key: 'analytics',
     label: 'Analytics',
     helper: 'Check performance, trends, and conversion signals.',
     icon: 'analytics',
-    kind: 'web',
+    kind: 'native',
     section: 'growth',
-    target: '/dashboard/analytics',
+    target: 'analytics',
   },
   {
     key: 'referrals',
@@ -181,9 +244,9 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
     label: 'Billing',
     helper: 'Manage plan access and subscription details.',
     icon: 'billing',
-    kind: 'web',
+    kind: 'native',
     section: 'account',
-    target: '/dashboard/settings/billing',
+    target: 'billing',
   },
   {
     key: 'settings',
@@ -198,7 +261,13 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
 
 export function MobileMoreScreen({
   activeSection,
+  analytics,
+  analyticsError,
+  billing,
+  billingError,
   business,
+  businessHours,
+  businessHoursError,
   businessProfile,
   businessProfileError,
   checkIns,
@@ -206,6 +275,14 @@ export function MobileMoreScreen({
   funds,
   fundsError,
   home,
+  isAnalyticsLoading,
+  isAnalyticsRefreshing,
+  isBillingLoading,
+  isBillingPortalOpening,
+  isBillingRefreshing,
+  isBusinessHoursLoading,
+  isBusinessHoursRefreshing,
+  isBusinessHoursSaving,
   isBusinessProfileLoading,
   isCheckInsLoading,
   isCheckInsRefreshing,
@@ -213,23 +290,43 @@ export function MobileMoreScreen({
   isFundsRefreshing,
   isReferralsLoading,
   isReferralsRefreshing,
+  isReviewsLoading,
+  isReviewsRefreshing,
   isSavingBusinessProfile,
+  isServicesLoading,
+  isServicesRefreshing,
+  onChangeAnalyticsRange,
   onChangeSection,
   onCreateCheckIn,
   onJumpCheckInsToToday,
   onLookupCheckIn,
+  onLookupRedeemCode,
   onNextCheckInsDate,
+  onOpenBillingPortal,
   onOpenExternalRoute,
+  onOpenExternalUrl,
   onPreviousCheckInsDate,
+  onRedeemCode,
+  onRefreshAnalytics,
+  onRefreshBilling,
+  onRefreshBusinessHours,
   onRefreshBusinessProfile,
   onRefreshCheckIns,
   onRefreshFunds,
   onRefreshReferrals,
+  onRefreshReviews,
+  onRefreshServices,
+  onSaveBusinessHours,
   onSaveBusinessProfile,
   onShareReferral,
+  onShareReviewSurvey,
   onSignOut,
   referrals,
   referralsError,
+  reviews,
+  reviewsError,
+  services,
+  servicesError,
 }: MobileMoreScreenProps) {
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
@@ -342,7 +439,10 @@ export function MobileMoreScreen({
         <Pressable
           accessibilityRole="button"
           onPress={() => void onSignOut()}
-          style={[styles.signOutButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          style={[
+            styles.signOutButton,
+            { backgroundColor: theme.surface, borderColor: theme.border },
+          ]}
           testID="mobile-more-signout">
           <Text style={[styles.signOutText, { color: theme.danger }]}>Sign out</Text>
         </Pressable>
@@ -373,6 +473,16 @@ export function MobileMoreScreen({
       </View>
 
       <View style={styles.subscreenBody}>
+        {activeSection === 'services' ? (
+          <MobileServicesScreen
+            data={services}
+            error={servicesError}
+            isLoading={isServicesLoading}
+            isRefreshing={isServicesRefreshing}
+            onRefresh={onRefreshServices}
+          />
+        ) : null}
+
         {activeSection === 'checkins' ? (
           <MobileCheckinsScreen
             data={checkIns}
@@ -385,6 +495,45 @@ export function MobileMoreScreen({
             onPreviousDate={onPreviousCheckInsDate}
             onRefresh={onRefreshCheckIns}
             onSubmit={onCreateCheckIn}
+          />
+        ) : null}
+
+        {activeSection === 'redeem' ? (
+          <MobileRedeemScreen onLookup={onLookupRedeemCode} onRedeem={onRedeemCode} />
+        ) : null}
+
+        {activeSection === 'hours' ? (
+          <MobileBusinessHoursScreen
+            data={businessHours}
+            error={businessHoursError}
+            isLoading={isBusinessHoursLoading}
+            isRefreshing={isBusinessHoursRefreshing}
+            isSaving={isBusinessHoursSaving}
+            onRefresh={onRefreshBusinessHours}
+            onSave={onSaveBusinessHours}
+          />
+        ) : null}
+
+        {activeSection === 'reviews' ? (
+          <MobileReviewsScreen
+            data={reviews}
+            error={reviewsError}
+            isLoading={isReviewsLoading}
+            isRefreshing={isReviewsRefreshing}
+            onOpenUrl={onOpenExternalUrl}
+            onRefresh={onRefreshReviews}
+            onShareSurvey={onShareReviewSurvey}
+          />
+        ) : null}
+
+        {activeSection === 'analytics' ? (
+          <MobileAnalyticsScreen
+            data={analytics}
+            error={analyticsError}
+            isLoading={isAnalyticsLoading}
+            isRefreshing={isAnalyticsRefreshing}
+            onChangeRange={onChangeAnalyticsRange}
+            onRefresh={onRefreshAnalytics}
           />
         ) : null}
 
@@ -412,9 +561,26 @@ export function MobileMoreScreen({
           />
         ) : null}
 
+        {activeSection === 'billing' ? (
+          <MobileBillingScreen
+            data={billing}
+            error={billingError}
+            isLoading={isBillingLoading}
+            isOpeningPortal={isBillingPortalOpening}
+            isRefreshing={isBillingRefreshing}
+            onOpenPortal={onOpenBillingPortal}
+            onOpenUrl={onOpenExternalUrl}
+            onRefresh={onRefreshBilling}
+          />
+        ) : null}
+
         {activeSection === 'settings' ? (
           isBusinessProfileLoading || !businessProfile ? (
-            <View style={[styles.loadingCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <View
+              style={[
+                styles.loadingCard,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}>
               <ActivityIndicator color={theme.accent} />
               <Text style={[styles.loadingTitle, { color: theme.text }]}>Loading settings</Text>
               <Text style={[styles.loadingText, { color: theme.mutedText }]}>
@@ -449,12 +615,24 @@ export function MobileMoreScreen({
 
 function getSubscreenTitle(section: Exclude<MobileMoreSection, 'menu'>) {
   switch (section) {
+    case 'services':
+      return 'Services & Staff';
     case 'checkins':
       return 'Check-ins';
+    case 'redeem':
+      return 'Redeem';
+    case 'hours':
+      return 'Business Hours';
+    case 'reviews':
+      return 'Reviews';
+    case 'analytics':
+      return 'Analytics';
     case 'referrals':
       return 'Refer & Earn';
     case 'payouts':
       return 'Payouts';
+    case 'billing':
+      return 'Billing';
     case 'settings':
       return 'Settings';
     default:
@@ -618,8 +796,8 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     paddingHorizontal: 20,
     paddingVertical: 24,
-    alignItems: 'center',
     gap: 10,
+    alignItems: 'center',
   },
   loadingTitle: {
     fontSize: 20,
@@ -633,12 +811,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   loadingButton: {
-    minHeight: 48,
-    borderRadius: 16,
-    paddingHorizontal: 18,
+    marginTop: 6,
+    minHeight: 46,
+    borderRadius: 18,
+    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
+    minWidth: 132,
   },
   loadingButtonText: {
     color: '#f8fffc',
