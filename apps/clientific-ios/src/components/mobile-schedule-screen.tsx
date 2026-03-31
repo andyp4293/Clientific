@@ -52,12 +52,12 @@ export function MobileScheduleScreen({
           styles.heroCard,
           { backgroundColor: theme.surface, borderColor: theme.border },
         ]}>
-        <Text style={[styles.eyebrow, { color: theme.accent }]}>Schedule</Text>
+        <Text style={[styles.eyebrow, { color: theme.accent }]}>Appointments</Text>
         <Text style={[styles.heroTitle, { color: theme.text }]}>
           {data?.dateLabel ?? 'Daily appointments'}
         </Text>
         <Text style={[styles.heroSubtitle, { color: theme.mutedText }]}>
-          Keep the appointment board in a mobile-first view that feels close to the web dashboard.
+          Review bookings in the same streamlined mobile flow as the web dashboard.
         </Text>
 
         <View style={styles.dateRow}>

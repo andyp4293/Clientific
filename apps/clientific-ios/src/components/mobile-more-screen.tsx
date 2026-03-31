@@ -1,55 +1,91 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useColorScheme,
+  View,
+} from 'react-native';
 import type {
   MobileBusiness,
+  MobileCheckInLookupResponse,
+  MobileCheckInMutationResponse,
+  MobileCheckInSubmissionInput,
+  MobileCheckInsSummary,
   MobileFundsSummary,
   MobileHomeSummary,
   MobileReferralsSummary,
 } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
 import { MobileAccountScreen } from '@/components/mobile-account-screen';
+import { MobileCheckinsScreen } from '@/components/mobile-checkins-screen';
 import { MobileFundsScreen } from '@/components/mobile-funds-screen';
+import { MobileNavIcon, type MobileNavIconName } from '@/components/mobile-nav-icon';
 import { MobileReferralsScreen } from '@/components/mobile-referrals-screen';
 
-export type MobileMoreSection = 'referrals' | 'funds' | 'account';
+export type MobileMoreSection = 'checkins' | 'referrals' | 'funds' | 'account';
 
 type MobileMoreScreenProps = {
   activeSection: MobileMoreSection;
   business: MobileBusiness;
+  checkIns: MobileCheckInsSummary | null;
+  checkInsError: string | null;
   funds: MobileFundsSummary | null;
   fundsError: string | null;
   home: MobileHomeSummary;
+  isCheckInsLoading: boolean;
+  isCheckInsRefreshing: boolean;
   isFundsLoading: boolean;
   isFundsRefreshing: boolean;
   isReferralsLoading: boolean;
   isReferralsRefreshing: boolean;
   onChangeSection: (section: MobileMoreSection) => void;
+  onCreateCheckIn: (
+    input: MobileCheckInSubmissionInput,
+  ) => Promise<MobileCheckInMutationResponse>;
+  onJumpCheckInsToToday: () => void;
+  onLookupCheckIn: (phone: string) => Promise<MobileCheckInLookupResponse>;
+  onNextCheckInsDate: () => void;
   onRefreshFunds: () => Promise<void>;
+  onRefreshCheckIns: () => Promise<void>;
   onRefreshReferrals: () => Promise<void>;
+  onPreviousCheckInsDate: () => void;
   onShareReferral: () => Promise<void>;
   onSignOut: () => Promise<void>;
   referrals: MobileReferralsSummary | null;
   referralsError: string | null;
 };
 
-const SECTIONS: Array<{ key: MobileMoreSection; label: string }> = [
-  { key: 'referrals', label: 'Referrals' },
-  { key: 'funds', label: 'Funds' },
-  { key: 'account', label: 'Account' },
+const SECTIONS: Array<{ key: MobileMoreSection; label: string; icon: MobileNavIconName }> = [
+  { key: 'checkins', label: 'Check-ins', icon: 'checkins' },
+  { key: 'referrals', label: 'Referrals', icon: 'referrals' },
+  { key: 'funds', label: 'Funds', icon: 'funds' },
+  { key: 'account', label: 'Account', icon: 'account' },
 ];
 
 export function MobileMoreScreen({
   activeSection,
   business,
+  checkIns,
+  checkInsError,
   funds,
   fundsError,
   home,
+  isCheckInsLoading,
+  isCheckInsRefreshing,
   isFundsLoading,
   isFundsRefreshing,
   isReferralsLoading,
   isReferralsRefreshing,
   onChangeSection,
+  onCreateCheckIn,
+  onJumpCheckInsToToday,
+  onLookupCheckIn,
+  onNextCheckInsDate,
+  onPreviousCheckInsDate,
   onRefreshFunds,
+  onRefreshCheckIns,
   onRefreshReferrals,
   onShareReferral,
   onSignOut,
@@ -61,11 +97,11 @@ export function MobileMoreScreen({
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <View
-        style={[
-          styles.segmentCard,
-          { backgroundColor: theme.surface, borderColor: theme.border },
-        ]}>
+      <ScrollView
+        horizontal
+        contentContainerStyle={styles.segmentScroller}
+        showsHorizontalScrollIndicator={false}
+        style={styles.segmentScroll}>
         {SECTIONS.map((section) => {
           const isActive = activeSection === section.key;
 
@@ -77,10 +113,16 @@ export function MobileMoreScreen({
               style={[
                 styles.segmentButton,
                 {
-                  backgroundColor: isActive ? theme.accentSoft : 'transparent',
+                  backgroundColor: isActive ? theme.accentSoft : theme.surface,
+                  borderColor: isActive ? theme.accentSoft : theme.border,
                 },
               ]}
               testID={`mobile-more-${section.key}`}>
+              <MobileNavIcon
+                color={isActive ? theme.accent : theme.mutedText}
+                name={section.icon}
+                size={16}
+              />
               <Text
                 style={[
                   styles.segmentText,
@@ -91,9 +133,24 @@ export function MobileMoreScreen({
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
 
       <View style={styles.content}>
+        {activeSection === 'checkins' ? (
+          <MobileCheckinsScreen
+            data={checkIns}
+            error={checkInsError}
+            isLoading={isCheckInsLoading}
+            isRefreshing={isCheckInsRefreshing}
+            onJumpToToday={onJumpCheckInsToToday}
+            onLookup={onLookupCheckIn}
+            onNextDate={onNextCheckInsDate}
+            onPreviousDate={onPreviousCheckInsDate}
+            onRefresh={onRefreshCheckIns}
+            onSubmit={onCreateCheckIn}
+          />
+        ) : null}
+
         {activeSection === 'referrals' ? (
           <MobileReferralsScreen
             business={business}
@@ -137,23 +194,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  segmentCard: {
-    marginHorizontal: 20,
+  segmentScroll: {
+    flexGrow: 0,
     marginTop: 18,
     marginBottom: 6,
-    borderWidth: 1,
-    borderRadius: 24,
-    padding: 6,
+  },
+  segmentScroller: {
+    paddingHorizontal: 20,
     flexDirection: 'row',
-    gap: 6,
+    gap: 10,
   },
   segmentButton: {
-    flex: 1,
     minHeight: 42,
-    borderRadius: 16,
+    borderRadius: 999,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 14,
+    gap: 8,
+    flexDirection: 'row',
   },
   segmentText: {
     fontSize: 13,

@@ -17,6 +17,7 @@ import {
   fetchMobileBusinessProfile,
   fetchMobileCheckIns,
   fetchMobileCustomers,
+  fetchMobileDeals,
   fetchMobileFunds,
   fetchMobileHomeSummary,
   fetchMobileReferrals,
@@ -27,6 +28,8 @@ import {
   MobileCheckInSubmissionInput,
   MobileCheckInsSummary,
   MobileCustomersSummary,
+  MobileDealRecord,
+  MobileDealsSummary,
   MobileFundsSummary,
   MobileHomeSummary,
   MobileLoginResponse,
@@ -79,8 +82,8 @@ export function ClientificNativeApp() {
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
   const [isBooting, setIsBooting] = useState(true);
-  const [activeTab, setActiveTab] = useState<MobileAppTab>('home');
-  const [moreSection, setMoreSection] = useState<MobileMoreSection>('referrals');
+  const [activeTab, setActiveTab] = useState<MobileAppTab>('dashboard');
+  const [moreSection, setMoreSection] = useState<MobileMoreSection>('checkins');
   const [authMode, setAuthMode] = useState<MobileAuthMode>('sign-in');
   const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
   const [isResendingCode, setIsResendingCode] = useState(false);
@@ -92,6 +95,8 @@ export function ClientificNativeApp() {
   const [isRefreshingCheckIns, setIsRefreshingCheckIns] = useState(false);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
   const [isRefreshingCustomers, setIsRefreshingCustomers] = useState(false);
+  const [isLoadingDeals, setIsLoadingDeals] = useState(false);
+  const [isRefreshingDeals, setIsRefreshingDeals] = useState(false);
   const [isLoadingBusinessProfile, setIsLoadingBusinessProfile] = useState(false);
   const [isSavingBusinessProfile, setIsSavingBusinessProfile] = useState(false);
   const [isLoadingReferrals, setIsLoadingReferrals] = useState(false);
@@ -104,6 +109,7 @@ export function ClientificNativeApp() {
   const [businessProfileError, setBusinessProfileError] = useState<string | null>(null);
   const [checkInsError, setCheckInsError] = useState<string | null>(null);
   const [customersError, setCustomersError] = useState<string | null>(null);
+  const [dealsError, setDealsError] = useState<string | null>(null);
   const [homeError, setHomeError] = useState<string | null>(null);
   const [referralsError, setReferralsError] = useState<string | null>(null);
   const [fundsError, setFundsError] = useState<string | null>(null);
@@ -121,6 +127,7 @@ export function ClientificNativeApp() {
   const [businessProfile, setBusinessProfile] = useState<MobileBusinessProfile | null>(null);
   const [checkIns, setCheckIns] = useState<MobileCheckInsSummary | null>(null);
   const [customers, setCustomers] = useState<MobileCustomersSummary | null>(null);
+  const [deals, setDeals] = useState<MobileDealsSummary | null>(null);
   const [home, setHome] = useState<MobileHomeSummary | null>(null);
   const [referrals, setReferrals] = useState<MobileReferralsSummary | null>(null);
   const [funds, setFunds] = useState<MobileFundsSummary | null>(null);
@@ -132,11 +139,12 @@ export function ClientificNativeApp() {
     setBusinessProfile(null);
     setCheckIns(null);
     setCustomers(null);
+    setDeals(null);
     setHome(null);
     setReferrals(null);
     setFunds(null);
-    setActiveTab('home');
-    setMoreSection('referrals');
+    setActiveTab('dashboard');
+    setMoreSection('checkins');
     setAuthMode('sign-in');
     setAuthError(null);
     setAuthNotice(null);
@@ -144,6 +152,7 @@ export function ClientificNativeApp() {
     setBusinessProfileError(null);
     setCheckInsError(null);
     setCustomersError(null);
+    setDealsError(null);
     setHomeError(null);
     setReferralsError(null);
     setFundsError(null);
@@ -316,6 +325,31 @@ export function ClientificNativeApp() {
     [handleSessionError],
   );
 
+  const loadDeals = useCallback(
+    async (token: string, isRefresh = false) => {
+      if (isRefresh) {
+        setIsRefreshingDeals(true);
+      } else {
+        setIsLoadingDeals(true);
+      }
+
+      try {
+        const nextDeals = await fetchMobileDeals(token);
+        setDeals(nextDeals);
+        setDealsError(null);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to load mobile deals.', setDealsError);
+      } finally {
+        if (isRefresh) {
+          setIsRefreshingDeals(false);
+        } else {
+          setIsLoadingDeals(false);
+        }
+      }
+    },
+    [handleSessionError],
+  );
+
   const loadReferrals = useCallback(
     async (token: string, isRefresh = false) => {
       if (isRefresh) {
@@ -382,8 +416,8 @@ export function ClientificNativeApp() {
     }
   }, [isLoadingReferrals, loadReferrals, referrals, session]);
 
-  const openScheduleTab = useCallback(() => {
-    setActiveTab('schedule');
+  const openAppointmentsTab = useCallback(() => {
+    setActiveTab('appointments');
     if (
       session &&
       (!appointments || appointments.selectedDate !== appointmentsDate) &&
@@ -400,7 +434,8 @@ export function ClientificNativeApp() {
   ]);
 
   const openCheckInsTab = useCallback(() => {
-    setActiveTab('checkins');
+    setMoreSection('checkins');
+    setActiveTab('more');
     if (session && (!checkIns || checkIns.selectedDate !== checkInsDate) && !isLoadingCheckIns) {
       void loadCheckIns(session.token, checkInsDate);
     }
@@ -432,6 +467,13 @@ export function ClientificNativeApp() {
     session,
   ]);
 
+  const openDealsTab = useCallback(() => {
+    setActiveTab('deals');
+    if (session && !deals && !isLoadingDeals) {
+      void loadDeals(session.token);
+    }
+  }, [deals, isLoadingDeals, loadDeals, session]);
+
   const shareReferral = useCallback(async () => {
     if (!referrals?.payoutReady || !referrals.referralCode) {
       return;
@@ -447,6 +489,21 @@ export function ClientificNativeApp() {
       setReferralsError(getReadableError(error, 'Unable to open the share sheet.'));
     }
   }, [referrals, session?.business.name]);
+
+  const shareDeal = useCallback(
+    async (deal: MobileDealRecord) => {
+      try {
+        const dealUrl = `${getClientificWebUrl()}${deal.linkPath}`;
+        await Share.share({
+          message: `${session?.business.name ?? 'Clientific'} deal: ${deal.title}\n${dealUrl}`,
+        });
+        setDealsError(null);
+      } catch (error) {
+        setDealsError(getReadableError(error, 'Unable to share this deal.'));
+      }
+    },
+    [session?.business.name],
+  );
 
   useEffect(() => {
     let isActive = true;
@@ -498,7 +555,8 @@ export function ClientificNativeApp() {
       setAuthMode('sign-in');
       setPendingVerification(null);
       setAuthNotice(null);
-      setActiveTab('home');
+      setActiveTab('dashboard');
+      setMoreSection('checkins');
       await loadHome(nextSession.token);
     },
     [loadHome],
@@ -512,6 +570,7 @@ export function ClientificNativeApp() {
     setBusinessProfileError(null);
     setCheckInsError(null);
     setCustomersError(null);
+    setDealsError(null);
     setHomeError(null);
     setReferralsError(null);
     setFundsError(null);
@@ -727,6 +786,14 @@ export function ClientificNativeApp() {
     );
   }, [customersPage, customersSearchQuery, loadCustomers, session]);
 
+  const handleRefreshDeals = useCallback(async () => {
+    if (!session) {
+      return;
+    }
+
+    await loadDeals(session.token, true);
+  }, [loadDeals, session]);
+
   const handleRefreshReferrals = useCallback(async () => {
     if (!session) {
       return;
@@ -850,7 +917,7 @@ export function ClientificNativeApp() {
     }
 
     if (
-      activeTab === 'schedule' &&
+      activeTab === 'appointments' &&
       (!appointments || appointments.selectedDate !== appointmentsDate) &&
       !isLoadingAppointments
     ) {
@@ -858,7 +925,8 @@ export function ClientificNativeApp() {
     }
 
     if (
-      activeTab === 'checkins' &&
+      activeTab === 'more' &&
+      moreSection === 'checkins' &&
       (!checkIns || checkIns.selectedDate !== checkInsDate) &&
       !isLoadingCheckIns
     ) {
@@ -878,6 +946,10 @@ export function ClientificNativeApp() {
       });
     }
 
+    if (activeTab === 'deals' && !deals && !isLoadingDeals) {
+      void loadDeals(session.token);
+    }
+
     if (activeTab === 'more' && moreSection === 'referrals' && !referrals && !isLoadingReferrals) {
       void loadReferrals(session.token);
     }
@@ -895,18 +967,21 @@ export function ClientificNativeApp() {
     customers,
     customersPage,
     customersSearchQuery,
+    deals,
     funds,
     home,
     isLoadingAppointments,
     isLoadingBusinessProfile,
     isLoadingCheckIns,
     isLoadingCustomers,
+    isLoadingDeals,
     isLoadingFunds,
     isLoadingReferrals,
     loadAppointments,
     loadBusinessProfile,
     loadCheckIns,
     loadCustomers,
+    loadDeals,
     loadFunds,
     loadReferrals,
     moreSection,
@@ -1037,6 +1112,8 @@ export function ClientificNativeApp() {
       customers={customers}
       customersError={customersError}
       customersSearchDraft={customersSearchDraft}
+      deals={deals}
+      dealsError={dealsError}
       funds={funds}
       fundsError={fundsError}
       home={home}
@@ -1047,6 +1124,8 @@ export function ClientificNativeApp() {
       isCheckInsRefreshing={isRefreshingCheckIns}
       isCustomersLoading={isLoadingCustomers}
       isCustomersRefreshing={isRefreshingCustomers}
+      isDealsLoading={isLoadingDeals}
+      isDealsRefreshing={isRefreshingDeals}
       isFundsLoading={isLoadingFunds}
       isFundsRefreshing={isRefreshingFunds}
       isHomeRefreshing={isRefreshingHome}
@@ -1057,26 +1136,28 @@ export function ClientificNativeApp() {
       onChangeMoreSection={setMoreSection}
       onChangeTab={setActiveTab}
       onCreateCheckIn={handleCreateCheckIn}
-      onJumpAppointmentsToToday={jumpAppointmentsToToday}
       onJumpCheckInsToToday={jumpCheckInsToToday}
+      onJumpAppointmentsToToday={jumpAppointmentsToToday}
       onLookupCheckIn={handleLookupCheckIn}
-      onNextAppointmentsDate={goToNextAppointmentsDate}
       onNextCheckInsDate={goToNextCheckInsDate}
+      onNextAppointmentsDate={goToNextAppointmentsDate}
       onNextCustomersPage={goToNextCustomersPage}
-      onOpenCheckIns={openCheckInsTab}
+      onOpenAppointments={openAppointmentsTab}
       onOpenCustomers={openCustomersTab}
+      onOpenDeals={openDealsTab}
       onOpenFunds={openFundsTab}
       onOpenReferrals={openReferralsTab}
-      onOpenSchedule={openScheduleTab}
-      onPreviousAppointmentsDate={goToPreviousAppointmentsDate}
       onPreviousCheckInsDate={goToPreviousCheckInsDate}
+      onPreviousAppointmentsDate={goToPreviousAppointmentsDate}
       onPreviousCustomersPage={goToPreviousCustomersPage}
-      onRefreshAppointments={handleRefreshAppointments}
       onRefreshCheckIns={handleRefreshCheckIns}
+      onRefreshAppointments={handleRefreshAppointments}
       onRefreshCustomers={handleRefreshCustomers}
+      onRefreshDeals={handleRefreshDeals}
       onRefreshFunds={handleRefreshFunds}
       onRefreshHome={handleRefreshHome}
       onRefreshReferrals={handleRefreshReferrals}
+      onShareDeal={shareDeal}
       onShareReferral={shareReferral}
       onSignOut={signOut}
       referrals={referrals}

@@ -82,6 +82,34 @@ export type MobileAppointmentsSummary = {
   appointments: MobileAppointmentEntry[];
 };
 
+export type MobileDealRecord = {
+  id: string;
+  title: string;
+  description: string | null;
+  discountLabel: string;
+  statusLabel: string;
+  statusTone: 'live' | 'scheduled' | 'ended' | 'draft';
+  windowLabel: string;
+  deliveryLabel: string;
+  purchasesCount: number;
+  redemptionsCount: number;
+  revenueLabel: string;
+  linkPath: string;
+};
+
+export type MobileDealsSummary = {
+  business: MobileBusiness;
+  payoutReady: boolean;
+  payoutSetupMessage: string | null;
+  counts: {
+    total: number;
+    live: number;
+    scheduled: number;
+    ended: number;
+  };
+  deals: MobileDealRecord[];
+};
+
 export type MobileReferralEntry = {
   id: string;
   refereeName: string;
@@ -341,6 +369,14 @@ export async function fetchMobileAppointments(
       },
     },
   );
+}
+
+export async function fetchMobileDeals(token: string) {
+  return requestJson<MobileDealsSummary>('/api/mobile/deals', {
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
 }
 
 export async function fetchMobileReferrals(token: string) {

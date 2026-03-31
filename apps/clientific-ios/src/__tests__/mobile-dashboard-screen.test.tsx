@@ -115,6 +115,34 @@ const customers = {
   ],
 };
 
+const deals = {
+  business,
+  payoutReady: true,
+  payoutSetupMessage: null,
+  counts: {
+    total: 2,
+    live: 1,
+    scheduled: 1,
+    ended: 0,
+  },
+  deals: [
+    {
+      id: 'deal-1',
+      title: 'Spring Special',
+      description: 'Bring in new guests.',
+      discountLabel: '20% off',
+      statusLabel: 'Live',
+      statusTone: 'live' as const,
+      windowLabel: 'Mar 28 - Apr 4',
+      deliveryLabel: 'Purchase link',
+      purchasesCount: 2,
+      redemptionsCount: 1,
+      revenueLabel: '$95.00',
+      linkPath: '/d/deal-1',
+    },
+  ],
+};
+
 const referrals = {
   business,
   referralCode: 'ABCD1234',
@@ -157,7 +185,7 @@ const funds = {
 function renderShell() {
   return render(
     <MobileAppShell
-      activeTab="home"
+      activeTab="dashboard"
       appointments={appointments}
       appointmentsError={null}
       business={business}
@@ -166,6 +194,8 @@ function renderShell() {
       customers={customers}
       customersError={null}
       customersSearchDraft=""
+      deals={deals}
+      dealsError={null}
       funds={funds}
       fundsError={null}
       home={home}
@@ -176,36 +206,40 @@ function renderShell() {
       isCheckInsRefreshing={false}
       isCustomersLoading={false}
       isCustomersRefreshing={false}
+      isDealsLoading={false}
+      isDealsRefreshing={false}
       isFundsLoading={false}
       isFundsRefreshing={false}
       isHomeRefreshing={false}
       isReferralsLoading={false}
       isReferralsRefreshing={false}
-      moreSection="referrals"
+      moreSection="checkins"
       onChangeCustomersSearchDraft={jest.fn()}
       onChangeMoreSection={jest.fn()}
       onChangeTab={jest.fn()}
       onCreateCheckIn={jest.fn().mockResolvedValue(undefined)}
-      onJumpAppointmentsToToday={jest.fn()}
       onJumpCheckInsToToday={jest.fn()}
+      onJumpAppointmentsToToday={jest.fn()}
       onLookupCheckIn={jest.fn().mockResolvedValue({ status: 'new', normalizedPhone: '5551234567', displayPhone: '(555) 123-4567' })}
-      onNextAppointmentsDate={jest.fn()}
       onNextCheckInsDate={jest.fn()}
+      onNextAppointmentsDate={jest.fn()}
       onNextCustomersPage={jest.fn()}
-      onOpenCheckIns={jest.fn()}
+      onOpenAppointments={jest.fn()}
       onOpenCustomers={jest.fn()}
+      onOpenDeals={jest.fn()}
       onOpenFunds={jest.fn()}
       onOpenReferrals={jest.fn()}
-      onOpenSchedule={jest.fn()}
-      onPreviousAppointmentsDate={jest.fn()}
       onPreviousCheckInsDate={jest.fn()}
+      onPreviousAppointmentsDate={jest.fn()}
       onPreviousCustomersPage={jest.fn()}
-      onRefreshAppointments={jest.fn().mockResolvedValue(undefined)}
       onRefreshCheckIns={jest.fn().mockResolvedValue(undefined)}
+      onRefreshAppointments={jest.fn().mockResolvedValue(undefined)}
       onRefreshCustomers={jest.fn().mockResolvedValue(undefined)}
+      onRefreshDeals={jest.fn().mockResolvedValue(undefined)}
       onRefreshFunds={jest.fn().mockResolvedValue(undefined)}
       onRefreshHome={jest.fn().mockResolvedValue(undefined)}
       onRefreshReferrals={jest.fn().mockResolvedValue(undefined)}
+      onShareDeal={jest.fn().mockResolvedValue(undefined)}
       onShareReferral={jest.fn().mockResolvedValue(undefined)}
       onSignOut={jest.fn().mockResolvedValue(undefined)}
       referrals={referrals}
@@ -220,9 +254,10 @@ describe('MobileAppShell', () => {
 
     expect(screen.getByText('Clientific Studio')).toBeTruthy();
     expect(screen.getByText('Run the day')).toBeTruthy();
-    expect(screen.getByTestId('mobile-home-open-schedule')).toBeTruthy();
+    expect(screen.getByTestId('mobile-home-open-appointments')).toBeTruthy();
     expect(screen.getByTestId('mobile-home-open-checkins')).toBeTruthy();
     expect(screen.getByTestId('mobile-home-open-customers')).toBeTruthy();
+    expect(screen.getByTestId('mobile-home-open-deals')).toBeTruthy();
   });
 
   it('wires the new tab bar', () => {
@@ -230,7 +265,7 @@ describe('MobileAppShell', () => {
 
     render(
       <MobileAppShell
-        activeTab="home"
+        activeTab="dashboard"
         appointments={appointments}
         appointmentsError={null}
         business={business}
@@ -239,6 +274,8 @@ describe('MobileAppShell', () => {
         customers={customers}
         customersError={null}
         customersSearchDraft=""
+        deals={deals}
+        dealsError={null}
         funds={funds}
         fundsError={null}
         home={home}
@@ -249,36 +286,40 @@ describe('MobileAppShell', () => {
         isCheckInsRefreshing={false}
         isCustomersLoading={false}
         isCustomersRefreshing={false}
+        isDealsLoading={false}
+        isDealsRefreshing={false}
         isFundsLoading={false}
         isFundsRefreshing={false}
         isHomeRefreshing={false}
         isReferralsLoading={false}
         isReferralsRefreshing={false}
-        moreSection="referrals"
+        moreSection="checkins"
         onChangeCustomersSearchDraft={jest.fn()}
         onChangeMoreSection={jest.fn()}
         onChangeTab={onChangeTab}
         onCreateCheckIn={jest.fn().mockResolvedValue(undefined)}
-        onJumpAppointmentsToToday={jest.fn()}
         onJumpCheckInsToToday={jest.fn()}
+        onJumpAppointmentsToToday={jest.fn()}
         onLookupCheckIn={jest.fn().mockResolvedValue({ status: 'new', normalizedPhone: '5551234567', displayPhone: '(555) 123-4567' })}
-        onNextAppointmentsDate={jest.fn()}
         onNextCheckInsDate={jest.fn()}
+        onNextAppointmentsDate={jest.fn()}
         onNextCustomersPage={jest.fn()}
-        onOpenCheckIns={jest.fn()}
+        onOpenAppointments={jest.fn()}
         onOpenCustomers={jest.fn()}
+        onOpenDeals={jest.fn()}
         onOpenFunds={jest.fn()}
         onOpenReferrals={jest.fn()}
-        onOpenSchedule={jest.fn()}
-        onPreviousAppointmentsDate={jest.fn()}
         onPreviousCheckInsDate={jest.fn()}
+        onPreviousAppointmentsDate={jest.fn()}
         onPreviousCustomersPage={jest.fn()}
-        onRefreshAppointments={jest.fn().mockResolvedValue(undefined)}
         onRefreshCheckIns={jest.fn().mockResolvedValue(undefined)}
+        onRefreshAppointments={jest.fn().mockResolvedValue(undefined)}
         onRefreshCustomers={jest.fn().mockResolvedValue(undefined)}
+        onRefreshDeals={jest.fn().mockResolvedValue(undefined)}
         onRefreshFunds={jest.fn().mockResolvedValue(undefined)}
         onRefreshHome={jest.fn().mockResolvedValue(undefined)}
         onRefreshReferrals={jest.fn().mockResolvedValue(undefined)}
+        onShareDeal={jest.fn().mockResolvedValue(undefined)}
         onShareReferral={jest.fn().mockResolvedValue(undefined)}
         onSignOut={jest.fn().mockResolvedValue(undefined)}
         referrals={referrals}
@@ -286,7 +327,7 @@ describe('MobileAppShell', () => {
       />,
     );
 
-    fireEvent.press(screen.getByTestId('mobile-tab-schedule'));
-    expect(onChangeTab).toHaveBeenCalledWith('schedule');
+    fireEvent.press(screen.getByTestId('mobile-tab-appointments'));
+    expect(onChangeTab).toHaveBeenCalledWith('appointments');
   });
 });

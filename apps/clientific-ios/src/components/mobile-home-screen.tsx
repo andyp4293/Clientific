@@ -15,11 +15,12 @@ type MobileHomeScreenProps = {
   error: string | null;
   isRefreshing: boolean;
   summary: MobileHomeSummary;
+  onOpenDeals: () => void;
   onOpenCheckIns: () => void;
   onOpenCustomers: () => void;
   onOpenFunds: () => void;
   onOpenReferrals: () => void;
-  onOpenSchedule: () => void;
+  onOpenAppointments: () => void;
   onRefresh: () => Promise<void>;
 };
 
@@ -27,11 +28,12 @@ export function MobileHomeScreen({
   error,
   isRefreshing,
   summary,
+  onOpenDeals,
   onOpenCheckIns,
   onOpenCustomers,
   onOpenFunds,
   onOpenReferrals,
-  onOpenSchedule,
+  onOpenAppointments,
   onRefresh,
 }: MobileHomeScreenProps) {
   const colorScheme = useColorScheme();
@@ -60,7 +62,7 @@ export function MobileHomeScreen({
           <Text style={[styles.heroSubtitle, { color: theme.mutedText }]}>
             {isReferralOnly
               ? 'Track referral performance and payout readiness in a cleaner mobile flow.'
-              : 'Keep referrals, payout status, and today’s schedule in one mobile-first view.'}
+              : 'Keep referrals, payout status, and today’s appointments in one mobile-first view.'}
           </Text>
         </View>
 
@@ -154,15 +156,15 @@ export function MobileHomeScreen({
         <View style={styles.quickActionGrid}>
           <Pressable
             accessibilityRole="button"
-            onPress={onOpenSchedule}
+            onPress={onOpenAppointments}
             style={[
               styles.quickActionCard,
               { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
             ]}
-            testID="mobile-home-open-schedule">
-            <Text style={[styles.quickActionTitle, { color: theme.text }]}>Schedule</Text>
+            testID="mobile-home-open-appointments">
+            <Text style={[styles.quickActionTitle, { color: theme.text }]}>Appointments</Text>
             <Text style={[styles.quickActionText, { color: theme.mutedText }]}>
-              Review today&apos;s appointments
+              Review today&apos;s bookings
             </Text>
           </Pressable>
 
@@ -191,6 +193,20 @@ export function MobileHomeScreen({
             <Text style={[styles.quickActionTitle, { color: theme.text }]}>Customers</Text>
             <Text style={[styles.quickActionText, { color: theme.mutedText }]}>
               Search and review records
+            </Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={onOpenDeals}
+            style={[
+              styles.quickActionCard,
+              { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+            ]}
+            testID="mobile-home-open-deals">
+            <Text style={[styles.quickActionTitle, { color: theme.text }]}>Deals</Text>
+            <Text style={[styles.quickActionText, { color: theme.mutedText }]}>
+              Watch live offers and share links
             </Text>
           </Pressable>
         </View>

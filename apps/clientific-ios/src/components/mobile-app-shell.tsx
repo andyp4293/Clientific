@@ -9,18 +9,20 @@ import type {
   MobileCheckInSubmissionInput,
   MobileCheckInsSummary,
   MobileCustomersSummary,
+  MobileDealsSummary,
   MobileFundsSummary,
   MobileHomeSummary,
   MobileReferralsSummary,
 } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
-import { MobileCheckinsScreen } from '@/components/mobile-checkins-screen';
 import { MobileCustomersScreen } from '@/components/mobile-customers-screen';
+import { MobileDealsScreen } from '@/components/mobile-deals-screen';
 import { MobileHomeScreen } from '@/components/mobile-home-screen';
 import { MobileMoreScreen, type MobileMoreSection } from '@/components/mobile-more-screen';
+import { MobileNavIcon, type MobileNavIconName } from '@/components/mobile-nav-icon';
 import { MobileScheduleScreen } from '@/components/mobile-schedule-screen';
 
-export type MobileAppTab = 'home' | 'schedule' | 'checkins' | 'customers' | 'more';
+export type MobileAppTab = 'dashboard' | 'appointments' | 'customers' | 'deals' | 'more';
 
 type MobileAppShellProps = {
   activeTab: MobileAppTab;
@@ -32,6 +34,8 @@ type MobileAppShellProps = {
   customers: MobileCustomersSummary | null;
   customersError: string | null;
   customersSearchDraft: string;
+  deals: MobileDealsSummary | null;
+  dealsError: string | null;
   funds: MobileFundsSummary | null;
   fundsError: string | null;
   home: MobileHomeSummary;
@@ -42,6 +46,8 @@ type MobileAppShellProps = {
   isCheckInsRefreshing: boolean;
   isCustomersLoading: boolean;
   isCustomersRefreshing: boolean;
+  isDealsLoading: boolean;
+  isDealsRefreshing: boolean;
   isFundsLoading: boolean;
   isFundsRefreshing: boolean;
   isHomeRefreshing: boolean;
@@ -54,38 +60,40 @@ type MobileAppShellProps = {
   onCreateCheckIn: (
     input: MobileCheckInSubmissionInput,
   ) => Promise<MobileCheckInMutationResponse>;
-  onJumpAppointmentsToToday: () => void;
   onJumpCheckInsToToday: () => void;
+  onJumpAppointmentsToToday: () => void;
   onLookupCheckIn: (phone: string) => Promise<MobileCheckInLookupResponse>;
-  onNextAppointmentsDate: () => void;
   onNextCheckInsDate: () => void;
+  onNextAppointmentsDate: () => void;
   onNextCustomersPage: () => void;
-  onOpenCheckIns: () => void;
+  onOpenAppointments: () => void;
   onOpenCustomers: () => void;
+  onOpenDeals: () => void;
   onOpenFunds: () => void;
   onOpenReferrals: () => void;
-  onOpenSchedule: () => void;
-  onPreviousAppointmentsDate: () => void;
   onPreviousCheckInsDate: () => void;
+  onPreviousAppointmentsDate: () => void;
   onPreviousCustomersPage: () => void;
-  onRefreshAppointments: () => Promise<void>;
   onRefreshCheckIns: () => Promise<void>;
+  onRefreshAppointments: () => Promise<void>;
   onRefreshCustomers: () => Promise<void>;
+  onRefreshDeals: () => Promise<void>;
   onRefreshFunds: () => Promise<void>;
   onRefreshHome: () => Promise<void>;
   onRefreshReferrals: () => Promise<void>;
+  onShareDeal: (deal: MobileDealsSummary['deals'][number]) => Promise<void>;
   onShareReferral: () => Promise<void>;
   onSignOut: () => Promise<void>;
   referrals: MobileReferralsSummary | null;
   referralsError: string | null;
 };
 
-const TAB_LABELS: Array<{ key: MobileAppTab; label: string }> = [
-  { key: 'home', label: 'Home' },
-  { key: 'schedule', label: 'Schedule' },
-  { key: 'checkins', label: 'Check-ins' },
-  { key: 'customers', label: 'Customers' },
-  { key: 'more', label: 'More' },
+const TAB_LABELS: Array<{ key: MobileAppTab; label: string; icon: MobileNavIconName }> = [
+  { key: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+  { key: 'appointments', label: 'Appointments', icon: 'appointments' },
+  { key: 'customers', label: 'Customers', icon: 'customers' },
+  { key: 'deals', label: 'Deals', icon: 'deals' },
+  { key: 'more', label: 'More', icon: 'more' },
 ];
 
 export function MobileAppShell({
@@ -98,6 +106,8 @@ export function MobileAppShell({
   customers,
   customersError,
   customersSearchDraft,
+  deals,
+  dealsError,
   funds,
   fundsError,
   home,
@@ -108,6 +118,8 @@ export function MobileAppShell({
   isCheckInsRefreshing,
   isCustomersLoading,
   isCustomersRefreshing,
+  isDealsLoading,
+  isDealsRefreshing,
   isFundsLoading,
   isFundsRefreshing,
   isHomeRefreshing,
@@ -118,26 +130,28 @@ export function MobileAppShell({
   onChangeMoreSection,
   onChangeTab,
   onCreateCheckIn,
-  onJumpAppointmentsToToday,
   onJumpCheckInsToToday,
+  onJumpAppointmentsToToday,
   onLookupCheckIn,
-  onNextAppointmentsDate,
   onNextCheckInsDate,
+  onNextAppointmentsDate,
   onNextCustomersPage,
-  onOpenCheckIns,
+  onOpenAppointments,
   onOpenCustomers,
+  onOpenDeals,
   onOpenFunds,
   onOpenReferrals,
-  onOpenSchedule,
-  onPreviousAppointmentsDate,
   onPreviousCheckInsDate,
+  onPreviousAppointmentsDate,
   onPreviousCustomersPage,
-  onRefreshAppointments,
   onRefreshCheckIns,
+  onRefreshAppointments,
   onRefreshCustomers,
+  onRefreshDeals,
   onRefreshFunds,
   onRefreshHome,
   onRefreshReferrals,
+  onShareDeal,
   onShareReferral,
   onSignOut,
   referrals,
@@ -150,21 +164,25 @@ export function MobileAppShell({
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={styles.content}>
-          {activeTab === 'home' ? (
+          {activeTab === 'dashboard' ? (
             <MobileHomeScreen
               error={homeError}
               isRefreshing={isHomeRefreshing}
               summary={home}
-              onOpenCheckIns={onOpenCheckIns}
+              onOpenAppointments={onOpenAppointments}
+              onOpenCheckIns={() => {
+                onChangeTab('more');
+                onChangeMoreSection('checkins');
+              }}
               onOpenCustomers={onOpenCustomers}
+              onOpenDeals={onOpenDeals}
               onOpenFunds={onOpenFunds}
               onOpenReferrals={onOpenReferrals}
-              onOpenSchedule={onOpenSchedule}
               onRefresh={onRefreshHome}
             />
           ) : null}
 
-          {activeTab === 'schedule' ? (
+          {activeTab === 'appointments' ? (
             <MobileScheduleScreen
               data={appointments}
               error={appointmentsError}
@@ -174,21 +192,6 @@ export function MobileAppShell({
               onNextDate={onNextAppointmentsDate}
               onPreviousDate={onPreviousAppointmentsDate}
               onRefresh={onRefreshAppointments}
-            />
-          ) : null}
-
-          {activeTab === 'checkins' ? (
-            <MobileCheckinsScreen
-              data={checkIns}
-              error={checkInsError}
-              isLoading={isCheckInsLoading}
-              isRefreshing={isCheckInsRefreshing}
-              onJumpToToday={onJumpCheckInsToToday}
-              onLookup={onLookupCheckIn}
-              onNextDate={onNextCheckInsDate}
-              onPreviousDate={onPreviousCheckInsDate}
-              onRefresh={onRefreshCheckIns}
-              onSubmit={onCreateCheckIn}
             />
           ) : null}
 
@@ -206,18 +209,40 @@ export function MobileAppShell({
             />
           ) : null}
 
+          {activeTab === 'deals' ? (
+            <MobileDealsScreen
+              data={deals}
+              error={dealsError}
+              isLoading={isDealsLoading}
+              isRefreshing={isDealsRefreshing}
+              onOpenFunds={onOpenFunds}
+              onRefresh={onRefreshDeals}
+              onShareDeal={onShareDeal}
+            />
+          ) : null}
+
           {activeTab === 'more' ? (
             <MobileMoreScreen
               activeSection={moreSection}
               business={business}
+              checkIns={checkIns}
+              checkInsError={checkInsError}
               funds={funds}
               fundsError={fundsError}
               home={home}
+              isCheckInsLoading={isCheckInsLoading}
+              isCheckInsRefreshing={isCheckInsRefreshing}
               isFundsLoading={isFundsLoading}
               isFundsRefreshing={isFundsRefreshing}
               isReferralsLoading={isReferralsLoading}
               isReferralsRefreshing={isReferralsRefreshing}
               onChangeSection={onChangeMoreSection}
+              onCreateCheckIn={onCreateCheckIn}
+              onJumpCheckInsToToday={onJumpCheckInsToToday}
+              onLookupCheckIn={onLookupCheckIn}
+              onNextCheckInsDate={onNextCheckInsDate}
+              onPreviousCheckInsDate={onPreviousCheckInsDate}
+              onRefreshCheckIns={onRefreshCheckIns}
               onRefreshFunds={onRefreshFunds}
               onRefreshReferrals={onRefreshReferrals}
               onShareReferral={onShareReferral}
@@ -247,10 +272,23 @@ export function MobileAppShell({
                 style={[
                   styles.tabButton,
                   {
-                    backgroundColor: isActive ? theme.accentSoft : 'transparent',
+                    backgroundColor: 'transparent',
                   },
                 ]}
                 testID={`mobile-tab-${tab.key}`}>
+                <View
+                  style={[
+                    styles.tabIconBadge,
+                    {
+                      backgroundColor: isActive ? theme.accentSoft : 'transparent',
+                    },
+                  ]}>
+                  <MobileNavIcon
+                    color={isActive ? theme.accent : theme.mutedText}
+                    name={tab.icon}
+                    size={20}
+                  />
+                </View>
                 <Text
                   style={[
                     styles.tabLabel,
@@ -282,23 +320,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderTopWidth: 1,
-    paddingHorizontal: 10,
-    paddingTop: 10,
-    paddingBottom: 14,
-    gap: 8,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 12,
   },
   tabButton: {
     flex: 1,
-    minHeight: 48,
+    minHeight: 52,
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
+    gap: 3,
+  },
+  tabIconBadge: {
+    width: 40,
+    height: 26,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tabLabel: {
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '800',
-    letterSpacing: 0.1,
+    fontSize: 10,
+    lineHeight: 12,
+    fontWeight: '700',
   },
 });
