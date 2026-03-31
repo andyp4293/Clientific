@@ -290,6 +290,9 @@ export function MobileAppShell({
                   />
                 </View>
                 <Text
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.75}
+                  numberOfLines={1}
                   style={[
                     styles.tabLabel,
                     { color: isActive ? theme.accent : theme.mutedText },
@@ -344,5 +347,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 12,
     fontWeight: '700',
+    textAlign: 'center',
   },
 });
