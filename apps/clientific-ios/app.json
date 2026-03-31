@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "app.clientific.mobile"
+      "bundleIdentifier": "app.clientific.mobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "web": {
       "output": "static",
@@ -28,11 +31,16 @@
       "expo-secure-store"
     ],
     "extra": {
-      "webAppUrl": "https://www.clientific.app"
+      "webAppUrl": "https://www.clientific.app",
+      "router": {},
+      "eas": {
+        "projectId": "33c69581-a923-49d3-9aa2-e69ee1b0a148"
+      }
     },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "owner": "andyp4293"
   }
 }
