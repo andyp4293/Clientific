@@ -32,6 +32,8 @@ type MobileAuthScreenProps = {
   isSubmitting: boolean;
   mode: MobileAuthMode;
   notice: string | null;
+  onOpenPrivacyPolicy: () => Promise<void>;
+  onOpenTermsOfService: () => Promise<void>;
   verificationEmail: string;
   onBackToSignIn: () => void;
   onLogin: (email: string, password: string) => Promise<void>;
@@ -60,6 +62,8 @@ export function MobileAuthScreen({
   isSubmitting,
   mode,
   notice,
+  onOpenPrivacyPolicy,
+  onOpenTermsOfService,
   verificationEmail,
   onBackToSignIn,
   onLogin,
@@ -443,9 +447,29 @@ export function MobileAuthScreen({
                       ) : null}
                     </View>
                     <Text style={[styles.checkboxText, { color: theme.mutedText }]}>
-                      I agree to the terms of service.
+                      I agree to the Terms of Service.
                     </Text>
                   </Pressable>
+
+                  <View style={styles.legalLinksRow}>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => void onOpenTermsOfService()}
+                      testID="mobile-register-open-terms">
+                      <Text style={[styles.legalLinkText, { color: theme.accent }]}>
+                        View Terms
+                      </Text>
+                    </Pressable>
+                    <Text style={[styles.legalDivider, { color: theme.mutedText }]}>•</Text>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => void onOpenPrivacyPolicy()}
+                      testID="mobile-register-open-privacy">
+                      <Text style={[styles.legalLinkText, { color: theme.accent }]}>
+                        View Privacy
+                      </Text>
+                    </Pressable>
+                  </View>
 
                   <Pressable
                     accessibilityRole="button"
@@ -534,6 +558,25 @@ export function MobileAuthScreen({
                   </Pressable>
                 </View>
               ) : null}
+
+              <View style={styles.globalLegalLinks}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => void onOpenTermsOfService()}
+                  testID="mobile-auth-open-terms">
+                  <Text style={[styles.globalLegalLinkText, { color: theme.mutedText }]}>
+                    Terms of Service
+                  </Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => void onOpenPrivacyPolicy()}
+                  testID="mobile-auth-open-privacy">
+                  <Text style={[styles.globalLegalLinkText, { color: theme.mutedText }]}>
+                    Privacy Policy
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         </ScrollView>
@@ -699,6 +742,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  legalLinksRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: -2,
+  },
+  legalLinkText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
+  legalDivider: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
   primaryButton: {
     minHeight: 54,
     borderRadius: 18,
@@ -734,5 +793,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '700',
+  },
+  globalLegalLinks: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 18,
+    marginTop: 14,
+  },
+  globalLegalLinkText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '600',
   },
 });

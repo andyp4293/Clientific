@@ -19,7 +19,9 @@ export type MobileNavIconName =
   | 'customerView'
   | 'billing'
   | 'settings'
-  | 'account';
+  | 'account'
+  | 'legal'
+  | 'support';
 
 type MobileNavIconProps = {
   color: string;
@@ -46,6 +48,8 @@ const ICON_MAP: Record<MobileNavIconName, React.ComponentProps<typeof Feather>['
   billing: 'credit-card',
   settings: 'settings',
   account: 'user',
+  legal: 'shield',
+  support: 'help-circle',
 };
 
 export function MobileNavIcon({

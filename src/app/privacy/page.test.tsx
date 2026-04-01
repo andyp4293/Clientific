@@ -10,9 +10,11 @@ describe('Privacy policy page', () => {
 
     expect(screen.getByRole('heading', { name: /privacy policy/i })).toBeInTheDocument();
     expect(screen.getByText(/last updated:/i)).toBeInTheDocument();
-    expect(screen.getByText(/march 25, 2026/i)).toBeInTheDocument();
+    expect(screen.getByText(/april 1, 2026/i)).toBeInTheDocument();
     expect(screen.getByText(/billing and payout data/i)).toBeInTheDocument();
+    expect(screen.getByText(/mobile app session data/i)).toBeInTheDocument();
     expect(screen.getByText(/we do not sell personal information for money/i)).toBeInTheDocument();
+    expect(screen.getByText(/level of privacy and security consistent with this privacy policy/i)).toBeInTheDocument();
     expect(screen.getByText(/california consumer privacy act/i)).toBeInTheDocument();
   });
 });

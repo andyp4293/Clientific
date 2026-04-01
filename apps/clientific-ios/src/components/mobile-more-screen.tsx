@@ -45,6 +45,12 @@ import { MobileRedeemScreen } from '@/components/mobile-redeem-screen';
 import { MobileReferralsScreen } from '@/components/mobile-referrals-screen';
 import { MobileReviewsScreen } from '@/components/mobile-reviews-screen';
 import { MobileServicesScreen } from '@/components/mobile-services-screen';
+import {
+  APP_PRIVACY_URL,
+  APP_SUPPORT_EMAIL,
+  APP_SUPPORT_URL,
+  APP_TERMS_URL,
+} from '@/lib/clientific-brand';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
 
 export type MobileMoreSection =
@@ -423,6 +429,83 @@ export function MobileMoreScreen({
             </View>
           </View>
         ))}
+
+        <View style={styles.sectionBlock}>
+          <Text style={[styles.sectionLabel, { color: theme.mutedText }]}>Legal & Support</Text>
+          <View style={styles.sectionItems}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void onOpenExternalUrl(APP_PRIVACY_URL)}
+              style={[
+                styles.menuItem,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}
+              testID="mobile-more-privacy-policy">
+              <View
+                style={[
+                  styles.menuIconBadge,
+                  { backgroundColor: theme.accentSoft },
+                ]}>
+                <MobileNavIcon color={theme.accent} name="legal" size={18} />
+              </View>
+              <View style={styles.menuCopy}>
+                <Text style={[styles.menuTitle, { color: theme.text }]}>Privacy Policy</Text>
+                <Text style={[styles.menuHelper, { color: theme.mutedText }]}>
+                  Review how Clientific handles business, customer, and mobile app data.
+                </Text>
+              </View>
+              <MobileNavIcon color={theme.mutedText} name="more" size={18} />
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void onOpenExternalUrl(APP_TERMS_URL)}
+              style={[
+                styles.menuItem,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}
+              testID="mobile-more-terms-of-service">
+              <View
+                style={[
+                  styles.menuIconBadge,
+                  { backgroundColor: theme.accentSoft },
+                ]}>
+                <MobileNavIcon color={theme.accent} name="legal" size={18} />
+              </View>
+              <View style={styles.menuCopy}>
+                <Text style={[styles.menuTitle, { color: theme.text }]}>Terms of Service</Text>
+                <Text style={[styles.menuHelper, { color: theme.mutedText }]}>
+                  Read the current service terms for the web platform and iPhone app.
+                </Text>
+              </View>
+              <MobileNavIcon color={theme.mutedText} name="more" size={18} />
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void onOpenExternalUrl(APP_SUPPORT_URL)}
+              style={[
+                styles.menuItem,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}
+              testID="mobile-more-support">
+              <View
+                style={[
+                  styles.menuIconBadge,
+                  { backgroundColor: theme.accentSoft },
+                ]}>
+                <MobileNavIcon color={theme.accent} name="support" size={18} />
+              </View>
+              <View style={styles.menuCopy}>
+                <Text style={[styles.menuTitle, { color: theme.text }]}>Support</Text>
+                <Text style={[styles.menuHelper, { color: theme.mutedText }]}>
+                  Open the support page or contact {APP_SUPPORT_EMAIL} if you need help.
+                </Text>
+              </View>
+              <MobileNavIcon color={theme.mutedText} name="more" size={18} />
+            </Pressable>
+          </View>
+        </View>
 
         <Pressable
           accessibilityRole="button"

@@ -17,8 +17,8 @@ export default function PrivacyPolicyPage() {
   return (
     <LegalPageLayout
       title="Privacy Policy"
-      subtitle="How Clientific collects, uses, stores, and discloses information for business accounts, booking flows, messaging, and payouts."
-      lastUpdated="March 25, 2026"
+      subtitle="How Clientific collects, uses, stores, and discloses information for its website, dashboard, iPhone app, booking flows, messaging, AI receptionist, and payouts."
+      lastUpdated="April 1, 2026"
       sections={sections}
       secondaryCtaHref="/terms"
       secondaryCtaLabel="View Terms"
@@ -26,7 +26,8 @@ export default function PrivacyPolicyPage() {
       <LegalSection id="scope" title="1. Scope and roles">
         <p>
           This Privacy Policy explains how {APP_NAME} collects, uses, and discloses information when you use
-          our website, dashboard, booking flows, messaging tools, AI receptionist features, and payout tools.
+          our website, dashboard, iPhone app, booking flows, messaging tools, AI receptionist features, and
+          payout tools.
         </p>
         <p>
           In most cases, {APP_NAME} acts as the provider of the software platform used by service businesses.
@@ -73,6 +74,10 @@ export default function PrivacyPolicyPage() {
             visited, referral URLs, session activity, cookies, and similar technologies used for security,
             authentication, analytics, and product performance.
           </li>
+          <li>
+            <strong>Mobile app session data.</strong> If you use the iPhone app, we may store an authentication
+            token in secure device storage to keep you signed in and to reopen your account on that device.
+          </li>
         </ul>
         <p>
           We collect information directly from you, from businesses and customers using the platform, from your
@@ -85,6 +90,7 @@ export default function PrivacyPolicyPage() {
         <p>We use information to operate and improve the platform, including to:</p>
         <ul className="list-disc space-y-2 pl-6">
           <li>create and manage accounts, authenticate users, and secure access to the platform;</li>
+          <li>keep returning mobile app sessions signed in on a device you already authorized;</li>
           <li>power booking pages, customer records, appointment reminders, and review flows;</li>
           <li>send transactional SMS and email communications requested by businesses or triggered by bookings;</li>
           <li>enable optional deal, referral, and promotional messaging workflows where consent and settings allow;</li>
@@ -126,6 +132,11 @@ export default function PrivacyPolicyPage() {
             legal obligations.
           </li>
         </ul>
+        <p>
+          We require service providers acting on our behalf to process personal information only as needed to
+          support the service and under protections designed to provide a level of privacy and security
+          consistent with this Privacy Policy.
+        </p>
         <p>
           Businesses are responsible for the messages they choose to send through the platform and for ensuring
           they have the necessary permissions to use customer information for those messages.

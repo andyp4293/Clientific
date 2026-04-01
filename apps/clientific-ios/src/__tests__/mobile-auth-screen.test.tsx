@@ -13,6 +13,8 @@ describe('MobileAuthScreen', () => {
         isSubmitting={false}
         mode="sign-in"
         notice={null}
+        onOpenPrivacyPolicy={jest.fn().mockResolvedValue(undefined)}
+        onOpenTermsOfService={jest.fn().mockResolvedValue(undefined)}
         verificationEmail=""
         onBackToSignIn={jest.fn()}
         onLogin={onLogin}
@@ -40,6 +42,8 @@ describe('MobileAuthScreen', () => {
         isSubmitting={false}
         mode="register"
         notice={null}
+        onOpenPrivacyPolicy={jest.fn().mockResolvedValue(undefined)}
+        onOpenTermsOfService={jest.fn().mockResolvedValue(undefined)}
         verificationEmail=""
         onBackToSignIn={jest.fn()}
         onLogin={jest.fn().mockResolvedValue(undefined)}
@@ -80,6 +84,8 @@ describe('MobileAuthScreen', () => {
         isSubmitting={false}
         mode="verify"
         notice={null}
+        onOpenPrivacyPolicy={jest.fn().mockResolvedValue(undefined)}
+        onOpenTermsOfService={jest.fn().mockResolvedValue(undefined)}
         verificationEmail="owner@clientific.app"
         onBackToSignIn={jest.fn()}
         onLogin={jest.fn().mockResolvedValue(undefined)}
@@ -96,5 +102,37 @@ describe('MobileAuthScreen', () => {
 
     expect(onVerify).toHaveBeenCalledWith('owner@clientific.app', '123456');
     expect(onResendCode).toHaveBeenCalledWith('owner@clientific.app');
+  });
+
+  it('opens privacy and terms links from the auth flow', () => {
+    const onOpenPrivacyPolicy = jest.fn().mockResolvedValue(undefined);
+    const onOpenTermsOfService = jest.fn().mockResolvedValue(undefined);
+
+    render(
+      <MobileAuthScreen
+        error={null}
+        isResendingCode={false}
+        isSubmitting={false}
+        mode="register"
+        notice={null}
+        onOpenPrivacyPolicy={onOpenPrivacyPolicy}
+        onOpenTermsOfService={onOpenTermsOfService}
+        verificationEmail=""
+        onBackToSignIn={jest.fn()}
+        onLogin={jest.fn().mockResolvedValue(undefined)}
+        onModeChange={jest.fn()}
+        onRegister={jest.fn().mockResolvedValue(undefined)}
+        onResendCode={jest.fn().mockResolvedValue(undefined)}
+        onVerify={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId('mobile-register-open-terms'));
+    fireEvent.press(screen.getByTestId('mobile-register-open-privacy'));
+    fireEvent.press(screen.getByTestId('mobile-auth-open-terms'));
+    fireEvent.press(screen.getByTestId('mobile-auth-open-privacy'));
+
+    expect(onOpenTermsOfService).toHaveBeenCalledTimes(2);
+    expect(onOpenPrivacyPolicy).toHaveBeenCalledTimes(2);
   });
 });

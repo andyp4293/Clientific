@@ -63,6 +63,7 @@ import {
   updateMobileBusinessHours,
   updateMobileBusinessProfile,
 } from '@/lib/clientific-api';
+import { APP_PRIVACY_URL, APP_TERMS_URL } from '@/lib/clientific-brand';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
 import {
   MobileAppShell,
@@ -1602,6 +1603,8 @@ export function ClientificNativeApp() {
         isSubmitting={isSubmittingAuth}
         mode={authMode}
         notice={authNotice}
+        onOpenPrivacyPolicy={() => handleOpenExternalUrl(APP_PRIVACY_URL)}
+        onOpenTermsOfService={() => handleOpenExternalUrl(APP_TERMS_URL)}
         verificationEmail={pendingVerification?.email ?? ''}
         onBackToSignIn={() => {
           setAuthMode('sign-in');

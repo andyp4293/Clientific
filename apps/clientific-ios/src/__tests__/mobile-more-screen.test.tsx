@@ -374,6 +374,10 @@ describe('MobileMoreScreen', () => {
     expect(screen.getByText('Payouts')).toBeTruthy();
     expect(screen.getByText('Billing')).toBeTruthy();
     expect(screen.getByText('Settings')).toBeTruthy();
+    expect(screen.getByText('Legal & Support')).toBeTruthy();
+    expect(screen.getByText('Privacy Policy')).toBeTruthy();
+    expect(screen.getByText('Terms of Service')).toBeTruthy();
+    expect(screen.getByText('Support')).toBeTruthy();
     expect(screen.getByText('Open the rest of your business tools from one place.')).toBeTruthy();
     expect(screen.queryByText('App')).toBeNull();
     expect(screen.queryByText('Web')).toBeNull();
@@ -395,6 +399,20 @@ describe('MobileMoreScreen', () => {
 
     fireEvent.press(screen.getByTestId('mobile-more-menu-ai-receptionist'));
     expect(onChangeSection).toHaveBeenCalledWith('aiReceptionist');
+  });
+
+  it('opens privacy, terms, and support links from the menu', () => {
+    const onOpenExternalUrl = jest.fn().mockResolvedValue(undefined);
+
+    render(<MobileMoreScreen {...createProps({ onOpenExternalUrl })} />);
+
+    fireEvent.press(screen.getByTestId('mobile-more-privacy-policy'));
+    fireEvent.press(screen.getByTestId('mobile-more-terms-of-service'));
+    fireEvent.press(screen.getByTestId('mobile-more-support'));
+
+    expect(onOpenExternalUrl).toHaveBeenNthCalledWith(1, 'https://www.clientific.app/privacy');
+    expect(onOpenExternalUrl).toHaveBeenNthCalledWith(2, 'https://www.clientific.app/terms');
+    expect(onOpenExternalUrl).toHaveBeenNthCalledWith(3, 'https://www.clientific.app/support');
   });
 
   it('renders the settings editor when settings is selected', () => {

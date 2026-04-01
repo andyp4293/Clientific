@@ -5,6 +5,7 @@ import { APP_NAME, APP_SUPPORT_EMAIL, APP_SUPPORT_PATH } from '@/lib/brand';
 const sections = [
   { id: 'acceptance', title: 'Acceptance and eligibility' },
   { id: 'service', title: 'Service scope' },
+  { id: 'app-stores', title: 'App stores and device platforms' },
   { id: 'accounts-billing', title: 'Accounts, trials, and billing' },
   { id: 'customer-data', title: 'Customer data and compliance' },
   { id: 'messaging-ai', title: 'Messaging, telephony, and AI' },
@@ -18,8 +19,8 @@ export default function TermsOfServicePage() {
   return (
     <LegalPageLayout
       title="Terms of Service"
-      subtitle="The rules for using Clientific, including subscriptions, messaging, AI receptionist, deals, and payouts."
-      lastUpdated="March 25, 2026"
+      subtitle="The rules for using Clientific across the website, dashboard, iPhone app, subscriptions, messaging, AI receptionist, deals, and payouts."
+      lastUpdated="April 1, 2026"
       sections={sections}
       secondaryCtaHref="/privacy"
       secondaryCtaLabel="View Privacy Policy"
@@ -48,7 +49,22 @@ export default function TermsOfServicePage() {
         </p>
       </LegalSection>
 
-      <LegalSection id="accounts-billing" title="3. Accounts, trials, and billing">
+      <LegalSection id="app-stores" title="3. App stores and device platforms">
+        <p>
+          If you download or use the iPhone app, you also agree to any applicable rules, terms, and technical
+          requirements imposed by Apple and the App Store.
+        </p>
+        <p>
+          Unless a separate custom license agreement is provided through App Store Connect, use of the iPhone
+          app is also subject to Apple&apos;s standard Licensed Application End User License Agreement.
+        </p>
+        <p>
+          Availability of mobile app features may depend on device compatibility, operating system support,
+          store availability, and third-party service uptime.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="accounts-billing" title="4. Accounts, trials, and billing">
         <p>
           You must provide accurate, current information and keep your login credentials secure. You are
           responsible for all activity under your account and for promptly notifying us of unauthorized access.
@@ -70,7 +86,7 @@ export default function TermsOfServicePage() {
         </p>
       </LegalSection>
 
-      <LegalSection id="customer-data" title="4. Customer data and compliance">
+      <LegalSection id="customer-data" title="5. Customer data and compliance">
         <p>
           As between you and {APP_NAME}, you retain your rights in the business and customer data you submit to
           the platform. You grant us the rights needed to host, process, transmit, display, and use that data to
@@ -90,7 +106,7 @@ export default function TermsOfServicePage() {
         </p>
       </LegalSection>
 
-      <LegalSection id="messaging-ai" title="5. Messaging, telephony, and AI">
+      <LegalSection id="messaging-ai" title="6. Messaging, telephony, and AI">
         <p>
           {APP_NAME} supports appointment reminders, transactional messages, deal SMS messages, and other
           communications. You are responsible for choosing when to send messages and for making sure the
@@ -107,7 +123,7 @@ export default function TermsOfServicePage() {
         </p>
       </LegalSection>
 
-      <LegalSection id="acceptable-use" title="6. Acceptable use">
+      <LegalSection id="acceptable-use" title="7. Acceptable use">
         <p>You may not use the service to:</p>
         <ul className="list-disc space-y-2 pl-6">
           <li>break the law or violate the rights of others;</li>
@@ -119,7 +135,7 @@ export default function TermsOfServicePage() {
         </ul>
       </LegalSection>
 
-      <LegalSection id="ownership" title="7. Ownership and feedback">
+      <LegalSection id="ownership" title="8. Ownership and feedback">
         <p>
           {APP_NAME} and its software, design, branding, and underlying technology are owned by us or our
           licensors and are protected by intellectual property laws.
@@ -129,7 +145,7 @@ export default function TermsOfServicePage() {
         </p>
       </LegalSection>
 
-      <LegalSection id="disclaimers-liability" title="8. Disclaimers and liability">
+      <LegalSection id="disclaimers-liability" title="9. Disclaimers and liability">
         <p>
           The service is provided on an &quot;as is&quot; and &quot;as available&quot; basis. To the fullest extent permitted by law,
           we disclaim warranties of merchantability, fitness for a particular purpose, non-infringement, and any
@@ -148,7 +164,7 @@ export default function TermsOfServicePage() {
         </p>
       </LegalSection>
 
-      <LegalSection id="termination" title="9. Termination and changes">
+      <LegalSection id="termination" title="10. Termination and changes">
         <p>
           You may stop using the service at any time. We may suspend or terminate access if you violate these
           Terms, create risk for the platform or others, or if we are legally required to do so.
