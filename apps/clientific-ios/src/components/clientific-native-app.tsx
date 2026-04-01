@@ -14,12 +14,14 @@ import {
   createMobileCheckIn,
   ClientificApiError,
   confirmVerificationCode,
+  fetchMobileAiReceptionist,
   fetchMobileAnalytics,
   fetchMobileAppointments,
   fetchMobileBilling,
   fetchMobileBusinessHours,
   fetchMobileBusinessProfile,
   fetchMobileCheckIns,
+  fetchMobileCustomerView,
   fetchMobileCustomers,
   fetchMobileDeals,
   fetchMobileFunds,
@@ -30,6 +32,8 @@ import {
   getClientificWebUrl,
   lookupMobileCheckIn,
   lookupMobileRedemption,
+  MobileAiReceptionistSummary,
+  MobileAiReceptionistUpdateInput,
   MobileAnalyticsRange,
   MobileAnalyticsSummary,
   MobileAppointmentsSummary,
@@ -38,6 +42,7 @@ import {
   MobileBusinessProfile,
   MobileCheckInSubmissionInput,
   MobileCheckInsSummary,
+  MobileCustomerViewSummary,
   MobileCustomersSummary,
   MobileDealRecord,
   MobileDealsSummary,
@@ -54,6 +59,7 @@ import {
   redeemMobileCode,
   registerWithClientific,
   resendVerificationCode,
+  updateMobileAiReceptionist,
   updateMobileBusinessHours,
   updateMobileBusinessProfile,
 } from '@/lib/clientific-api';
@@ -107,10 +113,15 @@ export function ClientificNativeApp() {
   const [isResendingCode, setIsResendingCode] = useState(false);
   const [isLoadingHome, setIsLoadingHome] = useState(false);
   const [isRefreshingHome, setIsRefreshingHome] = useState(false);
+  const [isLoadingAiReceptionist, setIsLoadingAiReceptionist] = useState(false);
+  const [isRefreshingAiReceptionist, setIsRefreshingAiReceptionist] = useState(false);
+  const [isSavingAiReceptionist, setIsSavingAiReceptionist] = useState(false);
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(false);
   const [isRefreshingAppointments, setIsRefreshingAppointments] = useState(false);
   const [isLoadingCheckIns, setIsLoadingCheckIns] = useState(false);
   const [isRefreshingCheckIns, setIsRefreshingCheckIns] = useState(false);
+  const [isLoadingCustomerView, setIsLoadingCustomerView] = useState(false);
+  const [isRefreshingCustomerView, setIsRefreshingCustomerView] = useState(false);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
   const [isRefreshingCustomers, setIsRefreshingCustomers] = useState(false);
   const [isLoadingDeals, setIsLoadingDeals] = useState(false);
@@ -135,9 +146,11 @@ export function ClientificNativeApp() {
   const [isOpeningBillingPortal, setIsOpeningBillingPortal] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
+  const [aiReceptionistError, setAiReceptionistError] = useState<string | null>(null);
   const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
   const [businessProfileError, setBusinessProfileError] = useState<string | null>(null);
   const [checkInsError, setCheckInsError] = useState<string | null>(null);
+  const [customerViewError, setCustomerViewError] = useState<string | null>(null);
   const [customersError, setCustomersError] = useState<string | null>(null);
   const [dealsError, setDealsError] = useState<string | null>(null);
   const [homeError, setHomeError] = useState<string | null>(null);
@@ -158,9 +171,11 @@ export function ClientificNativeApp() {
   const [customersSearchDraft, setCustomersSearchDraft] = useState('');
   const [customersSearchQuery, setCustomersSearchQuery] = useState('');
   const [session, setSession] = useState<MobileLoginResponse | null>(null);
+  const [aiReceptionist, setAiReceptionist] = useState<MobileAiReceptionistSummary | null>(null);
   const [appointments, setAppointments] = useState<MobileAppointmentsSummary | null>(null);
   const [businessProfile, setBusinessProfile] = useState<MobileBusinessProfile | null>(null);
   const [checkIns, setCheckIns] = useState<MobileCheckInsSummary | null>(null);
+  const [customerView, setCustomerView] = useState<MobileCustomerViewSummary | null>(null);
   const [customers, setCustomers] = useState<MobileCustomersSummary | null>(null);
   const [deals, setDeals] = useState<MobileDealsSummary | null>(null);
   const [home, setHome] = useState<MobileHomeSummary | null>(null);
@@ -175,9 +190,11 @@ export function ClientificNativeApp() {
   const signOut = useCallback(async (message?: string) => {
     await SecureStore.deleteItemAsync(MOBILE_SESSION_TOKEN_KEY);
     setSession(null);
+    setAiReceptionist(null);
     setAppointments(null);
     setBusinessProfile(null);
     setCheckIns(null);
+    setCustomerView(null);
     setCustomers(null);
     setDeals(null);
     setHome(null);
@@ -194,9 +211,11 @@ export function ClientificNativeApp() {
     setAuthMode('sign-in');
     setAuthError(null);
     setAuthNotice(null);
+    setAiReceptionistError(null);
     setAppointmentsError(null);
     setBusinessProfileError(null);
     setCheckInsError(null);
+    setCustomerViewError(null);
     setCustomersError(null);
     setDealsError(null);
     setHomeError(null);
@@ -265,6 +284,35 @@ export function ClientificNativeApp() {
     [handleSessionError],
   );
 
+  const loadAiReceptionist = useCallback(
+    async (token: string, isRefresh = false) => {
+      if (isRefresh) {
+        setIsRefreshingAiReceptionist(true);
+      } else {
+        setIsLoadingAiReceptionist(true);
+      }
+
+      try {
+        const nextAiReceptionist = await fetchMobileAiReceptionist(token);
+        setAiReceptionist(nextAiReceptionist);
+        setAiReceptionistError(null);
+      } catch (error) {
+        await handleSessionError(
+          error,
+          'Unable to load AI receptionist.',
+          setAiReceptionistError,
+        );
+      } finally {
+        if (isRefresh) {
+          setIsRefreshingAiReceptionist(false);
+        } else {
+          setIsLoadingAiReceptionist(false);
+        }
+      }
+    },
+    [handleSessionError],
+  );
+
   const loadAppointments = useCallback(
     async (token: string, date: string, isRefresh = false) => {
       if (isRefresh) {
@@ -310,6 +358,35 @@ export function ClientificNativeApp() {
         );
       } finally {
         setIsLoadingBusinessProfile(false);
+      }
+    },
+    [handleSessionError],
+  );
+
+  const loadCustomerView = useCallback(
+    async (token: string, isRefresh = false) => {
+      if (isRefresh) {
+        setIsRefreshingCustomerView(true);
+      } else {
+        setIsLoadingCustomerView(true);
+      }
+
+      try {
+        const nextCustomerView = await fetchMobileCustomerView(token);
+        setCustomerView(nextCustomerView);
+        setCustomerViewError(null);
+      } catch (error) {
+        await handleSessionError(
+          error,
+          'Unable to load customer view.',
+          setCustomerViewError,
+        );
+      } finally {
+        if (isRefresh) {
+          setIsRefreshingCustomerView(false);
+        } else {
+          setIsLoadingCustomerView(false);
+        }
       }
     },
     [handleSessionError],
@@ -655,6 +732,20 @@ export function ClientificNativeApp() {
     }
   }, [deals, isLoadingDeals, loadDeals, session]);
 
+  const shareCustomerViewLink = useCallback(
+    async (label: string, url: string) => {
+      try {
+        await Share.share({
+          message: `${session?.business.name ?? 'Clientific'} ${label}: ${url}`,
+        });
+        setCustomerViewError(null);
+      } catch (error) {
+        setCustomerViewError(getReadableError(error, 'Unable to share that link.'));
+      }
+    },
+    [session?.business.name],
+  );
+
   const shareReferral = useCallback(async () => {
     if (!referrals?.payoutReady || !referrals.referralCode) {
       return;
@@ -700,6 +791,32 @@ export function ClientificNativeApp() {
       setReviewsError(getReadableError(error, 'Unable to share the survey link.'));
     }
   }, [reviews?.surveyUrl, session?.business.name]);
+
+  const handleSaveAiReceptionist = useCallback(
+    async (input: MobileAiReceptionistUpdateInput) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      setIsSavingAiReceptionist(true);
+      setAiReceptionistError(null);
+
+      try {
+        const response = await updateMobileAiReceptionist(session.token, input);
+        setAiReceptionist(response);
+      } catch (error) {
+        await handleSessionError(
+          error,
+          'Unable to save AI receptionist.',
+          setAiReceptionistError,
+        );
+        throw new Error(getReadableError(error, 'Unable to save AI receptionist.'));
+      } finally {
+        setIsSavingAiReceptionist(false);
+      }
+    },
+    [handleSessionError, session],
+  );
 
   const handleOpenBillingPortal = useCallback(async () => {
     if (!session) {
@@ -1041,6 +1158,14 @@ export function ClientificNativeApp() {
     await loadHome(session.token, true);
   }, [loadHome, session]);
 
+  const handleRefreshAiReceptionist = useCallback(async () => {
+    if (!session) {
+      return;
+    }
+
+    await loadAiReceptionist(session.token, true);
+  }, [loadAiReceptionist, session]);
+
   const handleRefreshAppointments = useCallback(async () => {
     if (!session) {
       return;
@@ -1056,6 +1181,14 @@ export function ClientificNativeApp() {
 
     await loadCheckIns(session.token, checkInsDate, true);
   }, [checkInsDate, loadCheckIns, session]);
+
+  const handleRefreshCustomerView = useCallback(async () => {
+    if (!session) {
+      return;
+    }
+
+    await loadCustomerView(session.token, true);
+  }, [loadCustomerView, session]);
 
   const handleRefreshCustomers = useCallback(async () => {
     if (!session) {
@@ -1143,16 +1276,6 @@ export function ClientificNativeApp() {
 
     await loadBusinessProfile(session.token);
   }, [loadBusinessProfile, session]);
-
-  const handleOpenExternalRoute = useCallback(async (path: string) => {
-    const url = `${getClientificWebUrl()}${path}`;
-
-    try {
-      await WebBrowser.openBrowserAsync(url);
-    } catch (error) {
-      setHomeError(getReadableError(error, 'Unable to open that tool right now.'));
-    }
-  }, []);
 
   const handleOpenExternalUrl = useCallback(async (url: string) => {
     try {
@@ -1314,6 +1437,24 @@ export function ClientificNativeApp() {
 
     if (
       activeTab === 'more' &&
+      moreSection === 'aiReceptionist' &&
+      !aiReceptionist &&
+      !isLoadingAiReceptionist
+    ) {
+      void loadAiReceptionist(session.token);
+    }
+
+    if (
+      activeTab === 'more' &&
+      moreSection === 'customerView' &&
+      !customerView &&
+      !isLoadingCustomerView
+    ) {
+      void loadCustomerView(session.token);
+    }
+
+    if (
+      activeTab === 'more' &&
       moreSection === 'reviews' &&
       !reviews &&
       !isLoadingReviews
@@ -1360,6 +1501,7 @@ export function ClientificNativeApp() {
     }
   }, [
     activeTab,
+    aiReceptionist,
     analytics,
     analyticsRange,
     appointments,
@@ -1369,30 +1511,35 @@ export function ClientificNativeApp() {
     businessProfile,
     checkIns,
     checkInsDate,
+    customerView,
     customers,
     customersPage,
     customersSearchQuery,
     deals,
     funds,
     home,
+    isLoadingAiReceptionist,
     isLoadingAnalytics,
     isLoadingAppointments,
     isLoadingBilling,
     isLoadingBusinessHours,
     isLoadingBusinessProfile,
     isLoadingCheckIns,
+    isLoadingCustomerView,
     isLoadingCustomers,
     isLoadingDeals,
     isLoadingFunds,
     isLoadingReferrals,
     isLoadingReviews,
     isLoadingServices,
+    loadAiReceptionist,
     loadAnalytics,
     loadAppointments,
     loadBilling,
     loadBusinessHours,
     loadBusinessProfile,
     loadCheckIns,
+    loadCustomerView,
     loadCustomers,
     loadDeals,
     loadFunds,
@@ -1521,6 +1668,8 @@ export function ClientificNativeApp() {
   return (
     <MobileAppShell
       activeTab={activeTab}
+      aiReceptionist={aiReceptionist}
+      aiReceptionistError={aiReceptionistError}
       analytics={analytics}
       analyticsError={analyticsError}
       appointments={appointments}
@@ -1534,6 +1683,8 @@ export function ClientificNativeApp() {
       businessProfileError={businessProfileError}
       checkIns={checkIns}
       checkInsError={checkInsError}
+      customerView={customerView}
+      customerViewError={customerViewError}
       customers={customers}
       customersError={customersError}
       customersSearchDraft={customersSearchDraft}
@@ -1543,6 +1694,9 @@ export function ClientificNativeApp() {
       fundsError={fundsError}
       home={home}
       homeError={homeError}
+      isAiReceptionistLoading={isLoadingAiReceptionist}
+      isAiReceptionistRefreshing={isRefreshingAiReceptionist}
+      isAiReceptionistSaving={isSavingAiReceptionist}
       isAnalyticsLoading={isLoadingAnalytics}
       isAnalyticsRefreshing={isRefreshingAnalytics}
       isAppointmentsLoading={isLoadingAppointments}
@@ -1556,6 +1710,8 @@ export function ClientificNativeApp() {
       isBusinessProfileLoading={isLoadingBusinessProfile}
       isCheckInsLoading={isLoadingCheckIns}
       isCheckInsRefreshing={isRefreshingCheckIns}
+      isCustomerViewLoading={isLoadingCustomerView}
+      isCustomerViewRefreshing={isRefreshingCustomerView}
       isCustomersLoading={isLoadingCustomers}
       isCustomersRefreshing={isRefreshingCustomers}
       isDealsLoading={isLoadingDeals}
@@ -1584,7 +1740,6 @@ export function ClientificNativeApp() {
       onNextAppointmentsDate={goToNextAppointmentsDate}
       onNextCustomersPage={goToNextCustomersPage}
       onOpenBillingPortal={handleOpenBillingPortal}
-      onOpenExternalRoute={handleOpenExternalRoute}
       onOpenExternalUrl={handleOpenExternalUrl}
       onOpenAppointments={openAppointmentsTab}
       onOpenCustomers={openCustomersTab}
@@ -1595,12 +1750,14 @@ export function ClientificNativeApp() {
       onPreviousAppointmentsDate={goToPreviousAppointmentsDate}
       onPreviousCustomersPage={goToPreviousCustomersPage}
       onRedeemCode={handleRedeemCode}
+      onRefreshAiReceptionist={handleRefreshAiReceptionist}
       onRefreshAnalytics={handleRefreshAnalytics}
       onRefreshBilling={handleRefreshBilling}
       onRefreshBusinessHours={handleRefreshBusinessHours}
       onRefreshBusinessProfile={handleRefreshBusinessProfile}
       onRefreshCheckIns={handleRefreshCheckIns}
       onRefreshAppointments={handleRefreshAppointments}
+      onRefreshCustomerView={handleRefreshCustomerView}
       onRefreshCustomers={handleRefreshCustomers}
       onRefreshDeals={handleRefreshDeals}
       onRefreshFunds={handleRefreshFunds}
@@ -1608,8 +1765,10 @@ export function ClientificNativeApp() {
       onRefreshReferrals={handleRefreshReferrals}
       onRefreshReviews={handleRefreshReviews}
       onRefreshServices={handleRefreshServices}
+      onSaveAiReceptionist={handleSaveAiReceptionist}
       onSaveBusinessHours={handleSaveBusinessHours}
       onSaveBusinessProfile={handleSaveBusinessProfile}
+      onShareCustomerViewLink={shareCustomerViewLink}
       onShareDeal={shareDeal}
       onShareReferral={shareReferral}
       onShareReviewSurvey={shareReviewSurvey}

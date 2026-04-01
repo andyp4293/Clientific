@@ -9,6 +9,8 @@ import {
   View,
 } from 'react-native';
 import type {
+  MobileAiReceptionistSummary,
+  MobileAiReceptionistUpdateInput,
   MobileAnalyticsRange,
   MobileAnalyticsSummary,
   MobileBillingSummary,
@@ -20,6 +22,7 @@ import type {
   MobileCheckInMutationResponse,
   MobileCheckInSubmissionInput,
   MobileCheckInsSummary,
+  MobileCustomerViewSummary,
   MobileFundsSummary,
   MobileHomeSummary,
   MobileOnboardingInput,
@@ -29,10 +32,12 @@ import type {
   MobileReviewsSummary,
   MobileServicesSummary,
 } from '@/lib/clientific-api';
+import { MobileAiReceptionistScreen } from '@/components/mobile-ai-receptionist-screen';
 import { MobileAnalyticsScreen } from '@/components/mobile-analytics-screen';
 import { MobileBillingScreen } from '@/components/mobile-billing-screen';
 import { MobileBusinessHoursScreen } from '@/components/mobile-business-hours-screen';
 import { MobileCheckinsScreen } from '@/components/mobile-checkins-screen';
+import { MobileCustomerViewScreen } from '@/components/mobile-customer-view-screen';
 import { MobileFundsScreen } from '@/components/mobile-funds-screen';
 import { MobileNavIcon, type MobileNavIconName } from '@/components/mobile-nav-icon';
 import { MobileOnboardingScreen } from '@/components/mobile-onboarding-screen';
@@ -48,6 +53,8 @@ export type MobileMoreSection =
   | 'checkins'
   | 'redeem'
   | 'hours'
+  | 'aiReceptionist'
+  | 'customerView'
   | 'reviews'
   | 'analytics'
   | 'referrals'
@@ -62,13 +69,14 @@ type MobileMoreMenuItem = {
   helper: string;
   icon: MobileNavIconName;
   label: string;
-  kind: 'native' | 'web';
   section: MobileMoreMenuSection;
-  target: MobileMoreSection | string;
+  target: MobileMoreSection;
 };
 
 type MobileMoreScreenProps = {
   activeSection: MobileMoreSection;
+  aiReceptionist: MobileAiReceptionistSummary | null;
+  aiReceptionistError: string | null;
   analytics: MobileAnalyticsSummary | null;
   analyticsError: string | null;
   billing: MobileBillingSummary | null;
@@ -80,9 +88,14 @@ type MobileMoreScreenProps = {
   businessProfileError: string | null;
   checkIns: MobileCheckInsSummary | null;
   checkInsError: string | null;
+  customerView: MobileCustomerViewSummary | null;
+  customerViewError: string | null;
   funds: MobileFundsSummary | null;
   fundsError: string | null;
   home: MobileHomeSummary;
+  isAiReceptionistLoading: boolean;
+  isAiReceptionistRefreshing: boolean;
+  isAiReceptionistSaving: boolean;
   isAnalyticsLoading: boolean;
   isAnalyticsRefreshing: boolean;
   isBillingLoading: boolean;
@@ -94,6 +107,8 @@ type MobileMoreScreenProps = {
   isBusinessProfileLoading: boolean;
   isCheckInsLoading: boolean;
   isCheckInsRefreshing: boolean;
+  isCustomerViewLoading: boolean;
+  isCustomerViewRefreshing: boolean;
   isFundsLoading: boolean;
   isFundsRefreshing: boolean;
   isReferralsLoading: boolean;
@@ -113,24 +128,27 @@ type MobileMoreScreenProps = {
   onLookupRedeemCode: (code: string) => Promise<MobileRedeemLookupResponse>;
   onNextCheckInsDate: () => void;
   onOpenBillingPortal: () => Promise<void>;
-  onOpenExternalRoute: (path: string) => Promise<void>;
   onOpenExternalUrl: (url: string) => Promise<void>;
   onPreviousCheckInsDate: () => void;
   onRedeemCode: (input: {
     code: string;
     transactionAmount?: number | null;
   }) => Promise<MobileRedeemResult>;
+  onRefreshAiReceptionist: () => Promise<void>;
   onRefreshAnalytics: () => Promise<void>;
   onRefreshBilling: () => Promise<void>;
   onRefreshBusinessHours: () => Promise<void>;
   onRefreshBusinessProfile: () => Promise<void>;
   onRefreshCheckIns: () => Promise<void>;
+  onRefreshCustomerView: () => Promise<void>;
   onRefreshFunds: () => Promise<void>;
   onRefreshReferrals: () => Promise<void>;
   onRefreshReviews: () => Promise<void>;
   onRefreshServices: () => Promise<void>;
+  onSaveAiReceptionist: (input: MobileAiReceptionistUpdateInput) => Promise<void>;
   onSaveBusinessHours: (input: MobileBusinessHoursUpdateInput) => Promise<void>;
   onSaveBusinessProfile: (input: MobileOnboardingInput) => Promise<void>;
+  onShareCustomerViewLink: (label: string, url: string) => Promise<void>;
   onShareReferral: () => Promise<void>;
   onShareReviewSurvey: () => Promise<void>;
   onSignOut: () => Promise<void>;
@@ -154,7 +172,6 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
     label: 'Services & Staff',
     helper: 'Review the live menu, pricing, and staff setup.',
     icon: 'services',
-    kind: 'native',
     section: 'operations',
     target: 'services',
   },
@@ -163,7 +180,6 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
     label: 'Check-ins',
     helper: 'Run fast front-desk check-ins from the app.',
     icon: 'checkins',
-    kind: 'native',
     section: 'operations',
     target: 'checkins',
   },
@@ -172,7 +188,6 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
     label: 'Redeem',
     helper: 'Redeem purchased deals and confirm claims.',
     icon: 'redeem',
-    kind: 'native',
     section: 'operations',
     target: 'redeem',
   },
@@ -181,7 +196,6 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
     label: 'Business Hours & Closures',
     helper: 'Control hours, closures, and availability windows.',
     icon: 'businessHours',
-    kind: 'native',
     section: 'operations',
     target: 'hours',
   },
@@ -190,25 +204,22 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
     label: 'AI Receptionist',
     helper: 'Manage phone coverage and AI call settings.',
     icon: 'aiReceptionist',
-    kind: 'web',
     section: 'operations',
-    target: '/dashboard/ai-receptionist',
+    target: 'aiReceptionist',
   },
   {
     key: 'preview',
     label: 'Customer View',
     helper: 'Preview what guests see before you share links.',
     icon: 'customerView',
-    kind: 'web',
     section: 'operations',
-    target: '/dashboard/preview',
+    target: 'customerView',
   },
   {
     key: 'reviews',
     label: 'Reviews',
     helper: 'Share your survey flow and review prompts.',
     icon: 'reviews',
-    kind: 'native',
     section: 'growth',
     target: 'reviews',
   },
@@ -217,7 +228,6 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
     label: 'Analytics',
     helper: 'Check performance, trends, and conversion signals.',
     icon: 'analytics',
-    kind: 'native',
     section: 'growth',
     target: 'analytics',
   },
@@ -226,7 +236,6 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
     label: 'Refer & Earn',
     helper: 'Track credits, referrals, and your share link.',
     icon: 'referrals',
-    kind: 'native',
     section: 'growth',
     target: 'referrals',
   },
@@ -235,7 +244,6 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
     label: 'Payouts',
     helper: 'See balance, requirements, and recent transfers.',
     icon: 'payouts',
-    kind: 'native',
     section: 'growth',
     target: 'payouts',
   },
@@ -244,7 +252,6 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
     label: 'Billing',
     helper: 'Manage plan access and subscription details.',
     icon: 'billing',
-    kind: 'native',
     section: 'account',
     target: 'billing',
   },
@@ -253,7 +260,6 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
     label: 'Settings',
     helper: 'Update business profile and app-level details.',
     icon: 'settings',
-    kind: 'native',
     section: 'account',
     target: 'settings',
   },
@@ -261,6 +267,8 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
 
 export function MobileMoreScreen({
   activeSection,
+  aiReceptionist,
+  aiReceptionistError,
   analytics,
   analyticsError,
   billing,
@@ -272,9 +280,14 @@ export function MobileMoreScreen({
   businessProfileError,
   checkIns,
   checkInsError,
+  customerView,
+  customerViewError,
   funds,
   fundsError,
   home,
+  isAiReceptionistLoading,
+  isAiReceptionistRefreshing,
+  isAiReceptionistSaving,
   isAnalyticsLoading,
   isAnalyticsRefreshing,
   isBillingLoading,
@@ -286,6 +299,8 @@ export function MobileMoreScreen({
   isBusinessProfileLoading,
   isCheckInsLoading,
   isCheckInsRefreshing,
+  isCustomerViewLoading,
+  isCustomerViewRefreshing,
   isFundsLoading,
   isFundsRefreshing,
   isReferralsLoading,
@@ -303,21 +318,24 @@ export function MobileMoreScreen({
   onLookupRedeemCode,
   onNextCheckInsDate,
   onOpenBillingPortal,
-  onOpenExternalRoute,
   onOpenExternalUrl,
   onPreviousCheckInsDate,
   onRedeemCode,
+  onRefreshAiReceptionist,
   onRefreshAnalytics,
   onRefreshBilling,
   onRefreshBusinessHours,
   onRefreshBusinessProfile,
   onRefreshCheckIns,
+  onRefreshCustomerView,
   onRefreshFunds,
   onRefreshReferrals,
   onRefreshReviews,
   onRefreshServices,
+  onSaveAiReceptionist,
   onSaveBusinessHours,
   onSaveBusinessProfile,
+  onShareCustomerViewLink,
   onShareReferral,
   onShareReviewSurvey,
   onSignOut,
@@ -380,14 +398,7 @@ export function MobileMoreScreen({
                 <Pressable
                   key={item.key}
                   accessibilityRole="button"
-                  onPress={() => {
-                    if (item.kind === 'native') {
-                      onChangeSection(item.target as MobileMoreSection);
-                      return;
-                    }
-
-                    void onOpenExternalRoute(item.target as string);
-                  }}
+                  onPress={() => onChangeSection(item.target)}
                   style={[
                     styles.menuItem,
                     { backgroundColor: theme.surface, borderColor: theme.border },
@@ -488,6 +499,31 @@ export function MobileMoreScreen({
             isSaving={isBusinessHoursSaving}
             onRefresh={onRefreshBusinessHours}
             onSave={onSaveBusinessHours}
+          />
+        ) : null}
+
+        {activeSection === 'aiReceptionist' ? (
+          <MobileAiReceptionistScreen
+            data={aiReceptionist}
+            error={aiReceptionistError}
+            isLoading={isAiReceptionistLoading}
+            isRefreshing={isAiReceptionistRefreshing}
+            isSaving={isAiReceptionistSaving}
+            onOpenBilling={() => onChangeSection('billing')}
+            onRefresh={onRefreshAiReceptionist}
+            onSave={onSaveAiReceptionist}
+          />
+        ) : null}
+
+        {activeSection === 'customerView' ? (
+          <MobileCustomerViewScreen
+            data={customerView}
+            error={customerViewError}
+            isLoading={isCustomerViewLoading}
+            isRefreshing={isCustomerViewRefreshing}
+            onOpenUrl={onOpenExternalUrl}
+            onRefresh={onRefreshCustomerView}
+            onShareLink={onShareCustomerViewLink}
           />
         ) : null}
 
@@ -600,6 +636,10 @@ function getSubscreenTitle(section: Exclude<MobileMoreSection, 'menu'>) {
       return 'Redeem';
     case 'hours':
       return 'Business Hours';
+    case 'aiReceptionist':
+      return 'AI Receptionist';
+    case 'customerView':
+      return 'Customer View';
     case 'reviews':
       return 'Reviews';
     case 'analytics':

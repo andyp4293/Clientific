@@ -2,6 +2,8 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type {
+  MobileAiReceptionistUpdateInput,
+  MobileAiReceptionistSummary,
   MobileAnalyticsRange,
   MobileAnalyticsSummary,
   MobileAppointmentsSummary,
@@ -14,6 +16,7 @@ import type {
   MobileCheckInMutationResponse,
   MobileCheckInSubmissionInput,
   MobileCheckInsSummary,
+  MobileCustomerViewSummary,
   MobileCustomersSummary,
   MobileDealsSummary,
   MobileFundsSummary,
@@ -37,6 +40,8 @@ export type MobileAppTab = 'dashboard' | 'appointments' | 'customers' | 'deals' 
 
 type MobileAppShellProps = {
   activeTab: MobileAppTab;
+  aiReceptionist: MobileAiReceptionistSummary | null;
+  aiReceptionistError: string | null;
   analytics: MobileAnalyticsSummary | null;
   analyticsError: string | null;
   appointments: MobileAppointmentsSummary | null;
@@ -50,6 +55,8 @@ type MobileAppShellProps = {
   businessProfileError: string | null;
   checkIns: MobileCheckInsSummary | null;
   checkInsError: string | null;
+  customerView: MobileCustomerViewSummary | null;
+  customerViewError: string | null;
   customers: MobileCustomersSummary | null;
   customersError: string | null;
   customersSearchDraft: string;
@@ -59,6 +66,9 @@ type MobileAppShellProps = {
   fundsError: string | null;
   home: MobileHomeSummary;
   homeError: string | null;
+  isAiReceptionistLoading: boolean;
+  isAiReceptionistRefreshing: boolean;
+  isAiReceptionistSaving: boolean;
   isAnalyticsLoading: boolean;
   isAnalyticsRefreshing: boolean;
   isAppointmentsLoading: boolean;
@@ -72,6 +82,8 @@ type MobileAppShellProps = {
   isBusinessProfileLoading: boolean;
   isCheckInsLoading: boolean;
   isCheckInsRefreshing: boolean;
+  isCustomerViewLoading: boolean;
+  isCustomerViewRefreshing: boolean;
   isCustomersLoading: boolean;
   isCustomersRefreshing: boolean;
   isDealsLoading: boolean;
@@ -102,7 +114,6 @@ type MobileAppShellProps = {
   onNextAppointmentsDate: () => void;
   onNextCustomersPage: () => void;
   onOpenBillingPortal: () => Promise<void>;
-  onOpenExternalRoute: (path: string) => Promise<void>;
   onOpenExternalUrl: (url: string) => Promise<void>;
   onOpenAppointments: () => void;
   onOpenCustomers: () => void;
@@ -113,12 +124,14 @@ type MobileAppShellProps = {
   onPreviousAppointmentsDate: () => void;
   onPreviousCustomersPage: () => void;
   onRedeemCode: (input: { code: string; transactionAmount?: number | null }) => Promise<MobileRedeemResult>;
+  onRefreshAiReceptionist: () => Promise<void>;
   onRefreshAnalytics: () => Promise<void>;
   onRefreshBilling: () => Promise<void>;
   onRefreshBusinessHours: () => Promise<void>;
   onRefreshBusinessProfile: () => Promise<void>;
   onRefreshCheckIns: () => Promise<void>;
   onRefreshAppointments: () => Promise<void>;
+  onRefreshCustomerView: () => Promise<void>;
   onRefreshCustomers: () => Promise<void>;
   onRefreshDeals: () => Promise<void>;
   onRefreshFunds: () => Promise<void>;
@@ -126,8 +139,10 @@ type MobileAppShellProps = {
   onRefreshReferrals: () => Promise<void>;
   onRefreshReviews: () => Promise<void>;
   onRefreshServices: () => Promise<void>;
+  onSaveAiReceptionist: (input: MobileAiReceptionistUpdateInput) => Promise<void>;
   onSaveBusinessHours: (input: MobileBusinessHoursUpdateInput) => Promise<void>;
   onSaveBusinessProfile: (input: MobileOnboardingInput) => Promise<void>;
+  onShareCustomerViewLink: (label: string, url: string) => Promise<void>;
   onShareDeal: (deal: MobileDealsSummary['deals'][number]) => Promise<void>;
   onShareReferral: () => Promise<void>;
   onShareReviewSurvey: () => Promise<void>;
@@ -150,6 +165,8 @@ const TAB_LABELS: Array<{ key: MobileAppTab; label: string; icon: MobileNavIconN
 
 export function MobileAppShell({
   activeTab,
+  aiReceptionist,
+  aiReceptionistError,
   analytics,
   analyticsError,
   appointments,
@@ -163,6 +180,8 @@ export function MobileAppShell({
   businessProfileError,
   checkIns,
   checkInsError,
+  customerView,
+  customerViewError,
   customers,
   customersError,
   customersSearchDraft,
@@ -172,6 +191,9 @@ export function MobileAppShell({
   fundsError,
   home,
   homeError,
+  isAiReceptionistLoading,
+  isAiReceptionistRefreshing,
+  isAiReceptionistSaving,
   isAnalyticsLoading,
   isAnalyticsRefreshing,
   isAppointmentsLoading,
@@ -185,6 +207,8 @@ export function MobileAppShell({
   isBusinessProfileLoading,
   isCheckInsLoading,
   isCheckInsRefreshing,
+  isCustomerViewLoading,
+  isCustomerViewRefreshing,
   isCustomersLoading,
   isCustomersRefreshing,
   isDealsLoading,
@@ -213,7 +237,6 @@ export function MobileAppShell({
   onNextAppointmentsDate,
   onNextCustomersPage,
   onOpenBillingPortal,
-  onOpenExternalRoute,
   onOpenExternalUrl,
   onOpenAppointments,
   onOpenCustomers,
@@ -224,12 +247,14 @@ export function MobileAppShell({
   onPreviousAppointmentsDate,
   onPreviousCustomersPage,
   onRedeemCode,
+  onRefreshAiReceptionist,
   onRefreshAnalytics,
   onRefreshBilling,
   onRefreshBusinessHours,
   onRefreshBusinessProfile,
   onRefreshCheckIns,
   onRefreshAppointments,
+  onRefreshCustomerView,
   onRefreshCustomers,
   onRefreshDeals,
   onRefreshFunds,
@@ -237,8 +262,10 @@ export function MobileAppShell({
   onRefreshReferrals,
   onRefreshReviews,
   onRefreshServices,
+  onSaveAiReceptionist,
   onSaveBusinessHours,
   onSaveBusinessProfile,
+  onShareCustomerViewLink,
   onShareDeal,
   onShareReferral,
   onShareReviewSurvey,
@@ -317,6 +344,8 @@ export function MobileAppShell({
           {activeTab === 'more' ? (
             <MobileMoreScreen
               activeSection={moreSection}
+              aiReceptionist={aiReceptionist}
+              aiReceptionistError={aiReceptionistError}
               analytics={analytics}
               analyticsError={analyticsError}
               billing={billing}
@@ -328,9 +357,14 @@ export function MobileAppShell({
               businessProfileError={businessProfileError}
               checkIns={checkIns}
               checkInsError={checkInsError}
+              customerView={customerView}
+              customerViewError={customerViewError}
               funds={funds}
               fundsError={fundsError}
               home={home}
+              isAiReceptionistLoading={isAiReceptionistLoading}
+              isAiReceptionistRefreshing={isAiReceptionistRefreshing}
+              isAiReceptionistSaving={isAiReceptionistSaving}
               isAnalyticsLoading={isAnalyticsLoading}
               isAnalyticsRefreshing={isAnalyticsRefreshing}
               isBillingLoading={isBillingLoading}
@@ -342,6 +376,8 @@ export function MobileAppShell({
               isBusinessProfileLoading={isBusinessProfileLoading}
               isCheckInsLoading={isCheckInsLoading}
               isCheckInsRefreshing={isCheckInsRefreshing}
+              isCustomerViewLoading={isCustomerViewLoading}
+              isCustomerViewRefreshing={isCustomerViewRefreshing}
               isFundsLoading={isFundsLoading}
               isFundsRefreshing={isFundsRefreshing}
               isReferralsLoading={isReferralsLoading}
@@ -359,21 +395,24 @@ export function MobileAppShell({
               onLookupRedeemCode={onLookupRedeemCode}
               onNextCheckInsDate={onNextCheckInsDate}
               onOpenBillingPortal={onOpenBillingPortal}
-              onOpenExternalRoute={onOpenExternalRoute}
               onOpenExternalUrl={onOpenExternalUrl}
               onPreviousCheckInsDate={onPreviousCheckInsDate}
               onRedeemCode={onRedeemCode}
+              onRefreshAiReceptionist={onRefreshAiReceptionist}
               onRefreshAnalytics={onRefreshAnalytics}
               onRefreshBilling={onRefreshBilling}
               onRefreshBusinessHours={onRefreshBusinessHours}
               onRefreshBusinessProfile={onRefreshBusinessProfile}
               onRefreshCheckIns={onRefreshCheckIns}
+              onRefreshCustomerView={onRefreshCustomerView}
               onRefreshFunds={onRefreshFunds}
               onRefreshReferrals={onRefreshReferrals}
               onRefreshReviews={onRefreshReviews}
               onRefreshServices={onRefreshServices}
+              onSaveAiReceptionist={onSaveAiReceptionist}
               onSaveBusinessHours={onSaveBusinessHours}
               onSaveBusinessProfile={onSaveBusinessProfile}
+              onShareCustomerViewLink={onShareCustomerViewLink}
               onShareReferral={onShareReferral}
               onShareReviewSurvey={onShareReviewSurvey}
               onSignOut={onSignOut}

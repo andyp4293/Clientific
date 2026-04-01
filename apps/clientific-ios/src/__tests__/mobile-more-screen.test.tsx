@@ -220,11 +220,44 @@ const billing = {
   ],
 };
 
+const aiReceptionist = {
+  business,
+  subscriptionPlan: 'pro',
+  hasAccess: true,
+  aiReceptionistEnabled: true,
+  aiReceptionistPhone: '+15557654321',
+  aiReceptionistGreeting: 'Thanks for calling Clientific Studio.',
+  aiReceptionistFaq: [{ question: 'Do you take walk-ins?', answer: 'Yes, when availability opens up.' }],
+  smsAiEnabled: true,
+  smsAiPhoneNumber: '+18885550123',
+  smsAiGreeting: 'Text us to book.',
+  vapiPhoneNumber: '+18885550123',
+  unifiedNumber: '+18885550123',
+};
+
+const customerView = {
+  business,
+  storeId: 'CF-123',
+  bookingUrl: 'https://www.clientific.app/book/CF-123',
+  profileUrl: 'https://www.clientific.app/business/CF-123',
+  exploreUrl: 'https://www.clientific.app/explore',
+  deals: [
+    {
+      id: 'deal-1',
+      title: 'Spring Special',
+      discountLabel: '20% off',
+      url: 'https://www.clientific.app/d/deal-1',
+    },
+  ],
+};
+
 function createProps(
   overrides: Partial<React.ComponentProps<typeof MobileMoreScreen>> = {},
 ): React.ComponentProps<typeof MobileMoreScreen> {
   return {
     activeSection: 'menu',
+    aiReceptionist,
+    aiReceptionistError: null,
     analytics,
     analyticsError: null,
     billing,
@@ -236,9 +269,14 @@ function createProps(
     businessProfileError: null,
     checkIns,
     checkInsError: null,
+    customerView,
+    customerViewError: null,
     funds,
     fundsError: null,
     home,
+    isAiReceptionistLoading: false,
+    isAiReceptionistRefreshing: false,
+    isAiReceptionistSaving: false,
     isAnalyticsLoading: false,
     isAnalyticsRefreshing: false,
     isBillingLoading: false,
@@ -250,6 +288,8 @@ function createProps(
     isBusinessProfileLoading: false,
     isCheckInsLoading: false,
     isCheckInsRefreshing: false,
+    isCustomerViewLoading: false,
+    isCustomerViewRefreshing: false,
     isFundsLoading: false,
     isFundsRefreshing: false,
     isReferralsLoading: false,
@@ -279,7 +319,6 @@ function createProps(
     }),
     onNextCheckInsDate: jest.fn(),
     onOpenBillingPortal: jest.fn().mockResolvedValue(undefined),
-    onOpenExternalRoute: jest.fn().mockResolvedValue(undefined),
     onOpenExternalUrl: jest.fn().mockResolvedValue(undefined),
     onPreviousCheckInsDate: jest.fn(),
     onRedeemCode: jest.fn().mockResolvedValue({
@@ -294,17 +333,21 @@ function createProps(
       platformFee: 4.5,
       platformFeeLabel: '$4.50',
     }),
+    onRefreshAiReceptionist: jest.fn().mockResolvedValue(undefined),
     onRefreshAnalytics: jest.fn().mockResolvedValue(undefined),
     onRefreshBilling: jest.fn().mockResolvedValue(undefined),
     onRefreshBusinessHours: jest.fn().mockResolvedValue(undefined),
     onRefreshBusinessProfile: jest.fn().mockResolvedValue(undefined),
     onRefreshCheckIns: jest.fn().mockResolvedValue(undefined),
+    onRefreshCustomerView: jest.fn().mockResolvedValue(undefined),
     onRefreshFunds: jest.fn().mockResolvedValue(undefined),
     onRefreshReferrals: jest.fn().mockResolvedValue(undefined),
     onRefreshReviews: jest.fn().mockResolvedValue(undefined),
     onRefreshServices: jest.fn().mockResolvedValue(undefined),
+    onSaveAiReceptionist: jest.fn().mockResolvedValue(undefined),
     onSaveBusinessHours: jest.fn().mockResolvedValue(undefined),
     onSaveBusinessProfile: jest.fn().mockResolvedValue(undefined),
+    onShareCustomerViewLink: jest.fn().mockResolvedValue(undefined),
     onShareReferral: jest.fn().mockResolvedValue(undefined),
     onShareReviewSurvey: jest.fn().mockResolvedValue(undefined),
     onSignOut: jest.fn().mockResolvedValue(undefined),
@@ -345,13 +388,13 @@ describe('MobileMoreScreen', () => {
     expect(onChangeSection).toHaveBeenCalledWith('analytics');
   });
 
-  it('opens external routes for tools that are still web-backed', () => {
-    const onOpenExternalRoute = jest.fn().mockResolvedValue(undefined);
+  it('routes AI receptionist inside the native menu flow', () => {
+    const onChangeSection = jest.fn();
 
-    render(<MobileMoreScreen {...createProps({ onOpenExternalRoute })} />);
+    render(<MobileMoreScreen {...createProps({ onChangeSection })} />);
 
     fireEvent.press(screen.getByTestId('mobile-more-menu-ai-receptionist'));
-    expect(onOpenExternalRoute).toHaveBeenCalledWith('/dashboard/ai-receptionist');
+    expect(onChangeSection).toHaveBeenCalledWith('aiReceptionist');
   });
 
   it('renders the settings editor when settings is selected', () => {
@@ -366,5 +409,19 @@ describe('MobileMoreScreen', () => {
 
     expect(screen.getByText('Plan and invoices')).toBeTruthy();
     expect(screen.getByTestId('mobile-billing-open-portal')).toBeTruthy();
+  });
+
+  it('renders native AI receptionist tools when selected', () => {
+    render(<MobileMoreScreen {...createProps({ activeSection: 'aiReceptionist' })} />);
+
+    expect(screen.getByText('Calls, SMS, and handoff settings')).toBeTruthy();
+    expect(screen.getByTestId('mobile-ai-toggle')).toBeTruthy();
+  });
+
+  it('renders native customer view tools when selected', () => {
+    render(<MobileMoreScreen {...createProps({ activeSection: 'customerView' })} />);
+
+    expect(screen.getByText('Public links and previews')).toBeTruthy();
+    expect(screen.getByTestId('mobile-customer-view-booking-share')).toBeTruthy();
   });
 });

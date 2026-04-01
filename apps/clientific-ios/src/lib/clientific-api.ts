@@ -402,6 +402,50 @@ export type MobileBillingSummary = {
   }>;
 };
 
+export type MobileAiReceptionistFaq = {
+  question: string;
+  answer: string;
+};
+
+export type MobileAiReceptionistSummary = {
+  business: MobileBusiness;
+  subscriptionPlan: string | null;
+  hasAccess: boolean;
+  aiReceptionistEnabled: boolean;
+  aiReceptionistPhone: string | null;
+  aiReceptionistGreeting: string | null;
+  aiReceptionistFaq: MobileAiReceptionistFaq[];
+  smsAiEnabled: boolean;
+  smsAiPhoneNumber: string | null;
+  smsAiGreeting: string | null;
+  vapiPhoneNumber: string | null;
+  unifiedNumber: string | null;
+};
+
+export type MobileAiReceptionistUpdateInput = {
+  aiReceptionistEnabled?: boolean;
+  aiReceptionistPhone?: string | null;
+  aiReceptionistGreeting?: string | null;
+  aiReceptionistFaq?: MobileAiReceptionistFaq[];
+  smsAiGreeting?: string | null;
+};
+
+export type MobileCustomerViewDeal = {
+  id: string;
+  title: string;
+  discountLabel: string;
+  url: string;
+};
+
+export type MobileCustomerViewSummary = {
+  business: MobileBusiness;
+  storeId: string | null;
+  bookingUrl: string | null;
+  profileUrl: string | null;
+  exploreUrl: string;
+  deals: MobileCustomerViewDeal[];
+};
+
 export type MobileRedeemLookupResponse = {
   deal: {
     title: string;
@@ -722,6 +766,28 @@ export async function fetchMobileBilling(token: string) {
   });
 }
 
+export async function fetchMobileAiReceptionist(token: string) {
+  return requestJson<MobileAiReceptionistSummary>('/api/mobile/ai-receptionist', {
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function updateMobileAiReceptionist(
+  token: string,
+  input: MobileAiReceptionistUpdateInput,
+) {
+  return requestJson<MobileAiReceptionistSummary>('/api/mobile/ai-receptionist', {
+    method: 'PATCH',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+}
+
 export async function openMobileBillingPortal(token: string) {
   return requestJson<{ url: string }>('/api/mobile/billing/portal', {
     method: 'POST',
@@ -763,6 +829,14 @@ export async function redeemMobileCode(
 
 export async function fetchMobileBusinessProfile(token: string) {
   return requestJson<{ business: MobileBusinessProfile }>('/api/mobile/business', {
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function fetchMobileCustomerView(token: string) {
+  return requestJson<MobileCustomerViewSummary>('/api/mobile/customer-view', {
     headers: {
       authorization: `Bearer ${token}`,
     },
