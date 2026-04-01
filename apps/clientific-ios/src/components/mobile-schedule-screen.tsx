@@ -23,6 +23,10 @@ type MobileScheduleScreenProps = {
   onRefresh: () => Promise<void>;
 };
 
+function formatDateKey(date: Date) {
+  return date.toLocaleDateString('en-CA');
+}
+
 export function MobileScheduleScreen({
   data,
   error,
@@ -35,6 +39,7 @@ export function MobileScheduleScreen({
 }: MobileScheduleScreenProps) {
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
+  const isViewingToday = data?.selectedDate === formatDateKey(new Date());
 
   return (
     <ScrollView
@@ -71,9 +76,23 @@ export function MobileScheduleScreen({
           <Pressable
             accessibilityRole="button"
             onPress={onJumpToToday}
-            style={[styles.dateButton, { backgroundColor: theme.accent, borderColor: theme.accent }]}
-            testID="mobile-schedule-today">
-            <Text style={styles.dateButtonPrimaryText}>Today</Text>
+            style={[
+              styles.dateButton,
+              isViewingToday
+                ? { backgroundColor: theme.accent, borderColor: theme.accent }
+                : { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
+            testID="mobile-schedule-today"
+            accessibilityState={{ selected: isViewingToday }}
+          >
+            <Text
+              style={
+                isViewingToday
+                  ? styles.dateButtonPrimaryText
+                  : [styles.dateButtonText, { color: theme.accent }]
+              }>
+              Today
+            </Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
