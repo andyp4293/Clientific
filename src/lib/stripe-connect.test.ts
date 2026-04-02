@@ -13,6 +13,7 @@ vi.mock('@/lib/prisma', () => ({
 }));
 
 vi.mock('@/lib/stripe', () => ({
+  STRIPE_API_VERSION: '2024-12-18.acacia',
   stripe: {
     accounts: {
       retrieve: vi.fn(),
@@ -573,19 +574,8 @@ describe('syncBusinessConnectState', () => {
     const status = await syncBusinessConnectState('biz-1', 'acct_live');
 
     expect(mockAccountUpdate).not.toHaveBeenCalled();
-    expect(mockBalanceSettingsUpdate).toHaveBeenCalledWith(
-      {
-        payments: {
-          payouts: {
-            statement_descriptor: 'CLIENTIFIC',
-          },
-        },
-      },
-      {
-        stripeAccount: 'acct_live',
-      }
-    );
-    expect(status.payoutSchedule.statementDescriptor).toBe('CLIENTIFIC');
+    expect(mockBalanceSettingsUpdate).not.toHaveBeenCalled();
+    expect(status.payoutSchedule.statementDescriptor).toBe('ANDY PHAM');
   });
 
   it('still updates the account-level statement descriptor before the account is activated', async () => {
@@ -645,17 +635,6 @@ describe('syncBusinessConnectState', () => {
         },
       },
     });
-    expect(mockBalanceSettingsUpdate).toHaveBeenCalledWith(
-      {
-        payments: {
-          payouts: {
-            statement_descriptor: 'CLIENTIFIC',
-          },
-        },
-      },
-      {
-        stripeAccount: 'acct_setup',
-      }
-    );
+    expect(mockBalanceSettingsUpdate).not.toHaveBeenCalled();
   });
 });

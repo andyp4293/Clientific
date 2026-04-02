@@ -114,7 +114,11 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
   const [quickLookupError, setQuickLookupError] = useState<string | null>(null);
   const [quickSuccess, setQuickSuccess] = useState<SuccessState | null>(null);
   const [successCountdown, setSuccessCountdown] = useState(SUCCESS_RESET_SECONDS);
-  const [newCustomerForm, setNewCustomerForm] = useState({ name: '', email: '' });
+  const [newCustomerForm, setNewCustomerForm] = useState({
+    name: '',
+    email: '',
+    smsConsent: true,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const quickFormattedPhone = useMemo(() => formatPhoneEntry(quickDigits), [quickDigits]);
@@ -128,7 +132,7 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
     setQuickLookupError(null);
     setQuickSuccess(null);
     setSuccessCountdown(SUCCESS_RESET_SECONDS);
-    setNewCustomerForm({ name: '', email: '' });
+    setNewCustomerForm({ name: '', email: '', smsConsent: true });
     setIsSubmitting(false);
   }, []);
 
@@ -171,7 +175,13 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
   }, [quickStep]);
 
   async function finalizeCheckIn(
-    payload: { customerId?: string; phone?: string; customerName?: string; customerEmail?: string },
+    payload: {
+      customerId?: string;
+      phone?: string;
+      customerName?: string;
+      customerEmail?: string;
+      smsConsent?: boolean;
+    },
     meta: { customerName: string; phoneDisplay: string; createdCustomer: boolean }
   ) {
     setIsSubmitting(true);
@@ -263,6 +273,7 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
         phone: quickDigits,
         customerName: trimmedName,
         customerEmail: newCustomerForm.email.trim() || undefined,
+        smsConsent: newCustomerForm.smsConsent,
       },
       {
         customerName: trimmedName,
@@ -435,6 +446,27 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
                         placeholder="customer@example.com"
                       />
                     </div>
+                    <label className="mt-5 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/8 p-4 text-sm text-gray-800 dark:text-gray-100">
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-5 w-5 rounded border-primary/40 text-primary focus:ring-primary/30"
+                        checked={newCustomerForm.smsConsent}
+                        onChange={(event) =>
+                          setNewCustomerForm((current) => ({
+                            ...current,
+                            smsConsent: event.target.checked,
+                          }))
+                        }
+                      />
+                      <span>
+                        <span className="block font-semibold">
+                          Yes, text me visit updates and future offers from {business.name}.
+                        </span>
+                        <span className="mt-1 block text-xs text-gray-700 dark:text-gray-200">
+                          Consent is not a condition of service. Message frequency varies. Message and data rates may apply. Reply STOP to opt out, HELP for help.
+                        </span>
+                      </span>
+                    </label>
                   </div>
 
                   {quickLookupError ? (

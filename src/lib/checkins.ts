@@ -104,6 +104,8 @@ export async function createBusinessCheckIn({
   phone,
   customerName,
   customerEmail,
+  smsConsent,
+  smsMarketingConsent,
 }: {
   businessId: string;
   customerId?: string | null;
@@ -113,8 +115,13 @@ export async function createBusinessCheckIn({
   phone?: string | null;
   customerName?: string | null;
   customerEmail?: string | null;
+  smsConsent?: boolean;
+  smsMarketingConsent?: boolean;
 }) {
   const providedPhoneData = buildCustomerPhoneData(phone);
+  const transactionalConsent = smsConsent === true || smsMarketingConsent === true;
+  const marketingConsent = smsMarketingConsent === true;
+  const consentCapturedAt = transactionalConsent || marketingConsent ? new Date() : null;
   let resolvedCustomerId =
     typeof customerId === 'string' && customerId.trim().length > 0 ? customerId.trim() : null;
 
@@ -167,6 +174,13 @@ export async function createBusinessCheckIn({
           phoneLookupKey: providedPhoneData.phoneLookupKey,
           segment: 'NEW',
           totalSpent: 0,
+          smsConsent: transactionalConsent,
+          smsMarketingConsent: marketingConsent,
+          smsMarketingConsentAt: marketingConsent ? consentCapturedAt : null,
+          optedInMarketing: marketingConsent,
+          smsOptedOut: false,
+          smsOptedOutAt: null,
+          optedOutAt: marketingConsent ? null : undefined,
         },
         select: { id: true },
       });
@@ -192,12 +206,47 @@ export async function createBusinessCheckIn({
     (customer.phone !== providedPhoneData.phone ||
       customer.phoneLookupKey !== providedPhoneData.phoneLookupKey)
   ) {
+    const customerUpdateData: Record<string, unknown> = {
+      phone: providedPhoneData.phone,
+      phoneLookupKey: providedPhoneData.phoneLookupKey,
+    };
+
+    if (transactionalConsent) {
+      customerUpdateData.smsConsent = true;
+      customerUpdateData.smsOptedOut = false;
+      customerUpdateData.smsOptedOutAt = null;
+    }
+
+    if (marketingConsent && consentCapturedAt) {
+      customerUpdateData.smsMarketingConsent = true;
+      customerUpdateData.smsMarketingConsentAt = consentCapturedAt;
+      customerUpdateData.optedInMarketing = true;
+      customerUpdateData.optedOutAt = null;
+    }
+
     await prisma.customer.update({
       where: { id: customer.id },
-      data: {
-        phone: providedPhoneData.phone,
-        phoneLookupKey: providedPhoneData.phoneLookupKey,
-      },
+      data: customerUpdateData,
+    });
+  } else if (transactionalConsent || marketingConsent) {
+    const customerUpdateData: Record<string, unknown> = {};
+
+    if (transactionalConsent) {
+      customerUpdateData.smsConsent = true;
+      customerUpdateData.smsOptedOut = false;
+      customerUpdateData.smsOptedOutAt = null;
+    }
+
+    if (marketingConsent && consentCapturedAt) {
+      customerUpdateData.smsMarketingConsent = true;
+      customerUpdateData.smsMarketingConsentAt = consentCapturedAt;
+      customerUpdateData.optedInMarketing = true;
+      customerUpdateData.optedOutAt = null;
+    }
+
+    await prisma.customer.update({
+      where: { id: customer.id },
+      data: customerUpdateData,
     });
   }
 

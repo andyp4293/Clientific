@@ -7,6 +7,12 @@ import {
 } from '@/lib/checkins';
 import { requireActiveSubscription } from '@/lib/subscription';
 
+function getClientIpAddress(req: NextRequest): string | null {
+  const forwarded = req.headers.get('x-forwarded-for');
+  if (!forwarded) return null;
+  return forwarded.split(',')[0]?.trim() || null;
+}
+
 async function findBusinessId(publicId: string) {
   const business = await prisma.business.findUnique({
     where: { publicId },
@@ -79,7 +85,9 @@ export async function POST(
       phone,
       customerName,
       customerEmail,
+      smsConsent,
     } = body;
+    const captureSmsConsent = smsConsent === true;
 
     const { checkIn } = await createBusinessCheckIn({
       businessId: business.id,
@@ -87,7 +95,28 @@ export async function POST(
       phone,
       customerName,
       customerEmail,
+      smsConsent: captureSmsConsent,
+      smsMarketingConsent: captureSmsConsent,
     });
+
+    if (captureSmsConsent) {
+      await prisma.smsConsentEvent.create({
+        data: {
+          businessId: business.id,
+          customerId: checkIn.customer.id,
+          phone: checkIn.customer.phone || phone || 'unknown',
+          eventType: 'KIOSK_CHECK_IN_OPT_IN',
+          source: 'in_store_check_in',
+          ipAddress: getClientIpAddress(req),
+          userAgent: req.headers.get('user-agent'),
+          metadata: {
+            emailProvided: Boolean(customerEmail),
+            createdFromCheckIn: !customerId,
+            channel: 'public-check-in',
+          },
+        },
+      });
+    }
 
     return NextResponse.json({ checkIn });
   } catch (error) {

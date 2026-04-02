@@ -12,12 +12,13 @@ function readStripeEnv(name: string, fallback: string) {
 
 // Trim to strip any accidental newline/whitespace from the env var (common paste issue)
 const STRIPE_KEY = readStripeEnv('STRIPE_SECRET_KEY', 'sk_test_placeholder_key_for_build');
+export const STRIPE_API_VERSION = '2024-12-18.acacia';
 
 // Use the Node.js HTTP client instead of the default fetch-based client.
 // Next.js wraps the global fetch with its caching layer, which causes
 // StripeConnectionError on outbound API calls in Route Handlers.
 export const stripe = new Stripe(STRIPE_KEY, {
-  apiVersion: '2024-12-18.acacia' as any,
+  apiVersion: STRIPE_API_VERSION as any,
   typescript: true,
   httpClient: Stripe.createNodeHttpClient(),
 });

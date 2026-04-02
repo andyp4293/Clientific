@@ -5,6 +5,7 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: { findUnique: vi.fn() },
     checkIn: { create: vi.fn(), update: vi.fn() },
+    smsConsentEvent: { create: vi.fn() },
     customer: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
@@ -37,6 +38,7 @@ const mockCustomerFindMany = prisma.customer.findMany as ReturnType<typeof vi.fn
 const mockCustomerFindFirst = prisma.customer.findFirst as ReturnType<typeof vi.fn>;
 const mockCustomerCreate = prisma.customer.create as ReturnType<typeof vi.fn>;
 const mockCustomerUpdate = prisma.customer.update as ReturnType<typeof vi.fn>;
+const mockSmsConsentEventCreate = prisma.smsConsentEvent.create as ReturnType<typeof vi.fn>;
 const mockRequireActiveSubscription = requireActiveSubscription as ReturnType<typeof vi.fn>;
 const mockCustomerHasTopSurveyRating = customerHasTopSurveyRating as ReturnType<typeof vi.fn>;
 const mockScheduleCheckInReviewSurveyRequest =
@@ -60,6 +62,7 @@ describe('public check-in route', () => {
     mockRequireActiveSubscription.mockResolvedValue(null);
     mockCheckInUpdate.mockResolvedValue({ id: 'ci-1' });
     mockCustomerHasTopSurveyRating.mockResolvedValue(false);
+    mockSmsConsentEventCreate.mockResolvedValue({ id: 'evt-1' });
     mockScheduleCheckInReviewSurveyRequest.mockResolvedValue({
       success: true,
       surveyUrl: 'https://clientific.app/feedback/CF-8QXLBD?token=abc123',
@@ -68,6 +71,8 @@ describe('public check-in route', () => {
     mockBusinessFindUnique.mockResolvedValue({
       id: 'biz-1',
       name: 'Test Salon',
+      slug: 'test-salon',
+      publicId: 'pub_123',
     });
   });
 
@@ -132,7 +137,7 @@ describe('public check-in route', () => {
     expect(body.customers).toHaveLength(2);
   });
 
-  it('creates a new customer record and check-in for an unknown phone number', async () => {
+  it('creates a new customer record, enables SMS consent, and schedules follow-up for an unknown phone number', async () => {
     mockCustomerFindMany.mockResolvedValue([]);
     mockCustomerCreate.mockResolvedValue({ id: 'cust-new' });
     mockCustomerFindFirst.mockResolvedValue({
@@ -143,7 +148,13 @@ describe('public check-in route', () => {
     mockCheckInCreate.mockResolvedValue({
       id: 'ci-1',
       checkInTime: '2026-03-23T16:00:00.000Z',
-      customer: { id: 'cust-new' },
+      customer: {
+        id: 'cust-new',
+        name: 'New Customer',
+        phone: '8482612613',
+        smsConsent: true,
+        smsOptedOut: false,
+      },
       service: null,
       staff: null,
     });
@@ -154,6 +165,7 @@ describe('public check-in route', () => {
         phone: '8482612613',
         customerName: 'New Customer',
         customerEmail: 'customer@example.com',
+        smsConsent: true,
       }),
       makeParams()
     );
@@ -169,9 +181,72 @@ describe('public check-in route', () => {
           email: 'customer@example.com',
           phone: '8482612613',
           phoneLookupKey: '8482612613',
+          smsConsent: true,
+          smsMarketingConsent: true,
+          smsMarketingConsentAt: expect.any(Date),
+          optedInMarketing: true,
         }),
       })
     );
+    expect(mockScheduleCheckInReviewSurveyRequest).toHaveBeenCalled();
+    expect(mockSmsConsentEventCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          businessId: 'biz-1',
+          customerId: 'cust-new',
+          phone: '8482612613',
+          eventType: 'KIOSK_CHECK_IN_OPT_IN',
+          source: 'in_store_check_in',
+        }),
+      })
+    );
+  });
+
+  it('leaves SMS follow-up disabled when the kiosk opt-in is unchecked', async () => {
+    mockCustomerFindMany.mockResolvedValue([]);
+    mockCustomerCreate.mockResolvedValue({ id: 'cust-new' });
+    mockCustomerFindFirst.mockResolvedValue({
+      id: 'cust-new',
+      phone: '8482612613',
+      phoneLookupKey: '8482612613',
+    });
+    mockCheckInCreate.mockResolvedValue({
+      id: 'ci-2',
+      checkInTime: '2026-03-23T16:00:00.000Z',
+      customer: {
+        id: 'cust-new',
+        name: 'Quiet Customer',
+        phone: '8482612613',
+        smsConsent: false,
+        smsOptedOut: false,
+      },
+      service: null,
+      staff: null,
+    });
+    mockCustomerUpdate.mockResolvedValue({ id: 'cust-new' });
+
+    const res = await POST(
+      makePostRequest({
+        phone: '8482612613',
+        customerName: 'Quiet Customer',
+        customerEmail: 'quiet@example.com',
+        smsConsent: false,
+      }),
+      makeParams()
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockCustomerCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          smsConsent: false,
+          smsMarketingConsent: false,
+          optedInMarketing: false,
+        }),
+      })
+    );
+    expect(mockScheduleCheckInReviewSurveyRequest).not.toHaveBeenCalled();
+    expect(mockSmsConsentEventCreate).not.toHaveBeenCalled();
   });
 
   it('returns 400 when a new phone number has no customer details', async () => {

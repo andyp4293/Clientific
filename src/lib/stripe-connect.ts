@@ -1,7 +1,7 @@
 import type Stripe from 'stripe';
 import { APP_NAME } from '@/lib/brand';
 import { prisma } from '@/lib/prisma';
-import { stripe } from '@/lib/stripe';
+import { STRIPE_API_VERSION, stripe } from '@/lib/stripe';
 import { formatPhoneNumber, isValidPhoneNumber } from '@/lib/twilio';
 
 type BusinessConnectSeed = {
@@ -20,6 +20,7 @@ const RECOVERABLE_CONNECT_ACCOUNT_ERROR_CODES = new Set([
   'resource_missing',
   'account_invalid',
 ]);
+const MIN_BALANCE_SETTINGS_PAYOUT_DESCRIPTOR_API_DATE = '2025-08-27';
 
 export type ConnectExternalBankAccountSummary = {
   id: string;
@@ -97,6 +98,24 @@ function canUpdateAccountStatementDescriptor(account: Stripe.Account) {
   );
 }
 
+function supportsBalanceSettingsPayoutDescriptorSync(apiVersion: string) {
+  const versionDate = apiVersion.match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
+
+  if (!versionDate) {
+    return false;
+  }
+
+  if (versionDate > MIN_BALANCE_SETTINGS_PAYOUT_DESCRIPTOR_API_DATE) {
+    return true;
+  }
+
+  if (versionDate < MIN_BALANCE_SETTINGS_PAYOUT_DESCRIPTOR_API_DATE) {
+    return false;
+  }
+
+  return apiVersion.includes('.preview');
+}
+
 async function syncConnectStatementDescriptor(
   account: Stripe.Account,
   payoutSchedule: ConnectPayoutScheduleSummary
@@ -109,7 +128,8 @@ async function syncConnectStatementDescriptor(
     currentAccountStatementDescriptor !== expectedStatementDescriptor &&
     canUpdateAccountStatementDescriptor(account);
   const shouldUpdatePayoutStatementDescriptor =
-    currentStatementDescriptor !== expectedStatementDescriptor;
+    currentStatementDescriptor !== expectedStatementDescriptor &&
+    supportsBalanceSettingsPayoutDescriptorSync(STRIPE_API_VERSION);
 
   if (!shouldUpdateAccountStatementDescriptor && !shouldUpdatePayoutStatementDescriptor) {
     return {
