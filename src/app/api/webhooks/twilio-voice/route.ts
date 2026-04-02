@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getConfiguredAppBaseUrl } from '@/lib/app-url';
+import { getConfiguredWebhookBaseUrl } from '@/lib/app-url';
 
 // In-memory store for conversation history keyed by CallSid
 // This persists for the duration of the Vercel function instance lifecycle
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   const greeting = business.aiReceptionistGreeting ||
     `Hi, thank you for calling ${business.name}. How can I help you today?`;
 
-  const appBase = getConfiguredAppBaseUrl();
+  const appBase = getConfiguredWebhookBaseUrl();
   const processUrl = `${appBase}/api/webhooks/twilio-voice/process?publicId=${publicId}&callSid=${callSid}`;
 
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>

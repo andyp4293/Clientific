@@ -5,7 +5,7 @@ import { isBusinessOnboardingComplete } from '@/lib/onboarding';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
 import { canAccessAiReceptionist } from '@/lib/plan-access';
-import { getConfiguredAppBaseUrl } from '@/lib/app-url';
+import { getConfiguredAppBaseUrl, getConfiguredWebhookBaseUrl } from '@/lib/app-url';
 import { requireMobileSession } from '@/lib/mobile-route';
 import { requireActiveSubscription } from '@/lib/subscription';
 import {
@@ -507,7 +507,8 @@ export async function PATCH(request: Request) {
     };
 
     const appUrl = getConfiguredAppBaseUrl();
-    const serverUrl = `${appUrl}/api/webhooks/vapi`;
+    const webhookBaseUrl = getConfiguredWebhookBaseUrl();
+    const serverUrl = `${webhookBaseUrl}/api/webhooks/vapi`;
     const vapiConfigured = !!process.env.VAPI_PRIVATE_KEY;
 
     const provisionVapiNumber = async (): Promise<{

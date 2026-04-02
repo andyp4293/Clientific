@@ -2,6 +2,7 @@ import twilio from 'twilio';
 
 import { normalizeOptionalPhoneNumber } from '@/lib/phone';
 import { PLATFORM_SMS_NUMBER } from '@/lib/sms-config';
+import { getWebhookBaseUrl } from '@/lib/app-url';
 
 type SharedPlatformWebhookSyncStatus =
   | 'skipped'
@@ -56,7 +57,9 @@ export function getPublicTwilioSmsWebhookUrl(appUrl: string): string | null {
     if (parsed.protocol !== 'https:' || isLocalHostname(parsed.hostname)) {
       return null;
     }
-    return `${parsed.origin}/api/webhooks/twilio-sms`;
+    const webhookBase = getWebhookBaseUrl(appUrl);
+    const webhookParsed = new URL(webhookBase);
+    return `${webhookParsed.origin}/api/webhooks/twilio-sms`;
   } catch {
     return null;
   }

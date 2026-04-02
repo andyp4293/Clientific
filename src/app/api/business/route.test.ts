@@ -105,7 +105,7 @@ beforeEach(() => {
   mockTwilioIncomingList.mockResolvedValue([
     {
       sid: 'PN_test_1',
-      smsUrl: 'https://clientific.app/api/webhooks/twilio-sms',
+      smsUrl: 'https://www.clientific.app/api/webhooks/twilio-sms',
       smsMethod: 'POST',
     },
   ]);
@@ -144,7 +144,7 @@ describe('GET /api/business', () => {
 
     expect(res.status).toBe(200);
     expect(mockTwilioIncomingUpdate).toHaveBeenCalledWith({
-      smsUrl: 'https://clientific.app/api/webhooks/twilio-sms',
+      smsUrl: 'https://www.clientific.app/api/webhooks/twilio-sms',
       smsMethod: 'POST',
     });
   });
@@ -353,7 +353,7 @@ describe('PATCH /api/business', () => {
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ server: { url: 'https://clientific.app/api/webhooks/vapi' } }),
+        json: async () => ({ server: { url: 'https://www.clientific.app/api/webhooks/vapi' } }),
       });
 
     mockBusinessUpdate.mockResolvedValue({
@@ -373,7 +373,7 @@ describe('PATCH /api/business', () => {
       voiceMethod: 'POST',
       statusCallback: 'https://api.vapi.ai/twilio/status',
       statusCallbackMethod: 'POST',
-      smsUrl: 'https://clientific.app/api/webhooks/twilio-sms',
+      smsUrl: 'https://www.clientific.app/api/webhooks/twilio-sms',
       smsMethod: 'POST',
     });
 
@@ -477,7 +477,7 @@ describe('PATCH /api/business', () => {
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ server: { url: 'https://clientific.app/api/webhooks/vapi' } }),
+        json: async () => ({ server: { url: 'https://www.clientific.app/api/webhooks/vapi' } }),
       });
 
     mockBusinessUpdate.mockResolvedValue({
@@ -497,7 +497,7 @@ describe('PATCH /api/business', () => {
       voiceMethod: 'POST',
       statusCallback: 'https://api.vapi.ai/twilio/status',
       statusCallbackMethod: 'POST',
-      smsUrl: 'https://clientific.app/api/webhooks/twilio-sms',
+      smsUrl: 'https://www.clientific.app/api/webhooks/twilio-sms',
       smsMethod: 'POST',
     });
     expect(mockTwilioIncomingUpdate).toHaveBeenNthCalledWith(2, {
@@ -509,7 +509,7 @@ describe('PATCH /api/business', () => {
     expect(mockBusinessUpdate).toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledWith(
       '[twilio] Skipping sms webhook configuration because Twilio rejected the SMS URL:',
-      'https://clientific.app/api/webhooks/twilio-sms'
+      'https://www.clientific.app/api/webhooks/twilio-sms'
     );
     warnSpy.mockRestore();
   });
@@ -541,7 +541,7 @@ describe('PATCH /api/business', () => {
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ server: { url: 'https://clientific.app/api/webhooks/vapi' } }),
+        json: async () => ({ server: { url: 'https://www.clientific.app/api/webhooks/vapi' } }),
       });
 
     const res = await PATCH(makePatchRequest({ aiReceptionistEnabled: true }));
@@ -602,7 +602,7 @@ describe('PATCH /api/business', () => {
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ server: { url: 'https://clientific.app/api/webhooks/vapi' } }),
+        json: async () => ({ server: { url: 'https://www.clientific.app/api/webhooks/vapi' } }),
       });
 
     mockBusinessUpdate.mockResolvedValue({
@@ -650,7 +650,7 @@ describe('PATCH /api/business', () => {
       json: async () => ({
         id: 'vapi-pn-1',
         number: '+19084184377',
-        server: { url: 'https://clientific.app/api/webhooks/vapi' },
+        server: { url: 'https://www.clientific.app/api/webhooks/vapi' },
       }),
     });
 
@@ -676,7 +676,7 @@ describe('PATCH /api/business', () => {
       voiceMethod: 'POST',
       statusCallback: 'https://api.vapi.ai/twilio/status',
       statusCallbackMethod: 'POST',
-      smsUrl: 'https://clientific.app/api/webhooks/twilio-sms',
+      smsUrl: 'https://www.clientific.app/api/webhooks/twilio-sms',
       smsMethod: 'POST',
     });
   });
@@ -704,7 +704,7 @@ describe('PATCH /api/business', () => {
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ server: { url: 'https://clientific.app/api/webhooks/vapi' } }),
+        json: async () => ({ server: { url: 'https://www.clientific.app/api/webhooks/vapi' } }),
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -771,7 +771,7 @@ describe('PATCH /api/business', () => {
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ server: { url: 'https://clientific.app/api/webhooks/vapi' } }),
+        json: async () => ({ server: { url: 'https://www.clientific.app/api/webhooks/vapi' } }),
       })
       .mockResolvedValue({
         ok: true,
@@ -936,7 +936,7 @@ describe('PATCH /api/business', () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      json: async () => ({ server: { url: 'https://clientific.app/api/webhooks/vapi' } }),
+      json: async () => ({ server: { url: 'https://www.clientific.app/api/webhooks/vapi' } }),
     });
 
     mockBusinessUpdate.mockResolvedValue({
@@ -981,7 +981,7 @@ describe('PATCH /api/business', () => {
       status: 200,
       json: async () => ({
         number: '+18557654989',
-        server: { url: 'https://clientific.app/api/webhooks/vapi' },
+        server: { url: 'https://www.clientific.app/api/webhooks/vapi' },
       }),
     });
 
@@ -1027,7 +1027,7 @@ describe('PATCH /api/business', () => {
       .mockResolvedValueOnce({
         ok: false,
         status: 404,
-        json: async () => ({ server: { url: 'https://clientific.app/api/webhooks/vapi' } }),
+        json: async () => ({ server: { url: 'https://www.clientific.app/api/webhooks/vapi' } }),
       })
       .mockResolvedValueOnce({
         ok: false,
@@ -1042,7 +1042,7 @@ describe('PATCH /api/business', () => {
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ server: { url: 'https://clientific.app/api/webhooks/vapi' } }),
+        json: async () => ({ server: { url: 'https://www.clientific.app/api/webhooks/vapi' } }),
       });
 
     mockBusinessUpdate.mockResolvedValue({
@@ -1093,7 +1093,7 @@ describe('PATCH /api/business', () => {
       .mockResolvedValueOnce({
         ok: false,
         status: 404,
-        json: async () => ({ server: { url: 'https://clientific.app/api/webhooks/vapi' } }),
+        json: async () => ({ server: { url: 'https://www.clientific.app/api/webhooks/vapi' } }),
       })
       .mockResolvedValueOnce({
         ok: false,

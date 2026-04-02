@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { requireActiveSubscription } from '@/lib/subscription';
-import { getConfiguredAppBaseUrl } from '@/lib/app-url';
+import { getConfiguredAppBaseUrl, getConfiguredWebhookBaseUrl } from '@/lib/app-url';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
 import { canAccessAiReceptionist } from '@/lib/plan-access';
@@ -662,7 +662,8 @@ export async function PATCH(req: NextRequest) {
 
     const vapiConfigured = !!process.env.VAPI_PRIVATE_KEY;
     const appUrl = getConfiguredAppBaseUrl();
-    const serverUrl = `${appUrl}/api/webhooks/vapi`;
+    const webhookBaseUrl = getConfiguredWebhookBaseUrl();
+    const serverUrl = `${webhookBaseUrl}/api/webhooks/vapi`;
 
     if (vapiConfigured && finalEnabled && !current.vapiPhoneNumberId) {
       const provisioned = await provisionVapiNumber();

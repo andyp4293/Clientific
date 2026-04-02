@@ -36,6 +36,7 @@ vi.mock('@/lib/twilio', () => ({
 
 vi.mock('@/lib/app-url', () => ({
   getConfiguredAppBaseUrl: vi.fn(() => 'https://clientific.app'),
+  getConfiguredWebhookBaseUrl: vi.fn(() => 'https://www.clientific.app'),
 }));
 
 import { prisma } from '@/lib/prisma';

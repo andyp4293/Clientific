@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { getAppBaseUrlFromRequest, getConfiguredAppBaseUrl } from '@/lib/app-url';
+import {
+  getAppBaseUrlFromRequest,
+  getConfiguredAppBaseUrl,
+  getConfiguredWebhookBaseUrl,
+  getWebhookBaseUrl,
+  getWebhookBaseUrlFromRequest,
+} from '@/lib/app-url';
 
 const ORIGINAL_ENV = process.env.NEXT_PUBLIC_APP_URL;
 
@@ -25,6 +31,24 @@ describe('app-url helpers', () => {
   it('getConfiguredAppBaseUrl falls back to branded APP_URL when env is missing', () => {
     delete process.env.NEXT_PUBLIC_APP_URL;
     expect(getConfiguredAppBaseUrl()).toBe('https://clientific.app');
+  });
+
+  it.each([
+    ['https://clientific.app', 'https://www.clientific.app'],
+    ['https://clientific.net/', 'https://www.clientific.net'],
+    ['https://staging.clientific.app/', 'https://staging.clientific.app'],
+    ['http://localhost:3000', 'http://localhost:3000'],
+  ])('getWebhookBaseUrl normalizes provider callback host for %s', (url, expected) => {
+    expect(getWebhookBaseUrl(url)).toBe(expected);
+  });
+
+  it.each([
+    ['https://clientific.app', 'https://www.clientific.app'],
+    ['https://clientific.net/', 'https://www.clientific.net'],
+    ['https://staging.clientific.app/', 'https://staging.clientific.app'],
+  ])('getConfiguredWebhookBaseUrl normalizes provider callback host for %s', (envValue, expected) => {
+    process.env.NEXT_PUBLIC_APP_URL = envValue;
+    expect(getConfiguredWebhookBaseUrl()).toBe(expected);
   });
 
   it.each([
@@ -64,5 +88,14 @@ describe('app-url helpers', () => {
   it('getAppBaseUrlFromRequest falls back to APP_URL when both env and request URL are missing', () => {
     delete process.env.NEXT_PUBLIC_APP_URL;
     expect(getAppBaseUrlFromRequest()).toBe('https://clientific.app');
+  });
+
+  it.each([
+    ['https://clientific.app/api/webhooks/twilio-sms', 'https://www.clientific.app'],
+    ['https://www.clientific.app/api/webhooks/twilio-sms', 'https://www.clientific.app'],
+    ['http://localhost:3000/api/webhooks/twilio-sms', 'http://localhost:3000'],
+  ])('getWebhookBaseUrlFromRequest keeps provider callbacks on a non-redirecting host (%s)', (requestUrl, expected) => {
+    delete process.env.NEXT_PUBLIC_APP_URL;
+    expect(getWebhookBaseUrlFromRequest(requestUrl)).toBe(expected);
   });
 });

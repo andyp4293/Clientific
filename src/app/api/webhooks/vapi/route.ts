@@ -19,7 +19,7 @@ import {
   weekdayIndexForLocalDate,
   weekdayIndexInTimeZone,
 } from '@/lib/timezone';
-import { getConfiguredAppBaseUrl } from '@/lib/app-url';
+import { getConfiguredAppBaseUrl, getConfiguredWebhookBaseUrl } from '@/lib/app-url';
 import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
 import {
   buildAppointmentStartOptions,
@@ -580,6 +580,7 @@ async function resolveRequestedServices(
 
 function buildAssistantConfig(business: BusinessData) {
   const appUrl = getConfiguredAppBaseUrl();
+  const webhookBaseUrl = getConfiguredWebhookBaseUrl();
   const forwardingPhoneNumber = normalizeOptionalPhoneNumber(business.aiReceptionistPhone);
 
   if (business.aiReceptionistPhone && !forwardingPhoneNumber) {
@@ -771,7 +772,7 @@ Your job:
       ],
     },
     server: {
-      url: `${appUrl}/api/webhooks/vapi`,
+      url: `${webhookBaseUrl}/api/webhooks/vapi`,
     },
     transcriber: {
       provider: 'deepgram',
