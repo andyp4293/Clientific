@@ -17,6 +17,11 @@ import type {
   MobileCheckInSubmissionInput,
   MobileCheckInsSummary,
   MobileCustomerViewSummary,
+  MobileCustomerDetail,
+  MobileCustomerFilters,
+  MobileCustomerGroupInput,
+  MobileCustomerInput,
+  MobileCustomerSmsLogSummary,
   MobileCustomersSummary,
   MobileDealsSummary,
   MobileFundsSummary,
@@ -59,6 +64,7 @@ type MobileAppShellProps = {
   customerViewError: string | null;
   customers: MobileCustomersSummary | null;
   customersError: string | null;
+  customerFilters: MobileCustomerFilters;
   customersSearchDraft: string;
   deals: MobileDealsSummary | null;
   dealsError: string | null;
@@ -99,13 +105,21 @@ type MobileAppShellProps = {
   isServicesLoading: boolean;
   isServicesRefreshing: boolean;
   onChangeAnalyticsRange: (range: MobileAnalyticsRange) => void;
+  onChangeCustomerFilters: (next: Partial<MobileCustomerFilters>) => void;
   moreSection: MobileMoreSection;
   onChangeCustomersSearchDraft: (value: string) => void;
   onChangeMoreSection: (section: MobileMoreSection) => void;
   onChangeTab: (tab: MobileAppTab) => void;
+  onCreateCustomer: (input: MobileCustomerInput) => Promise<void>;
+  onCreateCustomerGroup: (input: MobileCustomerGroupInput) => Promise<void>;
   onCreateCheckIn: (
     input: MobileCheckInSubmissionInput,
   ) => Promise<MobileCheckInMutationResponse>;
+  onDeleteCustomer: (customerId: string) => Promise<void>;
+  onDeleteCustomerGroup: (groupId: string) => Promise<void>;
+  onFetchCustomerDetail: (customerId: string) => Promise<MobileCustomerDetail>;
+  onFetchCustomerMessages: (customerId: string) => Promise<MobileCustomerSmsLogSummary>;
+  onGoToCustomersPage: (page: number) => void;
   onJumpCheckInsToToday: () => void;
   onJumpAppointmentsToToday: () => void;
   onLookupCheckIn: (phone: string) => Promise<MobileCheckInLookupResponse>;
@@ -142,11 +156,20 @@ type MobileAppShellProps = {
   onSaveAiReceptionist: (input: MobileAiReceptionistUpdateInput) => Promise<void>;
   onSaveBusinessHours: (input: MobileBusinessHoursUpdateInput) => Promise<void>;
   onSaveBusinessProfile: (input: MobileOnboardingInput) => Promise<void>;
+  onSendCustomerMessage: (customerId: string, message: string) => Promise<void>;
   onShareCustomerViewLink: (label: string, url: string) => Promise<void>;
   onShareDeal: (deal: MobileDealsSummary['deals'][number]) => Promise<void>;
   onShareReferral: () => Promise<void>;
   onShareReviewSurvey: () => Promise<void>;
   onSignOut: () => Promise<void>;
+  onUpdateCustomer: (
+    customerId: string,
+    input: MobileCustomerInput,
+  ) => Promise<MobileCustomerDetail>;
+  onUpdateCustomerGroup: (
+    groupId: string,
+    input: MobileCustomerGroupInput,
+  ) => Promise<void>;
   referrals: MobileReferralsSummary | null;
   referralsError: string | null;
   reviews: MobileReviewsSummary | null;
@@ -184,6 +207,7 @@ export function MobileAppShell({
   customerViewError,
   customers,
   customersError,
+  customerFilters,
   customersSearchDraft,
   deals,
   dealsError,
@@ -224,11 +248,19 @@ export function MobileAppShell({
   isServicesLoading,
   isServicesRefreshing,
   onChangeAnalyticsRange,
+  onChangeCustomerFilters,
   moreSection,
   onChangeCustomersSearchDraft,
   onChangeMoreSection,
   onChangeTab,
+  onCreateCustomer,
+  onCreateCustomerGroup,
   onCreateCheckIn,
+  onDeleteCustomer,
+  onDeleteCustomerGroup,
+  onFetchCustomerDetail,
+  onFetchCustomerMessages,
+  onGoToCustomersPage,
   onJumpCheckInsToToday,
   onJumpAppointmentsToToday,
   onLookupCheckIn,
@@ -265,11 +297,14 @@ export function MobileAppShell({
   onSaveAiReceptionist,
   onSaveBusinessHours,
   onSaveBusinessProfile,
+  onSendCustomerMessage,
   onShareCustomerViewLink,
   onShareDeal,
   onShareReferral,
   onShareReviewSurvey,
   onSignOut,
+  onUpdateCustomer,
+  onUpdateCustomerGroup,
   referrals,
   referralsError,
   reviews,
@@ -319,13 +354,33 @@ export function MobileAppShell({
             <MobileCustomersScreen
               data={customers}
               error={customersError}
+              filters={customerFilters}
               isLoading={isCustomersLoading}
               isRefreshing={isCustomersRefreshing}
+              onChangeFilter={onChangeCustomerFilters}
               searchDraft={customersSearchDraft}
               onChangeSearchDraft={onChangeCustomersSearchDraft}
+              onClearFilters={() => {
+                onChangeCustomerFilters({
+                  group: '',
+                  sms: '',
+                  contact: '',
+                  visit: '',
+                });
+              }}
+              onCreateCustomer={onCreateCustomer}
+              onCreateGroup={onCreateCustomerGroup}
+              onDeleteCustomer={onDeleteCustomer}
+              onDeleteGroup={onDeleteCustomerGroup}
+              onFetchCustomerDetail={onFetchCustomerDetail}
+              onFetchCustomerMessages={onFetchCustomerMessages}
+              onGoToPage={onGoToCustomersPage}
               onNextPage={onNextCustomersPage}
               onPreviousPage={onPreviousCustomersPage}
               onRefresh={onRefreshCustomers}
+              onSendCustomerMessage={onSendCustomerMessage}
+              onUpdateCustomer={onUpdateCustomer}
+              onUpdateGroup={onUpdateCustomerGroup}
             />
           ) : null}
 

@@ -1,68 +1,54 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getBearerToken, verifyMobileSessionToken } from '@/lib/mobile-session';
+import { requireMobileSession } from '@/lib/mobile-route';
 import { isBusinessOnboardingComplete } from '@/lib/onboarding';
 import { buildCustomerWhereClause } from '@/lib/customer-filters';
-import { formatPhoneForDisplay } from '@/lib/phone';
+import { formatPhoneNumber } from '@/lib/utils';
+import { buildCustomerPhoneData, buildCustomerPhoneMatchClauses } from '@/lib/phone';
+import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
+import { normalizeCustomerGroupIds } from '@/lib/customer-groups';
+import { requireActiveSubscription, checkPlanLimit } from '@/lib/subscription';
+import { revalidateTag } from 'next/cache';
+import { getCustomerGroupsCacheTag } from '@/lib/cache-tags';
+import {
+  formatCustomerGroupRecord,
+  formatMobileCustomerRecord,
+} from '@/lib/mobile-customers';
 
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 30;
 
-function formatDateLabel(value: Date | null | undefined) {
-  if (!value) {
-    return 'Never';
-  }
-
-  return value.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
+async function getBusinessSummary(businessId: string) {
+  return prisma.business.findUnique({
+    where: { id: businessId },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      businessType: true,
+      phone: true,
+      street: true,
+      city: true,
+      state: true,
+      zipCode: true,
+      country: true,
+    },
   });
 }
 
-function formatCurrency(amount: number | null | undefined) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount ?? 0);
-}
-
 export async function GET(request: Request) {
-  const token = getBearerToken(request);
-  if (!token) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authorized = await requireMobileSession(request);
+  if ('error' in authorized) {
+    return authorized.error;
   }
 
   try {
-    let session: Awaited<ReturnType<typeof verifyMobileSessionToken>>;
-    try {
-      session = await verifyMobileSessionToken(token);
-    } catch {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const business = await prisma.business.findUnique({
-      where: { id: session.businessId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        businessType: true,
-        phone: true,
-        street: true,
-        city: true,
-        state: true,
-        zipCode: true,
-        country: true,
-      },
-    });
-
-    if (!business) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const searchParams = new URL(request.url).searchParams;
     const search = searchParams.get('search')?.trim() ?? '';
+    const group = searchParams.get('group')?.trim() ?? '';
+    const sms = searchParams.get('sms')?.trim() ?? '';
+    const contact = searchParams.get('contact')?.trim() ?? '';
+    const visit = searchParams.get('visit')?.trim() ?? '';
     const requestedPage = Number.parseInt(searchParams.get('page') ?? '1', 10);
     const requestedPageSize = Number.parseInt(
       searchParams.get('pageSize') ?? String(DEFAULT_PAGE_SIZE),
@@ -75,46 +61,69 @@ export async function GET(request: Request) {
         : DEFAULT_PAGE_SIZE;
 
     const where = buildCustomerWhereClause({
-      businessId: business.id,
+      businessId: authorized.session.businessId,
       search: search || undefined,
+      group: group || undefined,
+      sms: sms || undefined,
+      contact: contact || undefined,
+      visit: visit || undefined,
     });
 
-    const [totalCustomers, customers] = await Promise.all([
+    const [business, totalCustomers, groups] = await Promise.all([
+      getBusinessSummary(authorized.session.businessId),
       prisma.customer.count({ where }),
-      prisma.customer.findMany({
-        where,
+      prisma.customerGroup.findMany({
+        where: { businessId: authorized.session.businessId },
         include: {
           _count: {
             select: {
-              checkIns: true,
-              appointments: true,
-            },
-          },
-          groupMemberships: {
-            include: {
-              group: {
-                select: {
-                  id: true,
-                  name: true,
-                  promotionSmsEnabled: true,
-                },
-              },
-            },
-            orderBy: {
-              createdAt: 'asc',
+              memberships: true,
             },
           },
         },
         orderBy: {
-          createdAt: 'desc',
+          name: 'asc',
         },
-        skip: (currentPage - 1) * pageSize,
-        take: pageSize,
       }),
     ]);
 
+    if (!business) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const totalPages = Math.max(1, Math.ceil(totalCustomers / pageSize));
     const normalizedPage = Math.min(currentPage, totalPages);
+
+    const customers = await prisma.customer.findMany({
+      where,
+      include: {
+        _count: {
+          select: {
+            checkIns: true,
+            appointments: true,
+          },
+        },
+        groupMemberships: {
+          include: {
+            group: {
+              select: {
+                id: true,
+                name: true,
+                promotionSmsEnabled: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      skip: (normalizedPage - 1) * pageSize,
+      take: pageSize,
+    });
 
     return NextResponse.json({
       business: {
@@ -125,31 +134,168 @@ export async function GET(request: Request) {
         onboardingComplete: isBusinessOnboardingComplete(business),
       },
       search,
+      filters: {
+        group,
+        sms,
+        contact,
+        visit,
+      },
       currentPage: normalizedPage,
       totalPages,
       totalCustomers,
       pageSize,
-      customers: customers.map((customer) => ({
-        id: customer.id,
-        name: customer.name,
-        email: customer.email,
-        phoneDisplay: formatPhoneForDisplay(customer.phone),
-        joinedLabel: formatDateLabel(customer.createdAt),
-        lastVisitLabel: formatDateLabel(customer.lastVisit),
-        totalSpentLabel: formatCurrency(customer.totalSpent),
-        smsConsent: customer.smsConsent,
-        smsOptedOut: customer.smsOptedOut,
-        dealSmsBlocked: customer.dealSmsBlocked === true,
-        visitsCount: customer._count.checkIns,
-        groups: customer.groupMemberships.map(({ group }) => ({
-          id: group.id,
-          name: group.name,
-          promotionSmsEnabled: group.promotionSmsEnabled,
-        })),
-      })),
+      groups: groups.map(formatCustomerGroupRecord),
+      customers: customers.map(formatMobileCustomerRecord),
     });
   } catch (error) {
     console.error('GET /api/mobile/customers error:', error);
     return NextResponse.json({ error: 'Unable to load mobile customers' }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  const authorized = await requireMobileSession(request);
+  if ('error' in authorized) {
+    return authorized.error;
+  }
+
+  try {
+    const subscriptionError = await requireActiveSubscription(authorized.session.businessId);
+    if (subscriptionError) {
+      return subscriptionError;
+    }
+
+    const limitCheck = await checkPlanLimit(authorized.session.businessId, 'customers');
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: `Customer limit reached (${limitCheck.current}/${limitCheck.limit}). Please upgrade your plan.`,
+          code: 'PLAN_LIMIT_REACHED',
+        },
+        { status: 403 },
+      );
+    }
+
+    const body = await request.json();
+    const name = typeof body?.name === 'string' ? body.name.trim() : '';
+    const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
+    const phone = typeof body?.phone === 'string' ? body.phone.trim() : '';
+    const birthday = typeof body?.birthday === 'string' ? body.birthday.trim() : '';
+    const notes = typeof body?.notes === 'string' ? body.notes.trim() : '';
+    const dealSmsBlocked = body?.dealSmsBlocked === true;
+    const groupIds = normalizeCustomerGroupIds(body?.groupIds);
+
+    if (!name) {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    }
+
+    const blockedField = getBlockedFieldLabel([
+      { label: 'Customer name', value: name },
+      { label: 'Notes', value: notes },
+    ]);
+    if (blockedField) {
+      return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
+    }
+
+    const formattedPhone = phone ? formatPhoneNumber(phone) : null;
+    const phoneData = buildCustomerPhoneData(phone);
+
+    if (email || formattedPhone) {
+      const existing = await prisma.customer.findFirst({
+        where: {
+          businessId: authorized.session.businessId,
+          OR: [
+            email ? { email } : {},
+            ...(formattedPhone ? buildCustomerPhoneMatchClauses(formattedPhone) : []),
+          ].filter((entry) => Object.keys(entry).length > 0),
+        },
+        select: { id: true },
+      });
+
+      if (existing) {
+        return NextResponse.json(
+          { error: 'Customer with this email or phone already exists' },
+          { status: 400 },
+        );
+      }
+    }
+
+    if (groupIds.length > 0) {
+      const validGroups = await prisma.customerGroup.findMany({
+        where: {
+          businessId: authorized.session.businessId,
+          id: { in: groupIds },
+        },
+        select: { id: true },
+      });
+
+      if (validGroups.length !== groupIds.length) {
+        return NextResponse.json(
+          { error: 'One or more selected customer groups are invalid' },
+          { status: 400 },
+        );
+      }
+    }
+
+    const customer = await prisma.customer.create({
+      data: {
+        businessId: authorized.session.businessId,
+        name,
+        email: email || null,
+        phone: phoneData.phone,
+        phoneLookupKey: phoneData.phoneLookupKey,
+        birthday: birthday ? new Date(birthday) : null,
+        notes: notes || null,
+        dealSmsBlocked,
+        segment: 'NEW',
+        totalSpent: 0,
+        ...(groupIds.length > 0
+          ? {
+              groupMemberships: {
+                create: groupIds.map((groupId) => ({ groupId })),
+              },
+            }
+          : {}),
+      },
+      include: {
+        _count: {
+          select: {
+            checkIns: true,
+          },
+        },
+        groupMemberships: {
+          include: {
+            group: {
+              select: {
+                id: true,
+                name: true,
+                promotionSmsEnabled: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+      },
+    });
+
+    revalidateTag(`dashboard-stats-${authorized.session.businessId}`, 'max');
+    revalidateTag(getCustomerGroupsCacheTag(authorized.session.businessId), 'max');
+
+    return NextResponse.json(
+      {
+        customer: formatMobileCustomerRecord({
+          ...customer,
+          lastVisit: customer.lastVisit ?? null,
+          dealSmsBlocked: customer.dealSmsBlocked,
+          totalSpent: customer.totalSpent,
+        }),
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    console.error('POST /api/mobile/customers error:', error);
+    return NextResponse.json({ error: 'Unable to create customer' }, { status: 500 });
   }
 }

@@ -220,14 +220,32 @@ export type MobileCustomerGroupBadge = {
   promotionSmsEnabled: boolean;
 };
 
+export type MobileCustomerSmsFilter = '' | 'enabled' | 'opted_out' | 'denied' | 'no_phone';
+export type MobileCustomerContactFilter = '' | 'email' | 'phone' | 'both';
+export type MobileCustomerVisitFilter = '' | 'visited' | 'never';
+
+export type MobileCustomerFilters = {
+  group: string;
+  sms: MobileCustomerSmsFilter;
+  contact: MobileCustomerContactFilter;
+  visit: MobileCustomerVisitFilter;
+};
+
+export type MobileCustomerGroupRecord = MobileCustomerGroupBadge & {
+  membersCount: number;
+};
+
 export type MobileCustomerRecord = {
   id: string;
   name: string;
   email: string | null;
+  phone: string | null;
   phoneDisplay: string | null;
   joinedLabel: string;
   lastVisitLabel: string;
   totalSpentLabel: string;
+  segment: string;
+  segmentLabel: string;
   smsConsent: boolean;
   smsOptedOut: boolean;
   dealSmsBlocked: boolean;
@@ -235,13 +253,93 @@ export type MobileCustomerRecord = {
   groups: MobileCustomerGroupBadge[];
 };
 
+export type MobileCustomerCheckInHistory = {
+  id: string;
+  createdAtLabel: string;
+  amountSpentLabel: string;
+};
+
+export type MobileCustomerAppointmentHistory = {
+  id: string;
+  startTimeLabel: string;
+  status: string;
+  statusLabel: string;
+  serviceName: string;
+  staffName: string | null;
+};
+
+export type MobileCustomerDetail = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  phoneDisplay: string | null;
+  birthdayValue: string;
+  birthdayLabel: string;
+  notes: string | null;
+  segment: string;
+  segmentLabel: string;
+  joinedLabel: string;
+  lastVisitLabel: string;
+  totalSpentLabel: string;
+  smsConsent: boolean;
+  smsOptedOut: boolean;
+  dealSmsBlocked: boolean;
+  visitsCount: number;
+  appointmentsCount: number;
+  groups: MobileCustomerGroupBadge[];
+  checkIns: MobileCustomerCheckInHistory[];
+  appointments: MobileCustomerAppointmentHistory[];
+};
+
+export type MobileCustomerSmsLog = {
+  id: string;
+  createdAt: string;
+  createdAtLabel: string;
+  messageType: string;
+  messageTypeLabel: string;
+  status: string;
+  message: string;
+};
+
+export type MobileDirectMessageQuota = {
+  limit: number;
+  used: number;
+  remaining: number;
+  periodEnd: string;
+  periodEndLabel: string;
+  isActive: boolean;
+};
+
+export type MobileCustomerSmsLogSummary = {
+  logs: MobileCustomerSmsLog[];
+  quota: MobileDirectMessageQuota | null;
+};
+
+export type MobileCustomerInput = {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  birthday?: string | null;
+  notes?: string | null;
+  dealSmsBlocked?: boolean;
+  groupIds?: string[];
+};
+
+export type MobileCustomerGroupInput = {
+  name: string;
+  promotionSmsEnabled?: boolean;
+};
+
 export type MobileCustomersSummary = {
   business: MobileBusiness;
   search: string;
+  filters: MobileCustomerFilters;
   currentPage: number;
   totalPages: number;
   totalCustomers: number;
   pageSize: number;
+  groups: MobileCustomerGroupRecord[];
   customers: MobileCustomerRecord[];
 };
 
@@ -678,7 +776,15 @@ export async function createMobileCheckIn(
 
 export async function fetchMobileCustomers(
   token: string,
-  input?: { page?: number; pageSize?: number; search?: string },
+  input?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    group?: string;
+    sms?: MobileCustomerSmsFilter;
+    contact?: MobileCustomerContactFilter;
+    visit?: MobileCustomerVisitFilter;
+  },
 ) {
   const query = new URLSearchParams();
   if (input?.page) {
@@ -690,6 +796,18 @@ export async function fetchMobileCustomers(
   if (input?.search) {
     query.set('search', input.search);
   }
+  if (input?.group) {
+    query.set('group', input.group);
+  }
+  if (input?.sms) {
+    query.set('sms', input.sms);
+  }
+  if (input?.contact) {
+    query.set('contact', input.contact);
+  }
+  if (input?.visit) {
+    query.set('visit', input.visit);
+  }
 
   return requestJson<MobileCustomersSummary>(
     `/api/mobile/customers${query.toString() ? `?${query.toString()}` : ''}`,
@@ -699,6 +817,110 @@ export async function fetchMobileCustomers(
       },
     },
   );
+}
+
+export async function createMobileCustomer(token: string, input: MobileCustomerInput) {
+  return requestJson<{ customer: MobileCustomerRecord }>('/api/mobile/customers', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function fetchMobileCustomerDetail(token: string, customerId: string) {
+  return requestJson<{ customer: MobileCustomerDetail }>(`/api/mobile/customers/${customerId}`, {
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function updateMobileCustomer(
+  token: string,
+  customerId: string,
+  input: MobileCustomerInput,
+) {
+  return requestJson<{ customer: MobileCustomerDetail }>(`/api/mobile/customers/${customerId}`, {
+    method: 'PUT',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteMobileCustomer(token: string, customerId: string) {
+  return requestJson<{ success: true }>(`/api/mobile/customers/${customerId}`, {
+    method: 'DELETE',
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function fetchMobileCustomerSmsLogs(token: string, customerId: string) {
+  return requestJson<MobileCustomerSmsLogSummary>(`/api/mobile/customers/${customerId}/sms-logs`, {
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function sendMobileCustomerMessage(
+  token: string,
+  customerId: string,
+  message: string,
+) {
+  return requestJson<{ success: true; quota: MobileDirectMessageQuota | null }>(
+    `/api/mobile/customers/${customerId}/message`,
+    {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ message }),
+    },
+  );
+}
+
+export async function createMobileCustomerGroup(token: string, input: MobileCustomerGroupInput) {
+  return requestJson<{ group: MobileCustomerGroupRecord }>('/api/mobile/customer-groups', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateMobileCustomerGroup(
+  token: string,
+  groupId: string,
+  input: MobileCustomerGroupInput,
+) {
+  return requestJson<{ group: MobileCustomerGroupRecord }>(`/api/mobile/customer-groups/${groupId}`, {
+    method: 'PUT',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteMobileCustomerGroup(token: string, groupId: string) {
+  return requestJson<{ success: true }>(`/api/mobile/customer-groups/${groupId}`, {
+    method: 'DELETE',
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
 }
 
 export async function fetchMobileServices(token: string) {

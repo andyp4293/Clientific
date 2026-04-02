@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/lib/mobile-session', () => ({
-  getBearerToken: vi.fn(),
-  verifyMobileSessionToken: vi.fn(),
+vi.mock('@/lib/mobile-route', () => ({
+  requireMobileSession: vi.fn(),
 }));
 vi.mock('@/lib/prisma', () => ({
   prisma: {
@@ -11,31 +10,39 @@ vi.mock('@/lib/prisma', () => ({
     },
     customer: {
       count: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+    },
+    customerGroup: {
       findMany: vi.fn(),
     },
   },
 }));
-vi.mock('@/lib/customer-filters', () => ({
-  buildCustomerWhereClause: vi.fn(() => ({ businessId: 'biz-1' })),
-}));
-vi.mock('@/lib/phone', () => ({
-  formatPhoneForDisplay: vi.fn((value: string | null | undefined) => value ?? null),
+vi.mock('@/lib/subscription', () => ({
+  requireActiveSubscription: vi.fn().mockResolvedValue(null),
+  checkPlanLimit: vi.fn().mockResolvedValue({
+    allowed: true,
+    current: 1,
+    limit: 100,
+  }),
 }));
 
-import { getBearerToken, verifyMobileSessionToken } from '@/lib/mobile-session';
+import { requireMobileSession } from '@/lib/mobile-route';
 import { prisma } from '@/lib/prisma';
-import { GET } from './route';
+import { GET, POST } from './route';
 
-const mockGetBearerToken = getBearerToken as ReturnType<typeof vi.fn>;
-const mockVerifyMobileSessionToken = verifyMobileSessionToken as ReturnType<typeof vi.fn>;
+const mockRequireMobileSession = requireMobileSession as ReturnType<typeof vi.fn>;
 const mockFindBusiness = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockCountCustomers = prisma.customer.count as ReturnType<typeof vi.fn>;
 const mockFindCustomers = prisma.customer.findMany as ReturnType<typeof vi.fn>;
+const mockCreateCustomer = prisma.customer.create as ReturnType<typeof vi.fn>;
+const mockFindCustomer = prisma.customer.findFirst as ReturnType<typeof vi.fn>;
+const mockFindGroups = prisma.customerGroup.findMany as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGetBearerToken.mockReturnValue('token');
-  mockVerifyMobileSessionToken.mockResolvedValue({ businessId: 'biz-1' });
+  mockRequireMobileSession.mockResolvedValue({ session: { businessId: 'biz-1' } });
   mockFindBusiness.mockResolvedValue({
     id: 'biz-1',
     email: 'owner@clientific.app',
@@ -48,55 +55,120 @@ beforeEach(() => {
     zipCode: '78701',
     country: 'United States',
   });
-  mockCountCustomers.mockResolvedValue(2);
-  mockFindCustomers.mockResolvedValue([
-    {
-      id: 'cust-1',
-      name: 'Jordan Lee',
-      email: 'jordan@example.com',
-      phone: '+15551234567',
-      createdAt: new Date('2026-03-18T14:00:00.000Z'),
-      lastVisit: new Date('2026-03-28T14:00:00.000Z'),
-      totalSpent: 120,
-      smsConsent: true,
-      smsOptedOut: false,
-      dealSmsBlocked: false,
-      _count: {
-        checkIns: 3,
-        appointments: 2,
-      },
-      groupMemberships: [
-        {
-          group: {
-            id: 'group-1',
-            name: 'VIP',
-            promotionSmsEnabled: true,
-          },
-        },
-      ],
-    },
-  ]);
 });
 
-describe('mobile customers route', () => {
-  it('returns paginated customer records for the native app', async () => {
+describe('GET /api/mobile/customers', () => {
+  it('returns paginated customer records plus groups and active filters', async () => {
+    mockCountCustomers.mockResolvedValue(2);
+    mockFindGroups.mockResolvedValue([
+      {
+        id: 'group-1',
+        name: 'VIP',
+        promotionSmsEnabled: true,
+        _count: { memberships: 4 },
+      },
+    ]);
+    mockFindCustomers.mockResolvedValue([
+      {
+        id: 'cust-1',
+        name: 'Jordan Lee',
+        email: 'jordan@example.com',
+        phone: '+15551234567',
+        createdAt: new Date('2026-03-18T14:00:00.000Z'),
+        lastVisit: new Date('2026-03-28T14:00:00.000Z'),
+        totalSpent: 120,
+        segment: 'VIP',
+        smsConsent: true,
+        smsOptedOut: false,
+        dealSmsBlocked: false,
+        _count: {
+          checkIns: 3,
+          appointments: 2,
+        },
+        groupMemberships: [
+          {
+            group: {
+              id: 'group-1',
+              name: 'VIP',
+              promotionSmsEnabled: true,
+            },
+          },
+        ],
+      },
+    ]);
+
     const response = await GET(
-      new Request('https://www.clientific.app/api/mobile/customers?page=1&pageSize=20&search=jordan', {
-        headers: { authorization: 'Bearer token' },
-      }),
+      new Request(
+        'https://www.clientific.app/api/mobile/customers?page=1&pageSize=20&search=jordan&sms=enabled',
+      ),
     );
 
     expect(response.status).toBe(200);
     const body = await response.json();
 
     expect(body.totalCustomers).toBe(2);
-    expect(body.totalPages).toBe(1);
-    expect(body.search).toBe('jordan');
-    expect(body.customers[0]).toEqual(
+    expect(body.filters.sms).toBe('enabled');
+    expect(body.groups[0]).toMatchObject({
+      id: 'group-1',
+      name: 'VIP',
+      membersCount: 4,
+    });
+    expect(body.customers[0]).toMatchObject({
+      name: 'Jordan Lee',
+      totalSpentLabel: '$120.00',
+      segmentLabel: 'VIP',
+      visitsCount: 3,
+    });
+  });
+});
+
+describe('POST /api/mobile/customers', () => {
+  it('creates a mobile customer record and returns the formatted customer', async () => {
+    mockFindCustomer.mockResolvedValue(null);
+    mockCreateCustomer.mockResolvedValue({
+      id: 'cust-1',
+      name: 'Jordan Lee',
+      email: 'jordan@example.com',
+      phone: '+15551234567',
+      createdAt: new Date('2026-03-18T14:00:00.000Z'),
+      lastVisit: null,
+      totalSpent: 0,
+      segment: 'NEW',
+      smsConsent: false,
+      smsOptedOut: false,
+      dealSmsBlocked: false,
+      _count: {
+        checkIns: 0,
+      },
+      groupMemberships: [],
+    });
+
+    const response = await POST(
+      new Request('https://www.clientific.app/api/mobile/customers', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Jordan Lee',
+          email: 'jordan@example.com',
+          phone: '(555) 123-4567',
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    const body = await response.json();
+
+    expect(body.customer).toMatchObject({
+      name: 'Jordan Lee',
+      segmentLabel: 'New',
+      visitsCount: 0,
+    });
+    expect(mockCreateCustomer).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: 'Jordan Lee',
-        totalSpentLabel: '$120.00',
-        visitsCount: 3,
+        data: expect.objectContaining({
+          businessId: 'biz-1',
+          name: 'Jordan Lee',
+        }),
       }),
     );
   });

@@ -11,9 +11,13 @@ import {
 import * as WebBrowser from 'expo-web-browser';
 import * as SecureStore from 'expo-secure-store';
 import {
+  createMobileCustomer,
+  createMobileCustomerGroup,
   createMobileCheckIn,
   ClientificApiError,
   confirmVerificationCode,
+  deleteMobileCustomer,
+  deleteMobileCustomerGroup,
   fetchMobileAiReceptionist,
   fetchMobileAnalytics,
   fetchMobileAppointments,
@@ -21,6 +25,8 @@ import {
   fetchMobileBusinessHours,
   fetchMobileBusinessProfile,
   fetchMobileCheckIns,
+  fetchMobileCustomerDetail,
+  fetchMobileCustomerSmsLogs,
   fetchMobileCustomerView,
   fetchMobileCustomers,
   fetchMobileDeals,
@@ -40,6 +46,9 @@ import {
   MobileBillingSummary,
   MobileBusinessHoursSummary,
   MobileBusinessProfile,
+  MobileCustomerFilters,
+  MobileCustomerGroupInput,
+  MobileCustomerInput,
   MobileCheckInSubmissionInput,
   MobileCheckInsSummary,
   MobileCustomerViewSummary,
@@ -59,9 +68,12 @@ import {
   redeemMobileCode,
   registerWithClientific,
   resendVerificationCode,
+  sendMobileCustomerMessage,
   updateMobileAiReceptionist,
   updateMobileBusinessHours,
   updateMobileBusinessProfile,
+  updateMobileCustomer,
+  updateMobileCustomerGroup,
 } from '@/lib/clientific-api';
 import { APP_PRIVACY_URL, APP_TERMS_URL } from '@/lib/clientific-brand';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
@@ -169,6 +181,12 @@ export function ClientificNativeApp() {
   const [appointmentsDate, setAppointmentsDate] = useState(() => formatMobileDateKey(new Date()));
   const [checkInsDate, setCheckInsDate] = useState(() => formatMobileDateKey(new Date()));
   const [customersPage, setCustomersPage] = useState(1);
+  const [customerFilters, setCustomerFilters] = useState<MobileCustomerFilters>({
+    group: '',
+    sms: '',
+    contact: '',
+    visit: '',
+  });
   const [customersSearchDraft, setCustomersSearchDraft] = useState('');
   const [customersSearchQuery, setCustomersSearchQuery] = useState('');
   const [session, setSession] = useState<MobileLoginResponse | null>(null);
@@ -235,6 +253,12 @@ export function ClientificNativeApp() {
     setAppointmentsDate(formatMobileDateKey(new Date()));
     setCheckInsDate(formatMobileDateKey(new Date()));
     setCustomersPage(1);
+    setCustomerFilters({
+      group: '',
+      sms: '',
+      contact: '',
+      visit: '',
+    });
     setCustomersSearchDraft('');
     setCustomersSearchQuery('');
     setPendingVerification(null);
@@ -425,7 +449,7 @@ export function ClientificNativeApp() {
   const loadCustomers = useCallback(
     async (
       token: string,
-      options: { page: number; search: string },
+      options: { page: number; search: string; filters: MobileCustomerFilters },
       isRefresh = false,
     ) => {
       if (isRefresh) {
@@ -439,6 +463,10 @@ export function ClientificNativeApp() {
           page: options.page,
           pageSize: 20,
           search: options.search,
+          group: options.filters.group,
+          sms: options.filters.sms,
+          contact: options.filters.contact,
+          visit: options.filters.visit,
         });
         setCustomers(nextCustomers);
         setCustomersError(null);
@@ -706,7 +734,11 @@ export function ClientificNativeApp() {
       session &&
       (!customers ||
         customers.currentPage !== customersPage ||
-        customers.search !== customersSearchQuery) &&
+        customers.search !== customersSearchQuery ||
+        customers.filters.group !== customerFilters.group ||
+        customers.filters.sms !== customerFilters.sms ||
+        customers.filters.contact !== customerFilters.contact ||
+        customers.filters.visit !== customerFilters.visit) &&
       !isLoadingCustomers
     ) {
       void loadCustomers(
@@ -714,10 +746,12 @@ export function ClientificNativeApp() {
         {
           page: customersPage,
           search: customersSearchQuery,
+          filters: customerFilters,
         },
       );
     }
   }, [
+    customerFilters,
     customers,
     customersPage,
     customersSearchQuery,
@@ -1201,10 +1235,11 @@ export function ClientificNativeApp() {
       {
         page: customersPage,
         search: customersSearchQuery,
+        filters: customerFilters,
       },
       true,
     );
-  }, [customersPage, customersSearchQuery, loadCustomers, session]);
+  }, [customerFilters, customersPage, customersSearchQuery, loadCustomers, session]);
 
   const handleRefreshDeals = useCallback(async () => {
     if (!session) {
@@ -1321,6 +1356,231 @@ export function ClientificNativeApp() {
     });
   }, [customers?.totalPages]);
 
+  const goToCustomersPage = useCallback((page: number) => {
+    setCustomersPage((currentPage) => {
+      const totalPages = customers?.totalPages ?? currentPage;
+      const nextPage = Math.min(Math.max(page, 1), Math.max(totalPages, 1));
+      return nextPage === currentPage ? currentPage : nextPage;
+    });
+  }, [customers?.totalPages]);
+
+  const changeCustomerFilters = useCallback((next: Partial<MobileCustomerFilters>) => {
+    setCustomersPage(1);
+    setCustomerFilters((current) => ({
+      ...current,
+      ...next,
+    }));
+  }, []);
+
+  const handleCreateCustomer = useCallback(
+    async (input: MobileCustomerInput) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await createMobileCustomer(session.token, input);
+        await Promise.all([
+          loadCustomers(session.token, {
+            page: 1,
+            search: customersSearchQuery,
+            filters: customerFilters,
+          }),
+          loadHome(session.token),
+        ]);
+        setCustomersPage(1);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to create customer.', setCustomersError);
+        throw new Error(getReadableError(error, 'Unable to create customer.'));
+      }
+    },
+    [customerFilters, customersSearchQuery, handleSessionError, loadCustomers, loadHome, session],
+  );
+
+  const handleFetchCustomerDetail = useCallback(
+    async (customerId: string) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        const response = await fetchMobileCustomerDetail(session.token, customerId);
+        return response.customer;
+      } catch (error) {
+        await handleSessionError(error, 'Unable to load the customer profile.', setCustomersError);
+        throw new Error(getReadableError(error, 'Unable to load the customer profile.'));
+      }
+    },
+    [handleSessionError, session],
+  );
+
+  const handleUpdateCustomer = useCallback(
+    async (customerId: string, input: MobileCustomerInput) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        const response = await updateMobileCustomer(session.token, customerId, input);
+        await Promise.all([
+          loadCustomers(session.token, {
+            page: customersPage,
+            search: customersSearchQuery,
+            filters: customerFilters,
+          }),
+          loadHome(session.token),
+        ]);
+        return response.customer;
+      } catch (error) {
+        await handleSessionError(error, 'Unable to update customer.', setCustomersError);
+        throw new Error(getReadableError(error, 'Unable to update customer.'));
+      }
+    },
+    [
+      customerFilters,
+      customersPage,
+      customersSearchQuery,
+      handleSessionError,
+      loadCustomers,
+      loadHome,
+      session,
+    ],
+  );
+
+  const handleDeleteCustomer = useCallback(
+    async (customerId: string) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await deleteMobileCustomer(session.token, customerId);
+        await Promise.all([
+          loadCustomers(session.token, {
+            page: customersPage,
+            search: customersSearchQuery,
+            filters: customerFilters,
+          }),
+          loadHome(session.token),
+        ]);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to delete customer.', setCustomersError);
+        throw new Error(getReadableError(error, 'Unable to delete customer.'));
+      }
+    },
+    [
+      customerFilters,
+      customersPage,
+      customersSearchQuery,
+      handleSessionError,
+      loadCustomers,
+      loadHome,
+      session,
+    ],
+  );
+
+  const handleFetchCustomerMessages = useCallback(
+    async (customerId: string) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        return await fetchMobileCustomerSmsLogs(session.token, customerId);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to load message history.', setCustomersError);
+        throw new Error(getReadableError(error, 'Unable to load message history.'));
+      }
+    },
+    [handleSessionError, session],
+  );
+
+  const handleSendCustomerMessage = useCallback(
+    async (customerId: string, message: string) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await sendMobileCustomerMessage(session.token, customerId, message);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to send the message.', setCustomersError);
+        throw new Error(getReadableError(error, 'Unable to send the message.'));
+      }
+    },
+    [handleSessionError, session],
+  );
+
+  const handleCreateCustomerGroup = useCallback(
+    async (input: MobileCustomerGroupInput) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await createMobileCustomerGroup(session.token, input);
+        await loadCustomers(session.token, {
+          page: customersPage,
+          search: customersSearchQuery,
+          filters: customerFilters,
+        });
+      } catch (error) {
+        await handleSessionError(error, 'Unable to create customer group.', setCustomersError);
+        throw new Error(getReadableError(error, 'Unable to create customer group.'));
+      }
+    },
+    [customerFilters, customersPage, customersSearchQuery, handleSessionError, loadCustomers, session],
+  );
+
+  const handleUpdateCustomerGroup = useCallback(
+    async (groupId: string, input: MobileCustomerGroupInput) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await updateMobileCustomerGroup(session.token, groupId, input);
+        await loadCustomers(session.token, {
+          page: customersPage,
+          search: customersSearchQuery,
+          filters: customerFilters,
+        });
+      } catch (error) {
+        await handleSessionError(error, 'Unable to update customer group.', setCustomersError);
+        throw new Error(getReadableError(error, 'Unable to update customer group.'));
+      }
+    },
+    [customerFilters, customersPage, customersSearchQuery, handleSessionError, loadCustomers, session],
+  );
+
+  const handleDeleteCustomerGroup = useCallback(
+    async (groupId: string) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await deleteMobileCustomerGroup(session.token, groupId);
+        if (customerFilters.group === groupId) {
+          setCustomerFilters((current) => ({ ...current, group: '' }));
+          setCustomersPage(1);
+        }
+        await loadCustomers(session.token, {
+          page: customersPage,
+          search: customersSearchQuery,
+          filters:
+            customerFilters.group === groupId
+              ? { ...customerFilters, group: '' }
+              : customerFilters,
+        });
+      } catch (error) {
+        await handleSessionError(error, 'Unable to delete customer group.', setCustomersError);
+        throw new Error(getReadableError(error, 'Unable to delete customer group.'));
+      }
+    },
+    [customerFilters, customersPage, customersSearchQuery, handleSessionError, loadCustomers, session],
+  );
+
   const handleLookupCheckIn = useCallback(
     async (phone: string) => {
       if (!session) {
@@ -1352,6 +1612,7 @@ export function ClientificNativeApp() {
             ? loadCustomers(session.token, {
                 page: customersPage,
                 search: customersSearchQuery,
+                filters: customerFilters,
               })
             : Promise.resolve(),
         ]);
@@ -1363,6 +1624,7 @@ export function ClientificNativeApp() {
     },
     [
       checkInsDate,
+      customerFilters,
       customers,
       customersPage,
       customersSearchQuery,
@@ -1467,12 +1729,17 @@ export function ClientificNativeApp() {
       activeTab === 'customers' &&
       (!customers ||
         customers.currentPage !== customersPage ||
-        customers.search !== customersSearchQuery) &&
+        customers.search !== customersSearchQuery ||
+        customers.filters.group !== customerFilters.group ||
+        customers.filters.sms !== customerFilters.sms ||
+        customers.filters.contact !== customerFilters.contact ||
+        customers.filters.visit !== customerFilters.visit) &&
       !isLoadingCustomers
     ) {
       void loadCustomers(session.token, {
         page: customersPage,
         search: customersSearchQuery,
+        filters: customerFilters,
       });
     }
 
@@ -1512,6 +1779,7 @@ export function ClientificNativeApp() {
     businessProfile,
     checkIns,
     checkInsDate,
+    customerFilters,
     customerView,
     customers,
     customersPage,
@@ -1690,6 +1958,7 @@ export function ClientificNativeApp() {
       customerViewError={customerViewError}
       customers={customers}
       customersError={customersError}
+      customerFilters={customerFilters}
       customersSearchDraft={customersSearchDraft}
       deals={deals}
       dealsError={dealsError}
@@ -1730,11 +1999,19 @@ export function ClientificNativeApp() {
       isServicesLoading={isLoadingServices}
       isServicesRefreshing={isRefreshingServices}
       onChangeAnalyticsRange={setAnalyticsRange}
+      onChangeCustomerFilters={changeCustomerFilters}
       moreSection={moreSection}
       onChangeCustomersSearchDraft={setCustomersSearchDraft}
       onChangeMoreSection={setMoreSection}
       onChangeTab={setActiveTab}
+      onCreateCustomer={handleCreateCustomer}
+      onCreateCustomerGroup={handleCreateCustomerGroup}
       onCreateCheckIn={handleCreateCheckIn}
+      onDeleteCustomer={handleDeleteCustomer}
+      onDeleteCustomerGroup={handleDeleteCustomerGroup}
+      onFetchCustomerDetail={handleFetchCustomerDetail}
+      onFetchCustomerMessages={handleFetchCustomerMessages}
+      onGoToCustomersPage={goToCustomersPage}
       onJumpCheckInsToToday={jumpCheckInsToToday}
       onJumpAppointmentsToToday={jumpAppointmentsToToday}
       onLookupCheckIn={handleLookupCheckIn}
@@ -1771,11 +2048,14 @@ export function ClientificNativeApp() {
       onSaveAiReceptionist={handleSaveAiReceptionist}
       onSaveBusinessHours={handleSaveBusinessHours}
       onSaveBusinessProfile={handleSaveBusinessProfile}
+      onSendCustomerMessage={handleSendCustomerMessage}
       onShareCustomerViewLink={shareCustomerViewLink}
       onShareDeal={shareDeal}
       onShareReferral={shareReferral}
       onShareReviewSurvey={shareReviewSurvey}
       onSignOut={signOut}
+      onUpdateCustomer={handleUpdateCustomer}
+      onUpdateCustomerGroup={handleUpdateCustomerGroup}
       referrals={referrals}
       referralsError={referralsError}
       reviews={reviews}
