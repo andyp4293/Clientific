@@ -87,6 +87,7 @@ const visitFilterOptions: Array<{ value: CustomerVisitFilter; label: string }> =
 const SEARCH_DROPDOWN_MIN_LENGTH = 2;
 const SEARCH_DROPDOWN_LIMIT = 8;
 const SEARCH_QUERY_SYNC_DELAY_MS = 250;
+const EXTERNAL_CUSTOMER_REFRESH_INTERVAL_MS = 15000;
 
 function buildCustomersHref(params: URLSearchParams) {
   const query = params.toString();
@@ -260,6 +261,8 @@ export default function CustomerList({
   const [messagingCustomer, setMessagingCustomer] = useState<Customer | null>(null);
   const searchCacheRef = useRef<Map<string, CustomerSearchMatch[]>>(new Map());
   const searchBlurTimeoutRef = useRef<number | null>(null);
+  const hasOverlayOpen =
+    isAddModalOpen || isGroupModalOpen || editingCustomer !== null || messagingCustomer !== null;
   const groupFilterOptions = groupRecords.map((group) => ({
     value: group.id,
     label: group.name,
@@ -298,6 +301,36 @@ export default function CustomerList({
 
     return () => window.clearTimeout(timeoutId);
   }, [initialSearch, router, search, searchParams]);
+
+  useEffect(() => {
+    if (activeTab !== "customers" || hasOverlayOpen) {
+      return;
+    }
+
+    const refreshCustomerData = () => {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+
+      startTransition(() => {
+        router.refresh();
+      });
+    };
+
+    const intervalId = window.setInterval(
+      refreshCustomerData,
+      EXTERNAL_CUSTOMER_REFRESH_INTERVAL_MS,
+    );
+
+    window.addEventListener("focus", refreshCustomerData);
+    document.addEventListener("visibilitychange", refreshCustomerData);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshCustomerData);
+      document.removeEventListener("visibilitychange", refreshCustomerData);
+    };
+  }, [activeTab, hasOverlayOpen, router]);
 
   useEffect(() => {
     if (activeTab !== "customers" || !isSearchFocused) {

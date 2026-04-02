@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import CustomerList from "./CustomerList";
 
-const { mockFetch, mockPush, mockReplace, mockSearchParams } = vi.hoisted(() => ({
+const { mockFetch, mockPush, mockRefresh, mockReplace, mockSearchParams } = vi.hoisted(() => ({
   mockFetch: vi.fn(),
   mockPush: vi.fn(),
+  mockRefresh: vi.fn(),
   mockReplace: vi.fn(),
   mockSearchParams: vi.fn(() => new URLSearchParams()),
 }));
@@ -14,6 +15,7 @@ const { mockFetch, mockPush, mockReplace, mockSearchParams } = vi.hoisted(() => 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: mockPush,
+    refresh: mockRefresh,
     replace: mockReplace,
   }),
   useSearchParams: () => mockSearchParams(),
@@ -73,6 +75,10 @@ describe("CustomerList filters", () => {
       ok: true,
       json: async () => ({ customers: [] }),
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("renders broader filter controls and active filter chips", () => {
@@ -238,5 +244,21 @@ describe("CustomerList filters", () => {
     );
 
     expect(searchInput).toHaveValue("9087");
+  });
+
+  it("refreshes customer data when the page regains focus or sits open for external sms updates", () => {
+    vi.useFakeTimers();
+
+    render(<CustomerList customers={[baseCustomer]} groups={customerGroups} />);
+
+    act(() => {
+      fireEvent(window, new Event("focus"));
+    });
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      vi.advanceTimersByTime(15000);
+    });
+    expect(mockRefresh).toHaveBeenCalledTimes(2);
   });
 });
