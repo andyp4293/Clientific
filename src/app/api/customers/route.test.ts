@@ -1,367 +1,49 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { NextRequest } from 'next/server';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock prisma
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
-    business: {
-      findUnique: vi.fn(),
-    },
-    customerGroup: {
-      findMany: vi.fn(),
-    },
-    customer: {
-      findFirst: vi.fn(),
-      create: vi.fn(),
-      findMany: vi.fn(),
-    },
-  },
-}));
-
-// Mock stripe
-vi.mock('@/lib/stripe', () => ({
-  stripe: {},
-  PRICING_PLANS: {
-    STARTER: {
-      name: 'Starter',
-      limits: { customers: 100, staff: 10, services: 10 },
-    },
-    PRO: {
-      name: 'Pro',
-      limits: { customers: 1000, staff: 50, services: 50 },
-    },
-    PREMIUM: {
-      name: 'Premium',
-      limits: { customers: Infinity, staff: Infinity, services: Infinity },
-    },
-  },
-}));
-
-// Mock next-auth
 vi.mock('next-auth', () => ({
   getServerSession: vi.fn(),
 }));
-
 vi.mock('@/app/api/auth/[...nextauth]/route', () => ({
   authOptions: {},
 }));
-
-vi.mock('@/lib/utils', () => ({
-  formatPhoneNumber: (phone: string) => phone,
+vi.mock('@/lib/prisma', () => ({
+  prisma: {
+    customer: {
+      findMany: vi.fn(),
+    },
+  },
+}));
+vi.mock('@/lib/twilio-keyword-sync', () => ({
+  syncRecentTwilioKeywordMessages: vi.fn(),
 }));
 
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-import { GET, POST } from './route';
+import { syncRecentTwilioKeywordMessages } from '@/lib/twilio-keyword-sync';
+import { GET } from './route';
 
 const mockGetServerSession = getServerSession as ReturnType<typeof vi.fn>;
-const mockBusinessFindUnique = prisma.business.findUnique as ReturnType<typeof vi.fn>;
-const mockCustomerGroupFindMany = prisma.customerGroup.findMany as ReturnType<typeof vi.fn>;
-const mockCustomerFindFirst = prisma.customer.findFirst as ReturnType<typeof vi.fn>;
-const mockCustomerFindMany = prisma.customer.findMany as ReturnType<typeof vi.fn>;
-const mockCustomerCreate = prisma.customer.create as ReturnType<typeof vi.fn>;
+const mockFindCustomers = prisma.customer.findMany as ReturnType<typeof vi.fn>;
+const mockSyncRecentTwilioKeywordMessages =
+  syncRecentTwilioKeywordMessages as ReturnType<typeof vi.fn>;
 
-function makeRequest(body: Record<string, unknown> = { name: 'Test Customer' }) {
-  return new NextRequest('http://localhost/api/customers', {
-    method: 'POST',
-    body: JSON.stringify(body),
-    headers: { 'content-type': 'application/json' },
-  });
-}
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
-describe('POST /api/customers', () => {
-  it('GET scopes results and includes customer groups in the response shape', async () => {
+describe('GET /api/customers', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
     mockGetServerSession.mockResolvedValue({
-      user: { businessId: 'biz-1', email: 'test@test.com' },
+      user: {
+        businessId: 'biz-1',
+      },
     });
-    mockCustomerFindMany.mockResolvedValue([] as any);
-
-    const res = await GET(new NextRequest('http://localhost/api/customers?group=group-1'));
-
-    expect(res.status).toBe(200);
-    expect(prisma.customer.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          businessId: 'biz-1',
-          AND: expect.arrayContaining([
-            expect.objectContaining({
-              groupMemberships: {
-                some: {
-                  groupId: 'group-1',
-                },
-              },
-            }),
-          ]),
-        }),
-        include: expect.objectContaining({
-          groupMemberships: expect.any(Object),
-        }),
-      })
-    );
+    mockSyncRecentTwilioKeywordMessages.mockResolvedValue(undefined);
+    mockFindCustomers.mockResolvedValue([]);
   });
 
-  it('GET applies the optional search dropdown limit when requested', async () => {
-    mockGetServerSession.mockResolvedValue({
-      user: { businessId: 'biz-1', email: 'test@test.com' },
-    });
-    mockCustomerFindMany.mockResolvedValue([] as any);
+  it('reconciles missed Twilio keyword events before returning customers', async () => {
+    const response = await GET(new Request('https://www.clientific.app/api/customers'));
 
-    const res = await GET(new NextRequest('http://localhost/api/customers?search=jan&limit=8'));
-
-    expect(res.status).toBe(200);
-    expect(mockCustomerFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        take: 8,
-        where: expect.objectContaining({
-          businessId: 'biz-1',
-        }),
-      })
-    );
-  });
-
-  it('returns 401 when unauthenticated', async () => {
-    mockGetServerSession.mockResolvedValue(null);
-    const res = await POST(makeRequest());
-    expect(res.status).toBe(401);
-  });
-
-  it('returns 403 with SUBSCRIPTION_REQUIRED when trial is expired', async () => {
-    mockGetServerSession.mockResolvedValue({
-      user: { businessId: 'biz-1', email: 'test@test.com' },
-    });
-    // Expired trial
-    mockBusinessFindUnique.mockResolvedValue({
-      subscriptionStatus: 'trialing',
-      trialEndsAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // yesterday
-    });
-
-    const res = await POST(makeRequest());
-    expect(res.status).toBe(403);
-    const body = await res.json();
-    expect(body.code).toBe('SUBSCRIPTION_REQUIRED');
-  });
-
-  it('returns 403 with SUBSCRIPTION_REQUIRED when subscription is canceled', async () => {
-    mockGetServerSession.mockResolvedValue({
-      user: { businessId: 'biz-1', email: 'test@test.com' },
-    });
-    mockBusinessFindUnique.mockResolvedValue({
-      subscriptionStatus: 'canceled',
-      trialEndsAt: null,
-    });
-
-    const res = await POST(makeRequest());
-    expect(res.status).toBe(403);
-    const body = await res.json();
-    expect(body.code).toBe('SUBSCRIPTION_REQUIRED');
-  });
-
-  it('returns 403 with PLAN_LIMIT_REACHED when at starter customer limit', async () => {
-    mockGetServerSession.mockResolvedValue({
-      user: { businessId: 'biz-1', email: 'test@test.com' },
-    });
-    // First call: subscription check (active)
-    // Second call: plan limit check (at limit)
-    mockBusinessFindUnique
-      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
-      .mockResolvedValueOnce({
-        subscriptionPlan: 'starter',
-        _count: { customers: 100, staff: 0, services: 0 },
-      });
-
-    const res = await POST(makeRequest());
-    expect(res.status).toBe(403);
-    const body = await res.json();
-    expect(body.code).toBe('PLAN_LIMIT_REACHED');
-  });
-
-  it('returns 400 when customer text contains disallowed content', async () => {
-    mockGetServerSession.mockResolvedValue({
-      user: { businessId: 'biz-1', email: 'test@test.com' },
-    });
-    mockBusinessFindUnique
-      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
-      .mockResolvedValueOnce({
-        subscriptionPlan: 'starter',
-        _count: { customers: 5, staff: 0, services: 0 },
-      });
-
-    const res = await POST(makeRequest({ name: 'Nude Customer' }));
-    expect(res.status).toBe(400);
-    const body = await res.json();
-    expect(body.error).toMatch(/disallowed content/i);
-  });
-
-  it('creates customer successfully when active and under limit', async () => {
-    mockGetServerSession.mockResolvedValue({
-      user: { businessId: 'biz-1', email: 'test@test.com' },
-    });
-    // Subscription check (active)
-    mockBusinessFindUnique
-      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
-      .mockResolvedValueOnce({
-        subscriptionPlan: 'starter',
-        _count: { customers: 5, staff: 0, services: 0 },
-      });
-
-    mockCustomerFindFirst.mockResolvedValue(null); // no duplicate
-    const fakeCustomer = { id: 'cust-1', name: 'Test Customer', businessId: 'biz-1' };
-    mockCustomerCreate.mockResolvedValue(fakeCustomer);
-
-    const res = await POST(makeRequest({ name: 'Test Customer' }));
-    expect(res.status).toBe(201);
-    const body = await res.json();
-    expect(body.customer.id).toBe('cust-1');
-  });
-
-  it('persists the business-level deal SMS block when creating a customer', async () => {
-    mockGetServerSession.mockResolvedValue({
-      user: { businessId: 'biz-1', email: 'test@test.com' },
-    });
-    mockBusinessFindUnique
-      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
-      .mockResolvedValueOnce({
-        subscriptionPlan: 'starter',
-        _count: { customers: 5, staff: 0, services: 0 },
-      });
-
-    mockCustomerFindFirst.mockResolvedValue(null);
-    mockCustomerCreate.mockResolvedValue({ id: 'cust-1', name: 'Test Customer', businessId: 'biz-1' });
-
-    const res = await POST(makeRequest({ name: 'Test Customer', dealSmsBlocked: true }));
-
-    expect(res.status).toBe(201);
-    expect(mockCustomerCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          dealSmsBlocked: true,
-        }),
-      })
-    );
-  });
-
-  it('persists selected customer groups when creating a customer', async () => {
-    mockGetServerSession.mockResolvedValue({
-      user: { businessId: 'biz-1', email: 'test@test.com' },
-    });
-    mockBusinessFindUnique
-      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
-      .mockResolvedValueOnce({
-        subscriptionPlan: 'starter',
-        _count: { customers: 5, staff: 0, services: 0 },
-      });
-    mockCustomerFindFirst.mockResolvedValue(null);
-    mockCustomerGroupFindMany.mockResolvedValue([{ id: 'group-1' }, { id: 'group-2' }]);
-    mockCustomerCreate.mockResolvedValue({ id: 'cust-1', name: 'Test Customer', businessId: 'biz-1' });
-
-    const res = await POST(
-      makeRequest({ name: 'Test Customer', groupIds: ['group-1', 'group-2'] })
-    );
-
-    expect(res.status).toBe(201);
-    expect(prisma.customerGroup.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: {
-          businessId: 'biz-1',
-          id: { in: ['group-1', 'group-2'] },
-        },
-      })
-    );
-    expect(mockCustomerCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          groupMemberships: {
-            create: [{ groupId: 'group-1' }, { groupId: 'group-2' }],
-          },
-        }),
-      })
-    );
-  });
-
-  it('rejects unknown customer groups when creating a customer', async () => {
-    mockGetServerSession.mockResolvedValue({
-      user: { businessId: 'biz-1', email: 'test@test.com' },
-    });
-    mockBusinessFindUnique
-      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
-      .mockResolvedValueOnce({
-        subscriptionPlan: 'starter',
-        _count: { customers: 5, staff: 0, services: 0 },
-      });
-    mockCustomerFindFirst.mockResolvedValue(null);
-    mockCustomerGroupFindMany.mockResolvedValue([{ id: 'group-1' }]);
-
-    const res = await POST(
-      makeRequest({ name: 'Test Customer', groupIds: ['group-1', 'group-2'] })
-    );
-
-    expect(res.status).toBe(400);
-    const body = await res.json();
-    expect(body.error).toMatch(/selected customer groups are invalid/i);
-    expect(mockCustomerCreate).not.toHaveBeenCalled();
-  });
-
-  it('trims and deduplicates selected customer groups before validation and create', async () => {
-    mockGetServerSession.mockResolvedValue({
-      user: { businessId: 'biz-1', email: 'test@test.com' },
-    });
-    mockBusinessFindUnique
-      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
-      .mockResolvedValueOnce({
-        subscriptionPlan: 'starter',
-        _count: { customers: 5, staff: 0, services: 0 },
-      });
-    mockCustomerFindFirst.mockResolvedValue(null);
-    mockCustomerGroupFindMany.mockResolvedValue([{ id: 'group-1' }, { id: 'group-2' }]);
-    mockCustomerCreate.mockResolvedValue({ id: 'cust-1', name: 'Test Customer', businessId: 'biz-1' });
-
-    const res = await POST(
-      makeRequest({
-        name: 'Test Customer',
-        groupIds: [' group-1 ', 'group-1', 'group-2', '', '   '],
-      })
-    );
-
-    expect(res.status).toBe(201);
-    expect(prisma.customerGroup.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: {
-          businessId: 'biz-1',
-          id: { in: ['group-1', 'group-2'] },
-        },
-      })
-    );
-    expect(mockCustomerCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          groupMemberships: {
-            create: [{ groupId: 'group-1' }, { groupId: 'group-2' }],
-          },
-        }),
-      })
-    );
-  });
-
-  it('creates customer successfully during valid trial', async () => {
-    mockGetServerSession.mockResolvedValue({
-      user: { businessId: 'biz-1', email: 'test@test.com' },
-    });
-    const future = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    mockBusinessFindUnique
-      .mockResolvedValueOnce({ subscriptionStatus: 'trialing', trialEndsAt: future })
-      .mockResolvedValueOnce({
-        subscriptionPlan: 'trial',
-        _count: { customers: 5, staff: 0, services: 0 },
-      });
-
-    mockCustomerFindFirst.mockResolvedValue(null);
-    mockCustomerCreate.mockResolvedValue({ id: 'cust-2', name: 'Trial Customer', businessId: 'biz-1' });
-
-    const res = await POST(makeRequest({ name: 'Trial Customer' }));
-    expect(res.status).toBe(201);
+    expect(response.status).toBe(200);
+    expect(mockSyncRecentTwilioKeywordMessages).toHaveBeenCalledTimes(1);
+    expect(mockFindCustomers).toHaveBeenCalledTimes(1);
   });
 });

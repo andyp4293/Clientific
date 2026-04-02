@@ -14,6 +14,7 @@ import {
   formatCustomerGroupRecord,
   formatMobileCustomerRecord,
 } from '@/lib/mobile-customers';
+import { syncRecentTwilioKeywordMessages } from '@/lib/twilio-keyword-sync';
 
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 30;
@@ -43,6 +44,8 @@ export async function GET(request: Request) {
   }
 
   try {
+    await syncRecentTwilioKeywordMessages();
+
     const searchParams = new URL(request.url).searchParams;
     const search = searchParams.get('search')?.trim() ?? '';
     const group = searchParams.get('group')?.trim() ?? '';

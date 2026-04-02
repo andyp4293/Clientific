@@ -27,9 +27,13 @@ vi.mock('@/lib/subscription', () => ({
     limit: 100,
   }),
 }));
+vi.mock('@/lib/twilio-keyword-sync', () => ({
+  syncRecentTwilioKeywordMessages: vi.fn(),
+}));
 
 import { requireMobileSession } from '@/lib/mobile-route';
 import { prisma } from '@/lib/prisma';
+import { syncRecentTwilioKeywordMessages } from '@/lib/twilio-keyword-sync';
 import { GET, POST } from './route';
 
 const mockRequireMobileSession = requireMobileSession as ReturnType<typeof vi.fn>;
@@ -39,10 +43,13 @@ const mockFindCustomers = prisma.customer.findMany as ReturnType<typeof vi.fn>;
 const mockCreateCustomer = prisma.customer.create as ReturnType<typeof vi.fn>;
 const mockFindCustomer = prisma.customer.findFirst as ReturnType<typeof vi.fn>;
 const mockFindGroups = prisma.customerGroup.findMany as ReturnType<typeof vi.fn>;
+const mockSyncRecentTwilioKeywordMessages =
+  syncRecentTwilioKeywordMessages as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockRequireMobileSession.mockResolvedValue({ session: { businessId: 'biz-1' } });
+  mockSyncRecentTwilioKeywordMessages.mockResolvedValue(undefined);
   mockFindBusiness.mockResolvedValue({
     id: 'biz-1',
     email: 'owner@clientific.app',
@@ -106,6 +113,7 @@ describe('GET /api/mobile/customers', () => {
     expect(response.status).toBe(200);
     const body = await response.json();
 
+    expect(mockSyncRecentTwilioKeywordMessages).toHaveBeenCalledTimes(1);
     expect(body.totalCustomers).toBe(2);
     expect(body.filters.sms).toBe('enabled');
     expect(body.groups[0]).toMatchObject({

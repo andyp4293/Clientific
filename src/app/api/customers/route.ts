@@ -9,6 +9,7 @@ import { revalidateTag } from "next/cache";
 import { blockedContentError, getBlockedFieldLabel } from "@/lib/moderation";
 import { buildCustomerWhereClause } from "@/lib/customer-filters";
 import { normalizeCustomerGroupIds } from "@/lib/customer-groups";
+import { syncRecentTwilioKeywordMessages } from "@/lib/twilio-keyword-sync";
 
 // GET /api/customers - List all customers
 export async function GET(request: NextRequest) {
@@ -18,6 +19,8 @@ export async function GET(request: NextRequest) {
     if (!session?.user?.businessId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    await syncRecentTwilioKeywordMessages();
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
