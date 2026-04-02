@@ -175,4 +175,46 @@ describe('MobileCustomersScreen', () => {
       expect(screen.getByText('VIP')).toBeTruthy();
     });
   });
+
+  it('shows no sms approval wording for customers without sms consent', async () => {
+    render(
+      <MobileCustomersScreen
+        data={{
+          ...data,
+          customers: [
+            {
+              ...data.customers[0],
+              smsConsent: false,
+              smsOptedOut: false,
+            },
+          ],
+        }}
+        error={null}
+        filters={filters}
+        isLoading={false}
+        isRefreshing={false}
+        searchDraft=""
+        onChangeFilter={jest.fn()}
+        onChangeSearchDraft={jest.fn()}
+        onClearFilters={jest.fn()}
+        onCreateCustomer={jest.fn().mockResolvedValue(undefined)}
+        onCreateGroup={jest.fn().mockResolvedValue(undefined)}
+        onDeleteCustomer={jest.fn().mockResolvedValue(undefined)}
+        onDeleteGroup={jest.fn().mockResolvedValue(undefined)}
+        onFetchCustomerDetail={jest.fn().mockResolvedValue(null)}
+        onFetchCustomerMessages={jest.fn().mockResolvedValue({ logs: [], quota: null })}
+        onGoToPage={jest.fn()}
+        onNextPage={jest.fn()}
+        onPreviousPage={jest.fn()}
+        onRefresh={jest.fn().mockResolvedValue(undefined)}
+        onSendCustomerMessage={jest.fn().mockResolvedValue(undefined)}
+        onUpdateCustomer={jest.fn().mockResolvedValue(null)}
+        onUpdateGroup={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText('No SMS approval').length).toBeGreaterThan(0);
+    });
+  });
 });

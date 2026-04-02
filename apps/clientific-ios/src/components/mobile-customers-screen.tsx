@@ -76,7 +76,7 @@ const SMS_FILTER_OPTIONS: Array<{ value: MobileCustomerSmsFilter; label: string 
   { value: '', label: 'All SMS' },
   { value: 'enabled', label: 'SMS ready' },
   { value: 'opted_out', label: 'Opted out' },
-  { value: 'denied', label: 'No approval' },
+  { value: 'denied', label: 'No SMS approval' },
   { value: 'no_phone', label: 'No phone' },
 ];
 
@@ -144,7 +144,7 @@ function getSmsStatusLabel(customer: {
   if (!customer.phoneDisplay) return 'No phone';
   if (customer.smsOptedOut) return 'Opted out';
   if (customer.smsConsent) return 'SMS ready';
-  return 'No approval';
+  return 'No SMS approval';
 }
 
 function renderGroupSummary(groups: Array<{ name: string }>) {
