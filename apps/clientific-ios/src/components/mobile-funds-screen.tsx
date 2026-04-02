@@ -31,6 +31,24 @@ export function MobileFundsScreen({
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
   const isReferralOnly = business.businessType === 'Referral Partner';
+  const isInitialLoading = !data && !error;
+  const showLoadingState = isLoading || isInitialLoading;
+  const showInitialErrorState = !data && Boolean(error);
+  const heroTitle = showLoadingState
+    ? 'Loading funds'
+    : showInitialErrorState
+      ? "Couldn't load funds"
+      : data?.payoutReady
+        ? 'Payouts are live'
+        : 'Payout setup still needs attention';
+  const heroSubtitle = showLoadingState
+    ? 'Checking Stripe access and fetching your latest payout details.'
+    : showInitialErrorState
+      ? 'Pull to refresh and we’ll try loading your payout workspace again.'
+      : data?.setupMessage ??
+        (isReferralOnly
+          ? 'Referral earnings move here once Stripe finishes reviewing your payout setup.'
+          : 'Deal and referral earnings move here once Stripe finishes reviewing your payout setup.');
 
   return (
     <ScrollView
@@ -49,15 +67,8 @@ export function MobileFundsScreen({
           { backgroundColor: theme.surface, borderColor: theme.border },
         ]}>
         <Text style={[styles.eyebrow, { color: theme.accent }]}>Funds</Text>
-        <Text style={[styles.heroTitle, { color: theme.text }]}>
-          {data?.payoutReady ? 'Payouts are live' : 'Payout setup still needs attention'}
-        </Text>
-        <Text style={[styles.heroSubtitle, { color: theme.mutedText }]}>
-          {data?.setupMessage ??
-            (isReferralOnly
-              ? 'Referral earnings move here once Stripe finishes reviewing your payout setup.'
-              : 'Deal and referral earnings move here once Stripe finishes reviewing your payout setup.')}
-        </Text>
+        <Text style={[styles.heroTitle, { color: theme.text }]}>{heroTitle}</Text>
+        <Text style={[styles.heroSubtitle, { color: theme.mutedText }]}>{heroSubtitle}</Text>
       </View>
 
       {error ? (
@@ -71,18 +82,19 @@ export function MobileFundsScreen({
         </View>
       ) : null}
 
-      {isLoading && !data ? (
+      {showLoadingState ? (
         <View
           style={[
             styles.loadingCard,
             { backgroundColor: theme.surface, borderColor: theme.border },
-          ]}>
+          ]}
+          testID="mobile-funds-loading-card">
           <ActivityIndicator color={theme.accent} />
           <Text style={[styles.loadingText, { color: theme.mutedText }]}>
             Loading payout balances...
           </Text>
         </View>
-      ) : (
+      ) : data ? (
         <>
           <View style={styles.metricsGrid}>
             <View
@@ -209,7 +221,7 @@ export function MobileFundsScreen({
             )}
           </View>
         </>
-      )}
+      ) : null}
     </ScrollView>
   );
 }

@@ -687,13 +687,22 @@ export function ClientificNativeApp() {
     [handleSessionError],
   );
 
+  const handleChangeMoreSection = useCallback(
+    (nextSection: MobileMoreSection) => {
+      if (nextSection === 'payouts' && session && !funds && !isLoadingFunds) {
+        setIsLoadingFunds(true);
+        void loadFunds(session.token);
+      }
+
+      setMoreSection(nextSection);
+    },
+    [funds, isLoadingFunds, loadFunds, session],
+  );
+
   const openFundsTab = useCallback(() => {
-    setMoreSection('payouts');
     setActiveTab('more');
-    if (session && !funds && !isLoadingFunds) {
-      void loadFunds(session.token);
-    }
-  }, [funds, isLoadingFunds, loadFunds, session]);
+    handleChangeMoreSection('payouts');
+  }, [handleChangeMoreSection]);
 
   const openReferralsTab = useCallback(() => {
     setMoreSection('referrals');
@@ -2002,7 +2011,7 @@ export function ClientificNativeApp() {
       onChangeCustomerFilters={changeCustomerFilters}
       moreSection={moreSection}
       onChangeCustomersSearchDraft={setCustomersSearchDraft}
-      onChangeMoreSection={setMoreSection}
+      onChangeMoreSection={handleChangeMoreSection}
       onChangeTab={setActiveTab}
       onCreateCustomer={handleCreateCustomer}
       onCreateCustomerGroup={handleCreateCustomerGroup}
