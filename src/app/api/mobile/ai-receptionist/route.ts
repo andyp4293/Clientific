@@ -8,6 +8,11 @@ import { canAccessAiReceptionist } from '@/lib/plan-access';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { requireMobileSession } from '@/lib/mobile-route';
 import { requireActiveSubscription } from '@/lib/subscription';
+import {
+  ensureSharedPlatformSmsWebhookConfigured,
+  getPublicTwilioSmsWebhookUrl,
+  hasTwilioCredentials,
+} from '@/lib/twilio-routing';
 
 type TwilioProvisionedNumber = {
   sid: string;
@@ -68,28 +73,6 @@ function getTrimmedEnv(name: string): string | null {
   return value ? value : null;
 }
 
-function isLocalHostname(hostname: string): boolean {
-  const normalized = hostname.trim().toLowerCase();
-  return (
-    normalized === 'localhost' ||
-    normalized === '127.0.0.1' ||
-    normalized === '::1' ||
-    normalized.endsWith('.local')
-  );
-}
-
-function getPublicTwilioSmsWebhookUrl(appUrl: string): string | null {
-  try {
-    const parsed = new URL(appUrl);
-    if (parsed.protocol !== 'https:' || isLocalHostname(parsed.hostname)) {
-      return null;
-    }
-    return `${parsed.origin}/api/webhooks/twilio-sms`;
-  } catch {
-    return null;
-  }
-}
-
 function isTwilioInvalidSmsUrlError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
   const maybeCode = (error as Record<string, unknown>).code;
@@ -102,10 +85,6 @@ function parseAreaCode(phone: string | null | undefined): string | null {
   if (digits.length === 11 && digits[0] === '1') return digits.slice(1, 4);
   if (digits.length === 10) return digits.slice(0, 3);
   return null;
-}
-
-function hasTwilioCredentials(): boolean {
-  return !!getTrimmedEnv('TWILIO_ACCOUNT_SID') && !!getTrimmedEnv('TWILIO_AUTH_TOKEN');
 }
 
 function getTwilioClient() {
@@ -317,6 +296,10 @@ export async function GET(request: Request) {
     if (!business) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    await ensureSharedPlatformSmsWebhookConfigured(getConfiguredAppBaseUrl()).catch((error) => {
+      console.error('[twilio] Failed to verify shared platform SMS webhook during mobile AI receptionist fetch:', error);
+    });
 
     return NextResponse.json(formatResponse(business));
   } catch (error) {
@@ -681,6 +664,10 @@ export async function PATCH(request: Request) {
         ...('smsAiEnabled' in vapiUpdates ? { smsAiEnabled: vapiUpdates.smsAiEnabled } : {}),
       },
       select: AI_RECEPTIONIST_SELECT,
+    });
+
+    await ensureSharedPlatformSmsWebhookConfigured(appUrl).catch((error) => {
+      console.error('[twilio] Failed to verify shared platform SMS webhook during mobile AI receptionist update:', error);
     });
 
     return NextResponse.json(formatResponse(updated));

@@ -1,11 +1,13 @@
 import twilio from 'twilio';
 import { PLATFORM_SMS_NUMBER } from '@/lib/sms-config';
+import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import {
   isE164PhoneNumber,
   isValidPhoneNumber,
   normalizeOptionalPhoneNumber,
   normalizePhoneNumber,
 } from '@/lib/phone';
+import { ensureSharedPlatformSmsWebhookConfigured } from '@/lib/twilio-routing';
 
 export { isE164PhoneNumber, isValidPhoneNumber, normalizeOptionalPhoneNumber } from '@/lib/phone';
 
@@ -224,6 +226,10 @@ export async function sendSMS({ to, message, from }: SendSMSParams): Promise<SMS
   const formattedPhone = formatPhoneNumber(to);
 
   try {
+    await ensureSharedPlatformSmsWebhookConfigured(getConfiguredAppBaseUrl()).catch((error) => {
+      console.error('[twilio] Failed to verify shared platform SMS webhook before send:', error);
+    });
+
     const result = await client.messages.create({
       body: message,
       from: sender,

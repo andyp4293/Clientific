@@ -2,16 +2,21 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const hoisted = vi.hoisted(() => {
   const createMessage = vi.fn();
+  const ensureSharedPlatformSmsWebhookConfigured = vi.fn();
   const twilioFactory = vi.fn(() => ({
     messages: {
       create: createMessage,
     },
   }));
-  return { createMessage, twilioFactory };
+  return { createMessage, ensureSharedPlatformSmsWebhookConfigured, twilioFactory };
 });
 
 vi.mock('twilio', () => ({
   default: hoisted.twilioFactory,
+}));
+
+vi.mock('@/lib/twilio-routing', () => ({
+  ensureSharedPlatformSmsWebhookConfigured: hoisted.ensureSharedPlatformSmsWebhookConfigured,
 }));
 
 import { sendSMS } from './twilio';
@@ -21,10 +26,18 @@ const ORIGINAL_ENV = { ...process.env };
 describe('sendSMS', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete (globalThis as typeof globalThis & {
+      __clientificSharedPlatformSmsWebhookCache?: unknown;
+    }).__clientificSharedPlatformSmsWebhookCache;
     process.env.TWILIO_ACCOUNT_SID = 'AC_test';
     process.env.TWILIO_AUTH_TOKEN = 'token_test';
     process.env.TWILIO_PHONE_NUMBER = '+18557654989';
     process.env.TWILIO_MESSAGING_SERVICE_SID = 'MG_should_not_be_used';
+    hoisted.ensureSharedPlatformSmsWebhookConfigured.mockResolvedValue({
+      status: 'unchanged',
+      phoneNumber: '+18557654989',
+      smsWebhookUrl: 'https://www.clientific.app/api/webhooks/twilio-sms',
+    });
   });
 
   afterAll(() => {
@@ -106,6 +119,18 @@ describe('sendSMS', () => {
         from: '+18557654989',
         to: '+15551234567',
       })
+    );
+  });
+
+  it('verifies the shared inbound sms webhook before sending', async () => {
+    hoisted.createMessage.mockResolvedValueOnce({ sid: 'SM_repair_test' });
+
+    const result = await sendSMS({ to: '+15551234567', message: 'Test message' });
+
+    expect(result.success).toBe(true);
+    expect(hoisted.ensureSharedPlatformSmsWebhookConfigured).toHaveBeenCalledTimes(1);
+    expect(hoisted.ensureSharedPlatformSmsWebhookConfigured).toHaveBeenCalledWith(
+      expect.stringMatching(/^https?:\/\//)
     );
   });
 });

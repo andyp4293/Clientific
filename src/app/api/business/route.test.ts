@@ -88,6 +88,9 @@ function makePatchRequest(body: Record<string, unknown> = { name: 'Updated Salon
 
 beforeEach(() => {
   vi.clearAllMocks();
+  delete (globalThis as typeof globalThis & {
+    __clientificSharedPlatformSmsWebhookCache?: unknown;
+  }).__clientificSharedPlatformSmsWebhookCache;
 
   mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
   delete process.env.VAPI_PRIVATE_KEY;
@@ -99,7 +102,13 @@ beforeEach(() => {
   mockTwilioAvailableList.mockResolvedValue([{ phoneNumber: '+18557654989' }]);
   mockTwilioIncomingCreate.mockResolvedValue({ sid: 'PN_test_1', phoneNumber: '+18557654989' });
   mockTwilioIncomingUpdate.mockResolvedValue({});
-  mockTwilioIncomingList.mockResolvedValue([{ sid: 'PN_test_1' }]);
+  mockTwilioIncomingList.mockResolvedValue([
+    {
+      sid: 'PN_test_1',
+      smsUrl: 'https://clientific.app/api/webhooks/twilio-sms',
+      smsMethod: 'POST',
+    },
+  ]);
   mockTwilioIncomingRemove.mockResolvedValue({});
 });
 
@@ -124,6 +133,20 @@ describe('GET /api/business', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.business.id).toBe('biz-1');
+  });
+
+  it('repairs the shared platform sms webhook when it is missing during business fetch', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValue(fakeBusiness);
+    mockTwilioIncomingList.mockResolvedValueOnce([{ sid: 'PN_shared', smsUrl: null, smsMethod: null }]);
+
+    const res = await GET(new NextRequest('http://localhost/api/business'));
+
+    expect(res.status).toBe(200);
+    expect(mockTwilioIncomingUpdate).toHaveBeenCalledWith({
+      smsUrl: 'https://clientific.app/api/webhooks/twilio-sms',
+      smsMethod: 'POST',
+    });
   });
 });
 
