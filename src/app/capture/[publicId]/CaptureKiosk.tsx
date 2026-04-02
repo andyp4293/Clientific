@@ -137,7 +137,7 @@ export default function CaptureKiosk({ config }: CaptureKioskProps) {
     <div className="page-shell min-h-screen px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
       <div className="mx-auto max-w-6xl space-y-3 sm:space-y-4">
         {config.viewerCanManage && (
-          <PublicOwnerBackButton fallbackHref="/dashboard/campaigns" label="Back to dashboard" />
+          <PublicOwnerBackButton fallbackHref="/dashboard/deals" label="Back to dashboard" />
         )}
 
         <div className="flex min-h-[calc(100vh-2rem)] items-stretch sm:min-h-[calc(100vh-3rem)]">

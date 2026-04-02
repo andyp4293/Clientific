@@ -12,7 +12,7 @@ describe('mobile modal layering contract', () => {
       ['src', 'components', 'operations', 'AiReceptionistManager.tsx'],
       ['src', 'app', '(dashboard)', 'dashboard', 'appointments', 'page.tsx'],
       ['src', 'app', '(dashboard)', 'dashboard', 'checkins', 'page.tsx'],
-      ['src', 'app', '(dashboard)', 'dashboard', 'campaigns', 'page.tsx'],
+      ['src', 'app', '(dashboard)', 'dashboard', 'deals', 'page.tsx'],
       ['src', 'app', '(dashboard)', 'dashboard', 'services', 'page.tsx'],
       ['src', 'app', '(dashboard)', 'dashboard', 'settings', 'page.tsx'],
     ];

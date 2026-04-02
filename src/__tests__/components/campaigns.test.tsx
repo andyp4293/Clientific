@@ -61,7 +61,7 @@ vi.mock('@/components/ui/DatePicker', () => ({
 }));
 
 import { useQuery } from '@tanstack/react-query';
-import DealsPage from '@/app/(dashboard)/dashboard/campaigns/page';
+import DealsPage from '@/app/(dashboard)/dashboard/deals/page';
 
 const mockUseQuery = vi.mocked(useQuery);
 

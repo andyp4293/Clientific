@@ -57,9 +57,9 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
     mobilePrimary: true,
   },
   {
-    key: 'campaigns',
+    key: 'deals',
     name: 'Deals',
-    href: '/dashboard/campaigns',
+    href: '/dashboard/deals',
     icon: 'tag',
     section: 'growth',
     mobilePrimary: true,
@@ -207,8 +207,8 @@ export function isDashboardRouteActive(
   pathname: string,
   item: Pick<DashboardNavItem, 'href' | 'exact'>
 ): boolean {
-  const current = normalizePathname(pathname);
-  const target = normalizePathname(item.href);
+  const current = normalizeDashboardNavPathname(pathname);
+  const target = normalizeDashboardNavPathname(item.href);
 
   if (item.exact) {
     return current === target;
@@ -220,6 +220,20 @@ export function isDashboardRouteActive(
 export function getActiveDashboardRoute(pathname: string): DashboardNavItem | null {
   const sorted = [...DASHBOARD_NAV_ITEMS].sort((a, b) => b.href.length - a.href.length);
   return sorted.find((item) => isDashboardRouteActive(pathname, item)) ?? null;
+}
+
+function normalizeDashboardNavPathname(pathname: string): string {
+  const normalized = normalizePathname(pathname);
+
+  if (normalized === '/dashboard/campaigns') {
+    return '/dashboard/deals';
+  }
+
+  if (normalized.startsWith('/dashboard/campaigns/')) {
+    return normalized.replace('/dashboard/campaigns', '/dashboard/deals');
+  }
+
+  return normalized;
 }
 
 export const DASHBOARD_SECTION_LABELS: Record<DashboardNavSection, string> = {

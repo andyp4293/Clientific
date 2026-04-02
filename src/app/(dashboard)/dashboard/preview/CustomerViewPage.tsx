@@ -184,7 +184,7 @@ export default function CustomerViewPage({ business, deals, appUrl }: Props) {
               <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">No Active Deals</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 You don&apos;t have any active deals right now. Create one in{' '}
-                <a href="/dashboard/campaigns" className="text-primary dark:text-primary-300 hover:underline font-medium">
+                <a href="/dashboard/deals" className="text-primary dark:text-primary-300 hover:underline font-medium">
                   Deals
                 </a>{' '}
                 to see your deal pages here.

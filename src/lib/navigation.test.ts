@@ -76,14 +76,14 @@ describe('isDashboardRouteActive', () => {
   it.each([
     ['/dashboard/appointments', '/dashboard/customers'],
     ['/dashboard/customers', '/dashboard/appointments'],
-    ['/dashboard/services', '/dashboard/campaigns'],
+    ['/dashboard/services', '/dashboard/deals'],
     ['/dashboard/checkins', '/dashboard/redeem'],
     ['/dashboard/redeem', '/dashboard/checkins'],
     ['/dashboard/business-hours', '/dashboard/settings'],
     ['/dashboard/settings', '/dashboard/settings/billing'],
     ['/dashboard/settings/billing', '/dashboard/settings'],
-    ['/dashboard/referrals', '/dashboard/campaigns'],
-    ['/dashboard/campaigns', '/dashboard/referrals'],
+    ['/dashboard/referrals', '/dashboard/deals'],
+    ['/dashboard/deals', '/dashboard/referrals'],
     ['/dashboard/analytics', '/dashboard/services'],
     ['/dashboard/services', '/dashboard/analytics'],
     ['/dashboard', '/dashboard/appointments'],
@@ -105,8 +105,10 @@ describe('getActiveDashboardRoute', () => {
     ['/dashboard/appointments/new', 'appointments'],
     ['/dashboard/customers', 'customers'],
     ['/dashboard/customers/abc', 'customers'],
-    ['/dashboard/campaigns', 'campaigns'],
-    ['/dashboard/campaigns/new', 'campaigns'],
+    ['/dashboard/deals', 'deals'],
+    ['/dashboard/deals/new', 'deals'],
+    ['/dashboard/campaigns', 'deals'],
+    ['/dashboard/campaigns/new', 'deals'],
     ['/dashboard/services', 'services'],
     ['/dashboard/services/edit', 'services'],
     ['/dashboard/checkins', 'checkins'],
@@ -227,5 +229,19 @@ describe('navigation config integrity', () => {
     );
 
     expect(existsSync(legacyBillingPath)).toBe(true);
+  });
+
+  it('keeps the legacy /dashboard/campaigns route available as a redirect alias', () => {
+    const legacyCampaignsPath = path.join(
+      process.cwd(),
+      'src',
+      'app',
+      '(dashboard)',
+      'dashboard',
+      'campaigns',
+      'page.tsx'
+    );
+
+    expect(existsSync(legacyCampaignsPath)).toBe(true);
   });
 });

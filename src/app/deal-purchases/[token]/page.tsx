@@ -173,7 +173,7 @@ export default function DealPurchaseReceiptPage() {
         <div className="space-y-6">
           {data?.viewerCanManage && (
             <PublicOwnerBackButton
-              fallbackHref="/dashboard/campaigns"
+              fallbackHref="/dashboard/deals"
               label="Back to deals"
             />
           )}

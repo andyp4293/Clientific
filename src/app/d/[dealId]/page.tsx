@@ -202,7 +202,7 @@ export default function PublicDealClaimPage() {
       <div className="px-4 py-8 sm:py-10">
         <div className="mx-auto max-w-6xl space-y-6">
           {deal.viewerCanManage && (
-            <PublicOwnerBackButton fallbackHref="/dashboard/campaigns" label="Back to deals" />
+            <PublicOwnerBackButton fallbackHref="/dashboard/deals" label="Back to deals" />
           )}
 
           <section className="grid gap-5 xl:grid-cols-[1.2fr,0.8fr]">
