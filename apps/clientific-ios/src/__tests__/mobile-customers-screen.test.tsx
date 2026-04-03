@@ -170,8 +170,8 @@ describe('MobileCustomersScreen', () => {
     expect(
       StyleSheet.flatten(screen.getByTestId('mobile-customers-pagination-buttons').props.style),
     ).toMatchObject({
-      alignSelf: 'center',
-      justifyContent: 'center',
+      width: '100%',
+      justifyContent: 'space-between',
     });
   });
 

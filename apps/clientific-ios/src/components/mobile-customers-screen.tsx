@@ -956,35 +956,37 @@ export function MobileCustomersScreen({
                   testID="mobile-customers-previous">
                   <Text style={[styles.pageButtonText, { color: theme.text }]}>←</Text>
                 </Pressable>
-                {paginationItems.map((item) =>
-                  item.type === 'page' ? (
-                    <Pressable
-                      key={item.page}
-                      accessibilityRole="button"
-                      onPress={() => onGoToPage(item.page)}
-                      style={[
-                        styles.pageNumberButton,
-                        data?.currentPage === item.page
-                          ? { backgroundColor: theme.accent, borderColor: theme.accent }
-                          : { backgroundColor: theme.surface, borderColor: theme.border },
-                      ]}>
-                      <Text
-                        style={
+                <View style={styles.paginationNumbers}>
+                  {paginationItems.map((item) =>
+                    item.type === 'page' ? (
+                      <Pressable
+                        key={item.page}
+                        accessibilityRole="button"
+                        onPress={() => onGoToPage(item.page)}
+                        style={[
+                          styles.pageNumberButton,
                           data?.currentPage === item.page
-                            ? styles.pageNumberButtonSelectedText
-                            : [styles.pageNumberButtonText, { color: theme.text }]
-                        }>
-                        {item.page}
-                      </Text>
-                    </Pressable>
-                  ) : (
-                    <View key={item.key} style={styles.paginationEllipsisWrap}>
-                      <Text style={[styles.paginationEllipsisText, { color: theme.mutedText }]}>
-                        …
-                      </Text>
-                    </View>
-                  ),
-                )}
+                            ? { backgroundColor: theme.accent, borderColor: theme.accent }
+                            : { backgroundColor: theme.surface, borderColor: theme.border },
+                        ]}>
+                        <Text
+                          style={
+                            data?.currentPage === item.page
+                              ? styles.pageNumberButtonSelectedText
+                              : [styles.pageNumberButtonText, { color: theme.text }]
+                          }>
+                          {item.page}
+                        </Text>
+                      </Pressable>
+                    ) : (
+                      <View key={item.key} style={styles.paginationEllipsisWrap}>
+                        <Text style={[styles.paginationEllipsisText, { color: theme.mutedText }]}>
+                          …
+                        </Text>
+                      </View>
+                    ),
+                  )}
+                </View>
                 <Pressable
                   accessibilityRole="button"
                   disabled={!data || data.currentPage >= data.totalPages}
@@ -2207,14 +2209,21 @@ const styles = StyleSheet.create({
   paginationButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     borderWidth: 1,
     borderRadius: 18,
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    alignSelf: 'center',
+    width: '100%',
+  },
+  paginationNumbers: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 8,
+    minHeight: 42,
   },
   paginationPagePill: {
     borderWidth: 1,
