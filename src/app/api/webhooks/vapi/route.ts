@@ -33,6 +33,8 @@ import {
   getBufferedAppointmentBatchWindow,
 } from '@/lib/ai-appointment-batches';
 import { createBusinessNotification } from '@/lib/mobile-push';
+import { cancelScheduledAppointmentReminder } from '@/lib/appointment-reminders';
+import { resolveAppointmentServiceDisplayName } from '@/lib/appointment-services';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -217,6 +219,9 @@ type AiManagedAppointment = {
   customer: {
     id: string;
     name: string;
+    phone: string | null;
+    smsConsent: boolean;
+    smsOptedOut: boolean;
   };
   service: {
     name: string;
@@ -875,6 +880,72 @@ async function clearCallSession(body: any): Promise<void> {
   });
 }
 
+function canSendAppointmentRequestSms(customer: {
+  phone: string | null;
+  smsConsent: boolean;
+  smsOptedOut: boolean;
+}) {
+  return Boolean(customer.phone) && customer.smsConsent && !customer.smsOptedOut;
+}
+
+async function resolveAiManagedAppointmentServiceName(appointment: AiManagedAppointment) {
+  if (!appointment.serviceIds.length) {
+    return appointment.service?.name ?? 'Appointment';
+  }
+
+  const services = await prisma.service.findMany({
+    where: { id: { in: appointment.serviceIds } },
+    select: { id: true, name: true },
+  });
+
+  return (
+    resolveAppointmentServiceDisplayName(
+      {
+        serviceIds: appointment.serviceIds,
+        service: appointment.service ? { name: appointment.service.name } : undefined,
+      },
+      services,
+    ) ?? appointment.service?.name ?? 'Appointment'
+  );
+}
+
+async function sendAiAppointmentRequestConfirmation(params: {
+  appointmentId: string;
+  phone: string;
+  customerName: string;
+  serviceName: string;
+  staffName: string;
+  dateTime: Date;
+  duration: number;
+  shortId: string | null;
+  business: Pick<BusinessData, 'name' | 'timezone' | 'vapiPhoneNumber'>;
+}) {
+  const appUrl = getConfiguredAppBaseUrl();
+  const appointmentUrl = params.shortId ? `${appUrl}/a/${params.shortId}` : undefined;
+  const smsResult = await sendAppointmentConfirmation(params.phone, {
+    customerName: params.customerName,
+    serviceName: params.serviceName,
+    staffName: params.staffName,
+    dateTime: params.dateTime,
+    businessName: params.business.name,
+    duration: params.duration,
+    timezone: params.business.timezone,
+    appointmentUrl,
+    senderPhone: params.business.vapiPhoneNumber,
+  });
+
+  if (!smsResult.success) {
+    console.error('[vapi] immediate appointment request SMS failed:', smsResult.error);
+    return false;
+  }
+
+  await prisma.appointment.update({
+    where: { id: params.appointmentId },
+    data: { confirmationSent: true },
+  });
+  return true;
+}
+
 async function sendGroupedAiAppointmentConfirmationForEndedCall(body: any): Promise<void> {
   const phoneNumberId =
     body?.message?.phoneNumber?.id ?? body?.message?.call?.phoneNumberId;
@@ -1297,6 +1368,7 @@ async function handleCreateBooking(
   }
 
   const shortId = Math.random().toString(36).substring(2, 9).toUpperCase();
+  let createdAppointmentId: string | null = null;
 
   // Serializable transaction with one retry for Postgres serialization failures
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -1319,7 +1391,7 @@ async function handleCreateBooking(
           if (txConflicts > 0) throw new Error('SLOT_TAKEN');
         }
 
-        await tx.appointment.create({
+        const appointment = await tx.appointment.create({
           data: {
             businessId: business.id,
             customerId: customer!.id,
@@ -1335,6 +1407,7 @@ async function handleCreateBooking(
             ...(notes && { notes }),
           },
         });
+        createdAppointmentId = appointment.id;
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
       break; // success — exit retry loop
     } catch (err: any) {
@@ -1370,24 +1443,21 @@ async function handleCreateBooking(
     sendPush: business.notifyNewBookingEmail !== false,
   });
 
-  // For live Vapi calls, we wait until the call ends so multiple bookings can share one link.
-  if (callerPhone) {
-    if (callId) {
-      console.log(`[vapi] deferred grouped confirmation for callId=${callId}`);
-    } else {
-      const appUrl = getConfiguredAppBaseUrl();
-      const apptUrl = `${appUrl}/a/${shortId}`;
-      sendAppointmentConfirmation(callerPhone, {
-        customerName,
-        serviceName: serviceSelection.spokenLabel,
-        staffName: staffLine?.fullName || 'our team',
-        dateTime: start,
-        businessName: business.name,
-        duration: serviceSelection.totalDuration,
-        timezone: business.timezone,
-        appointmentUrl: apptUrl,
-        senderPhone: business.vapiPhoneNumber,
-      }).catch((err) => console.error('[vapi] SMS send failed:', err));
+  if (callerPhone && createdAppointmentId) {
+    const smsSent = await sendAiAppointmentRequestConfirmation({
+      appointmentId: createdAppointmentId,
+      phone: callerPhone,
+      customerName,
+      serviceName: serviceSelection.spokenLabel,
+      staffName: staffLine?.fullName || 'our team',
+      dateTime: start,
+      duration: serviceSelection.totalDuration,
+      shortId,
+      business,
+    });
+
+    if (!smsSent && callId) {
+      console.log(`[vapi] immediate request SMS failed, keeping grouped fallback for callId=${callId}`);
     }
   }
 
@@ -1412,7 +1482,15 @@ async function findManagedAppointmentsForCaller(
     include: {
       service: { select: { name: true } },
       staff: { select: { fullName: true } },
-      customer: { select: { id: true, name: true } },
+      customer: {
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          smsConsent: true,
+          smsOptedOut: true,
+        },
+      },
     },
   });
 
@@ -1566,6 +1644,30 @@ async function handleUpdateAppointment(business: BusinessData, args: any, caller
       }
     }
 
+    for (const target of rescheduleTargets) {
+      if (
+        canSendAppointmentRequestSms(target.appointment.customer) &&
+        ['scheduled', 'confirmed'].includes(target.appointment.status)
+      ) {
+        const serviceName = await resolveAiManagedAppointmentServiceName(target.appointment);
+        const appUrl = getConfiguredAppBaseUrl();
+        const appointmentUrl = target.appointment.shortId
+          ? `${appUrl}/a/${target.appointment.shortId}`
+          : undefined;
+
+        await cancelScheduledAppointmentReminder(target.appointment.customer.phone!, {
+          customerName: target.appointment.customer.name,
+          serviceName,
+          staffName: target.appointment.staff?.fullName || 'our team',
+          dateTime: target.appointment.startTime,
+          businessName: business.name,
+          appointmentUrl,
+          timezone: business.timezone,
+          senderPhone: business.vapiPhoneNumber,
+        });
+      }
+    }
+
     await prisma.$transaction(async (tx) => {
       for (const target of rescheduleTargets) {
         await tx.appointment.update({
@@ -1598,6 +1700,25 @@ async function handleUpdateAppointment(business: BusinessData, args: any, caller
       link: '/dashboard/appointments',
       sendPush: business.notifyNewBookingEmail !== false,
     });
+
+    for (const target of rescheduleTargets) {
+      if (!canSendAppointmentRequestSms(target.appointment.customer)) {
+        continue;
+      }
+
+      const serviceName = await resolveAiManagedAppointmentServiceName(target.appointment);
+      await sendAiAppointmentRequestConfirmation({
+        appointmentId: target.appointment.id,
+        phone: target.appointment.customer.phone!,
+        customerName: target.appointment.customer.name,
+        serviceName,
+        staffName: target.appointment.staff?.fullName || 'our team',
+        dateTime: target.start,
+        duration: target.appointment.duration,
+        shortId: target.appointment.shortId,
+        business,
+      });
+    }
 
     return `Done — I moved ${appointments.length === 1 ? 'your appointment' : `all ${appointments.length} appointments`} to start ${targetTime}${runsBackToBack ? ' and kept the same-staff appointments back to back' : ''}. They are back in requested status for the business to review. Is there anything else I can help you with?`;
   }
