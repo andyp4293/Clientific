@@ -167,6 +167,12 @@ describe('MobileCustomersScreen', () => {
     expect(screen.getByText('Filter customers')).toBeTruthy();
     expect(screen.getByText('1-20 of 55 shown')).toBeTruthy();
     expect(screen.getByText('Page 1 of 3')).toBeTruthy();
+    expect(
+      StyleSheet.flatten(screen.getByTestId('mobile-customers-pagination-buttons').props.style),
+    ).toMatchObject({
+      alignSelf: 'center',
+      justifyContent: 'center',
+    });
   });
 
   it('switches to the groups tab and shows customer groups', async () => {

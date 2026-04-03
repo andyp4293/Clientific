@@ -15,6 +15,8 @@ import {
   collectAppointmentServiceIds,
   withAppointmentServiceDisplay,
 } from '@/lib/appointment-services';
+import { scheduleAppointmentReminder } from '@/lib/appointment-reminders';
+import { ensureAppointmentShortId } from '@/lib/appointment-short-id';
 
 const businessMidnightUTC = businessDayStart;
 
@@ -229,7 +231,9 @@ export async function POST(req: NextRequest) {
           { status: 409 }
         );
       }
-    }    const appointment = await prisma.appointment.create({
+    }
+
+    const appointment = await prisma.appointment.create({
       data: {
         businessId: business.id,
         customerId,
@@ -252,9 +256,21 @@ export async function POST(req: NextRequest) {
           },
         },
       },
-    });    // Send SMS confirmation
+    });
+
+    const canSendTransactionalSms =
+      Boolean(appointment.customer.phone) &&
+      appointment.customer.smsConsent &&
+      !appointment.customer.smsOptedOut;
+
+    // Send SMS confirmation
     let smsResult = null;
-    if (appointment.customer.phone) {
+    let reminderResult = null;
+    if (canSendTransactionalSms && appointment.customer.phone) {
+      const appBase = getConfiguredAppBaseUrl();
+      const shortId = await ensureAppointmentShortId(appointment.id, appointment.shortId);
+      const appointmentUrl = shortId ? `${appBase}/a/${shortId}` : undefined;
+
       smsResult = await sendAppointmentConfirmation(appointment.customer.phone, {
         customerName: appointment.customer.name,
         serviceName: appointment.service?.name || 'Appointment',
@@ -262,12 +278,31 @@ export async function POST(req: NextRequest) {
         dateTime: appointment.startTime,
         businessName: appointment.business.name,
         duration: appointment.duration,
+        appointmentUrl,
         timezone: business.timezone,
         senderPhone: business.vapiPhoneNumber,
       });
 
       if (smsResult.success) {
         console.log('✅ SMS confirmation sent to:', appointment.customer.phone);
+      }
+
+      reminderResult = await scheduleAppointmentReminder(appointment.customer.phone, {
+        customerName: appointment.customer.name,
+        serviceName: appointment.service?.name || 'Appointment',
+        staffName: appointment.staff?.fullName || 'our team',
+        dateTime: appointment.startTime,
+        businessName: appointment.business.name,
+        appointmentUrl,
+        timezone: business.timezone,
+        senderPhone: business.vapiPhoneNumber,
+      });
+
+      if (reminderResult.success) {
+        await prisma.appointment.update({
+          where: { id: appointment.id },
+          data: { reminderSent: true },
+        });
       }
     }
 
@@ -305,7 +340,16 @@ export async function POST(req: NextRequest) {
       smsNotification: smsResult?.success
         ? 'Confirmation SMS sent'
         : appointment.customer.phone
-          ? 'SMS notification failed'
+          ? canSendTransactionalSms
+            ? 'SMS notification failed'
+            : 'Customer has not opted into SMS'
+          : 'No phone number provided',
+      reminderNotification: reminderResult?.success
+        ? '2-hour reminder scheduled'
+        : appointment.customer.phone
+          ? canSendTransactionalSms
+            ? 'Reminder scheduling skipped or failed'
+            : 'Customer has not opted into SMS'
           : 'No phone number provided',
     }, { status: 201 });
   } catch (error: any) {

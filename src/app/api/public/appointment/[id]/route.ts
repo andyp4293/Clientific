@@ -8,9 +8,47 @@ import { getSessionBusinessId } from '@/lib/session-business';
 import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
 import { weekdayIndexInTimeZone } from '@/lib/timezone';
 import {
+  type ReminderDetails,
   sendAppointmentCancellation,
   sendAppointmentConfirmation,
 } from '@/lib/twilio';
+import { cancelScheduledAppointmentReminder } from '@/lib/appointment-reminders';
+import { resolveAppointmentServiceDisplayName } from '@/lib/appointment-services';
+
+async function resolveServiceName(
+  serviceIds: string[],
+  fallbackServiceName?: string | null,
+) {
+  if (!serviceIds.length) {
+    return fallbackServiceName ?? 'Appointment';
+  }
+
+  const services = await prisma.service.findMany({
+    where: { id: { in: serviceIds } },
+    select: { id: true, name: true },
+  });
+
+  return (
+    resolveAppointmentServiceDisplayName(
+      {
+        serviceIds,
+        service: fallbackServiceName ? { name: fallbackServiceName } : undefined,
+      },
+      services,
+    ) ?? fallbackServiceName ?? 'Appointment'
+  );
+}
+
+async function cancelExistingReminder(
+  phone: string | null,
+  details: ReminderDetails,
+) {
+  if (!phone) {
+    return;
+  }
+
+  await cancelScheduledAppointmentReminder(phone, details);
+}
 
 export async function GET(
   _req: NextRequest,
@@ -82,6 +120,7 @@ export async function PATCH(
     select: {
       status: true,
       startTime: true,
+      reminderSent: true,
       shortId: true,
       serviceId: true,
       serviceIds: true,
@@ -138,6 +177,9 @@ export async function PATCH(
         ].filter((value): value is string => typeof value === 'string' && value.length > 0)
       )
     );
+    const serviceName = await resolveServiceName(requestedServiceIds, existing.service?.name);
+    const appBaseUrl = getConfiguredAppBaseUrl();
+    const appointmentUrl = existing.shortId ? `${appBaseUrl}/a/${existing.shortId}` : undefined;
 
     const businessHoursError = validateBusinessHoursForAppointment({
       startTime: newStart,
@@ -189,18 +231,18 @@ export async function PATCH(
       }
     }
 
-    const services = requestedServiceIds.length
-      ? await prisma.service.findMany({
-          where: { id: { in: requestedServiceIds } },
-          select: { id: true, name: true },
-        })
-      : [];
-    const servicesById = new Map(services.map((service) => [service.id, service.name] as const));
-    const serviceName =
-      requestedServiceIds
-        .map((serviceId) => servicesById.get(serviceId))
-        .filter((name): name is string => Boolean(name))
-        .join(', ') || existing.service?.name || 'Appointment';
+    if (existing.customer.smsConsent && !existing.customer.smsOptedOut) {
+      await cancelExistingReminder(existing.customer.phone, {
+        customerName: existing.customer.name,
+        serviceName,
+        staffName: existing.staff?.fullName || 'our team',
+        dateTime: existing.startTime,
+        businessName: existing.business.name,
+        appointmentUrl,
+        timezone: existing.business.timezone,
+        senderPhone: existing.business.vapiPhoneNumber,
+      });
+    }
 
     const appointment = await prisma.appointment.update({
       where: { id },
@@ -214,8 +256,6 @@ export async function PATCH(
     });
 
     if (existing.customer.phone && existing.customer.smsConsent && !existing.customer.smsOptedOut) {
-      const appBaseUrl = getConfiguredAppBaseUrl();
-      const appointmentUrl = existing.shortId ? `${appBaseUrl}/a/${existing.shortId}` : undefined;
       sendAppointmentConfirmation(existing.customer.phone, {
         customerName: existing.customer.name,
         serviceName,
@@ -255,9 +295,32 @@ export async function PATCH(
   });
 
   if (existing.customer.phone && existing.customer.smsConsent && !existing.customer.smsOptedOut) {
+    const requestedServiceIds = Array.from(
+      new Set(
+        [
+          ...(Array.isArray(existing.serviceIds) ? existing.serviceIds : []),
+          ...(existing.serviceId ? [existing.serviceId] : []),
+        ].filter((value): value is string => typeof value === 'string' && value.length > 0)
+      )
+    );
+    const serviceName = await resolveServiceName(requestedServiceIds, existing.service?.name);
+    const appBaseUrl = getConfiguredAppBaseUrl();
+    const appointmentUrl = existing.shortId ? `${appBaseUrl}/a/${existing.shortId}` : undefined;
+
+    await cancelExistingReminder(existing.customer.phone, {
+      customerName: existing.customer.name,
+      serviceName,
+      staffName: existing.staff?.fullName || 'our team',
+      dateTime: existing.startTime,
+      businessName: existing.business.name,
+      appointmentUrl,
+      timezone: existing.business.timezone ?? undefined,
+      senderPhone: existing.business.vapiPhoneNumber,
+    });
+
     sendAppointmentCancellation(existing.customer.phone, {
       customerName: existing.customer.name,
-      serviceName: existing.service?.name || 'Appointment',
+      serviceName,
       dateTime: existing.startTime,
       businessName: existing.business.name,
       timezone: existing.business.timezone ?? undefined,

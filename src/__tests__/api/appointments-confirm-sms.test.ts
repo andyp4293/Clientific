@@ -9,6 +9,7 @@ vi.mock('@/lib/prisma', () => ({
     appointment: {
       findFirst: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
       findMany: vi.fn().mockResolvedValue([]),
     },
     service: { findMany: vi.fn().mockResolvedValue([]) },
@@ -18,6 +19,13 @@ vi.mock('@/lib/prisma', () => ({
 vi.mock('@/lib/twilio', () => ({
   sendAppointmentBusinessConfirmed: vi.fn().mockResolvedValue({ success: true }),
   sendAppointmentCancellation: vi.fn().mockResolvedValue({ success: true }),
+}));
+vi.mock('@/lib/appointment-reminders', () => ({
+  scheduleAppointmentReminder: vi.fn().mockResolvedValue({ success: true, sid: 'SM_reminder' }),
+  cancelScheduledAppointmentReminder: vi.fn().mockResolvedValue({ success: true, canceledCount: 1 }),
+}));
+vi.mock('@/lib/appointment-short-id', () => ({
+  ensureAppointmentShortId: vi.fn().mockResolvedValue('ABC1234'),
 }));
 
 vi.mock('@/lib/subscription', () => ({
@@ -37,8 +45,12 @@ vi.mock('next-auth', () => ({
 
 import { prisma } from '@/lib/prisma';
 import { sendAppointmentBusinessConfirmed } from '@/lib/twilio';
+import {
+  cancelScheduledAppointmentReminder,
+  scheduleAppointmentReminder,
+} from '@/lib/appointment-reminders';
 import { getServerSession } from 'next-auth';
-import { PATCH } from '@/app/api/appointments/[id]/route';
+import { DELETE, PATCH } from '@/app/api/appointments/[id]/route';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -53,6 +65,9 @@ const mockBusiness = {
   timezone: 'America/New_York',
   vapiPhoneNumber: '+18557654989',
 };
+const mockScheduleAppointmentReminder = scheduleAppointmentReminder as ReturnType<typeof vi.fn>;
+const mockCancelScheduledAppointmentReminder =
+  cancelScheduledAppointmentReminder as ReturnType<typeof vi.fn>;
 
 function makeAppointment(overrides: Record<string, unknown> = {}) {
   return {
@@ -101,6 +116,8 @@ describe('PATCH /api/appointments/[id] — confirmed SMS', () => {
     vi.clearAllMocks();
     vi.mocked(getServerSession).mockResolvedValue(mockSession as any);
     vi.mocked(prisma.business.findUnique).mockResolvedValue(mockBusiness as any);
+    mockScheduleAppointmentReminder.mockResolvedValue({ success: true, sid: 'SM_reminder' });
+    mockCancelScheduledAppointmentReminder.mockResolvedValue({ success: true, canceledCount: 1 });
   });
 
   describe('AI receptionist bookings (status: pending, source: ai)', () => {
@@ -115,6 +132,7 @@ describe('PATCH /api/appointments/[id] — confirmed SMS', () => {
 
       expect(res.status).toBe(200);
       expect(sendAppointmentBusinessConfirmed).toHaveBeenCalledOnce();
+      expect(scheduleAppointmentReminder).toHaveBeenCalledOnce();
       expect(sendAppointmentBusinessConfirmed).toHaveBeenCalledWith(
         '+15551234567',
         expect.objectContaining({
@@ -135,6 +153,7 @@ describe('PATCH /api/appointments/[id] — confirmed SMS', () => {
       });
 
       expect(sendAppointmentBusinessConfirmed).not.toHaveBeenCalled();
+      expect(scheduleAppointmentReminder).not.toHaveBeenCalled();
     });
 
     it('does NOT send confirmed SMS if smsConsent is false', async () => {
@@ -147,6 +166,7 @@ describe('PATCH /api/appointments/[id] — confirmed SMS', () => {
       });
 
       expect(sendAppointmentBusinessConfirmed).not.toHaveBeenCalled();
+      expect(scheduleAppointmentReminder).not.toHaveBeenCalled();
     });
 
     it('does NOT send confirmed SMS if customer has opted out', async () => {
@@ -159,6 +179,7 @@ describe('PATCH /api/appointments/[id] — confirmed SMS', () => {
       });
 
       expect(sendAppointmentBusinessConfirmed).not.toHaveBeenCalled();
+      expect(scheduleAppointmentReminder).not.toHaveBeenCalled();
     });
 
     it('does NOT send confirmed SMS if appointment is already confirmed', async () => {
@@ -171,6 +192,7 @@ describe('PATCH /api/appointments/[id] — confirmed SMS', () => {
       });
 
       expect(sendAppointmentBusinessConfirmed).not.toHaveBeenCalled();
+      expect(scheduleAppointmentReminder).not.toHaveBeenCalled();
     });
   });
 
@@ -186,6 +208,7 @@ describe('PATCH /api/appointments/[id] — confirmed SMS', () => {
 
       expect(res.status).toBe(200);
       expect(sendAppointmentBusinessConfirmed).toHaveBeenCalledOnce();
+      expect(scheduleAppointmentReminder).toHaveBeenCalledOnce();
       expect(sendAppointmentBusinessConfirmed).toHaveBeenCalledWith(
         '+15551234567',
         expect.objectContaining({
@@ -206,6 +229,7 @@ describe('PATCH /api/appointments/[id] — confirmed SMS', () => {
       });
 
       expect(sendAppointmentBusinessConfirmed).not.toHaveBeenCalled();
+      expect(scheduleAppointmentReminder).not.toHaveBeenCalled();
     });
   });
 
@@ -221,6 +245,7 @@ describe('PATCH /api/appointments/[id] — confirmed SMS', () => {
 
       expect(res.status).toBe(200);
       expect(sendAppointmentBusinessConfirmed).toHaveBeenCalledOnce();
+      expect(scheduleAppointmentReminder).toHaveBeenCalledOnce();
     });
   });
 
@@ -235,6 +260,7 @@ describe('PATCH /api/appointments/[id] — confirmed SMS', () => {
       });
 
       expect(sendAppointmentBusinessConfirmed).not.toHaveBeenCalled();
+      expect(scheduleAppointmentReminder).not.toHaveBeenCalled();
     });
 
     it('does NOT send confirmed SMS when updating notes only', async () => {
@@ -247,6 +273,57 @@ describe('PATCH /api/appointments/[id] — confirmed SMS', () => {
       });
 
       expect(sendAppointmentBusinessConfirmed).not.toHaveBeenCalled();
+      expect(scheduleAppointmentReminder).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('reminder resync and cancellation', () => {
+    it('cancels and reschedules reminders when a confirmed appointment time changes', async () => {
+      const appt = makeAppointment({
+        status: 'confirmed',
+        reminderSent: true,
+      });
+      vi.mocked(prisma.appointment.findFirst).mockResolvedValue(appt as any);
+      vi.mocked(prisma.appointment.update)
+        .mockResolvedValueOnce({ ...makeUpdatedAppointment(appt), startTime: new Date('2026-03-10T15:00:00Z') } as any)
+        .mockResolvedValueOnce({ id: 'appt-1', reminderSent: true } as any);
+
+      const res = await PATCH(
+        patchRequest({
+          startTime: '2026-03-10T15:00:00.000Z',
+          duration: 60,
+        }),
+        {
+          params: Promise.resolve({ id: 'appt-1' }),
+        },
+      );
+
+      expect(res.status).toBe(200);
+      expect(cancelScheduledAppointmentReminder).toHaveBeenCalledOnce();
+      expect(scheduleAppointmentReminder).toHaveBeenCalledOnce();
+    });
+
+    it('cancels scheduled reminders when deleting an appointment', async () => {
+      const appt = {
+        ...makeUpdatedAppointment(makeAppointment({ status: 'confirmed', reminderSent: true })),
+        serviceIds: ['svc-1'],
+        shortId: 'ABC1234',
+        business: {
+          name: 'Test Salon',
+          timezone: 'America/New_York',
+          vapiPhoneNumber: '+18557654989',
+        },
+      };
+      vi.mocked(prisma.appointment.findFirst).mockResolvedValue(appt as any);
+      vi.mocked(prisma.appointment.delete as any).mockResolvedValue({ id: 'appt-1' });
+
+      const req = new NextRequest('http://localhost/api/appointments/appt-1', {
+        method: 'DELETE',
+      });
+      const res = await DELETE(req, { params: Promise.resolve({ id: 'appt-1' }) });
+
+      expect(res.status).toBe(200);
+      expect(cancelScheduledAppointmentReminder).toHaveBeenCalledOnce();
     });
   });
 

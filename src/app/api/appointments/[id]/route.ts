@@ -7,6 +7,48 @@ import { requireActiveSubscription } from '@/lib/subscription';
 import { updateCustomerSegment } from '@/lib/segment';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
+import {
+  cancelScheduledAppointmentReminder,
+  scheduleAppointmentReminder,
+} from '@/lib/appointment-reminders';
+import { ensureAppointmentShortId } from '@/lib/appointment-short-id';
+import { resolveAppointmentServiceDisplayName } from '@/lib/appointment-services';
+
+function canSendAppointmentSms(customer: {
+  phone: string | null;
+  smsConsent: boolean;
+  smsOptedOut: boolean;
+}) {
+  return Boolean(customer.phone) && customer.smsConsent && !customer.smsOptedOut;
+}
+
+function isReminderEligibleStatus(status: string) {
+  return ['scheduled', 'confirmed'].includes(status);
+}
+
+async function resolveServiceName(
+  serviceIds: string[],
+  fallbackServiceName?: string | null,
+) {
+  if (!serviceIds.length) {
+    return fallbackServiceName ?? 'Appointment';
+  }
+
+  const services = await prisma.service.findMany({
+    where: { id: { in: serviceIds } },
+    select: { id: true, name: true },
+  });
+
+  return (
+    resolveAppointmentServiceDisplayName(
+      {
+        serviceIds,
+        service: fallbackServiceName ? { name: fallbackServiceName } : undefined,
+      },
+      services,
+    ) ?? fallbackServiceName ?? 'Appointment'
+  );
+}
 
 // GET - Get single appointment
 export async function GET(
@@ -87,8 +129,9 @@ export async function PATCH(
         businessId: business.id,
       },
       include: {
-        customer: { select: { phone: true, smsConsent: true, smsOptedOut: true } },
+        customer: { select: { name: true, phone: true, smsConsent: true, smsOptedOut: true } },
         service: { select: { name: true } },
+        staff: { select: { fullName: true } },
       },
     });
 
@@ -97,6 +140,13 @@ export async function PATCH(
     }
 
     const updates = await req.json();
+    const shouldResyncReminder =
+      (typeof updates.status === 'string' && updates.status !== appointment.status) ||
+      updates.startTime !== undefined ||
+      updates.duration !== undefined ||
+      updates.staffId !== undefined ||
+      updates.serviceId !== undefined ||
+      updates.serviceIds !== undefined;
 
     const blockedField = getBlockedFieldLabel([{ label: 'Notes', value: updates.notes }]);
     if (blockedField) {
@@ -144,6 +194,31 @@ export async function PATCH(
       updates.endTime = end;
     }
 
+    if (shouldResyncReminder) {
+      updates.reminderSent = false;
+    }
+
+    const originalCanSendSms = canSendAppointmentSms(appointment.customer);
+    if (shouldResyncReminder && originalCanSendSms && isReminderEligibleStatus(appointment.status)) {
+      const originalServiceName = await resolveServiceName(
+        appointment.serviceIds,
+        appointment.service?.name,
+      );
+      const appBase = getConfiguredAppBaseUrl();
+      const appointmentUrl = appointment.shortId ? `${appBase}/a/${appointment.shortId}` : undefined;
+
+      await cancelScheduledAppointmentReminder(appointment.customer.phone!, {
+        customerName: appointment.customer.name,
+        serviceName: originalServiceName,
+        staffName: appointment.staff?.fullName || 'our team',
+        dateTime: appointment.startTime,
+        businessName: business.name,
+        appointmentUrl,
+        timezone: business.timezone ?? undefined,
+        senderPhone: business.vapiPhoneNumber,
+      });
+    }
+
     const updatedAppointment = await prisma.appointment.update({
       where: { id: id },
       data: updates,
@@ -163,15 +238,10 @@ export async function PATCH(
       !appointment.customer.smsOptedOut
     ) {
       const appBase = getConfiguredAppBaseUrl();
-      // Build service name from serviceIds if available
-      let serviceName = appointment.service?.name || 'Appointment';
-      if (appointment.serviceIds.length > 1) {
-        const services = await prisma.service.findMany({
-          where: { id: { in: appointment.serviceIds } },
-          select: { name: true },
-        });
-        serviceName = services.map(s => s.name).join(', ');
-      }
+      const serviceName = await resolveServiceName(
+        appointment.serviceIds,
+        appointment.service?.name,
+      );
       const appointmentUrl = appointment.shortId ? `${appBase}/a/${appointment.shortId}` : undefined;
       sendAppointmentBusinessConfirmed(appointment.customer.phone, {
         customerName: updatedAppointment.customer.name,
@@ -187,6 +257,44 @@ export async function PATCH(
     // Update customer segment when appointment is completed
     if (updates.status === 'completed') {
       updateCustomerSegment(updatedAppointment.customerId).catch(console.error);
+    }
+
+    const updatedCanSendSms = canSendAppointmentSms(updatedAppointment.customer);
+    const statusBecameReminderEligible =
+      !isReminderEligibleStatus(appointment.status) &&
+      isReminderEligibleStatus(updatedAppointment.status);
+    const reminderDetailsChanged =
+      shouldResyncReminder && isReminderEligibleStatus(appointment.status);
+
+    if (
+      updatedCanSendSms &&
+      isReminderEligibleStatus(updatedAppointment.status) &&
+      (statusBecameReminderEligible || reminderDetailsChanged)
+    ) {
+      const serviceName = await resolveServiceName(
+        updatedAppointment.serviceIds,
+        updatedAppointment.service?.name,
+      );
+      const shortId = await ensureAppointmentShortId(updatedAppointment.id, updatedAppointment.shortId);
+      const appBase = getConfiguredAppBaseUrl();
+      const appointmentUrl = shortId ? `${appBase}/a/${shortId}` : undefined;
+      const reminderResult = await scheduleAppointmentReminder(updatedAppointment.customer.phone!, {
+        customerName: updatedAppointment.customer.name,
+        serviceName,
+        staffName: updatedAppointment.staff?.fullName || 'our team',
+        dateTime: updatedAppointment.startTime,
+        businessName: business.name,
+        appointmentUrl,
+        timezone: business.timezone ?? undefined,
+        senderPhone: business.vapiPhoneNumber,
+      });
+
+      if (reminderResult.success) {
+        await prisma.appointment.update({
+          where: { id: updatedAppointment.id },
+          data: { reminderSent: true },
+        });
+      }
     }
 
     return NextResponse.json({ appointment: updatedAppointment });
@@ -230,6 +338,7 @@ export async function DELETE(
       include: {
         customer: true,
         service: true,
+        staff: { select: { fullName: true } },
         business: {
           select: {
             name: true,
@@ -246,9 +355,24 @@ export async function DELETE(
 
     // Send cancellation SMS
     if (appointment.customer.phone && appointment.customer.smsConsent && !appointment.customer.smsOptedOut) {
+      const serviceName = await resolveServiceName(appointment.serviceIds, appointment.service?.name);
+      const appBase = getConfiguredAppBaseUrl();
+      const appointmentUrl = appointment.shortId ? `${appBase}/a/${appointment.shortId}` : undefined;
+
+      await cancelScheduledAppointmentReminder(appointment.customer.phone, {
+        customerName: appointment.customer.name,
+        serviceName,
+        staffName: appointment.staff?.fullName || 'our team',
+        dateTime: appointment.startTime,
+        businessName: appointment.business.name,
+        appointmentUrl,
+        timezone: appointment.business.timezone ?? undefined,
+        senderPhone: appointment.business.vapiPhoneNumber,
+      });
+
       await sendAppointmentCancellation(appointment.customer.phone, {
         customerName: appointment.customer.name,
-        serviceName: appointment.service?.name || 'Appointment',
+        serviceName,
         dateTime: appointment.startTime,
         businessName: appointment.business.name,
         timezone: appointment.business.timezone ?? undefined,

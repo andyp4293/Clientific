@@ -939,7 +939,8 @@ export function MobileCustomersScreen({
                 style={[
                   styles.paginationButtons,
                   { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
-                ]}>
+                ]}
+                testID="mobile-customers-pagination-buttons">
                 <Pressable
                   accessibilityRole="button"
                   disabled={!data || data.currentPage <= 1}
@@ -2206,13 +2207,14 @@ const styles = StyleSheet.create({
   paginationButtons: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
     flexWrap: 'wrap',
     borderWidth: 1,
     borderRadius: 18,
     paddingHorizontal: 8,
     paddingVertical: 8,
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
   },
   paginationPagePill: {
     borderWidth: 1,

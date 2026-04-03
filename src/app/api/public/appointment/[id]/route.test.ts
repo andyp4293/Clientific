@@ -13,6 +13,9 @@ vi.mock('@/lib/twilio', () => ({
   sendAppointmentCancellation: vi.fn(),
   sendAppointmentConfirmation: vi.fn(),
 }));
+vi.mock('@/lib/appointment-reminders', () => ({
+  cancelScheduledAppointmentReminder: vi.fn().mockResolvedValue({ success: true, canceledCount: 1 }),
+}));
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
@@ -39,6 +42,7 @@ import {
   sendAppointmentCancellation,
   sendAppointmentConfirmation,
 } from '@/lib/twilio';
+import { cancelScheduledAppointmentReminder } from '@/lib/appointment-reminders';
 import { GET, PATCH } from './route';
 
 const mockGetServerSession = getServerSession as ReturnType<typeof vi.fn>;
@@ -50,6 +54,8 @@ const mockNotificationCreate = prisma.notification.create as ReturnType<typeof v
 const mockStaffFindFirst = prisma.staff.findFirst as ReturnType<typeof vi.fn>;
 const mockSendAppointmentCancellation = sendAppointmentCancellation as ReturnType<typeof vi.fn>;
 const mockSendAppointmentConfirmation = sendAppointmentConfirmation as ReturnType<typeof vi.fn>;
+const mockCancelScheduledAppointmentReminder =
+  cancelScheduledAppointmentReminder as ReturnType<typeof vi.fn>;
 
 const allDayHours = Object.fromEntries(
   Array.from({ length: 7 }, (_, day) => [
@@ -94,6 +100,7 @@ describe('/api/public/appointment/[id]', () => {
     mockGetServerSession.mockResolvedValue(null);
     mockSendAppointmentCancellation.mockResolvedValue({ success: true });
     mockSendAppointmentConfirmation.mockResolvedValue({ success: true });
+    mockCancelScheduledAppointmentReminder.mockResolvedValue({ success: true, canceledCount: 1 });
     mockAppointmentFindFirst.mockResolvedValue(null);
     mockAppointmentUpdate.mockResolvedValue({
       id: 'appt-1',
@@ -191,6 +198,7 @@ describe('/api/public/appointment/[id]', () => {
         reminderSent: false,
       }),
     });
+    expect(mockCancelScheduledAppointmentReminder).toHaveBeenCalledOnce();
     expect(mockSendAppointmentConfirmation).toHaveBeenCalledWith(
       '+15551234567',
       expect.objectContaining({
@@ -255,5 +263,21 @@ describe('/api/public/appointment/[id]', () => {
     const body = await res.json();
     expect(body.error).toContain('Spring Holiday');
     expect(mockAppointmentUpdate).not.toHaveBeenCalled();
+  });
+
+  it('cancels scheduled reminders when a public appointment is cancelled', async () => {
+    mockAppointmentFindUnique.mockResolvedValue(buildPatchAppointment());
+
+    const req = new NextRequest('http://localhost/api/public/appointment/appt-1', {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'cancelled' }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await PATCH(req, { params: Promise.resolve({ id: 'appt-1' }) });
+
+    expect(res.status).toBe(200);
+    expect(mockCancelScheduledAppointmentReminder).toHaveBeenCalledOnce();
+    expect(mockSendAppointmentCancellation).toHaveBeenCalledOnce();
   });
 });

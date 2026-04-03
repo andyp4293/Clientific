@@ -64,13 +64,14 @@ interface BusinessConfirmedDetails {
   senderPhone?: string | null;
 }
 
-interface ReminderDetails {
+export interface ReminderDetails {
   customerName: string;
   serviceName: string;
   staffName: string;
   dateTime: Date;
   businessName: string;
   businessPhone?: string;
+  appointmentUrl?: string;
   timezone?: string;
   senderPhone?: string | null;
 }
@@ -294,9 +295,19 @@ export function formatAppointmentBatchConfirmationSMS(details: AppointmentBatchD
 }
 
 export function formatAppointmentReminderSMS(details: ReminderDetails): string {
-  const timeStr = formatTime(details.dateTime, details.timezone);
-  const message = `Reminder: Appointment tomorrow at ${details.businessName}. ${details.serviceName} with ${details.staffName} at ${timeStr}.`;
-  return appendSmsComplianceFooter(message);
+  const tz = details.timezone || undefined;
+  const dateStr = details.dateTime.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    ...(tz ? { timeZone: tz } : {}),
+  });
+  const timeStr = formatTime(details.dateTime, tz);
+  const staffLine =
+    details.staffName && details.staffName !== 'our team' ? ` with ${details.staffName}` : '';
+  const base = `${details.businessName}: Reminder for your ${details.serviceName}${staffLine} appointment on ${dateStr} at ${timeStr}.`;
+  const withUrl = details.appointmentUrl ? `${base} Details: ${details.appointmentUrl}` : base;
+  return appendSmsComplianceFooter(withUrl);
 }
 
 export function formatAppointmentCancellationSMS(details: CancellationDetails): string {

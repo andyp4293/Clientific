@@ -78,3 +78,15 @@ export function withAppointmentServiceDisplay<T extends AppointmentServiceCarrie
     };
   });
 }
+
+export function resolveAppointmentServiceDisplayName<T extends AppointmentServiceCarrier>(
+  appointment: T,
+  availableServices: ResolvedAppointmentService[],
+): string | null {
+  const servicesById = new Map(
+    availableServices.map((service) => [service.id, service] as const),
+  );
+  const services = resolveAppointmentServices(appointment, servicesById);
+
+  return services.length > 0 ? services.map((service) => service.name).join(', ') : null;
+}

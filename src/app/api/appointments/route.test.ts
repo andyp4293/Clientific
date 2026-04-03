@@ -5,7 +5,7 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: { findUnique: vi.fn() },
     staff: { findFirst: vi.fn() },
-    appointment: { findMany: vi.fn(), create: vi.fn() },
+    appointment: { findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
     service: { findMany: vi.fn() },
     notification: { create: vi.fn() },
   },
@@ -23,6 +23,12 @@ vi.mock('@/lib/stripe', () => ({
 vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
 vi.mock('@/app/api/auth/[...nextauth]/route', () => ({ authOptions: {} }));
 vi.mock('@/lib/twilio', () => ({ sendAppointmentConfirmation: vi.fn().mockResolvedValue({ success: true }) }));
+vi.mock('@/lib/appointment-reminders', () => ({
+  scheduleAppointmentReminder: vi.fn().mockResolvedValue({ success: true, sid: 'SM_reminder' }),
+}));
+vi.mock('@/lib/appointment-short-id', () => ({
+  ensureAppointmentShortId: vi.fn().mockResolvedValue('ABC1234'),
+}));
 vi.mock('@/lib/email', () => ({ sendNewBookingEmail: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('@/lib/timezone', () => ({
   businessDayStart: vi.fn((date: string) => new Date(date)),
@@ -37,6 +43,8 @@ vi.mock('@/lib/timezone', () => ({
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 import { sendAppointmentConfirmation } from '@/lib/twilio';
+import { scheduleAppointmentReminder } from '@/lib/appointment-reminders';
+import { ensureAppointmentShortId } from '@/lib/appointment-short-id';
 import { GET, POST } from './route';
 
 const mockSession = getServerSession as ReturnType<typeof vi.fn>;
@@ -44,8 +52,11 @@ const mockBusiness = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockStaffFindFirst = prisma.staff.findFirst as ReturnType<typeof vi.fn>;
 const mockAppointmentFindMany = prisma.appointment.findMany as ReturnType<typeof vi.fn>;
 const mockAppointmentCreate = prisma.appointment.create as ReturnType<typeof vi.fn>;
+const mockAppointmentUpdate = prisma.appointment.update as ReturnType<typeof vi.fn>;
 const mockServiceFindMany = prisma.service.findMany as ReturnType<typeof vi.fn>;
 const mockNotificationCreate = prisma.notification.create as ReturnType<typeof vi.fn>;
+const mockScheduleAppointmentReminder = scheduleAppointmentReminder as ReturnType<typeof vi.fn>;
+const mockEnsureAppointmentShortId = ensureAppointmentShortId as ReturnType<typeof vi.fn>;
 
 // Appointments use session.user.email for business lookup, session.user.businessId for subscription
 const activeSession = { user: { businessId: 'biz-1', email: 'owner@test.com' } };
@@ -94,6 +105,9 @@ beforeEach(() => {
     workHours: null,
     serviceAssignments: [],
   });
+  mockAppointmentUpdate.mockResolvedValue({ id: 'appt-1', reminderSent: true });
+  mockScheduleAppointmentReminder.mockResolvedValue({ success: true, sid: 'SM_reminder' });
+  mockEnsureAppointmentShortId.mockResolvedValue('ABC1234');
 });
 
 describe('GET /api/appointments', () => {
@@ -312,9 +326,17 @@ describe('POST /api/appointments', () => {
       id: 'appt-3',
       customerId: 'cust-1',
       businessId: 'biz-1',
+      shortId: null,
       startTime: new Date(validApptBody.startTime),
       duration: 60,
-      customer: { id: 'cust-1', name: 'Test', phone: '+15551234567', email: null, smsConsent: true },
+      customer: {
+        id: 'cust-1',
+        name: 'Test',
+        phone: '+15551234567',
+        email: null,
+        smsConsent: true,
+        smsOptedOut: false,
+      },
       service: { name: 'Haircut' },
       staff: null,
       business: { name: 'Test Salon' },
@@ -327,8 +349,55 @@ describe('POST /api/appointments', () => {
       '+15551234567',
       expect.objectContaining({
         businessName: 'Test Salon',
+        appointmentUrl: expect.stringContaining('/a/ABC1234'),
         senderPhone: '+18557654989',
       })
     );
+    expect(scheduleAppointmentReminder).toHaveBeenCalledWith(
+      '+15551234567',
+      expect.objectContaining({
+        businessName: 'Test Salon',
+        appointmentUrl: expect.stringContaining('/a/ABC1234'),
+      }),
+    );
+    expect(mockAppointmentUpdate).toHaveBeenCalledWith({
+      where: { id: 'appt-3' },
+      data: { reminderSent: true },
+    });
+  });
+
+  it('does not send or schedule SMS when the customer has not consented', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce(fakeBusiness);
+    mockAppointmentFindMany.mockResolvedValue([]);
+    mockNotificationCreate.mockResolvedValue({});
+    mockAppointmentCreate.mockResolvedValue({
+      id: 'appt-4',
+      customerId: 'cust-1',
+      businessId: 'biz-1',
+      shortId: null,
+      startTime: new Date(validApptBody.startTime),
+      duration: 60,
+      customer: {
+        id: 'cust-1',
+        name: 'Test',
+        phone: '+15551234567',
+        email: null,
+        smsConsent: false,
+        smsOptedOut: false,
+      },
+      service: { name: 'Haircut' },
+      staff: null,
+      business: { name: 'Test Salon' },
+    });
+
+    const res = await POST(makeRequest(validApptBody));
+
+    expect(res.status).toBe(201);
+    expect(sendAppointmentConfirmation).not.toHaveBeenCalled();
+    expect(scheduleAppointmentReminder).not.toHaveBeenCalled();
+    expect(mockEnsureAppointmentShortId).not.toHaveBeenCalled();
   });
 });

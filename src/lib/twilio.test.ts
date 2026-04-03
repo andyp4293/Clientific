@@ -101,7 +101,9 @@ describe('twilio sms formatting', () => {
       staffName: 'Sam',
       dateTime: new Date('2026-03-10T14:00:00.000Z'),
       businessName: 'Test Salon',
+      appointmentUrl: 'https://www.clientific.app/a/ABC1234',
     });
+    expect(message).toContain('Details: https://www.clientific.app/a/ABC1234');
     expect(message).toContain(FOOTER);
   });
 
