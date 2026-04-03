@@ -4,6 +4,14 @@ vi.mock('@/lib/mobile-session', () => ({
   getBearerToken: vi.fn(),
   verifyMobileSessionToken: vi.fn(),
 }));
+vi.mock('@/lib/subscription', () => ({
+  requireActiveSubscription: vi.fn().mockResolvedValue(null),
+  checkPlanLimit: vi.fn().mockResolvedValue({
+    allowed: true,
+    current: 1,
+    limit: 20,
+  }),
+}));
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: {
@@ -11,8 +19,11 @@ vi.mock('@/lib/prisma', () => ({
     },
     serviceGroup: {
       findMany: vi.fn(),
+      findFirst: vi.fn(),
     },
     service: {
+      aggregate: vi.fn(),
+      create: vi.fn(),
       findMany: vi.fn(),
     },
     staff: {
@@ -23,13 +34,16 @@ vi.mock('@/lib/prisma', () => ({
 
 import { prisma } from '@/lib/prisma';
 import { getBearerToken, verifyMobileSessionToken } from '@/lib/mobile-session';
-import { GET } from './route';
+import { GET, POST } from './route';
 
 const mockGetBearerToken = getBearerToken as ReturnType<typeof vi.fn>;
 const mockVerifyMobileSessionToken = verifyMobileSessionToken as ReturnType<typeof vi.fn>;
 const mockFindBusiness = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockFindGroups = prisma.serviceGroup.findMany as ReturnType<typeof vi.fn>;
+const mockFindServiceGroup = prisma.serviceGroup.findFirst as ReturnType<typeof vi.fn>;
 const mockFindServices = prisma.service.findMany as ReturnType<typeof vi.fn>;
+const mockAggregateServices = prisma.service.aggregate as ReturnType<typeof vi.fn>;
+const mockCreateService = prisma.service.create as ReturnType<typeof vi.fn>;
 const mockFindStaff = prisma.staff.findMany as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
@@ -107,6 +121,7 @@ describe('GET /api/mobile/services', () => {
     expect(body.services[0]).toMatchObject({
       id: 'svc-1',
       name: 'Haircut',
+      price: 45,
       durationLabel: '45 min',
       priceLabel: '$45.00',
       groupName: 'Hair',
@@ -114,8 +129,66 @@ describe('GET /api/mobile/services', () => {
     expect(body.staff[0]).toMatchObject({
       id: 'staff-1',
       fullName: 'Taylor',
+      phone: '+15557654321',
       phoneDisplay: '(555) 765-4321',
+      workDays: [1, 2, 3],
+      serviceIds: ['svc-1'],
       serviceNames: ['Haircut'],
     });
+  });
+});
+
+describe('POST /api/mobile/services', () => {
+  it('creates a service for the native app and returns the formatted record', async () => {
+    mockAggregateServices.mockResolvedValue({ _max: { sortOrder: 3 } });
+    mockFindServiceGroup.mockResolvedValue({ id: 'group-1' });
+    mockCreateService.mockResolvedValue({
+      id: 'svc-9',
+      name: 'Gel manicure',
+      description: 'Gloss finish',
+      duration: 75,
+      price: 55,
+      active: true,
+      groupId: 'group-1',
+      sortOrder: 4,
+    });
+
+    const response = await POST(
+      new Request('https://www.clientific.app/api/mobile/services', {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer token',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: 'Gel manicure',
+          description: 'Gloss finish',
+          duration: 75,
+          price: 55,
+          isActive: true,
+          groupId: 'group-1',
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body.service).toMatchObject({
+      id: 'svc-9',
+      name: 'Gel manicure',
+      durationLabel: '1 hr 15 min',
+      priceLabel: '$55.00',
+      isActive: true,
+    });
+    expect(mockCreateService).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          businessId: 'biz-1',
+          name: 'Gel manicure',
+          duration: 75,
+          price: 55,
+        }),
+      }),
+    );
   });
 });

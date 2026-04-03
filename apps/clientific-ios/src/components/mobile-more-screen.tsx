@@ -30,7 +30,9 @@ import type {
   MobileRedeemResult,
   MobileReferralsSummary,
   MobileReviewsSummary,
+  MobileServiceInput,
   MobileServicesSummary,
+  MobileStaffInput,
 } from '@/lib/clientific-api';
 import { MobileAiReceptionistScreen } from '@/components/mobile-ai-receptionist-screen';
 import { MobileAnalyticsScreen } from '@/components/mobile-analytics-screen';
@@ -129,6 +131,10 @@ type MobileMoreScreenProps = {
   onCreateCheckIn: (
     input: MobileCheckInSubmissionInput,
   ) => Promise<MobileCheckInMutationResponse>;
+  onCreateService: (input: MobileServiceInput) => Promise<void>;
+  onCreateStaff: (input: MobileStaffInput) => Promise<void>;
+  onDeleteService: (serviceId: string) => Promise<void>;
+  onDeleteStaff: (staffId: string) => Promise<void>;
   onJumpCheckInsToToday: () => void;
   onLookupCheckIn: (phone: string) => Promise<MobileCheckInLookupResponse>;
   onLookupRedeemCode: (code: string) => Promise<MobileRedeemLookupResponse>;
@@ -158,6 +164,8 @@ type MobileMoreScreenProps = {
   onShareReferral: () => Promise<void>;
   onShareReviewSurvey: () => Promise<void>;
   onSignOut: () => Promise<void>;
+  onUpdateService: (serviceId: string, input: MobileServiceInput) => Promise<void>;
+  onUpdateStaff: (staffId: string, input: MobileStaffInput) => Promise<void>;
   referrals: MobileReferralsSummary | null;
   referralsError: string | null;
   reviews: MobileReviewsSummary | null;
@@ -319,6 +327,10 @@ export function MobileMoreScreen({
   onChangeAnalyticsRange,
   onChangeSection,
   onCreateCheckIn,
+  onCreateService,
+  onCreateStaff,
+  onDeleteService,
+  onDeleteStaff,
   onJumpCheckInsToToday,
   onLookupCheckIn,
   onLookupRedeemCode,
@@ -345,6 +357,8 @@ export function MobileMoreScreen({
   onShareReferral,
   onShareReviewSurvey,
   onSignOut,
+  onUpdateService,
+  onUpdateStaff,
   referrals,
   referralsError,
   reviews,
@@ -550,7 +564,13 @@ export function MobileMoreScreen({
             error={servicesError}
             isLoading={isServicesLoading}
             isRefreshing={isServicesRefreshing}
+            onCreateService={onCreateService}
+            onCreateStaff={onCreateStaff}
+            onDeleteService={onDeleteService}
+            onDeleteStaff={onDeleteStaff}
             onRefresh={onRefreshServices}
+            onUpdateService={onUpdateService}
+            onUpdateStaff={onUpdateStaff}
           />
         ) : null}
 

@@ -31,7 +31,9 @@ import type {
   MobileRedeemResult,
   MobileReferralsSummary,
   MobileReviewsSummary,
+  MobileServiceInput,
   MobileServicesSummary,
+  MobileStaffInput,
 } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
 import { MobileCustomersScreen } from '@/components/mobile-customers-screen';
@@ -115,8 +117,12 @@ type MobileAppShellProps = {
   onCreateCheckIn: (
     input: MobileCheckInSubmissionInput,
   ) => Promise<MobileCheckInMutationResponse>;
+  onCreateService: (input: MobileServiceInput) => Promise<void>;
+  onCreateStaff: (input: MobileStaffInput) => Promise<void>;
   onDeleteCustomer: (customerId: string) => Promise<void>;
   onDeleteCustomerGroup: (groupId: string) => Promise<void>;
+  onDeleteService: (serviceId: string) => Promise<void>;
+  onDeleteStaff: (staffId: string) => Promise<void>;
   onFetchCustomerDetail: (customerId: string) => Promise<MobileCustomerDetail>;
   onFetchCustomerMessages: (customerId: string) => Promise<MobileCustomerSmsLogSummary>;
   onGoToCustomersPage: (page: number) => void;
@@ -170,6 +176,8 @@ type MobileAppShellProps = {
     groupId: string,
     input: MobileCustomerGroupInput,
   ) => Promise<void>;
+  onUpdateService: (serviceId: string, input: MobileServiceInput) => Promise<void>;
+  onUpdateStaff: (staffId: string, input: MobileStaffInput) => Promise<void>;
   referrals: MobileReferralsSummary | null;
   referralsError: string | null;
   reviews: MobileReviewsSummary | null;
@@ -256,8 +264,12 @@ export function MobileAppShell({
   onCreateCustomer,
   onCreateCustomerGroup,
   onCreateCheckIn,
+  onCreateService,
+  onCreateStaff,
   onDeleteCustomer,
   onDeleteCustomerGroup,
+  onDeleteService,
+  onDeleteStaff,
   onFetchCustomerDetail,
   onFetchCustomerMessages,
   onGoToCustomersPage,
@@ -305,6 +317,8 @@ export function MobileAppShell({
   onSignOut,
   onUpdateCustomer,
   onUpdateCustomerGroup,
+  onUpdateService,
+  onUpdateStaff,
   referrals,
   referralsError,
   reviews,
@@ -445,6 +459,10 @@ export function MobileAppShell({
               onChangeAnalyticsRange={onChangeAnalyticsRange}
               onChangeSection={onChangeMoreSection}
               onCreateCheckIn={onCreateCheckIn}
+              onCreateService={onCreateService}
+              onCreateStaff={onCreateStaff}
+              onDeleteService={onDeleteService}
+              onDeleteStaff={onDeleteStaff}
               onJumpCheckInsToToday={onJumpCheckInsToToday}
               onLookupCheckIn={onLookupCheckIn}
               onLookupRedeemCode={onLookupRedeemCode}
@@ -471,6 +489,8 @@ export function MobileAppShell({
               onShareReferral={onShareReferral}
               onShareReviewSurvey={onShareReviewSurvey}
               onSignOut={onSignOut}
+              onUpdateService={onUpdateService}
+              onUpdateStaff={onUpdateStaff}
               referrals={referrals}
               referralsError={referralsError}
               reviews={reviews}

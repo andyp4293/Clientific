@@ -351,36 +351,69 @@ export type MobileServicesSummary = {
     staff: number;
     activeStaff: number;
   };
-  groups: Array<{
-    id: string;
-    name: string;
-    sortOrder: number;
-    servicesCount: number;
-  }>;
-  services: Array<{
-    id: string;
-    name: string;
-    description: string | null;
-    duration: number;
-    durationLabel: string;
-    priceLabel: string;
-    isActive: boolean;
-    groupId: string | null;
-    groupName: string | null;
-    sortOrder: number;
-  }>;
-  staff: Array<{
-    id: string;
-    fullName: string;
-    email: string | null;
-    phoneDisplay: string;
-    role: string | null;
-    isActive: boolean;
-    workDaysLabel: string;
-    workHoursLabel: string;
-    serviceCount: number;
-    serviceNames: string[];
-  }>;
+  groups: MobileServiceGroupRecord[];
+  services: MobileServiceRecord[];
+  staff: MobileStaffRecord[];
+};
+
+export type MobileServiceGroupRecord = {
+  id: string;
+  name: string;
+  sortOrder: number;
+  servicesCount: number;
+};
+
+export type MobileServiceRecord = {
+  id: string;
+  name: string;
+  description: string | null;
+  duration: number;
+  durationLabel: string;
+  price: number | null;
+  priceLabel: string;
+  isActive: boolean;
+  groupId: string | null;
+  groupName: string | null;
+  sortOrder: number;
+};
+
+export type MobileStaffWorkHours = Record<number, { startTime: string; endTime: string }>;
+
+export type MobileStaffRecord = {
+  id: string;
+  fullName: string;
+  email: string | null;
+  phone: string | null;
+  phoneDisplay: string;
+  role: string | null;
+  isActive: boolean;
+  workDays: number[];
+  workHours: MobileStaffWorkHours;
+  workDaysLabel: string;
+  workHoursLabel: string;
+  serviceCount: number;
+  serviceIds: string[];
+  serviceNames: string[];
+};
+
+export type MobileServiceInput = {
+  name: string;
+  description?: string | null;
+  duration: number;
+  price?: number | null;
+  isActive?: boolean;
+  groupId?: string | null;
+};
+
+export type MobileStaffInput = {
+  fullName: string;
+  email?: string | null;
+  phone?: string | null;
+  role?: string | null;
+  isActive?: boolean;
+  workDays?: number[];
+  workHours?: MobileStaffWorkHours;
+  serviceIds?: string[];
 };
 
 export type MobileBusinessHoursSummary = {
@@ -925,6 +958,76 @@ export async function deleteMobileCustomerGroup(token: string, groupId: string) 
 
 export async function fetchMobileServices(token: string) {
   return requestJson<MobileServicesSummary>('/api/mobile/services', {
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function createMobileService(token: string, input: MobileServiceInput) {
+  return requestJson<{ service: MobileServiceRecord }>('/api/mobile/services', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateMobileService(
+  token: string,
+  serviceId: string,
+  input: Partial<MobileServiceInput>,
+) {
+  return requestJson<{ service: MobileServiceRecord }>(`/api/mobile/services/${serviceId}`, {
+    method: 'PATCH',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteMobileService(token: string, serviceId: string) {
+  return requestJson<{ success: true }>(`/api/mobile/services/${serviceId}`, {
+    method: 'DELETE',
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function createMobileStaff(token: string, input: MobileStaffInput) {
+  return requestJson<{ staff: MobileStaffRecord }>('/api/mobile/staff', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateMobileStaff(
+  token: string,
+  staffId: string,
+  input: Partial<MobileStaffInput>,
+) {
+  return requestJson<{ staff: MobileStaffRecord }>(`/api/mobile/staff/${staffId}`, {
+    method: 'PATCH',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteMobileStaff(token: string, staffId: string) {
+  return requestJson<{ success: true }>(`/api/mobile/staff/${staffId}`, {
+    method: 'DELETE',
     headers: {
       authorization: `Bearer ${token}`,
     },

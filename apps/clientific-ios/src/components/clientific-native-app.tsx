@@ -11,10 +11,14 @@ import {
 import * as WebBrowser from 'expo-web-browser';
 import * as SecureStore from 'expo-secure-store';
 import {
+  createMobileService,
+  createMobileStaff,
   createMobileCustomer,
   createMobileCustomerGroup,
   createMobileCheckIn,
   ClientificApiError,
+  deleteMobileService,
+  deleteMobileStaff,
   confirmVerificationCode,
   deleteMobileCustomer,
   deleteMobileCustomerGroup,
@@ -62,7 +66,9 @@ import {
   MobileRedeemResult,
   MobileReferralsSummary,
   MobileReviewsSummary,
+  MobileServiceInput,
   MobileServicesSummary,
+  MobileStaffInput,
   loginWithClientific,
   openMobileBillingPortal,
   redeemMobileCode,
@@ -74,6 +80,8 @@ import {
   updateMobileBusinessProfile,
   updateMobileCustomer,
   updateMobileCustomerGroup,
+  updateMobileService,
+  updateMobileStaff,
 } from '@/lib/clientific-api';
 import { APP_PRIVACY_URL, APP_TERMS_URL } from '@/lib/clientific-brand';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
@@ -1590,6 +1598,108 @@ export function ClientificNativeApp() {
     [customerFilters, customersPage, customersSearchQuery, handleSessionError, loadCustomers, session],
   );
 
+  const handleCreateService = useCallback(
+    async (input: MobileServiceInput) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await createMobileService(session.token, input);
+        await loadServices(session.token, true);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to create service.', setServicesError);
+        throw new Error(getReadableError(error, 'Unable to create service.'));
+      }
+    },
+    [handleSessionError, loadServices, session],
+  );
+
+  const handleUpdateService = useCallback(
+    async (serviceId: string, input: MobileServiceInput) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await updateMobileService(session.token, serviceId, input);
+        await loadServices(session.token, true);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to update service.', setServicesError);
+        throw new Error(getReadableError(error, 'Unable to update service.'));
+      }
+    },
+    [handleSessionError, loadServices, session],
+  );
+
+  const handleDeleteService = useCallback(
+    async (serviceId: string) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await deleteMobileService(session.token, serviceId);
+        await loadServices(session.token, true);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to delete service.', setServicesError);
+        throw new Error(getReadableError(error, 'Unable to delete service.'));
+      }
+    },
+    [handleSessionError, loadServices, session],
+  );
+
+  const handleCreateStaff = useCallback(
+    async (input: MobileStaffInput) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await createMobileStaff(session.token, input);
+        await loadServices(session.token, true);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to create staff member.', setServicesError);
+        throw new Error(getReadableError(error, 'Unable to create staff member.'));
+      }
+    },
+    [handleSessionError, loadServices, session],
+  );
+
+  const handleUpdateStaff = useCallback(
+    async (staffId: string, input: MobileStaffInput) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await updateMobileStaff(session.token, staffId, input);
+        await loadServices(session.token, true);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to update staff member.', setServicesError);
+        throw new Error(getReadableError(error, 'Unable to update staff member.'));
+      }
+    },
+    [handleSessionError, loadServices, session],
+  );
+
+  const handleDeleteStaff = useCallback(
+    async (staffId: string) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await deleteMobileStaff(session.token, staffId);
+        await loadServices(session.token, true);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to delete staff member.', setServicesError);
+        throw new Error(getReadableError(error, 'Unable to delete staff member.'));
+      }
+    },
+    [handleSessionError, loadServices, session],
+  );
+
   const handleLookupCheckIn = useCallback(
     async (phone: string) => {
       if (!session) {
@@ -2016,8 +2126,12 @@ export function ClientificNativeApp() {
       onCreateCustomer={handleCreateCustomer}
       onCreateCustomerGroup={handleCreateCustomerGroup}
       onCreateCheckIn={handleCreateCheckIn}
+      onCreateService={handleCreateService}
+      onCreateStaff={handleCreateStaff}
       onDeleteCustomer={handleDeleteCustomer}
       onDeleteCustomerGroup={handleDeleteCustomerGroup}
+      onDeleteService={handleDeleteService}
+      onDeleteStaff={handleDeleteStaff}
       onFetchCustomerDetail={handleFetchCustomerDetail}
       onFetchCustomerMessages={handleFetchCustomerMessages}
       onGoToCustomersPage={goToCustomersPage}
@@ -2065,6 +2179,8 @@ export function ClientificNativeApp() {
       onSignOut={signOut}
       onUpdateCustomer={handleUpdateCustomer}
       onUpdateCustomerGroup={handleUpdateCustomerGroup}
+      onUpdateService={handleUpdateService}
+      onUpdateStaff={handleUpdateStaff}
       referrals={referrals}
       referralsError={referralsError}
       reviews={reviews}

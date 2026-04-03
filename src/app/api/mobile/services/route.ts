@@ -4,6 +4,13 @@ import { isBusinessOnboardingComplete } from '@/lib/onboarding';
 import { formatPhoneForDisplay } from '@/lib/phone';
 import { normalizeStaffWorkHours } from '@/lib/staff-schedule';
 import { requireMobileSession } from '@/lib/mobile-route';
+import { requireActiveSubscription, checkPlanLimit } from '@/lib/subscription';
+import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
+import {
+  getServiceGroupsCacheTag,
+  getServicesCacheTag,
+} from '@/lib/cache-tags';
+import { revalidateTag } from 'next/cache';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -143,6 +150,7 @@ export async function GET(request: Request) {
         description: service.description,
         duration: service.duration,
         durationLabel: formatDuration(service.duration),
+        price: service.price,
         priceLabel: formatCurrency(service.price),
         isActive: service.active,
         groupId: service.groupId,
@@ -156,20 +164,142 @@ export async function GET(request: Request) {
           id: member.id,
           fullName: member.fullName,
           email: member.email,
+          phone: member.phone,
           phoneDisplay: formatPhoneForDisplay(member.phone),
           role: member.role,
           isActive: member.active,
+          workDays: member.workDays,
+          workHours: normalizeStaffWorkHours(member.workHours),
           workDaysLabel: formatWorkDaysLabel(member.workDays),
           workHoursLabel: formatWorkHoursLabel(member.workHours, member.workDays),
           serviceCount: serviceIds.length,
+          serviceIds,
           serviceNames: serviceIds
-            .map((serviceId) => serviceNameById.get(serviceId))
-            .filter((name): name is string => Boolean(name)),
+            .map((serviceId: string) => serviceNameById.get(serviceId))
+            .filter((name: string | undefined): name is string => Boolean(name)),
         };
       }),
     });
   } catch (error) {
     console.error('GET /api/mobile/services error:', error);
     return NextResponse.json({ error: 'Unable to load services and staff' }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  const authorized = await requireMobileSession(request);
+  if ('error' in authorized) {
+    return authorized.error;
+  }
+
+  try {
+    const subscriptionError = await requireActiveSubscription(authorized.session.businessId);
+    if (subscriptionError) {
+      return subscriptionError;
+    }
+
+    const limitCheck = await checkPlanLimit(authorized.session.businessId, 'services');
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: `Service limit reached (${limitCheck.current}/${limitCheck.limit}). Please upgrade your plan.`,
+          code: 'PLAN_LIMIT_REACHED',
+        },
+        { status: 403 },
+      );
+    }
+
+    const body = await request.json();
+    const name = typeof body?.name === 'string' ? body.name.trim() : '';
+    const description =
+      typeof body?.description === 'string' && body.description.trim().length > 0
+        ? body.description.trim()
+        : null;
+    const duration = Number.parseInt(String(body?.duration ?? ''), 10);
+    const price =
+      body?.price === null || body?.price === undefined || body?.price === ''
+        ? null
+        : Number.parseFloat(String(body.price));
+    const isActive = body?.isActive !== false;
+    const groupId = typeof body?.groupId === 'string' && body.groupId.trim().length > 0
+      ? body.groupId.trim()
+      : null;
+
+    if (!name || !Number.isFinite(duration)) {
+      return NextResponse.json({ error: 'Name and duration are required' }, { status: 400 });
+    }
+
+    const blockedField = getBlockedFieldLabel([
+      { label: 'Service name', value: name },
+      { label: 'Service description', value: description },
+    ]);
+    if (blockedField) {
+      return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
+    }
+
+    if (duration < 5) {
+      return NextResponse.json({ error: 'Duration must be at least 5 minutes' }, { status: 400 });
+    }
+
+    if (body?.price !== undefined && body?.price !== null && body?.price !== '' && !Number.isFinite(price ?? Number.NaN)) {
+      return NextResponse.json({ error: 'Price must be a valid number' }, { status: 400 });
+    }
+
+    if (groupId) {
+      const group = await prisma.serviceGroup.findFirst({
+        where: {
+          id: groupId,
+          businessId: authorized.session.businessId,
+        },
+        select: { id: true },
+      });
+
+      if (!group) {
+        return NextResponse.json({ error: 'Service group not found' }, { status: 400 });
+      }
+    }
+
+    const maxSort = await prisma.service.aggregate({
+      where: { businessId: authorized.session.businessId },
+      _max: { sortOrder: true },
+    });
+
+    const service = await prisma.service.create({
+      data: {
+        businessId: authorized.session.businessId,
+        name,
+        description,
+        duration,
+        price: Number.isFinite(price ?? Number.NaN) ? price : null,
+        active: isActive,
+        groupId,
+        sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
+      },
+    });
+
+    revalidateTag(getServicesCacheTag(authorized.session.businessId), 'max');
+    revalidateTag(getServiceGroupsCacheTag(authorized.session.businessId), 'max');
+
+    return NextResponse.json(
+      {
+        service: {
+          id: service.id,
+          name: service.name,
+          description: service.description,
+          duration: service.duration,
+          durationLabel: formatDuration(service.duration),
+          price: service.price,
+          priceLabel: formatCurrency(service.price),
+          isActive: service.active,
+          groupId: service.groupId,
+          groupName: null,
+          sortOrder: service.sortOrder,
+        },
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    console.error('POST /api/mobile/services error:', error);
+    return NextResponse.json({ error: 'Unable to create service' }, { status: 500 });
   }
 }

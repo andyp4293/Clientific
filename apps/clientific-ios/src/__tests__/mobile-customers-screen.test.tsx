@@ -1,4 +1,5 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { MobileCustomersScreen } from '@/components/mobile-customers-screen';
 import type { MobileCustomerFilters, MobileCustomersSummary } from '@/lib/clientific-api';
@@ -164,7 +165,8 @@ describe('MobileCustomersScreen', () => {
     expect(onChangeSearchDraft).toHaveBeenCalledWith('jord');
     expect(onNextPage).toHaveBeenCalled();
     expect(screen.getByText('Filter customers')).toBeTruthy();
-    expect(screen.getByText('Showing 1-20 of 55 · Page 1 of 3')).toBeTruthy();
+    expect(screen.getByText('1-20 of 55 shown')).toBeTruthy();
+    expect(screen.getByText('Page 1 of 3')).toBeTruthy();
   });
 
   it('switches to the groups tab and shows customer groups', async () => {
@@ -216,7 +218,12 @@ describe('MobileCustomersScreen', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getAllByText('No SMS approval').length).toBeGreaterThan(0);
+      const badge = screen.getAllByText('No SMS approval').at(-1)!;
+      const badgeContainer = badge.parent?.parent ?? badge.parent;
+      expect(badge).toBeTruthy();
+      expect(StyleSheet.flatten(badgeContainer?.props.style)).toMatchObject({
+        backgroundColor: 'rgba(217, 119, 6, 0.12)',
+      });
     });
   });
 

@@ -72,6 +72,16 @@ type GroupFormState = {
   promotionSmsEnabled: boolean;
 };
 
+type PaginationItem =
+  | {
+      type: 'page';
+      page: number;
+    }
+  | {
+      type: 'ellipsis';
+      key: string;
+    };
+
 const SMS_FILTER_OPTIONS: Array<{ value: MobileCustomerSmsFilter; label: string }> = [
   { value: '', label: 'All SMS' },
   { value: 'enabled', label: 'SMS ready' },
@@ -93,16 +103,30 @@ const VISIT_FILTER_OPTIONS: Array<{ value: MobileCustomerVisitFilter; label: str
   { value: 'never', label: 'Never visited' },
 ];
 
-function buildPaginationItems(currentPage: number, totalPages: number) {
+function buildPaginationItems(currentPage: number, totalPages: number): PaginationItem[] {
   if (totalPages <= 5) {
-    return Array.from({ length: totalPages }, (_, index) => index + 1);
+    return Array.from({ length: totalPages }, (_, index) => ({
+      type: 'page' as const,
+      page: index + 1,
+    }));
   }
 
   const pages = new Set<number>([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
-
-  return Array.from(pages)
+  const sortedPages = Array.from(pages)
     .filter((page) => page >= 1 && page <= totalPages)
     .sort((a, b) => a - b);
+  const items: PaginationItem[] = [];
+
+  sortedPages.forEach((page, index) => {
+    items.push({ type: 'page', page });
+
+    const nextPage = sortedPages[index + 1];
+    if (nextPage && nextPage - page > 1) {
+      items.push({ type: 'ellipsis', key: `${page}-${nextPage}` });
+    }
+  });
+
+  return items;
 }
 
 function createEmptyCustomerForm(): CustomerFormState {
@@ -235,7 +259,7 @@ function buildResultsSummary(data: MobileCustomersSummary | null) {
 
   const start = (data.currentPage - 1) * data.pageSize + 1;
   const end = Math.min(data.currentPage * data.pageSize, data.totalCustomers);
-  return `Showing ${start}-${end} of ${data.totalCustomers}`;
+  return `${start}-${end} of ${data.totalCustomers} shown`;
 }
 
 function buildActiveFilterLabels(
@@ -895,44 +919,71 @@ export function MobileCustomersScreen({
                 <Text style={[styles.paginationTitle, { color: theme.text }]}>
                   {data?.totalCustomers ?? 0} customers
                 </Text>
-                <Text style={[styles.paginationText, { color: theme.mutedText }]}>
-                  {buildResultsSummary(data)} · Page {data?.currentPage ?? 1} of {data?.totalPages ?? 1}
-                </Text>
+                <View style={styles.paginationMetaRow}>
+                  <Text style={[styles.paginationText, { color: theme.mutedText }]}>
+                    {buildResultsSummary(data)}
+                  </Text>
+                  <View
+                    style={[
+                      styles.paginationPagePill,
+                      { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                    ]}>
+                    <Text style={[styles.paginationPagePillText, { color: theme.text }]}>
+                      Page {data?.currentPage ?? 1} of {data?.totalPages ?? 1}
+                    </Text>
+                  </View>
+                </View>
               </View>
 
-              <View style={styles.paginationButtons}>
+              <View
+                style={[
+                  styles.paginationButtons,
+                  { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                ]}>
                 <Pressable
                   accessibilityRole="button"
                   disabled={!data || data.currentPage <= 1}
                   onPress={onPreviousPage}
                   style={[
                     styles.pageButton,
-                    { borderColor: theme.border, opacity: !data || data.currentPage <= 1 ? 0.5 : 1 },
+                    {
+                      backgroundColor: theme.surface,
+                      borderColor: theme.border,
+                      opacity: !data || data.currentPage <= 1 ? 0.45 : 1,
+                    },
                   ]}
                   testID="mobile-customers-previous">
                   <Text style={[styles.pageButtonText, { color: theme.text }]}>←</Text>
                 </Pressable>
-                {paginationItems.map((pageNumber) => (
-                  <Pressable
-                    key={pageNumber}
-                    accessibilityRole="button"
-                    onPress={() => onGoToPage(pageNumber)}
-                    style={[
-                      styles.pageNumberButton,
-                      data?.currentPage === pageNumber
-                        ? { backgroundColor: theme.accent, borderColor: theme.accent }
-                        : { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
-                    ]}>
-                    <Text
-                      style={
-                        data?.currentPage === pageNumber
-                          ? styles.pageNumberButtonSelectedText
-                          : [styles.pageNumberButtonText, { color: theme.text }]
-                      }>
-                      {pageNumber}
-                    </Text>
-                  </Pressable>
-                ))}
+                {paginationItems.map((item) =>
+                  item.type === 'page' ? (
+                    <Pressable
+                      key={item.page}
+                      accessibilityRole="button"
+                      onPress={() => onGoToPage(item.page)}
+                      style={[
+                        styles.pageNumberButton,
+                        data?.currentPage === item.page
+                          ? { backgroundColor: theme.accent, borderColor: theme.accent }
+                          : { backgroundColor: theme.surface, borderColor: theme.border },
+                      ]}>
+                      <Text
+                        style={
+                          data?.currentPage === item.page
+                            ? styles.pageNumberButtonSelectedText
+                            : [styles.pageNumberButtonText, { color: theme.text }]
+                        }>
+                        {item.page}
+                      </Text>
+                    </Pressable>
+                  ) : (
+                    <View key={item.key} style={styles.paginationEllipsisWrap}>
+                      <Text style={[styles.paginationEllipsisText, { color: theme.mutedText }]}>
+                        …
+                      </Text>
+                    </View>
+                  ),
+                )}
                 <Pressable
                   accessibilityRole="button"
                   disabled={!data || data.currentPage >= data.totalPages}
@@ -940,8 +991,9 @@ export function MobileCustomersScreen({
                   style={[
                     styles.pageButton,
                     {
+                      backgroundColor: theme.surface,
                       borderColor: theme.border,
-                      opacity: !data || data.currentPage >= data.totalPages ? 0.5 : 1,
+                      opacity: !data || data.currentPage >= data.totalPages ? 0.45 : 1,
                     },
                   ]}
                   testID="mobile-customers-next">
@@ -952,226 +1004,231 @@ export function MobileCustomersScreen({
 
             <View style={styles.stack}>
               {data?.customers.length ? (
-                data.customers.map((customer) => (
-                  <View
-                    key={customer.id}
-                    style={[
-                      styles.customerCard,
-                      { backgroundColor: theme.surface, borderColor: theme.border },
-                    ]}>
-                    <View style={styles.customerHeader}>
-                      <View style={styles.customerHeaderLeft}>
-                        <View
-                          style={[
-                            styles.customerAvatar,
-                            { backgroundColor: theme.accentSoft, borderColor: theme.border },
-                          ]}>
-                          <Text style={[styles.customerAvatarText, { color: theme.accent }]}>
-                            {getCustomerInitials(customer.name)}
-                          </Text>
-                        </View>
-                        <View style={styles.customerIdentity}>
-                          <Text style={[styles.customerName, { color: theme.text }]}>
-                            {customer.name}
-                          </Text>
-                          <Text style={[styles.customerMeta, { color: theme.mutedText }]}>
-                            {customer.phoneDisplay ?? 'No phone on file'}
-                          </Text>
-                          {customer.email ? (
-                            <Text style={[styles.customerSecondaryMeta, { color: theme.mutedText }]}>
-                              {customer.email}
-                            </Text>
-                          ) : null}
-                        </View>
-                      </View>
-                      <View style={styles.badgesColumn}>
-                        <View
-                          style={[
-                            styles.secondaryPill,
-                            { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
-                          ]}>
-                          <Text style={[styles.secondaryPillText, { color: theme.text }]}>
-                            {customer.segmentLabel}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
+                data.customers.map((customer) => {
+                  const smsAppearance = getSmsStatusAppearance(theme, customer);
+                  const dealsAppearance = getDealsStatusAppearance(theme, customer);
 
-                    <View style={styles.customerBadgeRow}>
-                      <View
-                        style={[
-                          styles.statusPill,
-                          {
-                            backgroundColor: getSmsStatusAppearance(theme, customer).backgroundColor,
-                            borderColor: getSmsStatusAppearance(theme, customer).borderColor,
-                          },
-                        ]}>
-                        <Text
-                          style={[
-                            styles.statusPillText,
-                            { color: getSmsStatusAppearance(theme, customer).textColor },
-                          ]}>
-                          {getSmsStatusAppearance(theme, customer).label}
-                        </Text>
-                      </View>
-                      <View
-                        style={[
-                          styles.statusPill,
-                          {
-                            backgroundColor: getDealsStatusAppearance(theme, customer).backgroundColor,
-                            borderColor: getDealsStatusAppearance(theme, customer).borderColor,
-                          },
-                        ]}>
-                        <Text
-                          style={[
-                            styles.statusPillText,
-                            { color: getDealsStatusAppearance(theme, customer).textColor },
-                          ]}>
-                          {getDealsStatusAppearance(theme, customer).label}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.customerStatsGrid}>
-                      <View style={styles.customerStatCell}>
-                        <Text style={[styles.customerStatLabel, { color: theme.mutedText }]}>Joined</Text>
-                        <Text style={[styles.customerStatValue, { color: theme.text }]}>
-                          {customer.joinedLabel}
-                        </Text>
-                      </View>
-                      <View style={styles.customerStatCell}>
-                        <Text style={[styles.customerStatLabel, { color: theme.mutedText }]}>Last visit</Text>
-                        <Text style={[styles.customerStatValue, { color: theme.text }]}>
-                          {customer.lastVisitLabel}
-                        </Text>
-                      </View>
-                      <View style={styles.customerStatCell}>
-                        <Text style={[styles.customerStatLabel, { color: theme.mutedText }]}>Visits</Text>
-                        <Text style={[styles.customerStatValue, { color: theme.text }]}>
-                          {customer.visitsCount}
-                        </Text>
-                      </View>
-                      <View style={styles.customerStatCell}>
-                        <Text style={[styles.customerStatLabel, { color: theme.mutedText }]}>Spent</Text>
-                        <Text style={[styles.customerStatValue, { color: theme.text }]}>
-                          {customer.totalSpentLabel}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.groupBadgeWrap}>
-                      {customer.groups.length ? (
-                        customer.groups.map((group) => (
+                  return (
+                    <View
+                      key={customer.id}
+                      style={[
+                        styles.customerCard,
+                        { backgroundColor: theme.surface, borderColor: theme.border },
+                      ]}>
+                      <View style={styles.customerHeader}>
+                        <View style={styles.customerHeaderLeft}>
                           <View
-                            key={group.id}
                             style={[
-                              styles.groupBadge,
-                              {
-                                backgroundColor: group.promotionSmsEnabled
-                                  ? theme.accentSoft
-                                  : theme.surfaceMuted,
-                                borderColor: theme.border,
-                              },
+                              styles.customerAvatar,
+                              { backgroundColor: theme.accentSoft, borderColor: theme.border },
                             ]}>
-                            <Text
-                              style={[
-                                styles.groupBadgeText,
-                                { color: group.promotionSmsEnabled ? theme.accent : theme.text },
-                              ]}>
-                              {group.name}
+                            <Text style={[styles.customerAvatarText, { color: theme.accent }]}>
+                              {getCustomerInitials(customer.name)}
                             </Text>
                           </View>
-                        ))
-                      ) : (
+                          <View style={styles.customerIdentity}>
+                            <Text style={[styles.customerName, { color: theme.text }]}>
+                              {customer.name}
+                            </Text>
+                            <Text style={[styles.customerMeta, { color: theme.mutedText }]}>
+                              {customer.phoneDisplay ?? 'No phone on file'}
+                            </Text>
+                            {customer.email ? (
+                              <Text style={[styles.customerSecondaryMeta, { color: theme.mutedText }]}>
+                                {customer.email}
+                              </Text>
+                            ) : null}
+                          </View>
+                        </View>
+                        <View style={styles.badgesColumn}>
+                          <View
+                            style={[
+                              styles.secondaryPill,
+                              { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                            ]}>
+                            <Text style={[styles.secondaryPillText, { color: theme.text }]}>
+                              {customer.segmentLabel}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      <View style={styles.customerBadgeRow}>
                         <View
                           style={[
-                            styles.groupBadge,
-                            { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                            styles.statusPill,
+                            {
+                              backgroundColor: smsAppearance.backgroundColor,
+                              borderColor: smsAppearance.borderColor,
+                            },
                           ]}>
-                          <Text style={[styles.groupBadgeText, { color: theme.mutedText }]}>
-                            Ungrouped
+                          <Text
+                            style={[
+                              styles.statusPillText,
+                              { color: smsAppearance.textColor },
+                            ]}>
+                            {smsAppearance.label}
                           </Text>
                         </View>
-                      )}
-                    </View>
+                        <View
+                          style={[
+                            styles.statusPill,
+                            {
+                              backgroundColor: dealsAppearance.backgroundColor,
+                              borderColor: dealsAppearance.borderColor,
+                            },
+                          ]}>
+                          <Text
+                            style={[
+                              styles.statusPillText,
+                              { color: dealsAppearance.textColor },
+                            ]}>
+                            {dealsAppearance.label}
+                          </Text>
+                        </View>
+                      </View>
 
-                    <View style={styles.actionRow}>
-                      <Pressable
-                        accessibilityRole="button"
-                        onPress={() => void handleOpenDetail(customer.id)}
-                        style={[styles.actionButton, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}>
-                        <Text style={[styles.actionButtonText, { color: theme.text }]}>View</Text>
-                      </Pressable>
-                      <Pressable
-                        accessibilityRole="button"
-                        onPress={() => {
-                          void (async () => {
-                            try {
-                              const detail = await onFetchCustomerDetail(customer.id);
-                              openEditCustomer(detail);
-                            } catch (fetchError) {
-                              setSheetError(
-                                fetchError instanceof Error
-                                  ? fetchError.message
-                                  : 'Unable to load customer.',
-                              );
-                            }
-                          })();
-                        }}
-                        style={[styles.actionButton, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}>
-                        <Text style={[styles.actionButtonText, { color: theme.text }]}>Edit</Text>
-                      </Pressable>
-                      <Pressable
-                        accessibilityRole="button"
-                        disabled={!customer.phoneDisplay || !customer.smsConsent || customer.smsOptedOut}
-                        onPress={() => {
-                          setSelectedMessages(null);
-                          setSelectedCustomer({
-                            id: customer.id,
-                            name: customer.name,
-                            email: customer.email,
-                            phone: customer.phone,
-                            phoneDisplay: customer.phoneDisplay,
-                            birthdayValue: '',
-                            birthdayLabel: 'Not provided',
-                            notes: null,
-                            segment: customer.segment,
-                            segmentLabel: customer.segmentLabel,
-                            joinedLabel: customer.joinedLabel,
-                            lastVisitLabel: customer.lastVisitLabel,
-                            totalSpentLabel: customer.totalSpentLabel,
-                            smsConsent: customer.smsConsent,
-                            smsOptedOut: customer.smsOptedOut,
-                            dealSmsBlocked: customer.dealSmsBlocked,
-                            visitsCount: customer.visitsCount,
-                            appointmentsCount: 0,
-                            groups: customer.groups,
-                            checkIns: [],
-                            appointments: [],
-                          });
-                          setMessageDraft('');
-                          setSheetError(null);
-                          setIsMessageSheetVisible(true);
-                        }}
-                        style={[
-                          styles.primaryActionButton,
-                          {
-                            backgroundColor:
-                              customer.phoneDisplay && customer.smsConsent && !customer.smsOptedOut
-                                ? theme.accent
-                                : theme.surfaceMuted,
-                            borderColor: theme.border,
-                            opacity:
-                              customer.phoneDisplay && customer.smsConsent && !customer.smsOptedOut
-                                ? 1
-                                : 0.6,
-                          },
-                        ]}>
-                        <Text style={styles.primaryActionButtonText}>Text</Text>
-                      </Pressable>
+                      <View style={styles.customerStatsGrid}>
+                        <View style={styles.customerStatCell}>
+                          <Text style={[styles.customerStatLabel, { color: theme.mutedText }]}>Joined</Text>
+                          <Text style={[styles.customerStatValue, { color: theme.text }]}>
+                            {customer.joinedLabel}
+                          </Text>
+                        </View>
+                        <View style={styles.customerStatCell}>
+                          <Text style={[styles.customerStatLabel, { color: theme.mutedText }]}>Last visit</Text>
+                          <Text style={[styles.customerStatValue, { color: theme.text }]}>
+                            {customer.lastVisitLabel}
+                          </Text>
+                        </View>
+                        <View style={styles.customerStatCell}>
+                          <Text style={[styles.customerStatLabel, { color: theme.mutedText }]}>Visits</Text>
+                          <Text style={[styles.customerStatValue, { color: theme.text }]}>
+                            {customer.visitsCount}
+                          </Text>
+                        </View>
+                        <View style={styles.customerStatCell}>
+                          <Text style={[styles.customerStatLabel, { color: theme.mutedText }]}>Spent</Text>
+                          <Text style={[styles.customerStatValue, { color: theme.text }]}>
+                            {customer.totalSpentLabel}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.groupBadgeWrap}>
+                        {customer.groups.length ? (
+                          customer.groups.map((group) => (
+                            <View
+                              key={group.id}
+                              style={[
+                                styles.groupBadge,
+                                {
+                                  backgroundColor: group.promotionSmsEnabled
+                                    ? theme.accentSoft
+                                    : theme.surfaceMuted,
+                                  borderColor: theme.border,
+                                },
+                              ]}>
+                              <Text
+                                style={[
+                                  styles.groupBadgeText,
+                                  { color: group.promotionSmsEnabled ? theme.accent : theme.text },
+                                ]}>
+                                {group.name}
+                              </Text>
+                            </View>
+                          ))
+                        ) : (
+                          <View
+                            style={[
+                              styles.groupBadge,
+                              { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                            ]}>
+                            <Text style={[styles.groupBadgeText, { color: theme.mutedText }]}>
+                              Ungrouped
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      <View style={styles.actionRow}>
+                        <Pressable
+                          accessibilityRole="button"
+                          onPress={() => void handleOpenDetail(customer.id)}
+                          style={[styles.actionButton, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}>
+                          <Text style={[styles.actionButtonText, { color: theme.text }]}>View</Text>
+                        </Pressable>
+                        <Pressable
+                          accessibilityRole="button"
+                          onPress={() => {
+                            void (async () => {
+                              try {
+                                const detail = await onFetchCustomerDetail(customer.id);
+                                openEditCustomer(detail);
+                              } catch (fetchError) {
+                                setSheetError(
+                                  fetchError instanceof Error
+                                    ? fetchError.message
+                                    : 'Unable to load customer.',
+                                );
+                              }
+                            })();
+                          }}
+                          style={[styles.actionButton, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}>
+                          <Text style={[styles.actionButtonText, { color: theme.text }]}>Edit</Text>
+                        </Pressable>
+                        <Pressable
+                          accessibilityRole="button"
+                          disabled={!customer.phoneDisplay || !customer.smsConsent || customer.smsOptedOut}
+                          onPress={() => {
+                            setSelectedMessages(null);
+                            setSelectedCustomer({
+                              id: customer.id,
+                              name: customer.name,
+                              email: customer.email,
+                              phone: customer.phone,
+                              phoneDisplay: customer.phoneDisplay,
+                              birthdayValue: '',
+                              birthdayLabel: 'Not provided',
+                              notes: null,
+                              segment: customer.segment,
+                              segmentLabel: customer.segmentLabel,
+                              joinedLabel: customer.joinedLabel,
+                              lastVisitLabel: customer.lastVisitLabel,
+                              totalSpentLabel: customer.totalSpentLabel,
+                              smsConsent: customer.smsConsent,
+                              smsOptedOut: customer.smsOptedOut,
+                              dealSmsBlocked: customer.dealSmsBlocked,
+                              visitsCount: customer.visitsCount,
+                              appointmentsCount: 0,
+                              groups: customer.groups,
+                              checkIns: [],
+                              appointments: [],
+                            });
+                            setMessageDraft('');
+                            setSheetError(null);
+                            setIsMessageSheetVisible(true);
+                          }}
+                          style={[
+                            styles.primaryActionButton,
+                            {
+                              backgroundColor:
+                                customer.phoneDisplay && customer.smsConsent && !customer.smsOptedOut
+                                  ? theme.accent
+                                  : theme.surfaceMuted,
+                              borderColor: theme.border,
+                              opacity:
+                                customer.phoneDisplay && customer.smsConsent && !customer.smsOptedOut
+                                  ? 1
+                                  : 0.6,
+                            },
+                          ]}>
+                          <Text style={styles.primaryActionButtonText}>Text</Text>
+                        </Pressable>
+                      </View>
                     </View>
-                  </View>
-                ))
+                  );
+                })
               ) : (
                 <View
                   style={[
@@ -1474,9 +1531,20 @@ export function MobileCustomersScreen({
                   </Text>
                 </View>
                 <View style={styles.badgesColumn}>
-                  <View style={[styles.statusPill, { backgroundColor: theme.accentSoft, borderColor: theme.border }]}>
-                    <Text style={[styles.statusPillText, { color: theme.accent }]}>
-                      {getSmsStatusLabel(selectedCustomer)}
+                  <View
+                    style={[
+                      styles.statusPill,
+                      {
+                        backgroundColor: getSmsStatusAppearance(theme, selectedCustomer).backgroundColor,
+                        borderColor: getSmsStatusAppearance(theme, selectedCustomer).borderColor,
+                      },
+                    ]}>
+                    <Text
+                      style={[
+                        styles.statusPillText,
+                        { color: getSmsStatusAppearance(theme, selectedCustomer).textColor },
+                      ]}>
+                      {getSmsStatusAppearance(theme, selectedCustomer).label}
                     </Text>
                   </View>
                   <View style={[styles.secondaryPill, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}>
@@ -2119,6 +2187,12 @@ const styles = StyleSheet.create({
   paginationCopy: {
     gap: 4,
   },
+  paginationMetaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+  },
   paginationTitle: {
     fontSize: 18,
     lineHeight: 22,
@@ -2127,12 +2201,31 @@ const styles = StyleSheet.create({
   paginationText: {
     fontSize: 14,
     lineHeight: 18,
+    fontWeight: '600',
   },
   paginationButtons: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     flexWrap: 'wrap',
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    alignSelf: 'flex-start',
+  },
+  paginationPagePill: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  paginationPagePillText: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
   },
   pageButton: {
     width: 42,
@@ -2155,6 +2248,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
+  },
+  paginationEllipsisWrap: {
+    minWidth: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  paginationEllipsisText: {
+    fontSize: 20,
+    lineHeight: 22,
+    fontWeight: '700',
   },
   pageNumberButtonText: {
     fontSize: 14,
