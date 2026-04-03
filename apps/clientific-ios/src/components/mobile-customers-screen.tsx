@@ -147,6 +147,133 @@ function getSmsStatusLabel(customer: {
   return 'No SMS approval';
 }
 
+function getCustomerInitials(name: string) {
+  return name
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function getSmsStatusAppearance(
+  theme: ReturnType<typeof getClientificTheme>,
+  customer: {
+    smsConsent: boolean;
+    smsOptedOut: boolean;
+    phoneDisplay: string | null;
+  },
+) {
+  const label = getSmsStatusLabel(customer);
+
+  if (label === 'SMS ready') {
+    return {
+      label,
+      backgroundColor: theme.accentSoft,
+      borderColor: theme.border,
+      textColor: theme.accent,
+    };
+  }
+
+  if (label === 'Opted out') {
+    return {
+      label,
+      backgroundColor: 'rgba(203, 74, 104, 0.12)',
+      borderColor: theme.border,
+      textColor: colorFromScheme(theme, '#b42318', '#ff9ab0'),
+    };
+  }
+
+  if (label === 'No phone') {
+    return {
+      label,
+      backgroundColor: theme.surfaceMuted,
+      borderColor: theme.border,
+      textColor: theme.mutedText,
+    };
+  }
+
+  return {
+    label,
+    backgroundColor: 'rgba(217, 119, 6, 0.12)',
+    borderColor: theme.border,
+    textColor: colorFromScheme(theme, '#b45309', '#f7c46b'),
+  };
+}
+
+function getDealsStatusAppearance(
+  theme: ReturnType<typeof getClientificTheme>,
+  customer: Pick<MobileCustomerDetail | MobileCustomersSummary['customers'][number], 'dealSmsBlocked'>,
+) {
+  return customer.dealSmsBlocked
+    ? {
+        label: 'Deals blocked',
+        backgroundColor: 'rgba(217, 119, 6, 0.12)',
+        borderColor: theme.border,
+        textColor: colorFromScheme(theme, '#b45309', '#f7c46b'),
+      }
+    : {
+        label: 'Deals SMS allowed',
+        backgroundColor: theme.surfaceMuted,
+        borderColor: theme.border,
+        textColor: theme.text,
+      };
+}
+
+function colorFromScheme(
+  theme: ReturnType<typeof getClientificTheme>,
+  lightColor: string,
+  darkColor: string,
+) {
+  return theme.background === '#f3f8f7' ? lightColor : darkColor;
+}
+
+function buildResultsSummary(data: MobileCustomersSummary | null) {
+  if (!data || data.totalCustomers === 0) {
+    return 'No customers yet';
+  }
+
+  const start = (data.currentPage - 1) * data.pageSize + 1;
+  const end = Math.min(data.currentPage * data.pageSize, data.totalCustomers);
+  return `Showing ${start}-${end} of ${data.totalCustomers}`;
+}
+
+function buildActiveFilterLabels(
+  data: MobileCustomersSummary | null,
+  filters: MobileCustomerFilters,
+  searchDraft: string,
+) {
+  const labels: string[] = [];
+
+  if (searchDraft.trim()) {
+    labels.push(`Search: ${searchDraft.trim()}`);
+  }
+
+  if (filters.group) {
+    const groupLabel = data?.groups.find((group) => group.id === filters.group)?.name;
+    if (groupLabel) {
+      labels.push(`Group: ${groupLabel}`);
+    }
+  }
+
+  if (filters.sms) {
+    const option = SMS_FILTER_OPTIONS.find((entry) => entry.value === filters.sms);
+    if (option) labels.push(option.label);
+  }
+
+  if (filters.contact) {
+    const option = CONTACT_FILTER_OPTIONS.find((entry) => entry.value === filters.contact);
+    if (option) labels.push(option.label);
+  }
+
+  if (filters.visit) {
+    const option = VISIT_FILTER_OPTIONS.find((entry) => entry.value === filters.visit);
+    if (option) labels.push(option.label);
+  }
+
+  return labels;
+}
+
 function renderGroupSummary(groups: Array<{ name: string }>) {
   if (groups.length === 0) {
     return 'Ungrouped';
@@ -250,6 +377,10 @@ export function MobileCustomersScreen({
   const paginationItems = useMemo(
     () => buildPaginationItems(data?.currentPage ?? 1, data?.totalPages ?? 1),
     [data?.currentPage, data?.totalPages],
+  );
+  const activeFilterLabels = useMemo(
+    () => buildActiveFilterLabels(data, filters, searchDraft),
+    [data, filters, searchDraft],
   );
 
   const hasActiveFilters = Boolean(
@@ -499,7 +630,7 @@ export function MobileCustomersScreen({
             onRefresh={() => void onRefresh()}
           />
         }
-        style={{ backgroundColor: theme.background }}>
+      style={{ backgroundColor: theme.background }}>
         <View
           style={[
             styles.heroCard,
@@ -510,21 +641,56 @@ export function MobileCustomersScreen({
               <Text style={[styles.eyebrow, { color: theme.accent }]}>Customers</Text>
               <Text style={[styles.heroTitle, { color: theme.text }]}>Customer records</Text>
               <Text style={[styles.heroSubtitle, { color: theme.mutedText }]}>
-                Search, filter, update, and message customer records from the app.
+                Match the dashboard flow with search, filters, groups, and direct actions in one place.
               </Text>
             </View>
-            <Pressable
-              accessibilityRole="button"
-              onPress={activeTab === 'customers' ? openCreateCustomer : openCreateGroup}
-              style={[styles.addButton, { backgroundColor: theme.accent }]}
-              testID="mobile-customers-add">
-              <Text style={styles.addButtonText}>
-                {activeTab === 'customers' ? 'Add customer' : 'Add group'}
-              </Text>
-            </Pressable>
+            <View style={styles.heroBadgeRow}>
+              <View
+                style={[
+                  styles.heroBadge,
+                  { backgroundColor: theme.accentSoft, borderColor: theme.border },
+                ]}>
+                <Text style={[styles.heroBadgeText, { color: theme.accent }]}>
+                  {activeTab === 'customers'
+                    ? `${data?.totalCustomers ?? 0} customers`
+                    : `${data?.groups.length ?? 0} groups`}
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                onPress={activeTab === 'customers' ? openCreateCustomer : openCreateGroup}
+                style={[styles.addButton, { backgroundColor: theme.accent }]}
+                testID="mobile-customers-add">
+                <Text style={styles.addButtonText}>
+                  {activeTab === 'customers' ? 'Add customer' : 'Add group'}
+                </Text>
+              </Pressable>
+            </View>
           </View>
 
-          <View style={[styles.segmentedControl, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}>
+          <TextInput
+            autoCapitalize="none"
+            autoCorrect={false}
+            onChangeText={onChangeSearchDraft}
+            placeholder="Search by name, email, or phone"
+            placeholderTextColor={theme.mutedText}
+            style={[
+              styles.searchInput,
+              {
+                backgroundColor: theme.surfaceMuted,
+                borderColor: theme.border,
+                color: theme.text,
+              },
+            ]}
+            testID="mobile-customers-search"
+            value={searchDraft}
+          />
+
+          <View
+            style={[
+              styles.segmentedControl,
+              { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+            ]}>
             {(['customers', 'groups'] as const).map((tab) => {
               const selected = activeTab === tab;
               const count = tab === 'customers' ? data?.totalCustomers ?? 0 : data?.groups.length ?? 0;
@@ -553,120 +719,137 @@ export function MobileCustomersScreen({
               );
             })}
           </View>
-
-          {activeTab === 'customers' ? (
-            <>
-              <TextInput
-                autoCapitalize="none"
-                autoCorrect={false}
-                onChangeText={onChangeSearchDraft}
-                placeholder="Search by name, email, or phone"
-                placeholderTextColor={theme.mutedText}
-                style={[
-                  styles.searchInput,
-                  {
-                    backgroundColor: theme.surfaceMuted,
-                    borderColor: theme.border,
-                    color: theme.text,
-                  },
-                ]}
-                testID="mobile-customers-search"
-                value={searchDraft}
-              />
-
-              <View style={styles.filtersStack}>
-                <View style={styles.filterBlock}>
-                  <Text style={[styles.filterLabel, { color: theme.mutedText }]}>Group</Text>
-                  <View style={styles.optionRow}>
-                    <FilterPill
-                      label="All groups"
-                      onPress={() => onChangeFilter({ group: '' })}
-                      selected={!filters.group}
-                      theme={theme}
-                    />
-                    {data?.groups.map((group) => (
-                      <FilterPill
-                        key={group.id}
-                        label={group.name}
-                        onPress={() =>
-                          onChangeFilter({ group: filters.group === group.id ? '' : group.id })
-                        }
-                        selected={filters.group === group.id}
-                        theme={theme}
-                      />
-                    ))}
-                  </View>
-                </View>
-
-                <View style={styles.filterBlock}>
-                  <Text style={[styles.filterLabel, { color: theme.mutedText }]}>SMS status</Text>
-                  <View style={styles.optionRow}>
-                    {SMS_FILTER_OPTIONS.map((option) => (
-                      <FilterPill
-                        key={option.value || 'all'}
-                        label={option.label}
-                        onPress={() =>
-                          onChangeFilter({ sms: filters.sms === option.value ? '' : option.value })
-                        }
-                        selected={filters.sms === option.value}
-                        theme={theme}
-                      />
-                    ))}
-                  </View>
-                </View>
-
-                <View style={styles.filterBlock}>
-                  <Text style={[styles.filterLabel, { color: theme.mutedText }]}>Contact</Text>
-                  <View style={styles.optionRow}>
-                    {CONTACT_FILTER_OPTIONS.map((option) => (
-                      <FilterPill
-                        key={option.value || 'all'}
-                        label={option.label}
-                        onPress={() =>
-                          onChangeFilter({
-                            contact: filters.contact === option.value ? '' : option.value,
-                          })
-                        }
-                        selected={filters.contact === option.value}
-                        theme={theme}
-                      />
-                    ))}
-                  </View>
-                </View>
-
-                <View style={styles.filterBlock}>
-                  <Text style={[styles.filterLabel, { color: theme.mutedText }]}>Visit history</Text>
-                  <View style={styles.optionRow}>
-                    {VISIT_FILTER_OPTIONS.map((option) => (
-                      <FilterPill
-                        key={option.value || 'all'}
-                        label={option.label}
-                        onPress={() =>
-                          onChangeFilter({ visit: filters.visit === option.value ? '' : option.value })
-                        }
-                        selected={filters.visit === option.value}
-                        theme={theme}
-                      />
-                    ))}
-                  </View>
-                </View>
-
-                {hasActiveFilters ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={onClearFilters}
-                    style={[styles.clearFiltersButton, { borderColor: theme.border }]}>
-                    <Text style={[styles.clearFiltersText, { color: theme.text }]}>Clear all filters</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            </>
-          ) : (
-            <Text style={[styles.groupSubtitle, { color: theme.mutedText }]}>
-              Organize audiences and control promotion SMS eligibility without leaving the app.
-            </Text>
-          )}
         </View>
+
+        {activeTab === 'customers' ? (
+          <View
+            style={[
+              styles.filterCard,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}>
+            <View style={styles.filterCardHeader}>
+              <View style={styles.filterCardCopy}>
+                <Text style={[styles.filterCardTitle, { color: theme.text }]}>Filter customers</Text>
+                <Text style={[styles.filterCardText, { color: theme.mutedText }]}>
+                  Narrow by group, texting status, contact details, and visit history.
+                </Text>
+              </View>
+              {hasActiveFilters ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={onClearFilters}
+                  style={[styles.clearFiltersButton, { borderColor: theme.border }]}>
+                  <Text style={[styles.clearFiltersText, { color: theme.text }]}>Clear all</Text>
+                </Pressable>
+              ) : null}
+            </View>
+
+            {activeFilterLabels.length ? (
+              <View style={styles.activeFilterRow}>
+                {activeFilterLabels.map((label) => (
+                  <View
+                    key={label}
+                    style={[
+                      styles.activeFilterPill,
+                      { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                    ]}>
+                    <Text style={[styles.activeFilterText, { color: theme.text }]}>{label}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            <View style={styles.filtersStack}>
+              <FilterSection title="Group" theme={theme}>
+                <FilterPill
+                  label="All groups"
+                  onPress={() => onChangeFilter({ group: '' })}
+                  selected={!filters.group}
+                  theme={theme}
+                />
+                {data?.groups.map((group) => (
+                  <FilterPill
+                    key={group.id}
+                    label={group.name}
+                    onPress={() =>
+                      onChangeFilter({ group: filters.group === group.id ? '' : group.id })
+                    }
+                    selected={filters.group === group.id}
+                    theme={theme}
+                  />
+                ))}
+              </FilterSection>
+
+              <FilterSection title="SMS status" theme={theme}>
+                {SMS_FILTER_OPTIONS.map((option) => (
+                  <FilterPill
+                    key={option.value || 'all'}
+                    label={option.label}
+                    onPress={() =>
+                      onChangeFilter({ sms: filters.sms === option.value ? '' : option.value })
+                    }
+                    selected={filters.sms === option.value}
+                    theme={theme}
+                  />
+                ))}
+              </FilterSection>
+
+              <FilterSection title="Contact details" theme={theme}>
+                {CONTACT_FILTER_OPTIONS.map((option) => (
+                  <FilterPill
+                    key={option.value || 'all'}
+                    label={option.label}
+                    onPress={() =>
+                      onChangeFilter({
+                        contact: filters.contact === option.value ? '' : option.value,
+                      })
+                    }
+                    selected={filters.contact === option.value}
+                    theme={theme}
+                  />
+                ))}
+              </FilterSection>
+
+              <FilterSection title="Visit history" theme={theme}>
+                {VISIT_FILTER_OPTIONS.map((option) => (
+                  <FilterPill
+                    key={option.value || 'all'}
+                    label={option.label}
+                    onPress={() =>
+                      onChangeFilter({ visit: filters.visit === option.value ? '' : option.value })
+                    }
+                    selected={filters.visit === option.value}
+                    theme={theme}
+                  />
+                ))}
+              </FilterSection>
+            </View>
+          </View>
+        ) : (
+          <View
+            style={[
+              styles.filterCard,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}>
+            <View style={styles.filterCardHeader}>
+              <View style={styles.filterCardCopy}>
+                <Text style={[styles.filterCardTitle, { color: theme.text }]}>Customer groups</Text>
+                <Text style={[styles.filterCardText, { color: theme.mutedText }]}>
+                  Organize audiences and control promotion SMS eligibility without leaving the app.
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.heroBadge,
+                  { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                ]}>
+                <Text style={[styles.heroBadgeText, { color: theme.text }]}>
+                  {data?.groups.length ?? 0} saved
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {error ? (
           <View
@@ -713,7 +896,7 @@ export function MobileCustomersScreen({
                   {data?.totalCustomers ?? 0} customers
                 </Text>
                 <Text style={[styles.paginationText, { color: theme.mutedText }]}>
-                  Page {data?.currentPage ?? 1} of {data?.totalPages ?? 1}
+                  {buildResultsSummary(data)} · Page {data?.currentPage ?? 1} of {data?.totalPages ?? 1}
                 </Text>
               </View>
 
@@ -777,24 +960,31 @@ export function MobileCustomersScreen({
                       { backgroundColor: theme.surface, borderColor: theme.border },
                     ]}>
                     <View style={styles.customerHeader}>
-                      <View style={styles.customerIdentity}>
-                        <Text style={[styles.customerName, { color: theme.text }]}>
-                          {customer.name}
-                        </Text>
-                        <Text style={[styles.customerMeta, { color: theme.mutedText }]}>
-                          {customer.phoneDisplay ?? customer.email ?? 'No contact info'}
-                        </Text>
-                      </View>
-                      <View style={styles.badgesColumn}>
+                      <View style={styles.customerHeaderLeft}>
                         <View
                           style={[
-                            styles.statusPill,
+                            styles.customerAvatar,
                             { backgroundColor: theme.accentSoft, borderColor: theme.border },
                           ]}>
-                          <Text style={[styles.statusPillText, { color: theme.accent }]}>
-                            {getSmsStatusLabel(customer)}
+                          <Text style={[styles.customerAvatarText, { color: theme.accent }]}>
+                            {getCustomerInitials(customer.name)}
                           </Text>
                         </View>
+                        <View style={styles.customerIdentity}>
+                          <Text style={[styles.customerName, { color: theme.text }]}>
+                            {customer.name}
+                          </Text>
+                          <Text style={[styles.customerMeta, { color: theme.mutedText }]}>
+                            {customer.phoneDisplay ?? 'No phone on file'}
+                          </Text>
+                          {customer.email ? (
+                            <Text style={[styles.customerSecondaryMeta, { color: theme.mutedText }]}>
+                              {customer.email}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </View>
+                      <View style={styles.badgesColumn}>
                         <View
                           style={[
                             styles.secondaryPill,
@@ -807,15 +997,103 @@ export function MobileCustomersScreen({
                       </View>
                     </View>
 
-                    <Text style={[styles.customerStatsText, { color: theme.mutedText }]}>
-                      Joined {customer.joinedLabel} · Last visit {customer.lastVisitLabel}
-                    </Text>
-                    <Text style={[styles.customerStatsText, { color: theme.mutedText }]}>
-                      Visits {customer.visitsCount} · Spent {customer.totalSpentLabel}
-                    </Text>
-                    <Text style={[styles.customerStatsText, { color: theme.mutedText }]}>
-                      {renderGroupSummary(customer.groups)}
-                    </Text>
+                    <View style={styles.customerBadgeRow}>
+                      <View
+                        style={[
+                          styles.statusPill,
+                          {
+                            backgroundColor: getSmsStatusAppearance(theme, customer).backgroundColor,
+                            borderColor: getSmsStatusAppearance(theme, customer).borderColor,
+                          },
+                        ]}>
+                        <Text
+                          style={[
+                            styles.statusPillText,
+                            { color: getSmsStatusAppearance(theme, customer).textColor },
+                          ]}>
+                          {getSmsStatusAppearance(theme, customer).label}
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          styles.statusPill,
+                          {
+                            backgroundColor: getDealsStatusAppearance(theme, customer).backgroundColor,
+                            borderColor: getDealsStatusAppearance(theme, customer).borderColor,
+                          },
+                        ]}>
+                        <Text
+                          style={[
+                            styles.statusPillText,
+                            { color: getDealsStatusAppearance(theme, customer).textColor },
+                          ]}>
+                          {getDealsStatusAppearance(theme, customer).label}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.customerStatsGrid}>
+                      <View style={styles.customerStatCell}>
+                        <Text style={[styles.customerStatLabel, { color: theme.mutedText }]}>Joined</Text>
+                        <Text style={[styles.customerStatValue, { color: theme.text }]}>
+                          {customer.joinedLabel}
+                        </Text>
+                      </View>
+                      <View style={styles.customerStatCell}>
+                        <Text style={[styles.customerStatLabel, { color: theme.mutedText }]}>Last visit</Text>
+                        <Text style={[styles.customerStatValue, { color: theme.text }]}>
+                          {customer.lastVisitLabel}
+                        </Text>
+                      </View>
+                      <View style={styles.customerStatCell}>
+                        <Text style={[styles.customerStatLabel, { color: theme.mutedText }]}>Visits</Text>
+                        <Text style={[styles.customerStatValue, { color: theme.text }]}>
+                          {customer.visitsCount}
+                        </Text>
+                      </View>
+                      <View style={styles.customerStatCell}>
+                        <Text style={[styles.customerStatLabel, { color: theme.mutedText }]}>Spent</Text>
+                        <Text style={[styles.customerStatValue, { color: theme.text }]}>
+                          {customer.totalSpentLabel}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.groupBadgeWrap}>
+                      {customer.groups.length ? (
+                        customer.groups.map((group) => (
+                          <View
+                            key={group.id}
+                            style={[
+                              styles.groupBadge,
+                              {
+                                backgroundColor: group.promotionSmsEnabled
+                                  ? theme.accentSoft
+                                  : theme.surfaceMuted,
+                                borderColor: theme.border,
+                              },
+                            ]}>
+                            <Text
+                              style={[
+                                styles.groupBadgeText,
+                                { color: group.promotionSmsEnabled ? theme.accent : theme.text },
+                              ]}>
+                              {group.name}
+                            </Text>
+                          </View>
+                        ))
+                      ) : (
+                        <View
+                          style={[
+                            styles.groupBadge,
+                            { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                          ]}>
+                          <Text style={[styles.groupBadgeText, { color: theme.mutedText }]}>
+                            Ungrouped
+                          </Text>
+                        </View>
+                      )}
+                    </View>
 
                     <View style={styles.actionRow}>
                       <Pressable
@@ -921,7 +1199,7 @@ export function MobileCustomersScreen({
                     { backgroundColor: theme.surface, borderColor: theme.border },
                   ]}>
                   <View style={styles.groupCardHeader}>
-                    <View>
+                    <View style={styles.groupCardIdentity}>
                       <Text style={[styles.groupTitle, { color: theme.text }]}>{group.name}</Text>
                       <Text style={[styles.groupMeta, { color: theme.mutedText }]}>
                         {group.membersCount} customer{group.membersCount === 1 ? '' : 's'}
@@ -1508,6 +1786,23 @@ function FilterPill({
   );
 }
 
+function FilterSection({
+  children,
+  theme,
+  title,
+}: {
+  children: React.ReactNode;
+  theme: ReturnType<typeof getClientificTheme>;
+  title: string;
+}) {
+  return (
+    <View style={styles.filterBlock}>
+      <Text style={[styles.filterLabel, { color: theme.mutedText }]}>{title}</Text>
+      <View style={styles.optionRow}>{children}</View>
+    </View>
+  );
+}
+
 function FieldLabel({ label, themeText }: { label: string; themeText: string }) {
   return <Text style={[styles.fieldLabel, { color: themeText }]}>{label}</Text>;
 }
@@ -1569,7 +1864,7 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
     paddingTop: 18,
-    paddingBottom: 28,
+    paddingBottom: 32,
     gap: 16,
   },
   heroCard: {
@@ -1577,10 +1872,15 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     paddingHorizontal: 20,
     paddingVertical: 22,
-    gap: 14,
+    gap: 16,
+    shadowColor: '#09131f',
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 3,
   },
   heroHeader: {
-    gap: 12,
+    gap: 16,
   },
   heroCopy: {
     gap: 8,
@@ -1601,12 +1901,33 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
   },
+  heroBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  heroBadge: {
+    minHeight: 34,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroBadgeText: {
+    fontSize: 12,
+    lineHeight: 14,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
   addButton: {
     minHeight: 46,
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 18,
+    flexShrink: 0,
   },
   addButtonText: {
     color: '#f8fffc',
@@ -1641,7 +1962,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   searchInput: {
-    minHeight: 52,
+    minHeight: 54,
     borderRadius: 18,
     borderWidth: 1,
     paddingHorizontal: 16,
@@ -1649,8 +1970,57 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '600',
   },
-  filtersStack: {
+  filterCard: {
+    borderWidth: 1,
+    borderRadius: 28,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    gap: 16,
+    shadowColor: '#09131f',
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
+  },
+  filterCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     gap: 12,
+  },
+  filterCardCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  filterCardTitle: {
+    fontSize: 19,
+    lineHeight: 24,
+    fontWeight: '800',
+  },
+  filterCardText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  activeFilterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  activeFilterPill: {
+    minHeight: 34,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeFilterText: {
+    fontSize: 12,
+    lineHeight: 14,
+    fontWeight: '700',
+  },
+  filtersStack: {
+    gap: 14,
   },
   filterBlock: {
     gap: 8,
@@ -1740,6 +2110,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 16,
     gap: 14,
+    shadowColor: '#09131f',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 1,
   },
   paginationCopy: {
     gap: 4,
@@ -1800,12 +2175,35 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     paddingHorizontal: 18,
     paddingVertical: 18,
-    gap: 10,
+    gap: 14,
+    shadowColor: '#09131f',
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
   },
   customerHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12,
+  },
+  customerHeaderLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  customerAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customerAvatarText: {
+    fontSize: 18,
+    lineHeight: 20,
+    fontWeight: '800',
   },
   customerIdentity: {
     flex: 1,
@@ -1820,9 +2218,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 18,
   },
+  customerSecondaryMeta: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
   badgesColumn: {
     alignItems: 'flex-end',
     gap: 6,
+  },
+  customerBadgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   statusPill: {
     minHeight: 30,
@@ -1853,6 +2260,46 @@ const styles = StyleSheet.create({
   customerStatsText: {
     fontSize: 14,
     lineHeight: 18,
+  },
+  customerStatsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  customerStatCell: {
+    minWidth: '47%',
+    flexGrow: 1,
+    gap: 3,
+  },
+  customerStatLabel: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '800',
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
+  },
+  customerStatValue: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
+  groupBadgeWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  groupBadge: {
+    minHeight: 30,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  groupBadgeText: {
+    fontSize: 12,
+    lineHeight: 14,
+    fontWeight: '700',
   },
   actionRow: {
     flexDirection: 'row',
@@ -1894,12 +2341,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 18,
     gap: 12,
+    shadowColor: '#09131f',
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
   },
   groupCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12,
     alignItems: 'center',
+  },
+  groupCardIdentity: {
+    flex: 1,
+    gap: 4,
   },
   groupTitle: {
     fontSize: 18,

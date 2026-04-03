@@ -481,61 +481,64 @@ export function MobileAppShell({
           ) : null}
         </View>
 
-        <View
-          style={[
-            styles.tabBar,
-            {
-              backgroundColor: theme.surface,
-              borderColor: theme.border,
-            },
-          ]}>
-          {TAB_LABELS.map((tab) => {
-            const isActive = activeTab === tab.key;
+        <View style={styles.tabBarWrap}>
+          <View
+            style={[
+              styles.tabBar,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+              },
+            ]}>
+            {TAB_LABELS.map((tab) => {
+              const isActive = activeTab === tab.key;
 
-            return (
-              <Pressable
-                key={tab.key}
-                accessibilityRole="button"
-                onPress={() => {
-                  if (tab.key === 'more') {
-                    onChangeMoreSection('menu');
-                  }
+              return (
+                <Pressable
+                  key={tab.key}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    if (tab.key === 'more') {
+                      onChangeMoreSection('menu');
+                    }
 
-                  onChangeTab(tab.key);
-                }}
-                style={[
-                  styles.tabButton,
-                  {
-                    backgroundColor: 'transparent',
-                  },
-                ]}
-                testID={`mobile-tab-${tab.key}`}>
-                <View
+                    onChangeTab(tab.key);
+                  }}
                   style={[
-                    styles.tabIconBadge,
+                    styles.tabButton,
                     {
                       backgroundColor: isActive ? theme.accentSoft : 'transparent',
                     },
-                  ]}>
-                  <MobileNavIcon
-                    color={isActive ? theme.accent : theme.mutedText}
-                    name={tab.icon}
-                    size={20}
-                  />
-                </View>
-                <Text
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.75}
-                  numberOfLines={1}
-                  style={[
-                    styles.tabLabel,
-                    { color: isActive ? theme.accent : theme.mutedText },
-                  ]}>
-                  {tab.label}
-                </Text>
-              </Pressable>
-            );
-          })}
+                  ]}
+                  testID={`mobile-tab-${tab.key}`}>
+                  <View
+                    style={[
+                      styles.tabIconBadge,
+                      {
+                        backgroundColor: isActive ? theme.surface : 'transparent',
+                        borderColor: isActive ? theme.border : 'transparent',
+                      },
+                    ]}>
+                    <MobileNavIcon
+                      color={isActive ? theme.accent : theme.mutedText}
+                      name={tab.icon}
+                      size={20}
+                    />
+                  </View>
+                  <Text
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
+                    numberOfLines={1}
+                    style={[
+                      styles.tabLabel,
+                      { color: isActive ? theme.accent : theme.mutedText },
+                    ]}>
+                    {tab.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
       </View>
     </SafeAreaView>
@@ -552,18 +555,28 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  tabBarWrap: {
+    paddingHorizontal: 12,
+    paddingTop: 4,
+    paddingBottom: 10,
+  },
   tabBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderTopWidth: 1,
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 12,
+    borderWidth: 1,
+    borderRadius: 26,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    shadowColor: '#09131f',
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 6,
   },
   tabButton: {
     flex: 1,
-    minHeight: 52,
+    minHeight: 56,
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
@@ -572,8 +585,9 @@ const styles = StyleSheet.create({
   },
   tabIconBadge: {
     width: 40,
-    height: 26,
+    height: 28,
     borderRadius: 999,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

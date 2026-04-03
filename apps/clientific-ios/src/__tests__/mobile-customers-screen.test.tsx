@@ -163,6 +163,8 @@ describe('MobileCustomersScreen', () => {
 
     expect(onChangeSearchDraft).toHaveBeenCalledWith('jord');
     expect(onNextPage).toHaveBeenCalled();
+    expect(screen.getByText('Filter customers')).toBeTruthy();
+    expect(screen.getByText('Showing 1-20 of 55 · Page 1 of 3')).toBeTruthy();
   });
 
   it('switches to the groups tab and shows customer groups', async () => {
@@ -216,5 +218,14 @@ describe('MobileCustomersScreen', () => {
     await waitFor(() => {
       expect(screen.getAllByText('No SMS approval').length).toBeGreaterThan(0);
     });
+  });
+
+  it('shows richer customer record badges and groups like the web customers view', () => {
+    renderScreen();
+
+    expect(screen.getByText('Deals SMS allowed')).toBeTruthy();
+    expect(screen.getAllByText('VIP').length).toBeGreaterThan(0);
+    expect(screen.getByText('Joined')).toBeTruthy();
+    expect(screen.getByText('Spent')).toBeTruthy();
   });
 });
