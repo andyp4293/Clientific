@@ -21,6 +21,9 @@ vi.mock('@/lib/prisma', () => ({
     },
   },
 }));
+vi.mock('@/lib/twilio-keyword-sync', () => ({
+  syncRecentTwilioKeywordMessages: vi.fn(),
+}));
 
 const { mockRedirect } = vi.hoisted(() => ({
   mockRedirect: vi.fn(() => {
@@ -45,16 +48,20 @@ vi.mock('@/components/customers/CustomerList', () => ({
 
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
+import { syncRecentTwilioKeywordMessages } from '@/lib/twilio-keyword-sync';
 import CustomersPage from './page';
 
 const mockGetServerSession = getServerSession as unknown as ReturnType<typeof vi.fn>;
 const mockCount = prisma.customer.count as ReturnType<typeof vi.fn>;
 const mockFindMany = prisma.customer.findMany as ReturnType<typeof vi.fn>;
 const mockGroupFindMany = prisma.customerGroup.findMany as ReturnType<typeof vi.fn>;
+const mockSyncRecentTwilioKeywordMessages =
+  syncRecentTwilioKeywordMessages as ReturnType<typeof vi.fn>;
 
 describe('CustomersPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSyncRecentTwilioKeywordMessages.mockResolvedValue(undefined);
     mockCount.mockResolvedValue(0);
     mockFindMany.mockResolvedValue([]);
     mockGroupFindMany.mockResolvedValue([]);
@@ -87,6 +94,7 @@ describe('CustomersPage', () => {
       }),
     } as any);
 
+    expect(mockSyncRecentTwilioKeywordMessages).toHaveBeenCalledTimes(1);
     expect(mockCount).toHaveBeenCalledWith({
       where: {
         businessId: 'biz-1',

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import CustomerList from "@/components/customers/CustomerList";
 import { buildCustomerWhereClause } from "@/lib/customer-filters";
+import { syncRecentTwilioKeywordMessages } from "@/lib/twilio-keyword-sync";
 import type {
   CustomerContactFilter,
   CustomerSmsFilter,
@@ -30,6 +31,8 @@ export default async function CustomersPage({
   if (!session?.user?.businessId) {
     redirect("/login");
   }
+
+  await syncRecentTwilioKeywordMessages();
 
   const businessId = session.user.businessId;
   const params = await searchParams;
