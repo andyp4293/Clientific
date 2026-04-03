@@ -90,6 +90,7 @@ model Business {
   dealPurchases                 DealPurchase[]
   dealNotificationSends         DealNotificationSend[]
   invoices                      Invoice[]
+  mobilePushDevices             MobilePushDevice[]
   notifications                 Notification[]
   payments                      Payment[]
   serviceGroups                 ServiceGroup[]
@@ -402,6 +403,22 @@ model Notification {
   business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId, read, createdAt])
+}
+
+model MobilePushDevice {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  businessId    String
+  token         String    @unique
+  platform      String
+  appIdentifier String?
+  deviceName    String?
+  lastSeenAt    DateTime  @default(now())
+  disabledAt    DateTime?
+  business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, disabledAt, updatedAt])
 }
 
 model Payment {

@@ -22,4 +22,42 @@ jest.mock('@expo/vector-icons/Feather', () => {
   };
 });
 
+let mockExpoIsDevice = true;
+
+jest.mock('expo-device', () => ({
+  get isDevice() {
+    return mockExpoIsDevice;
+  },
+  __setIsDevice(value: boolean) {
+    mockExpoIsDevice = value;
+  },
+  modelName: 'iPhone 17 Pro',
+}));
+
+jest.mock('expo-constants', () => ({
+  expoConfig: {
+    ios: {
+      bundleIdentifier: 'app.clientific.mobile',
+    },
+    extra: {
+      eas: {
+        projectId: 'project-123',
+      },
+    },
+  },
+  easConfig: {
+    projectId: 'project-123',
+  },
+}));
+
+jest.mock('expo-notifications', () => ({
+  setNotificationHandler: jest.fn(),
+  getPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
+  requestPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
+  getExpoPushTokenAsync: jest.fn(async () => ({ data: 'ExponentPushToken[test-token]' })),
+  addNotificationResponseReceivedListener: jest.fn(() => ({
+    remove: jest.fn(),
+  })),
+}));
+
 export {};

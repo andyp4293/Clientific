@@ -17,6 +17,7 @@ import {
 } from '@/lib/appointment-services';
 import { scheduleAppointmentReminder } from '@/lib/appointment-reminders';
 import { ensureAppointmentShortId } from '@/lib/appointment-short-id';
+import { createBusinessNotification } from '@/lib/mobile-push';
 
 const businessMidnightUTC = businessDayStart;
 
@@ -307,14 +308,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Create notification
-    await prisma.notification.create({
-      data: {
-        businessId: business.id,
-        type: 'new_appointment',
-        title: 'New Appointment',
-        message: `New appointment scheduled with ${appointment.customer.name} for ${new Date(appointment.startTime).toLocaleString()}`,
-        link: `/dashboard/appointments`,
-      },
+    await createBusinessNotification({
+      businessId: business.id,
+      type: 'new_appointment',
+      title: 'New Appointment',
+      message: `New appointment scheduled with ${appointment.customer.name} for ${new Date(appointment.startTime).toLocaleString()}`,
+      link: '/dashboard/appointments',
+      sendPush: business.notifyNewBookingEmail !== false,
     });
 
     // Send email to business owner (non-blocking)

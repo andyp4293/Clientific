@@ -72,9 +72,11 @@ import {
   loginWithClientific,
   openMobileBillingPortal,
   redeemMobileCode,
+  registerMobilePushToken,
   registerWithClientific,
   resendVerificationCode,
   sendMobileCustomerMessage,
+  unregisterMobilePushToken,
   updateMobileAiReceptionist,
   updateMobileBusinessHours,
   updateMobileBusinessProfile,
@@ -85,6 +87,10 @@ import {
 } from '@/lib/clientific-api';
 import { APP_PRIVACY_URL, APP_TERMS_URL } from '@/lib/clientific-brand';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
+import {
+  addPushNotificationResponseListener,
+  registerForPushNotificationsAsync,
+} from '@/lib/mobile-push-notifications';
 import {
   MobileAppShell,
   type MobileAppTab,
@@ -213,8 +219,15 @@ export function ClientificNativeApp() {
   const [reviews, setReviews] = useState<MobileReviewsSummary | null>(null);
   const [analytics, setAnalytics] = useState<MobileAnalyticsSummary | null>(null);
   const [billing, setBilling] = useState<MobileBillingSummary | null>(null);
+  const [registeredPushToken, setRegisteredPushToken] = useState<string | null>(null);
 
   const signOut = useCallback(async (message?: string) => {
+    if (session?.token && registeredPushToken) {
+      void unregisterMobilePushToken(session.token, registeredPushToken).catch((error) => {
+        console.warn('Unable to unregister mobile push token:', error);
+      });
+    }
+
     await SecureStore.deleteItemAsync(MOBILE_SESSION_TOKEN_KEY);
     setSession(null);
     setAiReceptionist(null);
@@ -270,10 +283,11 @@ export function ClientificNativeApp() {
     setCustomersSearchDraft('');
     setCustomersSearchQuery('');
     setPendingVerification(null);
+    setRegisteredPushToken(null);
     if (message) {
       setAuthError(message);
     }
-  }, []);
+  }, [registeredPushToken, session?.token]);
 
   const handleSessionError = useCallback(
     async (error: unknown, fallback: string, setError: (message: string | null) => void) => {
@@ -964,6 +978,57 @@ export function ClientificNativeApp() {
       isActive = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!session?.token) {
+      return;
+    }
+
+    const sessionToken = session.token;
+    let isActive = true;
+
+    async function registerDeviceForPush() {
+      try {
+        const registration = await registerForPushNotificationsAsync();
+        if (!registration || !isActive) {
+          return;
+        }
+
+        await registerMobilePushToken(sessionToken, registration);
+        if (isActive) {
+          setRegisteredPushToken(registration.token);
+        }
+      } catch (error) {
+        console.warn('Mobile push registration failed:', error);
+      }
+    }
+
+    void registerDeviceForPush();
+
+    return () => {
+      isActive = false;
+    };
+  }, [session?.token]);
+
+  useEffect(() => {
+    const subscription = addPushNotificationResponseListener((response) => {
+      const link = response.notification.request.content.data?.link;
+      if (typeof link !== 'string') {
+        return;
+      }
+
+      if (link.includes('/dashboard/appointments')) {
+        setActiveTab('appointments');
+        if (session?.token) {
+          void loadAppointments(session.token, appointmentsDate, true);
+        }
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [appointmentsDate, loadAppointments, session?.token]);
 
   const establishSession = useCallback(
     async (email: string, password: string) => {

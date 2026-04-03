@@ -14,6 +14,7 @@ import {
 } from '@/lib/twilio';
 import { cancelScheduledAppointmentReminder } from '@/lib/appointment-reminders';
 import { resolveAppointmentServiceDisplayName } from '@/lib/appointment-services';
+import { createBusinessNotification } from '@/lib/mobile-push';
 
 async function resolveServiceName(
   serviceIds: string[],
@@ -74,6 +75,7 @@ export async function GET(
           id: true,
           name: true,
           phone: true,
+          notifyNewBookingEmail: true,
           timezone: true,
           slug: true,
           publicId: true,
@@ -138,6 +140,7 @@ export async function PATCH(
       business: {
         select: {
           name: true,
+          notifyNewBookingEmail: true,
           timezone: true,
           vapiPhoneNumber: true,
           businessHours: { select: { hours: true } },
@@ -269,17 +272,16 @@ export async function PATCH(
       }).catch((err) => console.warn('Reschedule request SMS failed:', err));
     }
 
-    await prisma.notification.create({
-      data: {
-        businessId: existing.businessId,
-        type: 'new_appointment',
-        title: 'Appointment Reschedule Request',
-        message: `${existing.customer.name} requested to move ${serviceName} to ${newStart.toLocaleString(
-          'en-US',
-          { timeZone: existing.business.timezone ?? undefined }
-        )}`,
-        link: '/dashboard/appointments',
-      },
+    await createBusinessNotification({
+      businessId: existing.businessId,
+      type: 'appointment_rescheduled',
+      title: 'Appointment Reschedule Request',
+      message: `${existing.customer.name} requested to move ${serviceName} to ${newStart.toLocaleString(
+        'en-US',
+        { timeZone: existing.business.timezone ?? undefined }
+      )}`,
+      link: '/dashboard/appointments',
+      sendPush: existing.business.notifyNewBookingEmail !== false,
     });
 
     return NextResponse.json({ appointment });

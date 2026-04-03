@@ -32,6 +32,7 @@ import {
   buildAiAppointmentBatchWhereInput,
   getBufferedAppointmentBatchWindow,
 } from '@/lib/ai-appointment-batches';
+import { createBusinessNotification } from '@/lib/mobile-push';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -152,6 +153,7 @@ type BusinessData = {
   name: string;
   businessType: string;
   phone: string;
+  notifyNewBookingEmail: boolean;
   vapiPhoneNumber: string | null;
   publicId: string | null;
   street: string | null;
@@ -246,6 +248,7 @@ const AI_ENABLED_BUSINESS_SELECT = {
   name: true,
   businessType: true,
   phone: true,
+  notifyNewBookingEmail: true,
   vapiPhoneNumber: true,
   publicId: true,
   street: true,
@@ -1358,14 +1361,13 @@ async function handleCreateBooking(
   const withWhom = staffLine ? ` with ${staffLine.fullName}` : '';
 
   // Create in-app notification for business
-  await prisma.notification.create({
-    data: {
-      businessId: business.id,
-      type: 'new_appointment',
-      title: 'New Booking via AI Receptionist',
-      message: `${customerName} booked ${serviceSelection.spokenLabel}${withWhom} for ${formattedTime}`,
-      link: `/dashboard/appointments`,
-    },
+  await createBusinessNotification({
+    businessId: business.id,
+    type: 'new_appointment',
+    title: 'New Booking via AI Receptionist',
+    message: `${customerName} booked ${serviceSelection.spokenLabel}${withWhom} for ${formattedTime}`,
+    link: '/dashboard/appointments',
+    sendPush: business.notifyNewBookingEmail !== false,
   });
 
   // For live Vapi calls, we wait until the call ends so multiple bookings can share one link.
@@ -1588,14 +1590,13 @@ async function handleUpdateAppointment(business: BusinessData, args: any, caller
     );
     const runsBackToBack = appointments.length > 1 && sameStaffIdSet.size === 1;
 
-    await prisma.notification.create({
-      data: {
-        businessId: business.id,
-        type: 'appointment_rescheduled',
-        title: 'Appointments Rescheduled via AI Receptionist',
-        message: `${appointments[0].customer.name} moved ${appointments.length} appointment${appointments.length === 1 ? '' : 's'} to start ${targetTime}.`,
-        link: `/dashboard/appointments`,
-      },
+    await createBusinessNotification({
+      businessId: business.id,
+      type: 'appointment_rescheduled',
+      title: 'Appointments Rescheduled via AI Receptionist',
+      message: `${appointments[0].customer.name} moved ${appointments.length} appointment${appointments.length === 1 ? '' : 's'} to start ${targetTime}.`,
+      link: '/dashboard/appointments',
+      sendPush: business.notifyNewBookingEmail !== false,
     });
 
     return `Done — I moved ${appointments.length === 1 ? 'your appointment' : `all ${appointments.length} appointments`} to start ${targetTime}${runsBackToBack ? ' and kept the same-staff appointments back to back' : ''}. They are back in requested status for the business to review. Is there anything else I can help you with?`;

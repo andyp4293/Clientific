@@ -10,6 +10,7 @@ import { sendNewBookingEmail } from '@/lib/email';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { validateBusinessHoursForAppointment } from '@/lib/business-hours-validation';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
+import { createBusinessNotification } from '@/lib/mobile-push';
 import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
 import { weekdayIndexInTimeZone } from '@/lib/timezone';
 
@@ -339,14 +340,13 @@ export async function POST(
     }
 
     // Create in-app notification for business
-    await prisma.notification.create({
-      data: {
-        businessId: business.id,
-        type: 'new_appointment',
-        title: 'New Booking Request',
-        message: `${customer.name} booked ${serviceName} for ${new Date(appointment.startTime).toLocaleString('en-US', { timeZone: business.timezone ?? undefined })}`,
-        link: `/dashboard/appointments`,
-      },
+    await createBusinessNotification({
+      businessId: business.id,
+      type: 'new_appointment',
+      title: 'New Booking Request',
+      message: `${customer.name} booked ${serviceName} for ${new Date(appointment.startTime).toLocaleString('en-US', { timeZone: business.timezone ?? undefined })}`,
+      link: '/dashboard/appointments',
+      sendPush: business.notifyNewBookingEmail !== false,
     });
 
     return NextResponse.json({

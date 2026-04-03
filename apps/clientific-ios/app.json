@@ -28,6 +28,7 @@
           "imageWidth": 160
         }
       ],
+      "expo-notifications",
       "expo-secure-store"
     ],
     "extra": {

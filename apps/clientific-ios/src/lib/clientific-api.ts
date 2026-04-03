@@ -1182,6 +1182,39 @@ export async function updateMobileBusinessProfile(
   });
 }
 
+export async function registerMobilePushToken(
+  token: string,
+  input: {
+    token: string;
+    platform: string;
+    appIdentifier?: string | null;
+    deviceName?: string | null;
+  },
+) {
+  return requestJson<{ ok: true }>('/api/mobile/push-token', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function unregisterMobilePushToken(
+  token: string,
+  pushToken: string,
+) {
+  const query = new URLSearchParams({ token: pushToken });
+
+  return requestJson<{ ok: true }>(`/api/mobile/push-token?${query.toString()}`, {
+    method: 'DELETE',
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
 export function getClientificWebUrl() {
   return API_BASE_URL;
 }
