@@ -147,6 +147,7 @@ export async function POST(req: NextRequest) {
       startTime,
       duration,
       notes,
+      appointmentSmsConsent,
     } = await req.json();
 
     if (!customerId || !startTime || !duration) {
@@ -234,6 +235,30 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (appointmentSmsConsent === true) {
+      const manualConsentCustomer = await prisma.customer.findFirst({
+        where: {
+          id: customerId,
+          businessId: business.id,
+        },
+        select: {
+          id: true,
+          phone: true,
+        },
+      });
+
+      if (!manualConsentCustomer) {
+        return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
+      }
+
+      if (!manualConsentCustomer.phone) {
+        return NextResponse.json(
+          { error: 'Customer needs a phone number before appointment texts can be enabled' },
+          { status: 400 }
+        );
+      }
+    }
+
     const appointment = await prisma.appointment.create({
       data: {
         businessId: business.id,
@@ -259,10 +284,41 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    let manualConsentApplied = false;
+    if (appointmentSmsConsent === true && appointment.customer.phone) {
+      await prisma.customer.update({
+        where: { id: appointment.customer.id },
+        data: {
+          smsConsent: true,
+          smsOptedOut: false,
+          smsOptedOutAt: null,
+        },
+      });
+
+      await prisma.smsConsentEvent.create({
+        data: {
+          businessId: business.id,
+          customerId: appointment.customer.id,
+          phone: appointment.customer.phone,
+          eventType: 'MANUAL_APPOINTMENT_OPT_IN',
+          source: 'dashboard_appointment',
+          metadata: {
+            consentType: 'transactional',
+            consentMethod: 'verbal',
+            channel: 'dashboard-appointments',
+            appointmentId: appointment.id,
+            appointmentStartTime: appointment.startTime.toISOString(),
+          },
+        },
+      });
+
+      manualConsentApplied = true;
+    }
+
     const canSendTransactionalSms =
       Boolean(appointment.customer.phone) &&
-      appointment.customer.smsConsent &&
-      !appointment.customer.smsOptedOut;
+      (appointment.customer.smsConsent || manualConsentApplied) &&
+      !(appointment.customer.smsOptedOut && !manualConsentApplied);
 
     // Send SMS confirmation
     let smsResult = null;

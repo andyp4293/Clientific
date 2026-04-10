@@ -774,6 +774,7 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
     time: '',
     duration: 60,
     notes: '',
+    appointmentSmsConsent: false,
   });
 
   const { data: customersData } = useQuery({
@@ -919,10 +920,40 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
 
   const todayStr = new Date().toLocaleDateString('en-CA');
   const tomorrowStr = (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toLocaleDateString('en-CA'); })();
+  const selectedCustomer = customerMode === 'existing'
+    ? customers.find((customer: any) => customer.id === formData.customerId)
+    : null;
+  const selectedCustomerPhone = selectedCustomer?.phone?.trim() || '';
+  const manualConsentPhone = customerMode === 'new'
+    ? formData.newCustomerPhone.trim()
+    : selectedCustomerPhone;
+
+  useEffect(() => {
+    if (customerMode !== 'existing') return;
+
+    const shouldEnableAppointmentSms = Boolean(
+      selectedCustomer?.smsConsent && !selectedCustomer?.smsOptedOut
+    );
+
+    setFormData((prev) =>
+      prev.appointmentSmsConsent === shouldEnableAppointmentSms
+        ? prev
+        : { ...prev, appointmentSmsConsent: shouldEnableAppointmentSms }
+    );
+  }, [
+    customerMode,
+    selectedCustomer?.id,
+    selectedCustomer?.smsConsent,
+    selectedCustomer?.smsOptedOut,
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.time) { toast.error('Please select a time'); return; }
+    if (formData.appointmentSmsConsent && !manualConsentPhone) {
+      toast.error('Add a phone number before enabling appointment texts');
+      return;
+    }
     setSubmitting(true);
     try {
       let customerId = formData.customerId;
@@ -948,6 +979,7 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
           startTime: startTime.toISOString(),
           duration: formData.duration,
           notes: formData.notes || null,
+          appointmentSmsConsent: formData.appointmentSmsConsent,
           source: 'dashboard',
         }),
       });
@@ -1108,6 +1140,38 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
                     />
                   </div>
                 )}
+                <label className="mt-3 flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50/80 p-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={formData.appointmentSmsConsent}
+                    disabled={customerMode === 'existing' && !selectedCustomer}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        appointmentSmsConsent: e.target.checked,
+                      }))
+                    }
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary/40 dark:border-gray-600 dark:bg-gray-800"
+                  />
+                  <span className="space-y-1">
+                    <span className="block font-medium text-gray-900 dark:text-gray-100">
+                      Customer verbally agreed to appointment texts
+                    </span>
+                    <span className="block text-xs leading-5 text-gray-500 dark:text-gray-400">
+                      Sends the appointment request now, then future confirmation and reminder texts for this phone number. Reply STOP to opt out.
+                    </span>
+                    {customerMode === 'existing' && !selectedCustomer ? (
+                      <span className="block text-xs text-gray-400 dark:text-gray-500">
+                        Select a customer first to enable appointment texts.
+                      </span>
+                    ) : null}
+                    {customerMode === 'existing' && selectedCustomer && !selectedCustomerPhone ? (
+                      <span className="block text-xs text-amber-600 dark:text-amber-400">
+                        This customer needs a phone number before appointment texts can be enabled.
+                      </span>
+                    ) : null}
+                  </span>
+                </label>
               </div>
 
               {/* Service */}

@@ -4,10 +4,12 @@ import { NextRequest } from 'next/server';
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: { findUnique: vi.fn() },
+    customer: { findFirst: vi.fn(), update: vi.fn() },
     staff: { findFirst: vi.fn() },
     appointment: { findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
     service: { findMany: vi.fn() },
     notification: { create: vi.fn() },
+    smsConsentEvent: { create: vi.fn() },
   },
 }));
 
@@ -30,6 +32,9 @@ vi.mock('@/lib/appointment-short-id', () => ({
   ensureAppointmentShortId: vi.fn().mockResolvedValue('ABC1234'),
 }));
 vi.mock('@/lib/email', () => ({ sendNewBookingEmail: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('@/lib/mobile-push', () => ({
+  createBusinessNotification: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock('@/lib/timezone', () => ({
   businessDayStart: vi.fn((date: string) => new Date(date)),
   weekdayIndexInTimeZone: vi.fn((date: Date) => date.getUTCDay()),
@@ -49,12 +54,15 @@ import { GET, POST } from './route';
 
 const mockSession = getServerSession as ReturnType<typeof vi.fn>;
 const mockBusiness = prisma.business.findUnique as ReturnType<typeof vi.fn>;
+const mockCustomerFindFirst = prisma.customer.findFirst as ReturnType<typeof vi.fn>;
+const mockCustomerUpdate = prisma.customer.update as ReturnType<typeof vi.fn>;
 const mockStaffFindFirst = prisma.staff.findFirst as ReturnType<typeof vi.fn>;
 const mockAppointmentFindMany = prisma.appointment.findMany as ReturnType<typeof vi.fn>;
 const mockAppointmentCreate = prisma.appointment.create as ReturnType<typeof vi.fn>;
 const mockAppointmentUpdate = prisma.appointment.update as ReturnType<typeof vi.fn>;
 const mockServiceFindMany = prisma.service.findMany as ReturnType<typeof vi.fn>;
 const mockNotificationCreate = prisma.notification.create as ReturnType<typeof vi.fn>;
+const mockSmsConsentEventCreate = prisma.smsConsentEvent.create as ReturnType<typeof vi.fn>;
 const mockScheduleAppointmentReminder = scheduleAppointmentReminder as ReturnType<typeof vi.fn>;
 const mockEnsureAppointmentShortId = ensureAppointmentShortId as ReturnType<typeof vi.fn>;
 
@@ -98,6 +106,17 @@ function makeRequest(body: Record<string, unknown> = validApptBody) {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(sendAppointmentConfirmation).mockResolvedValue({ success: true } as any);
+  mockCustomerFindFirst.mockResolvedValue({
+    id: 'cust-1',
+    phone: '+15551234567',
+  });
+  mockCustomerUpdate.mockResolvedValue({
+    id: 'cust-1',
+    smsConsent: true,
+    smsOptedOut: false,
+  });
+  mockSmsConsentEventCreate.mockResolvedValue({ id: 'evt-1' });
   mockStaffFindFirst.mockResolvedValue({
     id: 'staff-1',
     fullName: 'Andy',
@@ -399,5 +418,118 @@ describe('POST /api/appointments', () => {
     expect(sendAppointmentConfirmation).not.toHaveBeenCalled();
     expect(scheduleAppointmentReminder).not.toHaveBeenCalled();
     expect(mockEnsureAppointmentShortId).not.toHaveBeenCalled();
+  });
+
+  it('captures manual appointment SMS consent, logs it, and sends the request text', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce(fakeBusiness);
+    mockAppointmentFindMany.mockResolvedValue([]);
+    mockNotificationCreate.mockResolvedValue({});
+    mockAppointmentCreate.mockResolvedValue({
+      id: 'appt-5',
+      customerId: 'cust-1',
+      businessId: 'biz-1',
+      shortId: null,
+      startTime: new Date(validApptBody.startTime),
+      duration: 60,
+      customer: {
+        id: 'cust-1',
+        name: 'Bob',
+        phone: '+15551234567',
+        email: null,
+        smsConsent: false,
+        smsOptedOut: true,
+      },
+      service: { name: 'Haircut' },
+      staff: { fullName: 'Andy' },
+      business: { name: 'Test Salon' },
+    });
+
+    const res = await POST(
+      makeRequest({
+        ...validApptBody,
+        appointmentSmsConsent: true,
+      })
+    );
+
+    expect(res.status).toBe(201);
+    expect(mockCustomerFindFirst).toHaveBeenCalledWith({
+      where: {
+        id: 'cust-1',
+        businessId: 'biz-1',
+      },
+      select: {
+        id: true,
+        phone: true,
+      },
+    });
+    expect(mockCustomerUpdate).toHaveBeenCalledWith({
+      where: { id: 'cust-1' },
+      data: {
+        smsConsent: true,
+        smsOptedOut: false,
+        smsOptedOutAt: null,
+      },
+    });
+    expect(mockSmsConsentEventCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        businessId: 'biz-1',
+        customerId: 'cust-1',
+        phone: '+15551234567',
+        eventType: 'MANUAL_APPOINTMENT_OPT_IN',
+        source: 'dashboard_appointment',
+        metadata: expect.objectContaining({
+          consentType: 'transactional',
+          consentMethod: 'verbal',
+          channel: 'dashboard-appointments',
+          appointmentId: 'appt-5',
+        }),
+      }),
+    });
+    expect(sendAppointmentConfirmation).toHaveBeenCalledWith(
+      '+15551234567',
+      expect.objectContaining({
+        customerName: 'Bob',
+        businessName: 'Test Salon',
+        appointmentUrl: expect.stringContaining('/a/ABC1234'),
+      })
+    );
+    expect(scheduleAppointmentReminder).toHaveBeenCalledWith(
+      '+15551234567',
+      expect.objectContaining({
+        customerName: 'Bob',
+        businessName: 'Test Salon',
+        appointmentUrl: expect.stringContaining('/a/ABC1234'),
+      })
+    );
+  });
+
+  it('blocks manual appointment SMS consent when the customer has no phone number', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce(fakeBusiness);
+    mockAppointmentFindMany.mockResolvedValue([]);
+    mockCustomerFindFirst.mockResolvedValue({
+      id: 'cust-1',
+      phone: null,
+    });
+
+    const res = await POST(
+      makeRequest({
+        ...validApptBody,
+        appointmentSmsConsent: true,
+      })
+    );
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({
+      error: 'Customer needs a phone number before appointment texts can be enabled',
+    });
+    expect(mockAppointmentCreate).not.toHaveBeenCalled();
+    expect(mockCustomerUpdate).not.toHaveBeenCalled();
+    expect(sendAppointmentConfirmation).not.toHaveBeenCalled();
   });
 });

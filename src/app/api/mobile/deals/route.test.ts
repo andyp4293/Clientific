@@ -32,6 +32,9 @@ beforeEach(() => {
 
 describe('GET /api/mobile/deals', () => {
   it('returns deal summaries for the mobile workspace', async () => {
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
     mockFindBusiness.mockResolvedValue({
       id: 'biz-1',
       name: 'Clientific Studio',
@@ -57,11 +60,11 @@ describe('GET /api/mobile/deals', () => {
         deliveryType: 'purchase_link',
         discountType: 'percent_off',
         discountValue: 20,
-        startsAt: new Date('2026-03-28T00:00:00.000Z'),
-        expiresAt: new Date('2026-04-04T00:00:00.000Z'),
+        startsAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        expiresAt: nextWeek,
         maxRedemptions: null,
         redemptionCount: 1,
-        createdAt: new Date('2026-03-27T00:00:00.000Z'),
+        createdAt: tomorrow,
         purchases: [
           { id: 'purchase-1', totalAmount: 2500 },
           { id: 'purchase-2', totalAmount: 2500 },

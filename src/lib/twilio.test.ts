@@ -84,6 +84,22 @@ describe('twilio sms formatting', () => {
     expect(laMessage).toContain('10:00 AM');
   });
 
+  it('formats a manual appointment request text that can be shown to staff before sending', () => {
+    const message = formatAppointmentConfirmationSMS({
+      customerName: 'Bob',
+      serviceName: 'Haircut',
+      staffName: 'Sam',
+      dateTime: new Date('2026-03-10T18:00:00.000Z'),
+      businessName: 'Test Salon',
+      appointmentUrl: 'https://www.clientific.app/a/ABC1234',
+    });
+
+    expect(message).toContain('Test Salon: Hi Bob, your Haircut with Sam appointment has been requested for Tuesday, March 10 at 2:00 PM.');
+    expect(message).toContain("We'll send you another text once it's confirmed.");
+    expect(message).toContain('Check status: https://www.clientific.app/a/ABC1234');
+    expect(message).toContain(FOOTER);
+  });
+
   it('includes footer on business confirmed template', () => {
     const message = formatAppointmentBusinessConfirmedSMS({
       customerName: 'Jane',

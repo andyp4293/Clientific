@@ -32,6 +32,15 @@ describe('appointments page mobile dialog contract', () => {
     expect(source).toContain('noResultsLabel="No customers match that search"');
   });
 
+  it('includes the manual appointment SMS consent checkbox and sends it to the API payload', () => {
+    const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('Customer verbally agreed to appointment texts');
+    expect(source).toContain('Sends the appointment request now, then future confirmation and reminder texts for this phone number.');
+    expect(source).toContain('appointmentSmsConsent: formData.appointmentSmsConsent');
+    expect(source).toContain('Add a phone number before enabling appointment texts');
+  });
+
   it('shows the assigned staff name inside month-view appointment chips', () => {
     const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
 
