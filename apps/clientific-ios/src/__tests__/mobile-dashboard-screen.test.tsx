@@ -323,31 +323,6 @@ const reviews = {
   ],
 };
 
-const analytics = {
-  business,
-  range: '30d' as const,
-  stats: {
-    totalRevenue: 1200,
-    totalRevenueLabel: '$1,200.00',
-    totalAppointments: 18,
-    newCustomers: 6,
-    avgRevenuePerVisit: 66.67,
-    avgRevenuePerVisitLabel: '$66.67',
-  },
-  revenueByWeek: [
-    { label: 'Mar 1', revenue: 400, revenueLabel: '$400.00' },
-  ],
-  appointmentsByStatus: [
-    { status: 'confirmed', label: 'Confirmed', count: 10 },
-  ],
-  topServices: [
-    { name: 'Haircut', count: 8, share: 100 },
-  ],
-  customerSegments: [
-    { segment: 'new', label: 'New', count: 6 },
-  ],
-};
-
 const billing = {
   business,
   currentPlanName: 'Starter',
@@ -410,8 +385,6 @@ function createShellProps(
     activeTab: 'dashboard',
     aiReceptionist,
     aiReceptionistError: null,
-    analytics,
-    analyticsError: null,
     appointmentComposerCustomers: customers.customers,
     appointmentComposerError: null,
     appointments,
@@ -440,8 +413,6 @@ function createShellProps(
     isAiReceptionistLoading: false,
     isAiReceptionistRefreshing: false,
     isAiReceptionistSaving: false,
-    isAnalyticsLoading: false,
-    isAnalyticsRefreshing: false,
     isAppointmentComposerLoading: false,
     isAppointmentsLoading: false,
     isAppointmentsRefreshing: false,
@@ -470,7 +441,6 @@ function createShellProps(
     isSavingBusinessProfile: false,
     isServicesLoading: false,
     isServicesRefreshing: false,
-    onChangeAnalyticsRange: jest.fn(),
     onChangeCustomerFilters: jest.fn(),
     moreSection: 'menu',
     onChangeCustomersSearchDraft: jest.fn(),
@@ -556,7 +526,6 @@ function createShellProps(
       platformFeeLabel: '$4.50',
     }),
     onRefreshAiReceptionist: jest.fn().mockResolvedValue(undefined),
-    onRefreshAnalytics: jest.fn().mockResolvedValue(undefined),
     onRefreshBilling: jest.fn().mockResolvedValue(undefined),
     onRefreshBusinessHours: jest.fn().mockResolvedValue(undefined),
     onRefreshBusinessProfile: jest.fn().mockResolvedValue(undefined),

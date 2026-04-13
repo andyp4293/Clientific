@@ -173,31 +173,6 @@ const reviews = {
   ],
 };
 
-const analytics = {
-  business,
-  range: '30d' as const,
-  stats: {
-    totalRevenue: 1200,
-    totalRevenueLabel: '$1,200.00',
-    totalAppointments: 18,
-    newCustomers: 6,
-    avgRevenuePerVisit: 66.67,
-    avgRevenuePerVisitLabel: '$66.67',
-  },
-  revenueByWeek: [
-    { label: 'Mar 1', revenue: 400, revenueLabel: '$400.00' },
-  ],
-  appointmentsByStatus: [
-    { status: 'confirmed', label: 'Confirmed', count: 10 },
-  ],
-  topServices: [
-    { name: 'Haircut', count: 8, share: 100 },
-  ],
-  customerSegments: [
-    { segment: 'new', label: 'New', count: 6 },
-  ],
-};
-
 const billing = {
   business,
   currentPlanName: 'Starter',
@@ -267,8 +242,6 @@ function createProps(
     activeSection: 'menu',
     aiReceptionist,
     aiReceptionistError: null,
-    analytics,
-    analyticsError: null,
     billing,
     billingError: null,
     business,
@@ -286,8 +259,6 @@ function createProps(
     isAiReceptionistLoading: false,
     isAiReceptionistRefreshing: false,
     isAiReceptionistSaving: false,
-    isAnalyticsLoading: false,
-    isAnalyticsRefreshing: false,
     isBillingLoading: false,
     isBillingPortalOpening: false,
     isBillingRefreshing: false,
@@ -308,7 +279,6 @@ function createProps(
     isSavingBusinessProfile: false,
     isServicesLoading: false,
     isServicesRefreshing: false,
-    onChangeAnalyticsRange: jest.fn(),
     onChangeSection: jest.fn(),
     onCreateCheckIn: jest.fn().mockResolvedValue(undefined),
     onCreateService: jest.fn().mockResolvedValue(undefined),
@@ -347,7 +317,6 @@ function createProps(
       platformFeeLabel: '$4.50',
     }),
     onRefreshAiReceptionist: jest.fn().mockResolvedValue(undefined),
-    onRefreshAnalytics: jest.fn().mockResolvedValue(undefined),
     onRefreshBilling: jest.fn().mockResolvedValue(undefined),
     onRefreshBusinessHours: jest.fn().mockResolvedValue(undefined),
     onRefreshBusinessProfile: jest.fn().mockResolvedValue(undefined),
@@ -394,17 +363,10 @@ describe('MobileMoreScreen', () => {
     expect(screen.getByText('Terms of Service')).toBeTruthy();
     expect(screen.getByText('Support')).toBeTruthy();
     expect(screen.getByText('Open the rest of your business tools from one place.')).toBeTruthy();
+    expect(screen.queryByText('Analytics')).toBeNull();
+    expect(screen.queryByTestId('mobile-more-menu-analytics')).toBeNull();
     expect(screen.queryByText('App')).toBeNull();
     expect(screen.queryByText('Web')).toBeNull();
-  });
-
-  it('routes app destinations inside the menu flow', () => {
-    const onChangeSection = jest.fn();
-
-    render(<MobileMoreScreen {...createProps({ onChangeSection })} />);
-
-    fireEvent.press(screen.getByTestId('mobile-more-menu-analytics'));
-    expect(onChangeSection).toHaveBeenCalledWith('analytics');
   });
 
   it('routes AI receptionist inside the native menu flow', () => {

@@ -11,8 +11,6 @@ import {
 import type {
   MobileAiReceptionistSummary,
   MobileAiReceptionistUpdateInput,
-  MobileAnalyticsRange,
-  MobileAnalyticsSummary,
   MobileBillingSummary,
   MobileBusiness,
   MobileBusinessHoursSummary,
@@ -35,7 +33,6 @@ import type {
   MobileStaffInput,
 } from '@/lib/clientific-api';
 import { MobileAiReceptionistScreen } from '@/components/mobile-ai-receptionist-screen';
-import { MobileAnalyticsScreen } from '@/components/mobile-analytics-screen';
 import { MobileBillingScreen } from '@/components/mobile-billing-screen';
 import { MobileBusinessHoursScreen } from '@/components/mobile-business-hours-screen';
 import { MobileCheckinsScreen } from '@/components/mobile-checkins-screen';
@@ -64,7 +61,6 @@ export type MobileMoreSection =
   | 'aiReceptionist'
   | 'customerView'
   | 'reviews'
-  | 'analytics'
   | 'referrals'
   | 'payouts'
   | 'billing'
@@ -85,8 +81,6 @@ type MobileMoreScreenProps = {
   activeSection: MobileMoreSection;
   aiReceptionist: MobileAiReceptionistSummary | null;
   aiReceptionistError: string | null;
-  analytics: MobileAnalyticsSummary | null;
-  analyticsError: string | null;
   billing: MobileBillingSummary | null;
   billingError: string | null;
   business: MobileBusiness;
@@ -104,8 +98,6 @@ type MobileMoreScreenProps = {
   isAiReceptionistLoading: boolean;
   isAiReceptionistRefreshing: boolean;
   isAiReceptionistSaving: boolean;
-  isAnalyticsLoading: boolean;
-  isAnalyticsRefreshing: boolean;
   isBillingLoading: boolean;
   isBillingPortalOpening: boolean;
   isBillingRefreshing: boolean;
@@ -126,7 +118,6 @@ type MobileMoreScreenProps = {
   isSavingBusinessProfile: boolean;
   isServicesLoading: boolean;
   isServicesRefreshing: boolean;
-  onChangeAnalyticsRange: (range: MobileAnalyticsRange) => void;
   onChangeSection: (section: MobileMoreSection) => void;
   onCreateCheckIn: (
     input: MobileCheckInSubmissionInput,
@@ -147,7 +138,6 @@ type MobileMoreScreenProps = {
     transactionAmount?: number | null;
   }) => Promise<MobileRedeemResult>;
   onRefreshAiReceptionist: () => Promise<void>;
-  onRefreshAnalytics: () => Promise<void>;
   onRefreshBilling: () => Promise<void>;
   onRefreshBusinessHours: () => Promise<void>;
   onRefreshBusinessProfile: () => Promise<void>;
@@ -238,14 +228,6 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
     target: 'reviews',
   },
   {
-    key: 'analytics',
-    label: 'Analytics',
-    helper: 'Check performance, trends, and conversion signals.',
-    icon: 'analytics',
-    section: 'growth',
-    target: 'analytics',
-  },
-  {
     key: 'referrals',
     label: 'Refer & Earn',
     helper: 'Track credits, referrals, and your share link.',
@@ -283,8 +265,6 @@ export function MobileMoreScreen({
   activeSection,
   aiReceptionist,
   aiReceptionistError,
-  analytics,
-  analyticsError,
   billing,
   billingError,
   business,
@@ -302,8 +282,6 @@ export function MobileMoreScreen({
   isAiReceptionistLoading,
   isAiReceptionistRefreshing,
   isAiReceptionistSaving,
-  isAnalyticsLoading,
-  isAnalyticsRefreshing,
   isBillingLoading,
   isBillingPortalOpening,
   isBillingRefreshing,
@@ -324,7 +302,6 @@ export function MobileMoreScreen({
   isSavingBusinessProfile,
   isServicesLoading,
   isServicesRefreshing,
-  onChangeAnalyticsRange,
   onChangeSection,
   onCreateCheckIn,
   onCreateService,
@@ -340,7 +317,6 @@ export function MobileMoreScreen({
   onPreviousCheckInsDate,
   onRedeemCode,
   onRefreshAiReceptionist,
-  onRefreshAnalytics,
   onRefreshBilling,
   onRefreshBusinessHours,
   onRefreshBusinessProfile,
@@ -642,17 +618,6 @@ export function MobileMoreScreen({
           />
         ) : null}
 
-        {activeSection === 'analytics' ? (
-          <MobileAnalyticsScreen
-            data={analytics}
-            error={analyticsError}
-            isLoading={isAnalyticsLoading}
-            isRefreshing={isAnalyticsRefreshing}
-            onChangeRange={onChangeAnalyticsRange}
-            onRefresh={onRefreshAnalytics}
-          />
-        ) : null}
-
         {activeSection === 'referrals' ? (
           <MobileReferralsScreen
             business={business}
@@ -745,8 +710,6 @@ function getSubscreenTitle(section: Exclude<MobileMoreSection, 'menu'>) {
       return 'Customer View';
     case 'reviews':
       return 'Reviews';
-    case 'analytics':
-      return 'Analytics';
     case 'referrals':
       return 'Refer & Earn';
     case 'payouts':

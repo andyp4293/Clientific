@@ -4,8 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type {
   MobileAiReceptionistUpdateInput,
   MobileAiReceptionistSummary,
-  MobileAnalyticsRange,
-  MobileAnalyticsSummary,
   MobileAppointmentInput,
   MobileAppointmentUpdateInput,
   MobileAppointmentsSummary,
@@ -52,8 +50,6 @@ type MobileAppShellProps = {
   activeTab: MobileAppTab;
   aiReceptionist: MobileAiReceptionistSummary | null;
   aiReceptionistError: string | null;
-  analytics: MobileAnalyticsSummary | null;
-  analyticsError: string | null;
   appointments: MobileAppointmentsSummary | null;
   appointmentsError: string | null;
   billing: MobileBillingSummary | null;
@@ -80,8 +76,6 @@ type MobileAppShellProps = {
   isAiReceptionistLoading: boolean;
   isAiReceptionistRefreshing: boolean;
   isAiReceptionistSaving: boolean;
-  isAnalyticsLoading: boolean;
-  isAnalyticsRefreshing: boolean;
   isAppointmentsLoading: boolean;
   isAppointmentComposerLoading: boolean;
   isAppointmentsRefreshing: boolean;
@@ -110,7 +104,6 @@ type MobileAppShellProps = {
   isSavingBusinessProfile: boolean;
   isServicesLoading: boolean;
   isServicesRefreshing: boolean;
-  onChangeAnalyticsRange: (range: MobileAnalyticsRange) => void;
   onChangeCustomerFilters: (next: Partial<MobileCustomerFilters>) => void;
   moreSection: MobileMoreSection;
   onChangeCustomersSearchDraft: (value: string) => void;
@@ -152,7 +145,6 @@ type MobileAppShellProps = {
   onPreviousCustomersPage: () => void;
   onRedeemCode: (input: { code: string; transactionAmount?: number | null }) => Promise<MobileRedeemResult>;
   onRefreshAiReceptionist: () => Promise<void>;
-  onRefreshAnalytics: () => Promise<void>;
   onRefreshBilling: () => Promise<void>;
   onRefreshBusinessHours: () => Promise<void>;
   onRefreshBusinessProfile: () => Promise<void>;
@@ -212,8 +204,6 @@ export function MobileAppShell({
   activeTab,
   aiReceptionist,
   aiReceptionistError,
-  analytics,
-  analyticsError,
   appointments,
   appointmentsError,
   billing,
@@ -240,8 +230,6 @@ export function MobileAppShell({
   isAiReceptionistLoading,
   isAiReceptionistRefreshing,
   isAiReceptionistSaving,
-  isAnalyticsLoading,
-  isAnalyticsRefreshing,
   isAppointmentsLoading,
   isAppointmentComposerLoading,
   isAppointmentsRefreshing,
@@ -270,7 +258,6 @@ export function MobileAppShell({
   isSavingBusinessProfile,
   isServicesLoading,
   isServicesRefreshing,
-  onChangeAnalyticsRange,
   onChangeCustomerFilters,
   moreSection,
   onChangeCustomersSearchDraft,
@@ -310,7 +297,6 @@ export function MobileAppShell({
   onPreviousCustomersPage,
   onRedeemCode,
   onRefreshAiReceptionist,
-  onRefreshAnalytics,
   onRefreshBilling,
   onRefreshBusinessHours,
   onRefreshBusinessProfile,
@@ -446,8 +432,6 @@ export function MobileAppShell({
               activeSection={moreSection}
               aiReceptionist={aiReceptionist}
               aiReceptionistError={aiReceptionistError}
-              analytics={analytics}
-              analyticsError={analyticsError}
               billing={billing}
               billingError={billingError}
               business={business}
@@ -465,8 +449,6 @@ export function MobileAppShell({
               isAiReceptionistLoading={isAiReceptionistLoading}
               isAiReceptionistRefreshing={isAiReceptionistRefreshing}
               isAiReceptionistSaving={isAiReceptionistSaving}
-              isAnalyticsLoading={isAnalyticsLoading}
-              isAnalyticsRefreshing={isAnalyticsRefreshing}
               isBillingLoading={isBillingLoading}
               isBillingPortalOpening={isBillingPortalOpening}
               isBillingRefreshing={isBillingRefreshing}
@@ -487,7 +469,6 @@ export function MobileAppShell({
               isSavingBusinessProfile={isSavingBusinessProfile}
               isServicesLoading={isServicesLoading}
               isServicesRefreshing={isServicesRefreshing}
-              onChangeAnalyticsRange={onChangeAnalyticsRange}
               onChangeSection={onChangeMoreSection}
               onCreateCheckIn={onCreateCheckIn}
               onCreateService={onCreateService}
@@ -503,7 +484,6 @@ export function MobileAppShell({
               onPreviousCheckInsDate={onPreviousCheckInsDate}
               onRedeemCode={onRedeemCode}
               onRefreshAiReceptionist={onRefreshAiReceptionist}
-              onRefreshAnalytics={onRefreshAnalytics}
               onRefreshBilling={onRefreshBilling}
               onRefreshBusinessHours={onRefreshBusinessHours}
               onRefreshBusinessProfile={onRefreshBusinessProfile}

@@ -13,7 +13,6 @@ export type MobileNavIconName =
   | 'businessHours'
   | 'aiReceptionist'
   | 'reviews'
-  | 'analytics'
   | 'referrals'
   | 'payouts'
   | 'customerView'
@@ -41,7 +40,6 @@ const ICON_MAP: Record<MobileNavIconName, React.ComponentProps<typeof Feather>['
   businessHours: 'clock',
   aiReceptionist: 'phone-call',
   reviews: 'star',
-  analytics: 'bar-chart-2',
   referrals: 'send',
   payouts: 'dollar-sign',
   customerView: 'eye',

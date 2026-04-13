@@ -25,7 +25,6 @@ import {
   deleteMobileCustomer,
   deleteMobileCustomerGroup,
   fetchMobileAiReceptionist,
-  fetchMobileAnalytics,
   fetchMobileAppointments,
   fetchMobileBilling,
   fetchMobileBusinessHours,
@@ -46,8 +45,6 @@ import {
   lookupMobileRedemption,
   MobileAiReceptionistSummary,
   MobileAiReceptionistUpdateInput,
-  MobileAnalyticsRange,
-  MobileAnalyticsSummary,
   MobileAppointmentInput,
   MobileAppointmentUpdateInput,
   MobileAppointmentsSummary,
@@ -141,7 +138,6 @@ export function ClientificNativeApp() {
   const [isBooting, setIsBooting] = useState(true);
   const [activeTab, setActiveTab] = useState<MobileAppTab>('dashboard');
   const [moreSection, setMoreSection] = useState<MobileMoreSection>('menu');
-  const [analyticsRange, setAnalyticsRange] = useState<MobileAnalyticsRange>('30d');
   const [authMode, setAuthMode] = useState<MobileAuthMode>('sign-in');
   const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
   const [isResendingCode, setIsResendingCode] = useState(false);
@@ -174,8 +170,6 @@ export function ClientificNativeApp() {
   const [isSavingBusinessHours, setIsSavingBusinessHours] = useState(false);
   const [isLoadingReviews, setIsLoadingReviews] = useState(false);
   const [isRefreshingReviews, setIsRefreshingReviews] = useState(false);
-  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
-  const [isRefreshingAnalytics, setIsRefreshingAnalytics] = useState(false);
   const [isLoadingBilling, setIsLoadingBilling] = useState(false);
   const [isRefreshingBilling, setIsRefreshingBilling] = useState(false);
   const [isOpeningBillingPortal, setIsOpeningBillingPortal] = useState(false);
@@ -195,7 +189,6 @@ export function ClientificNativeApp() {
   const [servicesError, setServicesError] = useState<string | null>(null);
   const [businessHoursError, setBusinessHoursError] = useState<string | null>(null);
   const [reviewsError, setReviewsError] = useState<string | null>(null);
-  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [billingError, setBillingError] = useState<string | null>(null);
   const [pendingVerification, setPendingVerification] = useState<{
     email: string;
@@ -229,7 +222,6 @@ export function ClientificNativeApp() {
   const [services, setServices] = useState<MobileServicesSummary | null>(null);
   const [businessHours, setBusinessHours] = useState<MobileBusinessHoursSummary | null>(null);
   const [reviews, setReviews] = useState<MobileReviewsSummary | null>(null);
-  const [analytics, setAnalytics] = useState<MobileAnalyticsSummary | null>(null);
   const [billing, setBilling] = useState<MobileBillingSummary | null>(null);
   const [registeredPushToken, setRegisteredPushToken] = useState<string | null>(null);
 
@@ -256,11 +248,9 @@ export function ClientificNativeApp() {
     setServices(null);
     setBusinessHours(null);
     setReviews(null);
-    setAnalytics(null);
     setBilling(null);
     setActiveTab('dashboard');
     setMoreSection('menu');
-    setAnalyticsRange('30d');
     setAuthMode('sign-in');
     setAuthError(null);
     setAuthNotice(null);
@@ -278,12 +268,6 @@ export function ClientificNativeApp() {
     setServicesError(null);
     setBusinessHoursError(null);
     setReviewsError(null);
-    setAnalyticsError(null);
-    setBillingError(null);
-    setServicesError(null);
-    setBusinessHoursError(null);
-    setReviewsError(null);
-    setAnalyticsError(null);
     setBillingError(null);
     setAppointmentsDate(formatMobileDateKey(new Date()));
     setCheckInsDate(formatMobileDateKey(new Date()));
@@ -698,31 +682,6 @@ export function ClientificNativeApp() {
           setIsRefreshingReviews(false);
         } else {
           setIsLoadingReviews(false);
-        }
-      }
-    },
-    [handleSessionError],
-  );
-
-  const loadAnalytics = useCallback(
-    async (token: string, range: MobileAnalyticsRange, isRefresh = false) => {
-      if (isRefresh) {
-        setIsRefreshingAnalytics(true);
-      } else {
-        setIsLoadingAnalytics(true);
-      }
-
-      try {
-        const nextAnalytics = await fetchMobileAnalytics(token, { range });
-        setAnalytics(nextAnalytics);
-        setAnalyticsError(null);
-      } catch (error) {
-        await handleSessionError(error, 'Unable to load analytics.', setAnalyticsError);
-      } finally {
-        if (isRefresh) {
-          setIsRefreshingAnalytics(false);
-        } else {
-          setIsLoadingAnalytics(false);
         }
       }
     },
@@ -1421,14 +1380,6 @@ export function ClientificNativeApp() {
 
     await loadReviews(session.token, true);
   }, [loadReviews, session]);
-
-  const handleRefreshAnalytics = useCallback(async () => {
-    if (!session) {
-      return;
-    }
-
-    await loadAnalytics(session.token, analyticsRange, true);
-  }, [analyticsRange, loadAnalytics, session]);
 
   const handleRefreshBilling = useCallback(async () => {
     if (!session) {
@@ -2153,23 +2104,12 @@ export function ClientificNativeApp() {
       void loadFunds(session.token);
     }
 
-    if (
-      activeTab === 'more' &&
-      moreSection === 'analytics' &&
-      (!analytics || analytics.range !== analyticsRange) &&
-      !isLoadingAnalytics
-    ) {
-      void loadAnalytics(session.token, analyticsRange);
-    }
-
     if (activeTab === 'more' && moreSection === 'billing' && !billing && !isLoadingBilling) {
       void loadBilling(session.token);
     }
   }, [
     activeTab,
     aiReceptionist,
-    analytics,
-    analyticsRange,
     appointments,
     appointmentsDate,
     billing,
@@ -2186,7 +2126,6 @@ export function ClientificNativeApp() {
     funds,
     home,
     isLoadingAiReceptionist,
-    isLoadingAnalytics,
     isLoadingAppointments,
     isLoadingBilling,
     isLoadingBusinessHours,
@@ -2200,7 +2139,6 @@ export function ClientificNativeApp() {
     isLoadingReviews,
     isLoadingServices,
     loadAiReceptionist,
-    loadAnalytics,
     loadAppointments,
     loadBilling,
     loadBusinessHours,
@@ -2339,8 +2277,6 @@ export function ClientificNativeApp() {
       activeTab={activeTab}
       aiReceptionist={aiReceptionist}
       aiReceptionistError={aiReceptionistError}
-      analytics={analytics}
-      analyticsError={analyticsError}
       appointmentComposerCustomers={appointmentComposerCustomers}
       appointmentComposerError={appointmentComposerError}
       appointments={appointments}
@@ -2369,8 +2305,6 @@ export function ClientificNativeApp() {
       isAiReceptionistLoading={isLoadingAiReceptionist}
       isAiReceptionistRefreshing={isRefreshingAiReceptionist}
       isAiReceptionistSaving={isSavingAiReceptionist}
-      isAnalyticsLoading={isLoadingAnalytics}
-      isAnalyticsRefreshing={isRefreshingAnalytics}
       isAppointmentComposerLoading={isLoadingAppointmentComposer}
       isAppointmentsLoading={isLoadingAppointments}
       isAppointmentsRefreshing={isRefreshingAppointments}
@@ -2399,7 +2333,6 @@ export function ClientificNativeApp() {
       isSavingBusinessProfile={isSavingBusinessProfile}
       isServicesLoading={isLoadingServices}
       isServicesRefreshing={isRefreshingServices}
-      onChangeAnalyticsRange={setAnalyticsRange}
       onChangeCustomerFilters={changeCustomerFilters}
       moreSection={moreSection}
       onChangeCustomersSearchDraft={setCustomersSearchDraft}
@@ -2445,7 +2378,6 @@ export function ClientificNativeApp() {
       onPreviousCustomersPage={goToPreviousCustomersPage}
       onRedeemCode={handleRedeemCode}
       onRefreshAiReceptionist={handleRefreshAiReceptionist}
-      onRefreshAnalytics={handleRefreshAnalytics}
       onRefreshBilling={handleRefreshBilling}
       onRefreshBusinessHours={handleRefreshBusinessHours}
       onRefreshBusinessProfile={handleRefreshBusinessProfile}
