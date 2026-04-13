@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import type { MobileBusiness, MobileReferralsSummary } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
+import { buildReferralInviteUrl } from '@/lib/referral-links';
 
 type MobileReferralsScreenProps = {
   business: MobileBusiness;
@@ -36,6 +37,7 @@ export function MobileReferralsScreen({
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
   const hasLiveInvite = Boolean(data?.payoutReady && data?.referralCode);
+  const referralUrl = data?.referralCode ? buildReferralInviteUrl(data.referralCode) : null;
 
   return (
     <ScrollView
@@ -95,15 +97,30 @@ export function MobileReferralsScreen({
               <>
                 <View
                   style={[
+                    styles.linkCard,
+                    { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                  ]}>
+                  <Text style={[styles.codeLabel, { color: theme.mutedText }]}>Referral link</Text>
+                  <Text selectable style={[styles.linkValue, { color: theme.text }]}>
+                    {referralUrl}
+                  </Text>
+                  <Text style={[styles.codeHelper, { color: theme.mutedText }]}>
+                    Share the link first. If someone opens signup without the invite attached, they
+                    can use the fallback code below.
+                  </Text>
+                </View>
+                <View
+                  style={[
                     styles.codeCard,
                     { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
                   ]}>
-                  <Text style={[styles.codeLabel, { color: theme.mutedText }]}>Referral code</Text>
-                  <Text style={[styles.codeValue, { color: theme.text }]}>
+                  <Text style={[styles.codeLabel, { color: theme.mutedText }]}>Fallback code</Text>
+                  <Text selectable style={[styles.codeValue, { color: theme.text }]}>
                     {data?.referralCode}
                   </Text>
                   <Text style={[styles.codeHelper, { color: theme.mutedText }]}>
-                    {business.name} can share one invite across cards, messages, and follow-up.
+                    {business.name} can still share this manually if the invite link is copied into
+                    a note, card, or message without the full URL.
                   </Text>
                 </View>
                 <Pressable
@@ -283,6 +300,13 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontWeight: '800',
   },
+  linkCard: {
+    borderWidth: 1,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 8,
+  },
   codeCard: {
     borderWidth: 1,
     borderRadius: 22,
@@ -296,6 +320,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1.8,
     textTransform: 'uppercase',
+  },
+  linkValue: {
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '700',
   },
   codeValue: {
     fontSize: 28,

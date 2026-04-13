@@ -398,11 +398,11 @@ export function MobileAuthScreen({
                     }
                   />
 
-                  <FieldLabel text="Referral code" color={theme.text} optional />
+                  <FieldLabel text="Referral link or code" color={theme.text} optional />
                   <TextInput
-                    autoCapitalize="characters"
+                    autoCapitalize="none"
                     autoCorrect={false}
-                    placeholder="Optional"
+                    placeholder="Paste invite link or code"
                     placeholderTextColor={theme.mutedText}
                     style={[
                       styles.input,
@@ -418,6 +418,11 @@ export function MobileAuthScreen({
                       setRegisterForm((current) => ({ ...current, referralCode: value }))
                     }
                   />
+                  <Text style={[styles.helperText, { color: theme.mutedText }]}>
+                    Paste the full invite link if someone shared it with you. If signup opens
+                    without the invite attached, you can enter the fallback referral code here
+                    instead.
+                  </Text>
 
                   <Pressable
                     accessibilityRole="checkbox"
@@ -692,6 +697,11 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '800',
     letterSpacing: 0.2,
+  },
+  helperText: {
+    marginTop: -2,
+    fontSize: 13,
+    lineHeight: 18,
   },
   input: {
     minHeight: 54,

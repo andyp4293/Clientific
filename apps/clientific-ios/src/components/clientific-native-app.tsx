@@ -97,6 +97,7 @@ import {
   addPushNotificationResponseListener,
   registerForPushNotificationsAsync,
 } from '@/lib/mobile-push-notifications';
+import { buildReferralInviteUrl, resolveReferralCodeInput } from '@/lib/referral-links';
 import {
   MobileAppShell,
   type MobileAppTab,
@@ -862,7 +863,7 @@ export function ClientificNativeApp() {
     }
 
     try {
-      const referralUrl = `${getClientificWebUrl()}/register?ref=${referrals.referralCode}`;
+      const referralUrl = buildReferralInviteUrl(referrals.referralCode);
       await Share.share({
         message: `${session?.business.name ?? 'Clientific'} invited you to join Clientific. Start here: ${referralUrl}`,
       });
@@ -1164,6 +1165,12 @@ export function ClientificNativeApp() {
       return;
     }
 
+    const referralResolution = resolveReferralCodeInput(input.referralCode);
+    if (referralResolution.error) {
+      setAuthError(referralResolution.error);
+      return;
+    }
+
     setIsSubmittingAuth(true);
     setAuthError(null);
     setAuthNotice(null);
@@ -1174,7 +1181,7 @@ export function ClientificNativeApp() {
         businessType: input.businessType,
         email: trimmedEmail,
         password: input.password,
-        referralCode: input.referralCode.trim() || undefined,
+        referralCode: referralResolution.referralCode,
       });
 
       setPendingVerification({

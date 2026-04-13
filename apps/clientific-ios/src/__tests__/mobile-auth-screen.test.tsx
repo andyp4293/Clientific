@@ -73,6 +73,35 @@ describe('MobileAuthScreen', () => {
     );
   });
 
+  it('explains that signup accepts either a referral link or a fallback code', () => {
+    render(
+      <MobileAuthScreen
+        error={null}
+        isResendingCode={false}
+        isSubmitting={false}
+        mode="register"
+        notice={null}
+        onOpenPrivacyPolicy={jest.fn().mockResolvedValue(undefined)}
+        onOpenTermsOfService={jest.fn().mockResolvedValue(undefined)}
+        verificationEmail=""
+        onBackToSignIn={jest.fn()}
+        onLogin={jest.fn().mockResolvedValue(undefined)}
+        onModeChange={jest.fn()}
+        onRegister={jest.fn().mockResolvedValue(undefined)}
+        onResendCode={jest.fn().mockResolvedValue(undefined)}
+        onVerify={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByText('Referral link or code (optional)')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Paste invite link or code')).toBeTruthy();
+    expect(
+      screen.getByText(
+        /paste the full invite link if someone shared it with you/i,
+      ),
+    ).toBeTruthy();
+  });
+
   it('handles verification actions', () => {
     const onVerify = jest.fn().mockResolvedValue(undefined);
     const onResendCode = jest.fn().mockResolvedValue(undefined);
