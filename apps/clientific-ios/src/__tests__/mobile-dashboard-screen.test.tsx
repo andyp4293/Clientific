@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { MobileAppShell } from '@/components/mobile-app-shell';
 import type { MobileCustomerFilters, MobileCustomersSummary } from '@/lib/clientific-api';
 
@@ -623,5 +624,17 @@ describe('MobileAppShell', () => {
     fireEvent.press(screen.getByTestId('mobile-tab-more'));
     expect(onChangeMoreSection).toHaveBeenCalledWith('menu');
     expect(onChangeTab).toHaveBeenCalledWith('more');
+  });
+
+  it('uses a more compact bottom tab bar footprint', () => {
+    render(<MobileAppShell {...createShellProps()} />);
+
+    const tabBarStyle = StyleSheet.flatten(screen.getByTestId('mobile-tab-bar').props.style);
+    const tabButtonStyle = StyleSheet.flatten(screen.getByTestId('mobile-tab-dashboard').props.style);
+
+    expect(tabBarStyle.paddingVertical).toBe(6);
+    expect(tabBarStyle.borderRadius).toBe(24);
+    expect(tabButtonStyle.minHeight).toBe(48);
+    expect(tabButtonStyle.borderRadius).toBe(16);
   });
 });

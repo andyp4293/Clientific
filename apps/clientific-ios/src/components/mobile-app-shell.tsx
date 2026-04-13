@@ -520,7 +520,8 @@ export function MobileAppShell({
                 backgroundColor: theme.surface,
                 borderColor: theme.border,
               },
-            ]}>
+            ]}
+            testID="mobile-tab-bar">
             {TAB_LABELS.map((tab) => {
               const isActive = activeTab === tab.key;
 
@@ -588,17 +589,17 @@ const styles = StyleSheet.create({
   },
   tabBarWrap: {
     paddingHorizontal: 12,
-    paddingTop: 4,
-    paddingBottom: 10,
+    paddingTop: 2,
+    paddingBottom: 4,
   },
   tabBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderRadius: 26,
+    borderRadius: 24,
     paddingHorizontal: 8,
-    paddingVertical: 8,
+    paddingVertical: 6,
     shadowColor: '#09131f',
     shadowOpacity: 0.08,
     shadowRadius: 18,
@@ -607,16 +608,16 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     flex: 1,
-    minHeight: 56,
-    borderRadius: 18,
+    minHeight: 48,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
-    gap: 3,
+    gap: 2,
   },
   tabIconBadge: {
-    width: 40,
-    height: 28,
+    width: 36,
+    height: 24,
     borderRadius: 999,
     borderWidth: 1,
     alignItems: 'center',
