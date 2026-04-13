@@ -4,79 +4,187 @@ vi.mock('@/lib/mobile-session', () => ({
   getBearerToken: vi.fn(),
   verifyMobileSessionToken: vi.fn(),
 }));
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
-    business: {
-      findUnique: vi.fn(),
-    },
-    appointment: {
-      findMany: vi.fn(),
-    },
-    service: {
-      findMany: vi.fn(),
-    },
+    business: { findUnique: vi.fn() },
+    appointment: { findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
+    service: { findMany: vi.fn() },
+    customer: { findFirst: vi.fn(), update: vi.fn() },
+    smsConsentEvent: { create: vi.fn() },
   },
 }));
+
+vi.mock('@/lib/onboarding', () => ({
+  isBusinessOnboardingComplete: vi.fn(() => true),
+}));
+
+vi.mock('@/lib/twilio', () => ({
+  sendAppointmentConfirmation: vi.fn().mockResolvedValue({ success: true }),
+}));
+
+vi.mock('@/lib/subscription', () => ({
+  requireActiveSubscription: vi.fn().mockResolvedValue(null),
+}));
+
+vi.mock('@/lib/app-url', () => ({
+  getConfiguredAppBaseUrl: vi.fn(() => 'https://www.clientific.app'),
+}));
+
+vi.mock('@/lib/business-hours-validation', () => ({
+  validateBusinessHoursForAppointment: vi.fn(() => null),
+}));
+
+vi.mock('@/lib/moderation', () => ({
+  blockedContentError: vi.fn(() => 'Blocked content'),
+  getBlockedFieldLabel: vi.fn(() => null),
+}));
+
+vi.mock('@/lib/staff-service-validation', () => ({
+  validateBookableStaffSelection: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock('@/lib/appointment-services', () => ({
   collectAppointmentServiceIds: vi.fn(() => ['svc-1']),
   withAppointmentServiceDisplay: vi.fn((appointments: unknown[]) => appointments),
 }));
 
+vi.mock('@/lib/appointment-reminders', () => ({
+  scheduleAppointmentReminder: vi.fn().mockResolvedValue({ success: true, sid: 'SM_reminder' }),
+}));
+
+vi.mock('@/lib/appointment-short-id', () => ({
+  ensureAppointmentShortId: vi.fn().mockResolvedValue('ABC1234'),
+}));
+
 import { getBearerToken, verifyMobileSessionToken } from '@/lib/mobile-session';
 import { prisma } from '@/lib/prisma';
-import { GET } from './route';
+import { sendAppointmentConfirmation } from '@/lib/twilio';
+import { requireActiveSubscription } from '@/lib/subscription';
+import { validateBusinessHoursForAppointment } from '@/lib/business-hours-validation';
+import { getBlockedFieldLabel } from '@/lib/moderation';
+import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
+import { scheduleAppointmentReminder } from '@/lib/appointment-reminders';
+import { ensureAppointmentShortId } from '@/lib/appointment-short-id';
+import { GET, POST } from './route';
 
-const mockGetBearerToken = getBearerToken as ReturnType<typeof vi.fn>;
-const mockVerifyMobileSessionToken = verifyMobileSessionToken as ReturnType<typeof vi.fn>;
-const mockFindBusiness = prisma.business.findUnique as ReturnType<typeof vi.fn>;
-const mockFindAppointments = prisma.appointment.findMany as ReturnType<typeof vi.fn>;
-const mockFindServices = prisma.service.findMany as ReturnType<typeof vi.fn>;
+const mockGetBearerToken = vi.mocked(getBearerToken);
+const mockVerifyMobileSessionToken = vi.mocked(verifyMobileSessionToken);
+const mockFindBusiness = vi.mocked(prisma.business.findUnique);
+const mockFindAppointments = vi.mocked(prisma.appointment.findMany);
+const mockCreateAppointment = vi.mocked(prisma.appointment.create);
+const mockUpdateAppointment = vi.mocked(prisma.appointment.update);
+const mockFindServices = vi.mocked(prisma.service.findMany);
+const mockFindCustomer = vi.mocked(prisma.customer.findFirst);
+const mockUpdateCustomer = vi.mocked(prisma.customer.update);
+const mockCreateConsentEvent = vi.mocked(prisma.smsConsentEvent.create);
+const mockRequireActiveSubscription = vi.mocked(requireActiveSubscription);
+const mockValidateBusinessHours = vi.mocked(validateBusinessHoursForAppointment);
+const mockGetBlockedFieldLabel = vi.mocked(getBlockedFieldLabel);
+const mockValidateBookableStaffSelection = vi.mocked(validateBookableStaffSelection);
+const mockSendAppointmentConfirmation = vi.mocked(sendAppointmentConfirmation);
+const mockScheduleAppointmentReminder = vi.mocked(scheduleAppointmentReminder);
+const mockEnsureAppointmentShortId = vi.mocked(ensureAppointmentShortId);
+
+const business = {
+  id: 'biz-1',
+  email: 'owner@clientific.app',
+  name: 'Clientific Studio',
+  businessType: 'Salon',
+  phone: '+15551234567',
+  street: '123 Main St',
+  city: 'Austin',
+  state: 'TX',
+  zipCode: '78701',
+  country: 'United States',
+  timezone: 'America/New_York',
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetBearerToken.mockReturnValue('token');
   mockVerifyMobileSessionToken.mockResolvedValue({ businessId: 'biz-1' });
+  mockRequireActiveSubscription.mockResolvedValue(null);
+  mockValidateBusinessHours.mockReturnValue(null);
+  mockGetBlockedFieldLabel.mockReturnValue(null);
+  mockValidateBookableStaffSelection.mockResolvedValue(null);
   mockFindBusiness.mockResolvedValue({
-    id: 'biz-1',
-    email: 'owner@clientific.app',
-    name: 'ABC Nails',
-    businessType: 'Salon',
-    phone: '+15551234567',
-    street: '1 Main St',
-    city: 'Austin',
-    state: 'TX',
-    zipCode: '78701',
-    country: 'United States',
-    timezone: 'America/New_York',
+    ...business,
+    vapiPhoneNumber: '+18885550123',
+    businessHours: { hours: {} },
+    closureDates: [],
   });
-  mockFindAppointments.mockResolvedValue([
-    {
-      id: 'appt-1',
-      startTime: new Date('2026-03-30T14:00:00.000Z'),
-      endTime: new Date('2026-03-30T15:00:00.000Z'),
-      status: 'confirmed',
-      source: 'dashboard',
-      notes: 'Color touch-up',
-      serviceDisplayName: 'Color',
-      customer: {
-        id: 'cust-1',
-        name: 'Jordan Lee',
-      },
-      service: {
-        id: 'svc-1',
-        name: 'Color',
-      },
-      staff: {
-        id: 'staff-1',
-        fullName: 'Taylor',
-      },
-    },
-  ]);
+  mockFindAppointments.mockResolvedValue([]);
   mockFindServices.mockResolvedValue([{ id: 'svc-1', name: 'Color' }]);
+  mockFindCustomer.mockResolvedValue({
+    id: 'cust-1',
+    phone: '+15551234567',
+  });
+  mockUpdateCustomer.mockResolvedValue({
+    id: 'cust-1',
+    smsConsent: true,
+    smsOptedOut: false,
+  } as never);
+  mockCreateConsentEvent.mockResolvedValue({ id: 'evt-1' } as never);
+  mockCreateAppointment.mockResolvedValue({
+    id: 'appt-2',
+    customerId: 'cust-1',
+    duration: 60,
+    notes: 'Please text me',
+    status: 'scheduled',
+    source: 'dashboard',
+    shortId: null,
+    startTime: new Date('2026-03-30T15:00:00.000Z'),
+    endTime: new Date('2026-03-30T16:00:00.000Z'),
+    customer: {
+      id: 'cust-1',
+      name: 'Jordan Lee',
+      phone: '+15551234567',
+      smsConsent: false,
+      smsOptedOut: false,
+    },
+    service: {
+      id: 'svc-1',
+      name: 'Haircut',
+    },
+    staff: {
+      id: 'staff-1',
+      fullName: 'Taylor',
+    },
+  } as never);
+  mockUpdateAppointment.mockResolvedValue({ id: 'appt-2', reminderSent: true } as never);
+  mockSendAppointmentConfirmation.mockResolvedValue({ success: true } as never);
+  mockScheduleAppointmentReminder.mockResolvedValue({ success: true, sid: 'SM_123' } as never);
+  mockEnsureAppointmentShortId.mockResolvedValue('ABC1234');
 });
 
 describe('mobile appointments route', () => {
   it('returns a formatted daily appointment summary', async () => {
+    mockFindAppointments.mockResolvedValueOnce([
+      {
+        id: 'appt-1',
+        startTime: new Date('2026-03-30T14:00:00.000Z'),
+        endTime: new Date('2026-03-30T15:00:00.000Z'),
+        duration: 60,
+        status: 'confirmed',
+        source: 'dashboard',
+        notes: 'Color touch-up',
+        serviceDisplayName: 'Color',
+        customer: {
+          id: 'cust-1',
+          name: 'Jordan Lee',
+        },
+        service: {
+          id: 'svc-1',
+          name: 'Color',
+        },
+        staff: {
+          id: 'staff-1',
+          fullName: 'Taylor',
+        },
+      },
+    ] as never);
+
     const response = await GET(
       new Request('https://www.clientific.app/api/mobile/appointments?date=2026-03-30', {
         headers: { authorization: 'Bearer token' },
@@ -95,7 +203,100 @@ describe('mobile appointments route', () => {
         serviceName: 'Color',
         statusLabel: 'Confirmed',
         sourceLabel: 'Manual',
+        canConfirm: false,
+        canModify: true,
       }),
     );
+  });
+
+  it('creates a mobile appointment, captures appointment SMS consent, and schedules the reminder', async () => {
+    const response = await POST(
+      new Request('https://www.clientific.app/api/mobile/appointments', {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer token',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerId: 'cust-1',
+          serviceId: 'svc-1',
+          staffId: 'staff-1',
+          startTime: '2026-03-30T15:00:00.000Z',
+          duration: 60,
+          notes: 'Please text me',
+          appointmentSmsConsent: true,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(mockCreateAppointment).toHaveBeenCalled();
+    expect(mockUpdateCustomer).toHaveBeenCalledWith({
+      where: { id: 'cust-1' },
+      data: {
+        smsConsent: true,
+        smsOptedOut: false,
+        smsOptedOutAt: null,
+      },
+    });
+    expect(mockCreateConsentEvent).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        businessId: 'biz-1',
+        customerId: 'cust-1',
+        phone: '+15551234567',
+        eventType: 'MANUAL_APPOINTMENT_OPT_IN',
+        source: 'mobile_appointment',
+      }),
+    });
+    expect(mockSendAppointmentConfirmation).toHaveBeenCalledWith(
+      '+15551234567',
+      expect.objectContaining({
+        customerName: 'Jordan Lee',
+        serviceName: 'Haircut',
+        businessName: 'Clientific Studio',
+      }),
+    );
+    expect(mockScheduleAppointmentReminder).toHaveBeenCalledWith(
+      '+15551234567',
+      expect.objectContaining({
+        customerName: 'Jordan Lee',
+        serviceName: 'Haircut',
+        staffName: 'Taylor',
+      }),
+    );
+    expect(mockUpdateAppointment).toHaveBeenCalledWith({
+      where: { id: 'appt-2' },
+      data: { reminderSent: true },
+    });
+  });
+
+  it('blocks appointment SMS consent when the customer has no phone number', async () => {
+    mockFindCustomer.mockResolvedValueOnce({
+      id: 'cust-1',
+      phone: null,
+    } as never);
+
+    const response = await POST(
+      new Request('https://www.clientific.app/api/mobile/appointments', {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer token',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerId: 'cust-1',
+          startTime: '2026-03-30T15:00:00.000Z',
+          duration: 60,
+          appointmentSmsConsent: true,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Customer needs a phone number before appointment texts can be enabled',
+    });
+    expect(mockCreateAppointment).not.toHaveBeenCalled();
+    expect(mockSendAppointmentConfirmation).not.toHaveBeenCalled();
   });
 });

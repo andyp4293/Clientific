@@ -297,7 +297,7 @@ describe('DealsPage (Campaigns)', () => {
     fireEvent.change(startInput, { target: { value: '2026-04-10' } });
 
     expect(endInput.min).toBe('2026-04-11');
-    expect(endInput.value).toBe('2026-04-11');
+    expect(endInput.value).toBe(formatDateInputValue(tomorrow));
   });
 
   it('updates the in-store capture link when a deal is selected', () => {

@@ -6,6 +6,8 @@ import type {
   MobileAiReceptionistSummary,
   MobileAnalyticsRange,
   MobileAnalyticsSummary,
+  MobileAppointmentInput,
+  MobileAppointmentUpdateInput,
   MobileAppointmentsSummary,
   MobileBillingSummary,
   MobileBusiness,
@@ -21,6 +23,7 @@ import type {
   MobileCustomerFilters,
   MobileCustomerGroupInput,
   MobileCustomerInput,
+  MobileCustomerRecord,
   MobileCustomerSmsLogSummary,
   MobileCustomersSummary,
   MobileDealsSummary,
@@ -80,6 +83,7 @@ type MobileAppShellProps = {
   isAnalyticsLoading: boolean;
   isAnalyticsRefreshing: boolean;
   isAppointmentsLoading: boolean;
+  isAppointmentComposerLoading: boolean;
   isAppointmentsRefreshing: boolean;
   isBillingLoading: boolean;
   isBillingPortalOpening: boolean;
@@ -112,6 +116,8 @@ type MobileAppShellProps = {
   onChangeCustomersSearchDraft: (value: string) => void;
   onChangeMoreSection: (section: MobileMoreSection) => void;
   onChangeTab: (tab: MobileAppTab) => void;
+  onCreateAppointment: (input: MobileAppointmentInput) => Promise<void>;
+  onCreateAppointmentCustomer: (input: MobileCustomerInput) => Promise<MobileCustomerRecord>;
   onCreateCustomer: (input: MobileCustomerInput) => Promise<void>;
   onCreateCustomerGroup: (input: MobileCustomerGroupInput) => Promise<void>;
   onCreateCheckIn: (
@@ -121,6 +127,7 @@ type MobileAppShellProps = {
   onCreateStaff: (input: MobileStaffInput) => Promise<void>;
   onDeleteCustomer: (customerId: string) => Promise<void>;
   onDeleteCustomerGroup: (groupId: string) => Promise<void>;
+  onDeleteAppointment: (appointmentId: string) => Promise<void>;
   onDeleteService: (serviceId: string) => Promise<void>;
   onDeleteStaff: (staffId: string) => Promise<void>;
   onFetchCustomerDetail: (customerId: string) => Promise<MobileCustomerDetail>;
@@ -176,14 +183,21 @@ type MobileAppShellProps = {
     groupId: string,
     input: MobileCustomerGroupInput,
   ) => Promise<void>;
+  onUpdateAppointment: (
+    appointmentId: string,
+    input: MobileAppointmentUpdateInput,
+  ) => Promise<void>;
   onUpdateService: (serviceId: string, input: MobileServiceInput) => Promise<void>;
   onUpdateStaff: (staffId: string, input: MobileStaffInput) => Promise<void>;
+  appointmentComposerCustomers: MobileCustomerRecord[];
+  appointmentComposerError: string | null;
   referrals: MobileReferralsSummary | null;
   referralsError: string | null;
   reviews: MobileReviewsSummary | null;
   reviewsError: string | null;
   services: MobileServicesSummary | null;
   servicesError: string | null;
+  onLoadAppointmentComposerResources: () => Promise<void>;
 };
 
 const TAB_LABELS: Array<{ key: MobileAppTab; label: string; icon: MobileNavIconName }> = [
@@ -229,6 +243,7 @@ export function MobileAppShell({
   isAnalyticsLoading,
   isAnalyticsRefreshing,
   isAppointmentsLoading,
+  isAppointmentComposerLoading,
   isAppointmentsRefreshing,
   isBillingLoading,
   isBillingPortalOpening,
@@ -261,6 +276,8 @@ export function MobileAppShell({
   onChangeCustomersSearchDraft,
   onChangeMoreSection,
   onChangeTab,
+  onCreateAppointment,
+  onCreateAppointmentCustomer,
   onCreateCustomer,
   onCreateCustomerGroup,
   onCreateCheckIn,
@@ -268,6 +285,7 @@ export function MobileAppShell({
   onCreateStaff,
   onDeleteCustomer,
   onDeleteCustomerGroup,
+  onDeleteAppointment,
   onDeleteService,
   onDeleteStaff,
   onFetchCustomerDetail,
@@ -315,16 +333,20 @@ export function MobileAppShell({
   onShareReferral,
   onShareReviewSurvey,
   onSignOut,
+  onUpdateAppointment,
   onUpdateCustomer,
   onUpdateCustomerGroup,
   onUpdateService,
   onUpdateStaff,
+  appointmentComposerCustomers,
+  appointmentComposerError,
   referrals,
   referralsError,
   reviews,
   reviewsError,
   services,
   servicesError,
+  onLoadAppointmentComposerResources,
 }: MobileAppShellProps) {
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
@@ -353,14 +375,23 @@ export function MobileAppShell({
 
           {activeTab === 'appointments' ? (
             <MobileScheduleScreen
+              composerCustomers={appointmentComposerCustomers}
+              composerError={appointmentComposerError}
               data={appointments}
               error={appointmentsError}
+              isComposerLoading={isAppointmentComposerLoading}
               isLoading={isAppointmentsLoading}
               isRefreshing={isAppointmentsRefreshing}
+              servicesSummary={services}
+              onCreateAppointment={onCreateAppointment}
+              onCreateAppointmentCustomer={onCreateAppointmentCustomer}
+              onDeleteAppointment={onDeleteAppointment}
               onJumpToToday={onJumpAppointmentsToToday}
+              onLoadComposerResources={onLoadAppointmentComposerResources}
               onNextDate={onNextAppointmentsDate}
               onPreviousDate={onPreviousAppointmentsDate}
               onRefresh={onRefreshAppointments}
+              onUpdateAppointment={onUpdateAppointment}
             />
           ) : null}
 

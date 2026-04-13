@@ -16,9 +16,11 @@ import {
   createMobileCustomer,
   createMobileCustomerGroup,
   createMobileCheckIn,
+  createMobileAppointment,
   ClientificApiError,
   deleteMobileService,
   deleteMobileStaff,
+  deleteMobileAppointment,
   confirmVerificationCode,
   deleteMobileCustomer,
   deleteMobileCustomerGroup,
@@ -46,6 +48,8 @@ import {
   MobileAiReceptionistUpdateInput,
   MobileAnalyticsRange,
   MobileAnalyticsSummary,
+  MobileAppointmentInput,
+  MobileAppointmentUpdateInput,
   MobileAppointmentsSummary,
   MobileBillingSummary,
   MobileBusinessHoursSummary,
@@ -53,6 +57,7 @@ import {
   MobileCustomerFilters,
   MobileCustomerGroupInput,
   MobileCustomerInput,
+  MobileCustomerRecord,
   MobileCheckInSubmissionInput,
   MobileCheckInsSummary,
   MobileCustomerViewSummary,
@@ -78,6 +83,7 @@ import {
   sendMobileCustomerMessage,
   unregisterMobilePushToken,
   updateMobileAiReceptionist,
+  updateMobileAppointment,
   updateMobileBusinessHours,
   updateMobileBusinessProfile,
   updateMobileCustomer,
@@ -144,6 +150,7 @@ export function ClientificNativeApp() {
   const [isRefreshingAiReceptionist, setIsRefreshingAiReceptionist] = useState(false);
   const [isSavingAiReceptionist, setIsSavingAiReceptionist] = useState(false);
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(false);
+  const [isLoadingAppointmentComposer, setIsLoadingAppointmentComposer] = useState(false);
   const [isRefreshingAppointments, setIsRefreshingAppointments] = useState(false);
   const [isLoadingCheckIns, setIsLoadingCheckIns] = useState(false);
   const [isRefreshingCheckIns, setIsRefreshingCheckIns] = useState(false);
@@ -175,6 +182,7 @@ export function ClientificNativeApp() {
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [aiReceptionistError, setAiReceptionistError] = useState<string | null>(null);
   const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
+  const [appointmentComposerError, setAppointmentComposerError] = useState<string | null>(null);
   const [businessProfileError, setBusinessProfileError] = useState<string | null>(null);
   const [checkInsError, setCheckInsError] = useState<string | null>(null);
   const [customerViewError, setCustomerViewError] = useState<string | null>(null);
@@ -206,6 +214,9 @@ export function ClientificNativeApp() {
   const [session, setSession] = useState<MobileLoginResponse | null>(null);
   const [aiReceptionist, setAiReceptionist] = useState<MobileAiReceptionistSummary | null>(null);
   const [appointments, setAppointments] = useState<MobileAppointmentsSummary | null>(null);
+  const [appointmentComposerCustomers, setAppointmentComposerCustomers] = useState<
+    MobileCustomerRecord[]
+  >([]);
   const [businessProfile, setBusinessProfile] = useState<MobileBusinessProfile | null>(null);
   const [checkIns, setCheckIns] = useState<MobileCheckInsSummary | null>(null);
   const [customerView, setCustomerView] = useState<MobileCustomerViewSummary | null>(null);
@@ -232,6 +243,7 @@ export function ClientificNativeApp() {
     setSession(null);
     setAiReceptionist(null);
     setAppointments(null);
+    setAppointmentComposerCustomers([]);
     setBusinessProfile(null);
     setCheckIns(null);
     setCustomerView(null);
@@ -253,6 +265,7 @@ export function ClientificNativeApp() {
     setAuthNotice(null);
     setAiReceptionistError(null);
     setAppointmentsError(null);
+    setAppointmentComposerError(null);
     setBusinessProfileError(null);
     setCheckInsError(null);
     setCustomerViewError(null);
@@ -384,6 +397,37 @@ export function ClientificNativeApp() {
         } else {
           setIsLoadingAppointments(false);
         }
+      }
+    },
+    [handleSessionError],
+  );
+
+  const loadAppointmentComposerResources = useCallback(
+    async (token: string) => {
+      setIsLoadingAppointmentComposer(true);
+
+      try {
+        const [customersResponse, servicesResponse] = await Promise.all([
+          fetchMobileCustomers(token, {
+            page: 1,
+            pageSize: 100,
+            search: '',
+          }),
+          fetchMobileServices(token),
+        ]);
+
+        setAppointmentComposerCustomers(customersResponse.customers);
+        setServices(servicesResponse);
+        setAppointmentComposerError(null);
+        setServicesError(null);
+      } catch (error) {
+        await handleSessionError(
+          error,
+          'Unable to load appointment booking resources.',
+          setAppointmentComposerError,
+        );
+      } finally {
+        setIsLoadingAppointmentComposer(false);
       }
     },
     [handleSessionError],
@@ -1454,6 +1498,169 @@ export function ClientificNativeApp() {
     }));
   }, []);
 
+  const handleCreateAppointmentCustomer = useCallback(
+    async (input: MobileCustomerInput) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        const response = await createMobileCustomer(session.token, input);
+        setAppointmentComposerCustomers((current) => {
+          const existing = current.find((customer) => customer.id === response.customer.id);
+          if (existing) {
+            return current.map((customer) =>
+              customer.id === response.customer.id ? response.customer : customer,
+            );
+          }
+
+          return [response.customer, ...current];
+        });
+
+        if (customers) {
+          await loadCustomers(session.token, {
+            page: customersPage,
+            search: customersSearchQuery,
+            filters: customerFilters,
+          });
+        }
+        await loadHome(session.token);
+        return response.customer;
+      } catch (error) {
+        await handleSessionError(
+          error,
+          'Unable to create the appointment customer.',
+          setAppointmentComposerError,
+        );
+        throw new Error(getReadableError(error, 'Unable to create the appointment customer.'));
+      }
+    },
+    [
+      customerFilters,
+      customers,
+      customersPage,
+      customersSearchQuery,
+      handleSessionError,
+      loadCustomers,
+      loadHome,
+      session,
+    ],
+  );
+
+  const handleCreateAppointment = useCallback(
+    async (input: MobileAppointmentInput) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await createMobileAppointment(session.token, input);
+        await Promise.all([
+          loadAppointments(session.token, appointmentsDate, true),
+          loadHome(session.token),
+          customers
+            ? loadCustomers(session.token, {
+                page: customersPage,
+                search: customersSearchQuery,
+                filters: customerFilters,
+              })
+            : Promise.resolve(),
+        ]);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to create the appointment.', setAppointmentsError);
+        throw new Error(getReadableError(error, 'Unable to create the appointment.'));
+      }
+    },
+    [
+      appointmentsDate,
+      customerFilters,
+      customers,
+      customersPage,
+      customersSearchQuery,
+      handleSessionError,
+      loadAppointments,
+      loadCustomers,
+      loadHome,
+      session,
+    ],
+  );
+
+  const handleUpdateAppointment = useCallback(
+    async (appointmentId: string, input: MobileAppointmentUpdateInput) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await updateMobileAppointment(session.token, appointmentId, input);
+        await Promise.all([
+          loadAppointments(session.token, appointmentsDate, true),
+          loadHome(session.token),
+          customers
+            ? loadCustomers(session.token, {
+                page: customersPage,
+                search: customersSearchQuery,
+                filters: customerFilters,
+              })
+            : Promise.resolve(),
+        ]);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to update the appointment.', setAppointmentsError);
+        throw new Error(getReadableError(error, 'Unable to update the appointment.'));
+      }
+    },
+    [
+      appointmentsDate,
+      customerFilters,
+      customers,
+      customersPage,
+      customersSearchQuery,
+      handleSessionError,
+      loadAppointments,
+      loadCustomers,
+      loadHome,
+      session,
+    ],
+  );
+
+  const handleDeleteAppointment = useCallback(
+    async (appointmentId: string) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await deleteMobileAppointment(session.token, appointmentId);
+        await Promise.all([
+          loadAppointments(session.token, appointmentsDate, true),
+          loadHome(session.token),
+          customers
+            ? loadCustomers(session.token, {
+                page: customersPage,
+                search: customersSearchQuery,
+                filters: customerFilters,
+              })
+            : Promise.resolve(),
+        ]);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to cancel the appointment.', setAppointmentsError);
+        throw new Error(getReadableError(error, 'Unable to cancel the appointment.'));
+      }
+    },
+    [
+      appointmentsDate,
+      customerFilters,
+      customers,
+      customersPage,
+      customersSearchQuery,
+      handleSessionError,
+      loadAppointments,
+      loadCustomers,
+      loadHome,
+      session,
+    ],
+  );
+
   const handleCreateCustomer = useCallback(
     async (input: MobileCustomerInput) => {
       if (!session) {
@@ -2127,6 +2334,8 @@ export function ClientificNativeApp() {
       aiReceptionistError={aiReceptionistError}
       analytics={analytics}
       analyticsError={analyticsError}
+      appointmentComposerCustomers={appointmentComposerCustomers}
+      appointmentComposerError={appointmentComposerError}
       appointments={appointments}
       appointmentsError={appointmentsError}
       billing={billing}
@@ -2155,6 +2364,7 @@ export function ClientificNativeApp() {
       isAiReceptionistSaving={isSavingAiReceptionist}
       isAnalyticsLoading={isLoadingAnalytics}
       isAnalyticsRefreshing={isRefreshingAnalytics}
+      isAppointmentComposerLoading={isLoadingAppointmentComposer}
       isAppointmentsLoading={isLoadingAppointments}
       isAppointmentsRefreshing={isRefreshingAppointments}
       isBillingLoading={isLoadingBilling}
@@ -2188,6 +2398,8 @@ export function ClientificNativeApp() {
       onChangeCustomersSearchDraft={setCustomersSearchDraft}
       onChangeMoreSection={handleChangeMoreSection}
       onChangeTab={setActiveTab}
+      onCreateAppointment={handleCreateAppointment}
+      onCreateAppointmentCustomer={handleCreateAppointmentCustomer}
       onCreateCustomer={handleCreateCustomer}
       onCreateCustomerGroup={handleCreateCustomerGroup}
       onCreateCheckIn={handleCreateCheckIn}
@@ -2195,6 +2407,7 @@ export function ClientificNativeApp() {
       onCreateStaff={handleCreateStaff}
       onDeleteCustomer={handleDeleteCustomer}
       onDeleteCustomerGroup={handleDeleteCustomerGroup}
+      onDeleteAppointment={handleDeleteAppointment}
       onDeleteService={handleDeleteService}
       onDeleteStaff={handleDeleteStaff}
       onFetchCustomerDetail={handleFetchCustomerDetail}
@@ -2204,6 +2417,12 @@ export function ClientificNativeApp() {
       onJumpAppointmentsToToday={jumpAppointmentsToToday}
       onLookupCheckIn={handleLookupCheckIn}
       onLookupRedeemCode={handleLookupRedeemCode}
+      onLoadAppointmentComposerResources={async () => {
+        if (!session) {
+          throw new Error('Sign in again to continue.');
+        }
+        await loadAppointmentComposerResources(session.token);
+      }}
       onNextCheckInsDate={goToNextCheckInsDate}
       onNextAppointmentsDate={goToNextAppointmentsDate}
       onNextCustomersPage={goToNextCustomersPage}
@@ -2242,6 +2461,7 @@ export function ClientificNativeApp() {
       onShareReferral={shareReferral}
       onShareReviewSurvey={shareReviewSurvey}
       onSignOut={signOut}
+      onUpdateAppointment={handleUpdateAppointment}
       onUpdateCustomer={handleUpdateCustomer}
       onUpdateCustomerGroup={handleUpdateCustomerGroup}
       onUpdateService={handleUpdateService}

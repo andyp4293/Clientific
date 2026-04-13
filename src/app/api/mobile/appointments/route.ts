@@ -3,10 +3,18 @@ import { prisma } from '@/lib/prisma';
 import { businessDayStart } from '@/lib/timezone';
 import { getBearerToken, verifyMobileSessionToken } from '@/lib/mobile-session';
 import { isBusinessOnboardingComplete } from '@/lib/onboarding';
+import { sendAppointmentConfirmation } from '@/lib/twilio';
+import { requireActiveSubscription } from '@/lib/subscription';
+import { getConfiguredAppBaseUrl } from '@/lib/app-url';
+import { validateBusinessHoursForAppointment } from '@/lib/business-hours-validation';
+import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
+import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
 import {
   collectAppointmentServiceIds,
   withAppointmentServiceDisplay,
 } from '@/lib/appointment-services';
+import { scheduleAppointmentReminder } from '@/lib/appointment-reminders';
+import { ensureAppointmentShortId } from '@/lib/appointment-short-id';
 
 function formatLocalDate(date: Date, timezone: string) {
   return new Intl.DateTimeFormat('en-CA', {
@@ -50,6 +58,18 @@ function formatSourceLabel(source: string) {
   if (source === 'online_booking') return 'Online booking';
   if (source === 'public_booking') return 'Public booking';
   return formatStatusLabel(source);
+}
+
+function canSendAppointmentSms(customer: {
+  phone: string | null;
+  smsConsent: boolean;
+  smsOptedOut: boolean;
+}) {
+  return Boolean(customer.phone) && customer.smsConsent && !customer.smsOptedOut;
+}
+
+function isReminderEligibleStatus(status: string) {
+  return ['scheduled', 'confirmed'].includes(status);
 }
 
 export async function GET(request: Request) {
@@ -160,19 +180,301 @@ export async function GET(request: Request) {
       },
       appointments: appointmentsWithServices.map((appointment) => ({
         id: appointment.id,
+        customerId: appointment.customer.id,
         customerName: appointment.customer.name,
+        serviceId: appointment.service?.id ?? null,
         serviceName: appointment.serviceDisplayName || appointment.service?.name || 'Service',
+        staffId: appointment.staff?.id ?? null,
         staffName: appointment.staff?.fullName ?? null,
         status: appointment.status,
         statusLabel: formatStatusLabel(appointment.status),
+        startTime: appointment.startTime.toISOString(),
         startTimeLabel: formatTimeLabel(appointment.startTime.toISOString(), business.timezone),
         endTimeLabel: formatTimeLabel(appointment.endTime.toISOString(), business.timezone),
+        duration: appointment.duration,
+        source: appointment.source,
         sourceLabel: formatSourceLabel(appointment.source),
         notes: appointment.notes,
+        canConfirm: appointment.status === 'pending',
+        canModify: ['pending', 'scheduled', 'confirmed'].includes(appointment.status),
       })),
     });
   } catch (error) {
     console.error('GET /api/mobile/appointments error:', error);
     return NextResponse.json({ error: 'Unable to load mobile appointments' }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  const token = getBearerToken(request);
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    let session: Awaited<ReturnType<typeof verifyMobileSessionToken>>;
+    try {
+      session = await verifyMobileSessionToken(token);
+    } catch {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const subscriptionError = await requireActiveSubscription(session.businessId);
+    if (subscriptionError) {
+      return subscriptionError;
+    }
+
+    const business = await prisma.business.findUnique({
+      where: { id: session.businessId },
+      select: {
+        id: true,
+        name: true,
+        timezone: true,
+        vapiPhoneNumber: true,
+        businessHours: { select: { hours: true } },
+        closureDates: {
+          select: {
+            date: true,
+            label: true,
+          },
+        },
+      },
+    });
+
+    if (!business) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const {
+      customerId,
+      serviceId,
+      staffId,
+      startTime,
+      duration,
+      notes,
+      appointmentSmsConsent,
+    } = await request.json();
+
+    if (!customerId || !startTime || !duration) {
+      return NextResponse.json(
+        { error: 'Customer, start time, and duration are required' },
+        { status: 400 },
+      );
+    }
+
+    const blockedField = getBlockedFieldLabel([{ label: 'Notes', value: notes }]);
+    if (blockedField) {
+      return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
+    }
+
+    const start = new Date(startTime);
+    const appointmentDuration = Number(duration);
+    const end = new Date(start.getTime() + appointmentDuration * 60000);
+
+    const businessHoursError = validateBusinessHoursForAppointment({
+      startTime: start,
+      endTime: end,
+      timezone: business.timezone,
+      businessHours: business.businessHours?.hours,
+      closureDates: business.closureDates,
+    });
+
+    if (businessHoursError) {
+      return NextResponse.json(
+        { error: businessHoursError.error },
+        { status: businessHoursError.status },
+      );
+    }
+
+    if (staffId) {
+      const staffError = await validateBookableStaffSelection({
+        staffId,
+        businessId: business.id,
+        serviceIds: serviceId ? [serviceId] : [],
+        businessHours: business.businessHours?.hours,
+        timezone: business.timezone,
+        startTime: start,
+        endTime: end,
+      });
+
+      if (staffError) {
+        return NextResponse.json({ error: staffError.error }, { status: staffError.status });
+      }
+    }
+
+    if (staffId) {
+      const conflicts = await prisma.appointment.findMany({
+        where: {
+          businessId: business.id,
+          staffId,
+          status: {
+            in: ['scheduled', 'confirmed'],
+          },
+          OR: [
+            {
+              AND: [{ startTime: { lte: start } }, { endTime: { gt: start } }],
+            },
+            {
+              AND: [{ startTime: { lt: end } }, { endTime: { gte: end } }],
+            },
+            {
+              AND: [{ startTime: { gte: start } }, { endTime: { lte: end } }],
+            },
+          ],
+        },
+      });
+
+      if (conflicts.length > 0) {
+        return NextResponse.json({ error: 'Time slot is not available' }, { status: 409 });
+      }
+    }
+
+    if (appointmentSmsConsent === true) {
+      const manualConsentCustomer = await prisma.customer.findFirst({
+        where: {
+          id: customerId,
+          businessId: business.id,
+        },
+        select: {
+          id: true,
+          phone: true,
+        },
+      });
+
+      if (!manualConsentCustomer) {
+        return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
+      }
+
+      if (!manualConsentCustomer.phone) {
+        return NextResponse.json(
+          { error: 'Customer needs a phone number before appointment texts can be enabled' },
+          { status: 400 },
+        );
+      }
+    }
+
+    const appointment = await prisma.appointment.create({
+      data: {
+        businessId: business.id,
+        customerId,
+        serviceId: serviceId || null,
+        staffId: staffId || null,
+        startTime: start,
+        endTime: end,
+        duration: appointmentDuration,
+        notes: notes || null,
+        status: 'scheduled',
+        source: 'dashboard',
+      },
+      include: {
+        customer: true,
+        service: true,
+        staff: true,
+      },
+    });
+
+    let manualConsentApplied = false;
+    if (appointmentSmsConsent === true && appointment.customer.phone) {
+      await prisma.customer.update({
+        where: { id: appointment.customer.id },
+        data: {
+          smsConsent: true,
+          smsOptedOut: false,
+          smsOptedOutAt: null,
+        },
+      });
+
+      await prisma.smsConsentEvent.create({
+        data: {
+          businessId: business.id,
+          customerId: appointment.customer.id,
+          phone: appointment.customer.phone,
+          eventType: 'MANUAL_APPOINTMENT_OPT_IN',
+          source: 'mobile_appointment',
+          metadata: {
+            consentType: 'transactional',
+            consentMethod: 'verbal',
+            channel: 'mobile-appointments',
+            appointmentId: appointment.id,
+            appointmentStartTime: appointment.startTime.toISOString(),
+          },
+        },
+      });
+
+      manualConsentApplied = true;
+    }
+
+    const canSendTransactionalSms =
+      Boolean(appointment.customer.phone) &&
+      (appointment.customer.smsConsent || manualConsentApplied) &&
+      !appointment.customer.smsOptedOut;
+
+    if (canSendTransactionalSms && appointment.customer.phone) {
+      const shortId = await ensureAppointmentShortId(appointment.id, appointment.shortId);
+      const appBase = getConfiguredAppBaseUrl();
+      const appointmentUrl = shortId ? `${appBase}/a/${shortId}` : undefined;
+
+      await sendAppointmentConfirmation(appointment.customer.phone, {
+        customerName: appointment.customer.name,
+        serviceName: appointment.service?.name || 'Appointment',
+        staffName: appointment.staff?.fullName || 'our team',
+        dateTime: appointment.startTime,
+        businessName: business.name,
+        appointmentUrl,
+        timezone: business.timezone ?? undefined,
+        senderPhone: business.vapiPhoneNumber,
+      }).catch((error) => {
+        console.warn('Mobile appointment confirmation SMS failed:', error);
+      });
+
+      if (isReminderEligibleStatus(appointment.status)) {
+        const reminderResult = await scheduleAppointmentReminder(appointment.customer.phone, {
+          customerName: appointment.customer.name,
+          serviceName: appointment.service?.name || 'Appointment',
+          staffName: appointment.staff?.fullName || 'our team',
+          dateTime: appointment.startTime,
+          businessName: business.name,
+          appointmentUrl,
+          timezone: business.timezone ?? undefined,
+          senderPhone: business.vapiPhoneNumber,
+        });
+
+        if (reminderResult.success) {
+          await prisma.appointment.update({
+            where: { id: appointment.id },
+            data: { reminderSent: true },
+          });
+        }
+      }
+    }
+
+    return NextResponse.json(
+      {
+        appointment: {
+          id: appointment.id,
+          customerId: appointment.customer.id,
+          customerName: appointment.customer.name,
+          serviceId: appointment.service?.id ?? null,
+          serviceName: appointment.service?.name ?? 'Service',
+          staffId: appointment.staff?.id ?? null,
+          staffName: appointment.staff?.fullName ?? null,
+          status: appointment.status,
+          statusLabel: formatStatusLabel(appointment.status),
+          startTime: appointment.startTime.toISOString(),
+          startTimeLabel: formatTimeLabel(appointment.startTime.toISOString(), business.timezone),
+          endTimeLabel: formatTimeLabel(appointment.endTime.toISOString(), business.timezone),
+          duration: appointment.duration,
+          source: appointment.source,
+          sourceLabel: formatSourceLabel(appointment.source),
+          notes: appointment.notes,
+          canConfirm: appointment.status === 'pending',
+          canModify: ['pending', 'scheduled', 'confirmed'].includes(appointment.status),
+        },
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    console.error('POST /api/mobile/appointments error:', error);
+    return NextResponse.json({ error: 'Unable to create mobile appointment' }, { status: 500 });
   }
 }

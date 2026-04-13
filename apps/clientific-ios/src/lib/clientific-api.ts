@@ -43,15 +43,40 @@ export type MobileTodayAppointment = {
 
 export type MobileAppointmentEntry = {
   id: string;
+  customerId: string;
   customerName: string;
+  serviceId: string | null;
   serviceName: string;
+  staffId: string | null;
   staffName: string | null;
   status: string;
   statusLabel: string;
+  startTime: string;
   startTimeLabel: string;
   endTimeLabel: string;
+  duration: number;
+  source: string;
   sourceLabel: string;
   notes: string | null;
+  canConfirm: boolean;
+  canModify: boolean;
+};
+
+export type MobileAppointmentInput = {
+  customerId: string;
+  serviceId?: string | null;
+  staffId?: string | null;
+  startTime: string;
+  duration: number;
+  notes?: string | null;
+  appointmentSmsConsent?: boolean;
+};
+
+export type MobileAppointmentUpdateInput = {
+  startTime?: string;
+  duration?: number;
+  notes?: string | null;
+  status?: string;
 };
 
 export type MobileHomeSummary = {
@@ -732,6 +757,47 @@ export async function fetchMobileAppointments(
       },
     },
   );
+}
+
+export async function createMobileAppointment(
+  token: string,
+  input: MobileAppointmentInput,
+) {
+  return requestJson<{ appointment: MobileAppointmentEntry }>('/api/mobile/appointments', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateMobileAppointment(
+  token: string,
+  appointmentId: string,
+  input: MobileAppointmentUpdateInput,
+) {
+  return requestJson<{ appointment: MobileAppointmentEntry }>(
+    `/api/mobile/appointments/${appointmentId}`,
+    {
+      method: 'PATCH',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+export async function deleteMobileAppointment(token: string, appointmentId: string) {
+  return requestJson<{ success: true }>(`/api/mobile/appointments/${appointmentId}`, {
+    method: 'DELETE',
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
 }
 
 export async function fetchMobileDeals(token: string) {
