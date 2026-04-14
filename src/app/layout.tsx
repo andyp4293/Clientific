@@ -1,5 +1,6 @@
 ﻿import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/react';
 import './globals.css';
 import { APP_NAME } from '@/lib/brand';
 import { AuthProvider } from '@/components/providers/AuthProvider';
@@ -52,6 +53,7 @@ export default function RootLayout({
             <AuthProvider>{children}</AuthProvider>
           </QueryProvider>
         </ThemeProvider>
+        <Analytics />
         <ServiceWorkerRegistration />
       </body>
     </html>
