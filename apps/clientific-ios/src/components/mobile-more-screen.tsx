@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  useColorScheme,
   View,
 } from 'react-native';
 import type {
@@ -52,6 +51,11 @@ import {
   APP_TERMS_URL,
 } from '@/lib/clientific-brand';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
+import {
+  type ClientificThemePreference,
+  useClientificThemePreference,
+} from '@/lib/clientific-theme-preference';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export type MobileMoreSection =
   | 'menu'
@@ -178,6 +182,28 @@ const MENU_SECTION_LABELS: Record<MobileMoreMenuSection, string> = {
   growth: 'Growth',
   account: 'Account',
 };
+
+const THEME_OPTIONS: Array<{
+  description: string;
+  label: string;
+  value: ClientificThemePreference;
+}> = [
+  {
+    label: 'System',
+    value: 'system',
+    description: 'Follow the iPhone appearance automatically.',
+  },
+  {
+    label: 'Light',
+    value: 'light',
+    description: 'Keep the app bright all the time.',
+  },
+  {
+    label: 'Dark',
+    value: 'dark',
+    description: 'Use the darker app theme all the time.',
+  },
+];
 
 const MENU_ITEMS: MobileMoreMenuItem[] = [
   {
@@ -358,6 +384,7 @@ export function MobileMoreScreen({
 }: MobileMoreScreenProps) {
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
+  const { themePreference, setThemePreference } = useClientificThemePreference();
 
   if (activeSection === 'menu') {
     return (
@@ -395,6 +422,62 @@ export function MobileMoreScreen({
                 </Text>
               </View>
             ) : null}
+          </View>
+        </View>
+
+        <View
+          style={[
+            styles.appearanceCard,
+            { backgroundColor: theme.surface, borderColor: theme.border },
+          ]}
+          testID="mobile-more-appearance-card">
+          <Text style={[styles.appearanceEyebrow, { color: theme.accent }]}>Appearance</Text>
+          <Text style={[styles.appearanceTitle, { color: theme.text }]}>Theme mode</Text>
+          <Text style={[styles.appearanceSubtitle, { color: theme.mutedText }]}>
+            Match the web app with light, dark, or automatic system mode.
+          </Text>
+          <View style={styles.appearanceOptions}>
+            {THEME_OPTIONS.map((option) => {
+              const isSelected = themePreference === option.value;
+
+              return (
+                <Pressable
+                  key={option.value}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                  onPress={() => void setThemePreference(option.value)}
+                  style={[
+                    styles.appearanceOption,
+                    {
+                      backgroundColor: isSelected ? theme.accentSoft : theme.surfaceMuted,
+                      borderColor: isSelected ? theme.accent : theme.border,
+                    },
+                  ]}
+                  testID={`mobile-theme-option-${option.value}`}>
+                  <View style={styles.appearanceOptionHeader}>
+                    <Text
+                      style={[
+                        styles.appearanceOptionLabel,
+                        { color: isSelected ? theme.accent : theme.text },
+                      ]}>
+                      {option.label}
+                    </Text>
+                    {isSelected ? (
+                      <View
+                        style={[
+                          styles.appearanceOptionBadge,
+                          { backgroundColor: theme.accent },
+                        ]}>
+                        <Text style={styles.appearanceOptionBadgeText}>Active</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <Text style={[styles.appearanceOptionDescription, { color: theme.mutedText }]}>
+                    {option.description}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
@@ -755,6 +838,67 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 22,
     gap: 8,
+  },
+  appearanceCard: {
+    borderWidth: 1,
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    gap: 12,
+  },
+  appearanceEyebrow: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '800',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  appearanceTitle: {
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: '800',
+  },
+  appearanceSubtitle: {
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  appearanceOptions: {
+    gap: 10,
+  },
+  appearanceOption: {
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 6,
+  },
+  appearanceOptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  appearanceOptionLabel: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '800',
+  },
+  appearanceOptionDescription: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  appearanceOptionBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  appearanceOptionBadgeText: {
+    color: '#f8fffc',
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   accountEyebrow: {
     fontSize: 12,

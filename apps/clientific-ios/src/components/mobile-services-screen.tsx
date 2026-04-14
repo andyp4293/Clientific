@@ -12,7 +12,6 @@ import {
   Switch,
   Text,
   TextInput,
-  useColorScheme,
   View,
 } from 'react-native';
 import type {
@@ -26,6 +25,7 @@ import type {
   MobileStaffWorkHours,
 } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type MobileServicesScreenProps = {
   data: MobileServicesSummary | null;

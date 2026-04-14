@@ -5,7 +5,6 @@ import {
   Share,
   StyleSheet,
   Text,
-  useColorScheme,
   View,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
@@ -97,6 +96,7 @@ import {
 } from '@/lib/clientific-api';
 import { APP_PRIVACY_URL, APP_TERMS_URL } from '@/lib/clientific-brand';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   addPushNotificationResponseListener,
   registerForPushNotificationsAsync,

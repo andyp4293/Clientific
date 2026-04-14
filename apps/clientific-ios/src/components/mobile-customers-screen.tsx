@@ -12,7 +12,6 @@ import {
   Switch,
   Text,
   TextInput,
-  useColorScheme,
   View,
 } from 'react-native';
 import type {
@@ -28,6 +27,7 @@ import type {
   MobileCustomerVisitFilter,
 } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type CustomersTab = 'customers' | 'groups';
 type CustomerDetailTab = 'overview' | 'history' | 'messages';

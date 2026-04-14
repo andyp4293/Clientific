@@ -1,10 +1,21 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { useColorScheme } from 'react-native';
+import * as SystemUI from 'expo-system-ui';
+import { useEffect } from 'react';
+import {
+  ClientificThemePreferenceProvider,
+  useClientificColorScheme,
+} from '@/lib/clientific-theme-preference';
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+function ClientificAppLayout() {
+  const colorScheme = useClientificColorScheme();
+
+  useEffect(() => {
+    void SystemUI.setBackgroundColorAsync(
+      colorScheme === 'dark' ? '#07131f' : '#f3f8f7',
+    );
+  }, [colorScheme]);
 
   return (
     <>
@@ -19,5 +30,13 @@ export default function TabLayout() {
         }}
       />
     </>
+  );
+}
+
+export default function TabLayout() {
+  return (
+    <ClientificThemePreferenceProvider>
+      <ClientificAppLayout />
+    </ClientificThemePreferenceProvider>
   );
 }

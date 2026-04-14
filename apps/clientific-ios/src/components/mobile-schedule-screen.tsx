@@ -11,7 +11,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  useColorScheme,
   View,
 } from 'react-native';
 import type {
@@ -26,6 +25,7 @@ import type {
   MobileStaffRecord,
 } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type MobileScheduleScreenProps = {
   composerCustomers: MobileCustomerRecord[];

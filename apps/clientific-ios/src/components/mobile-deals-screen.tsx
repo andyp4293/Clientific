@@ -7,7 +7,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  useColorScheme,
   View,
 } from 'react-native';
 import {
@@ -16,6 +15,7 @@ import {
   type MobileDealsSummary,
 } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type MobileDealsScreenProps = {
   data: MobileDealsSummary | null;

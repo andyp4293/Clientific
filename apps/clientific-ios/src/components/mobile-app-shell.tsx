@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type {
   MobileAiReceptionistUpdateInput,
@@ -38,6 +38,7 @@ import type {
   MobileStaffInput,
 } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { MobileCustomersScreen } from '@/components/mobile-customers-screen';
 import { MobileDealsScreen } from '@/components/mobile-deals-screen';
 import { MobileHomeScreen } from '@/components/mobile-home-screen';

@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  useColorScheme,
   View,
 } from 'react-native';
 import type {
@@ -16,6 +15,7 @@ import type {
   MobileAiReceptionistUpdateInput,
 } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type MobileAiReceptionistScreenProps = {
   data: MobileAiReceptionistSummary | null;

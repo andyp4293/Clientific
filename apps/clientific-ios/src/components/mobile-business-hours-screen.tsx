@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  useColorScheme,
   View,
 } from 'react-native';
 import type {
@@ -15,6 +14,7 @@ import type {
   MobileBusinessHoursUpdateInput,
 } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type MobileBusinessHoursScreenProps = {
   data: MobileBusinessHoursSummary | null;

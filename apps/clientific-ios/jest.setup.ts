@@ -60,4 +60,22 @@ jest.mock('expo-notifications', () => ({
   })),
 }));
 
+let mockSecureStoreState: Record<string, string> = {};
+
+jest.mock('expo-secure-store', () => ({
+  getItemAsync: jest.fn(async (key: string) => mockSecureStoreState[key] ?? null),
+  setItemAsync: jest.fn(async (key: string, value: string) => {
+    mockSecureStoreState[key] = value;
+  }),
+  deleteItemAsync: jest.fn(async (key: string) => {
+    delete mockSecureStoreState[key];
+  }),
+  __reset() {
+    mockSecureStoreState = {};
+  },
+  __setItem(key: string, value: string) {
+    mockSecureStoreState[key] = value;
+  },
+}));
+
 export {};

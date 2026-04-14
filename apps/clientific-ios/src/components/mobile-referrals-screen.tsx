@@ -7,12 +7,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  useColorScheme,
   View,
 } from 'react-native';
 import type { MobileBusiness, MobileReferralsSummary } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
 import { buildReferralInviteUrl } from '@/lib/referral-links';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type MobileReferralsScreenProps = {
   business: MobileBusiness;
@@ -67,7 +67,7 @@ export function MobileReferralsScreen({
           { backgroundColor: theme.surface, borderColor: theme.border },
         ]}>
         <Text style={[styles.eyebrow, { color: theme.accent }]}>Referrals</Text>
-        <Text style={[styles.heroTitle, { color: theme.text }]}>Grow through word of mouth</Text>
+        <Text style={[styles.heroTitle, { color: theme.text }]}>Share your referral invite</Text>
         <Text style={[styles.heroSubtitle, { color: theme.mutedText }]}>
           Share one business invite, track every signup, and keep an eye on recurring earnings.
         </Text>

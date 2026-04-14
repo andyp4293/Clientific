@@ -6,11 +6,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  useColorScheme,
   View,
 } from 'react-native';
 import type { MobileCustomerViewSummary } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type MobileCustomerViewScreenProps = {
   data: MobileCustomerViewSummary | null;

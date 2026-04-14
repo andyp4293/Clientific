@@ -1,1 +1,1 @@
-export { useColorScheme } from 'react-native';
+export { useClientificColorScheme as useColorScheme } from '@/lib/clientific-theme-preference';

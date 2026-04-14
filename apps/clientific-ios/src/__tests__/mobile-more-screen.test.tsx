@@ -1,6 +1,15 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import * as SecureStore from 'expo-secure-store';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { MobileMoreScreen } from '@/components/mobile-more-screen';
+import {
+  CLIENTIFIC_THEME_PREFERENCE_KEY,
+  ClientificThemePreferenceProvider,
+} from '@/lib/clientific-theme-preference';
+
+const secureStoreMock = SecureStore as typeof SecureStore & {
+  __reset: () => void;
+};
 
 const business = {
   id: 'biz-1',
@@ -350,9 +359,21 @@ function createProps(
   };
 }
 
+function renderWithThemeProvider(
+  ui: React.ReactElement,
+) {
+  return render(
+    <ClientificThemePreferenceProvider>{ui}</ClientificThemePreferenceProvider>,
+  );
+}
+
 describe('MobileMoreScreen', () => {
+  beforeEach(() => {
+    secureStoreMock.__reset();
+  });
+
   it('shows the fuller grouped menu from the web app', () => {
-    render(<MobileMoreScreen {...createProps()} />);
+    renderWithThemeProvider(<MobileMoreScreen {...createProps()} />);
 
     expect(screen.getByText('Operations')).toBeTruthy();
     expect(screen.getByText('Growth')).toBeTruthy();
@@ -377,7 +398,7 @@ describe('MobileMoreScreen', () => {
   it('routes AI receptionist inside the native menu flow', () => {
     const onChangeSection = jest.fn();
 
-    render(<MobileMoreScreen {...createProps({ onChangeSection })} />);
+    renderWithThemeProvider(<MobileMoreScreen {...createProps({ onChangeSection })} />);
 
     fireEvent.press(screen.getByTestId('mobile-more-menu-ai-receptionist'));
     expect(onChangeSection).toHaveBeenCalledWith('aiReceptionist');
@@ -386,7 +407,7 @@ describe('MobileMoreScreen', () => {
   it('opens privacy, terms, and support links from the menu', () => {
     const onOpenExternalUrl = jest.fn().mockResolvedValue(undefined);
 
-    render(<MobileMoreScreen {...createProps({ onOpenExternalUrl })} />);
+    renderWithThemeProvider(<MobileMoreScreen {...createProps({ onOpenExternalUrl })} />);
 
     fireEvent.press(screen.getByTestId('mobile-more-privacy-policy'));
     fireEvent.press(screen.getByTestId('mobile-more-terms-of-service'));
@@ -398,30 +419,71 @@ describe('MobileMoreScreen', () => {
   });
 
   it('renders the settings editor when settings is selected', () => {
-    render(<MobileMoreScreen {...createProps({ activeSection: 'settings' })} />);
+    renderWithThemeProvider(
+      <MobileMoreScreen {...createProps({ activeSection: 'settings' })} />,
+    );
 
     expect(screen.getByText('Business settings')).toBeTruthy();
     expect(screen.getByText('Save changes')).toBeTruthy();
   });
 
   it('renders native billing tools when billing is selected', () => {
-    render(<MobileMoreScreen {...createProps({ activeSection: 'billing' })} />);
+    renderWithThemeProvider(
+      <MobileMoreScreen {...createProps({ activeSection: 'billing' })} />,
+    );
 
     expect(screen.getByText('Plan and invoices')).toBeTruthy();
     expect(screen.getByTestId('mobile-billing-open-portal')).toBeTruthy();
   });
 
   it('renders native AI receptionist tools when selected', () => {
-    render(<MobileMoreScreen {...createProps({ activeSection: 'aiReceptionist' })} />);
+    renderWithThemeProvider(
+      <MobileMoreScreen {...createProps({ activeSection: 'aiReceptionist' })} />,
+    );
 
     expect(screen.getByText('Calls, SMS, and handoff settings')).toBeTruthy();
     expect(screen.getByTestId('mobile-ai-toggle')).toBeTruthy();
   });
 
   it('renders native customer view tools when selected', () => {
-    render(<MobileMoreScreen {...createProps({ activeSection: 'customerView' })} />);
+    renderWithThemeProvider(
+      <MobileMoreScreen {...createProps({ activeSection: 'customerView' })} />,
+    );
 
     expect(screen.getByText('Public links and previews')).toBeTruthy();
     expect(screen.getByTestId('mobile-customer-view-booking-share')).toBeTruthy();
+  });
+
+  it('lets the user switch between system, light, and dark appearance modes', async () => {
+    renderWithThemeProvider(<MobileMoreScreen {...createProps()} />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('mobile-theme-option-system').props.accessibilityState.selected,
+      ).toBe(true),
+    );
+
+    fireEvent.press(screen.getByTestId('mobile-theme-option-dark'));
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('mobile-theme-option-dark').props.accessibilityState.selected,
+      ).toBe(true),
+    );
+    expect(secureStoreMock.setItemAsync).toHaveBeenCalledWith(
+      CLIENTIFIC_THEME_PREFERENCE_KEY,
+      'dark',
+    );
+
+    fireEvent.press(screen.getByTestId('mobile-theme-option-system'));
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('mobile-theme-option-system').props.accessibilityState.selected,
+      ).toBe(true),
+    );
+    expect(secureStoreMock.deleteItemAsync).toHaveBeenCalledWith(
+      CLIENTIFIC_THEME_PREFERENCE_KEY,
+    );
   });
 });
