@@ -22,7 +22,7 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 vi.mock('@/lib/twilio-keyword-sync', () => ({
-  syncRecentTwilioKeywordMessages: vi.fn(),
+  startRecentTwilioKeywordSync: vi.fn(),
 }));
 
 const { mockRedirect } = vi.hoisted(() => ({
@@ -48,20 +48,20 @@ vi.mock('@/components/customers/CustomerList', () => ({
 
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-import { syncRecentTwilioKeywordMessages } from '@/lib/twilio-keyword-sync';
+import { startRecentTwilioKeywordSync } from '@/lib/twilio-keyword-sync';
 import CustomersPage from './page';
 
 const mockGetServerSession = getServerSession as unknown as ReturnType<typeof vi.fn>;
 const mockCount = prisma.customer.count as ReturnType<typeof vi.fn>;
 const mockFindMany = prisma.customer.findMany as ReturnType<typeof vi.fn>;
 const mockGroupFindMany = prisma.customerGroup.findMany as ReturnType<typeof vi.fn>;
-const mockSyncRecentTwilioKeywordMessages =
-  syncRecentTwilioKeywordMessages as ReturnType<typeof vi.fn>;
+const mockStartRecentTwilioKeywordSync =
+  startRecentTwilioKeywordSync as ReturnType<typeof vi.fn>;
 
 describe('CustomersPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSyncRecentTwilioKeywordMessages.mockResolvedValue(undefined);
+    mockStartRecentTwilioKeywordSync.mockImplementation(() => undefined);
     mockCount.mockResolvedValue(0);
     mockFindMany.mockResolvedValue([]);
     mockGroupFindMany.mockResolvedValue([]);
@@ -94,7 +94,7 @@ describe('CustomersPage', () => {
       }),
     } as any);
 
-    expect(mockSyncRecentTwilioKeywordMessages).toHaveBeenCalledTimes(1);
+    expect(mockStartRecentTwilioKeywordSync).toHaveBeenCalledTimes(1);
     expect(mockCount).toHaveBeenCalledWith({
       where: {
         businessId: 'biz-1',
@@ -173,5 +173,27 @@ describe('CustomersPage', () => {
       totalCustomers: 68,
       totalPages: 3,
     });
+  });
+
+  it('still renders when the background sync starter throws', async () => {
+    mockGetServerSession.mockResolvedValue({
+      user: { businessId: 'biz-1' },
+    });
+    mockStartRecentTwilioKeywordSync.mockImplementation(() => {
+      throw new Error('twilio slow');
+    });
+
+    const page = await CustomersPage({
+      searchParams: Promise.resolve({}),
+    } as any);
+
+    const customerListElement = (page as any).props.children[1];
+    expect(customerListElement.props).toMatchObject({
+      initialTab: 'customers',
+      currentPage: 1,
+      totalCustomers: 0,
+      totalPages: 1,
+    });
+    expect(mockFindMany).toHaveBeenCalledTimes(1);
   });
 });

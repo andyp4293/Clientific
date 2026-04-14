@@ -14,18 +14,18 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 vi.mock('@/lib/twilio-keyword-sync', () => ({
-  syncRecentTwilioKeywordMessages: vi.fn(),
+  startRecentTwilioKeywordSync: vi.fn(),
 }));
 
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-import { syncRecentTwilioKeywordMessages } from '@/lib/twilio-keyword-sync';
+import { startRecentTwilioKeywordSync } from '@/lib/twilio-keyword-sync';
 import { GET } from './route';
 
 const mockGetServerSession = getServerSession as ReturnType<typeof vi.fn>;
 const mockFindCustomers = prisma.customer.findMany as ReturnType<typeof vi.fn>;
-const mockSyncRecentTwilioKeywordMessages =
-  syncRecentTwilioKeywordMessages as ReturnType<typeof vi.fn>;
+const mockStartRecentTwilioKeywordSync =
+  startRecentTwilioKeywordSync as ReturnType<typeof vi.fn>;
 
 describe('GET /api/customers', () => {
   beforeEach(() => {
@@ -35,15 +35,29 @@ describe('GET /api/customers', () => {
         businessId: 'biz-1',
       },
     });
-    mockSyncRecentTwilioKeywordMessages.mockResolvedValue(undefined);
+    mockStartRecentTwilioKeywordSync.mockImplementation(() => undefined);
     mockFindCustomers.mockResolvedValue([]);
   });
 
-  it('reconciles missed Twilio keyword events before returning customers', async () => {
+  it('starts background keyword sync before returning customers', async () => {
     const response = await GET(new Request('https://www.clientific.app/api/customers'));
 
     expect(response.status).toBe(200);
-    expect(mockSyncRecentTwilioKeywordMessages).toHaveBeenCalledTimes(1);
+    expect(mockStartRecentTwilioKeywordSync).toHaveBeenCalledTimes(1);
+    expect(mockFindCustomers).toHaveBeenCalledTimes(1);
+  });
+
+  it('still returns customers when the background sync starter throws', async () => {
+    mockStartRecentTwilioKeywordSync.mockImplementation(() => {
+      throw new Error('twilio slow');
+    });
+
+    const response = await GET(new Request('https://www.clientific.app/api/customers'));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      customers: [],
+    });
     expect(mockFindCustomers).toHaveBeenCalledTimes(1);
   });
 });

@@ -217,3 +217,9 @@ export async function syncRecentTwilioKeywordMessages(options?: { force?: boolea
 
   return keywordSyncInFlight;
 }
+
+export function startRecentTwilioKeywordSync() {
+  void syncRecentTwilioKeywordMessages().catch((error) => {
+    console.error('[twilio-keyword-sync] Background keyword sync failed:', error);
+  });
+}

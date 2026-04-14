@@ -28,12 +28,12 @@ vi.mock('@/lib/subscription', () => ({
   }),
 }));
 vi.mock('@/lib/twilio-keyword-sync', () => ({
-  syncRecentTwilioKeywordMessages: vi.fn(),
+  startRecentTwilioKeywordSync: vi.fn(),
 }));
 
 import { requireMobileSession } from '@/lib/mobile-route';
 import { prisma } from '@/lib/prisma';
-import { syncRecentTwilioKeywordMessages } from '@/lib/twilio-keyword-sync';
+import { startRecentTwilioKeywordSync } from '@/lib/twilio-keyword-sync';
 import { GET, POST } from './route';
 
 const mockRequireMobileSession = requireMobileSession as ReturnType<typeof vi.fn>;
@@ -43,13 +43,13 @@ const mockFindCustomers = prisma.customer.findMany as ReturnType<typeof vi.fn>;
 const mockCreateCustomer = prisma.customer.create as ReturnType<typeof vi.fn>;
 const mockFindCustomer = prisma.customer.findFirst as ReturnType<typeof vi.fn>;
 const mockFindGroups = prisma.customerGroup.findMany as ReturnType<typeof vi.fn>;
-const mockSyncRecentTwilioKeywordMessages =
-  syncRecentTwilioKeywordMessages as ReturnType<typeof vi.fn>;
+const mockStartRecentTwilioKeywordSync =
+  startRecentTwilioKeywordSync as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockRequireMobileSession.mockResolvedValue({ session: { businessId: 'biz-1' } });
-  mockSyncRecentTwilioKeywordMessages.mockResolvedValue(undefined);
+  mockStartRecentTwilioKeywordSync.mockImplementation(() => undefined);
   mockFindBusiness.mockResolvedValue({
     id: 'biz-1',
     email: 'owner@clientific.app',
@@ -113,7 +113,7 @@ describe('GET /api/mobile/customers', () => {
     expect(response.status).toBe(200);
     const body = await response.json();
 
-    expect(mockSyncRecentTwilioKeywordMessages).toHaveBeenCalledTimes(1);
+    expect(mockStartRecentTwilioKeywordSync).toHaveBeenCalledTimes(1);
     expect(body.totalCustomers).toBe(2);
     expect(body.filters.sms).toBe('enabled');
     expect(body.groups[0]).toMatchObject({
@@ -126,6 +126,25 @@ describe('GET /api/mobile/customers', () => {
       totalSpentLabel: '$120.00',
       segmentLabel: 'VIP',
       visitsCount: 3,
+    });
+  });
+
+  it('still returns customers when the background sync starter throws', async () => {
+    mockStartRecentTwilioKeywordSync.mockImplementation(() => {
+      throw new Error('twilio slow');
+    });
+    mockCountCustomers.mockResolvedValue(0);
+    mockFindGroups.mockResolvedValue([]);
+    mockFindCustomers.mockResolvedValue([]);
+
+    const response = await GET(
+      new Request('https://www.clientific.app/api/mobile/customers?page=1&pageSize=20'),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      totalCustomers: 0,
+      customers: [],
     });
   });
 });

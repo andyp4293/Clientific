@@ -14,7 +14,7 @@ import {
   formatCustomerGroupRecord,
   formatMobileCustomerRecord,
 } from '@/lib/mobile-customers';
-import { syncRecentTwilioKeywordMessages } from '@/lib/twilio-keyword-sync';
+import { startRecentTwilioKeywordSync } from '@/lib/twilio-keyword-sync';
 
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 30;
@@ -44,7 +44,11 @@ export async function GET(request: Request) {
   }
 
   try {
-    await syncRecentTwilioKeywordMessages();
+    try {
+      startRecentTwilioKeywordSync();
+    } catch (error) {
+      console.error('[twilio-keyword-sync] Failed to start background keyword sync:', error);
+    }
 
     const searchParams = new URL(request.url).searchParams;
     const search = searchParams.get('search')?.trim() ?? '';
