@@ -12,6 +12,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as SecureStore from 'expo-secure-store';
 import {
   createMobileService,
+  createMobileServiceGroup,
   createMobileStaff,
   createMobileCustomer,
   createMobileCustomerGroup,
@@ -19,6 +20,7 @@ import {
   createMobileAppointment,
   ClientificApiError,
   deleteMobileService,
+  deleteMobileServiceGroup,
   deleteMobileStaff,
   deleteMobileAppointment,
   confirmVerificationCode,
@@ -68,6 +70,7 @@ import {
   MobileRedeemResult,
   MobileReferralsSummary,
   MobileReviewsSummary,
+  MobileServiceGroupInput,
   MobileServiceInput,
   MobileServicesSummary,
   MobileStaffInput,
@@ -77,6 +80,7 @@ import {
   registerMobilePushToken,
   registerWithClientific,
   resendVerificationCode,
+  sendMobileReviewRequest,
   sendMobileCustomerMessage,
   unregisterMobilePushToken,
   updateMobileAiReceptionist,
@@ -85,8 +89,11 @@ import {
   updateMobileBusinessProfile,
   updateMobileCustomer,
   updateMobileCustomerGroup,
+  updateMobileServiceGroup,
   updateMobileService,
   updateMobileStaff,
+  reorderMobileServiceGroups,
+  reorderMobileServices,
 } from '@/lib/clientific-api';
 import { APP_PRIVACY_URL, APP_TERMS_URL } from '@/lib/clientific-brand';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
@@ -1758,6 +1765,22 @@ export function ClientificNativeApp() {
     [handleSessionError, session],
   );
 
+  const handleSendCustomerReviewRequest = useCallback(
+    async (customerId: string) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await sendMobileReviewRequest(session.token, customerId);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to send the review request.', setCustomersError);
+        throw new Error(getReadableError(error, 'Unable to send the review request.'));
+      }
+    },
+    [handleSessionError, session],
+  );
+
   const handleCreateCustomerGroup = useCallback(
     async (input: MobileCustomerGroupInput) => {
       if (!session) {
@@ -1826,6 +1849,91 @@ export function ClientificNativeApp() {
       }
     },
     [customerFilters, customersPage, customersSearchQuery, handleSessionError, loadCustomers, session],
+  );
+
+  const handleCreateServiceGroup = useCallback(
+    async (input: MobileServiceGroupInput) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await createMobileServiceGroup(session.token, input);
+        await loadServices(session.token, true);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to create service group.', setServicesError);
+        throw new Error(getReadableError(error, 'Unable to create service group.'));
+      }
+    },
+    [handleSessionError, loadServices, session],
+  );
+
+  const handleUpdateServiceGroup = useCallback(
+    async (groupId: string, input: MobileServiceGroupInput) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await updateMobileServiceGroup(session.token, groupId, input);
+        await loadServices(session.token, true);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to update service group.', setServicesError);
+        throw new Error(getReadableError(error, 'Unable to update service group.'));
+      }
+    },
+    [handleSessionError, loadServices, session],
+  );
+
+  const handleDeleteServiceGroup = useCallback(
+    async (groupId: string) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await deleteMobileServiceGroup(session.token, groupId);
+        await loadServices(session.token, true);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to delete service group.', setServicesError);
+        throw new Error(getReadableError(error, 'Unable to delete service group.'));
+      }
+    },
+    [handleSessionError, loadServices, session],
+  );
+
+  const handleReorderServiceGroups = useCallback(
+    async (ids: string[]) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await reorderMobileServiceGroups(session.token, ids);
+        await loadServices(session.token, true);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to reorder service groups.', setServicesError);
+        throw new Error(getReadableError(error, 'Unable to reorder service groups.'));
+      }
+    },
+    [handleSessionError, loadServices, session],
+  );
+
+  const handleReorderServices = useCallback(
+    async (ids: string[]) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await reorderMobileServices(session.token, ids);
+        await loadServices(session.token, true);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to reorder services.', setServicesError);
+        throw new Error(getReadableError(error, 'Unable to reorder services.'));
+      }
+    },
+    [handleSessionError, loadServices, session],
   );
 
   const handleCreateService = useCallback(
@@ -2343,11 +2451,13 @@ export function ClientificNativeApp() {
       onCreateCustomer={handleCreateCustomer}
       onCreateCustomerGroup={handleCreateCustomerGroup}
       onCreateCheckIn={handleCreateCheckIn}
+      onCreateServiceGroup={handleCreateServiceGroup}
       onCreateService={handleCreateService}
       onCreateStaff={handleCreateStaff}
       onDeleteCustomer={handleDeleteCustomer}
       onDeleteCustomerGroup={handleDeleteCustomerGroup}
       onDeleteAppointment={handleDeleteAppointment}
+      onDeleteServiceGroup={handleDeleteServiceGroup}
       onDeleteService={handleDeleteService}
       onDeleteStaff={handleDeleteStaff}
       onFetchCustomerDetail={handleFetchCustomerDetail}
@@ -2394,15 +2504,19 @@ export function ClientificNativeApp() {
       onSaveAiReceptionist={handleSaveAiReceptionist}
       onSaveBusinessHours={handleSaveBusinessHours}
       onSaveBusinessProfile={handleSaveBusinessProfile}
+      onSendReviewRequest={handleSendCustomerReviewRequest}
       onSendCustomerMessage={handleSendCustomerMessage}
       onShareCustomerViewLink={shareCustomerViewLink}
       onShareDeal={shareDeal}
       onShareReferral={shareReferral}
       onShareReviewSurvey={shareReviewSurvey}
       onSignOut={signOut}
+      onReorderServiceGroups={handleReorderServiceGroups}
+      onReorderServices={handleReorderServices}
       onUpdateAppointment={handleUpdateAppointment}
       onUpdateCustomer={handleUpdateCustomer}
       onUpdateCustomerGroup={handleUpdateCustomerGroup}
+      onUpdateServiceGroup={handleUpdateServiceGroup}
       onUpdateService={handleUpdateService}
       onUpdateStaff={handleUpdateStaff}
       referrals={referrals}

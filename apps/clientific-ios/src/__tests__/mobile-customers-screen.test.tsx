@@ -98,6 +98,7 @@ function renderScreen() {
       onNextPage={jest.fn()}
       onPreviousPage={jest.fn()}
       onRefresh={jest.fn().mockResolvedValue(undefined)}
+      onSendReviewRequest={jest.fn().mockResolvedValue(undefined)}
       onSendCustomerMessage={jest.fn().mockResolvedValue(undefined)}
       onUpdateCustomer={jest.fn().mockResolvedValue({
         id: 'cust-1',
@@ -153,6 +154,7 @@ describe('MobileCustomersScreen', () => {
         onNextPage={onNextPage}
         onPreviousPage={jest.fn()}
         onRefresh={jest.fn().mockResolvedValue(undefined)}
+        onSendReviewRequest={jest.fn().mockResolvedValue(undefined)}
         onSendCustomerMessage={jest.fn().mockResolvedValue(undefined)}
         onUpdateCustomer={jest.fn().mockResolvedValue(null)}
         onUpdateGroup={jest.fn().mockResolvedValue(undefined)}
@@ -217,6 +219,7 @@ describe('MobileCustomersScreen', () => {
         onNextPage={jest.fn()}
         onPreviousPage={jest.fn()}
         onRefresh={jest.fn().mockResolvedValue(undefined)}
+        onSendReviewRequest={jest.fn().mockResolvedValue(undefined)}
         onSendCustomerMessage={jest.fn().mockResolvedValue(undefined)}
         onUpdateCustomer={jest.fn().mockResolvedValue(null)}
         onUpdateGroup={jest.fn().mockResolvedValue(undefined)}
@@ -240,5 +243,72 @@ describe('MobileCustomersScreen', () => {
     expect(screen.getAllByText('VIP').length).toBeGreaterThan(0);
     expect(screen.getByText('Joined')).toBeTruthy();
     expect(screen.getByText('Spent')).toBeTruthy();
+  });
+
+  it('lets the business send a review request from customer detail', async () => {
+    const onSendReviewRequest = jest.fn().mockResolvedValue(undefined);
+
+    render(
+      <MobileCustomersScreen
+        data={data}
+        error={null}
+        filters={filters}
+        isLoading={false}
+        isRefreshing={false}
+        searchDraft=""
+        onChangeFilter={jest.fn()}
+        onChangeSearchDraft={jest.fn()}
+        onClearFilters={jest.fn()}
+        onCreateCustomer={jest.fn().mockResolvedValue(undefined)}
+        onCreateGroup={jest.fn().mockResolvedValue(undefined)}
+        onDeleteCustomer={jest.fn().mockResolvedValue(undefined)}
+        onDeleteGroup={jest.fn().mockResolvedValue(undefined)}
+        onFetchCustomerDetail={jest.fn().mockResolvedValue({
+          id: 'cust-1',
+          name: 'Jordan Lee',
+          email: 'jordan@example.com',
+          phone: '+15551234567',
+          phoneDisplay: '(555) 123-4567',
+          birthdayValue: '',
+          birthdayLabel: 'Not provided',
+          notes: null,
+          segment: 'VIP',
+          segmentLabel: 'VIP',
+          joinedLabel: 'Mar 18, 2026',
+          lastVisitLabel: 'Mar 29, 2026',
+          totalSpentLabel: '$120.00',
+          smsConsent: true,
+          smsOptedOut: false,
+          dealSmsBlocked: false,
+          visitsCount: 3,
+          appointmentsCount: 1,
+          groups: [],
+          checkIns: [],
+          appointments: [],
+        })}
+        onFetchCustomerMessages={jest.fn().mockResolvedValue({ logs: [], quota: null })}
+        onGoToPage={jest.fn()}
+        onNextPage={jest.fn()}
+        onPreviousPage={jest.fn()}
+        onRefresh={jest.fn().mockResolvedValue(undefined)}
+        onSendReviewRequest={onSendReviewRequest}
+        onSendCustomerMessage={jest.fn().mockResolvedValue(undefined)}
+        onUpdateCustomer={jest.fn().mockResolvedValue(null)}
+        onUpdateGroup={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('View'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Request review')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByText('Request review'));
+
+    await waitFor(() => {
+      expect(onSendReviewRequest).toHaveBeenCalledWith('cust-1');
+      expect(screen.getByText('Review request sent to Jordan Lee.')).toBeTruthy();
+    });
   });
 });

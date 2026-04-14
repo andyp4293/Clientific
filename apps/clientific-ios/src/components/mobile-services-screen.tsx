@@ -16,6 +16,8 @@ import {
   View,
 } from 'react-native';
 import type {
+  MobileServiceGroupInput,
+  MobileServiceGroupRecord,
   MobileServiceInput,
   MobileServiceRecord,
   MobileServicesSummary,
@@ -30,11 +32,16 @@ type MobileServicesScreenProps = {
   error: string | null;
   isLoading: boolean;
   isRefreshing: boolean;
+  onCreateServiceGroup: (input: MobileServiceGroupInput) => Promise<void>;
   onCreateService: (input: MobileServiceInput) => Promise<void>;
   onCreateStaff: (input: MobileStaffInput) => Promise<void>;
+  onDeleteServiceGroup: (groupId: string) => Promise<void>;
   onDeleteService: (serviceId: string) => Promise<void>;
   onDeleteStaff: (staffId: string) => Promise<void>;
   onRefresh: () => Promise<void>;
+  onReorderServiceGroups: (ids: string[]) => Promise<void>;
+  onReorderServices: (ids: string[]) => Promise<void>;
+  onUpdateServiceGroup: (groupId: string, input: MobileServiceGroupInput) => Promise<void>;
   onUpdateService: (serviceId: string, input: MobileServiceInput) => Promise<void>;
   onUpdateStaff: (staffId: string, input: MobileStaffInput) => Promise<void>;
 };
@@ -48,6 +55,10 @@ type ServiceFormState = {
   price: string;
   isActive: boolean;
   groupId: string;
+};
+
+type GroupFormState = {
+  name: string;
 };
 
 type StaffFormState = {
@@ -79,6 +90,12 @@ function createEmptyServiceForm(): ServiceFormState {
     price: '',
     isActive: true,
     groupId: '',
+  };
+}
+
+function createGroupForm(group?: MobileServiceGroupRecord | null): GroupFormState {
+  return {
+    name: group?.name ?? '',
   };
 }
 
@@ -224,27 +241,40 @@ export function MobileServicesScreen({
   error,
   isLoading,
   isRefreshing,
+  onCreateServiceGroup,
   onCreateService,
   onCreateStaff,
+  onDeleteServiceGroup,
   onDeleteService,
   onDeleteStaff,
   onRefresh,
+  onReorderServiceGroups,
+  onReorderServices,
+  onUpdateServiceGroup,
   onUpdateService,
   onUpdateStaff,
 }: MobileServicesScreenProps) {
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
   const [activeTab, setActiveTab] = useState<ServicesTab>('services');
+  const [editingGroup, setEditingGroup] = useState<MobileServiceGroupRecord | null>(null);
   const [editingService, setEditingService] = useState<MobileServiceRecord | null>(null);
   const [editingStaff, setEditingStaff] = useState<MobileStaffRecord | null>(null);
+  const [isGroupSheetVisible, setIsGroupSheetVisible] = useState(false);
   const [isServiceSheetVisible, setIsServiceSheetVisible] = useState(false);
   const [isStaffSheetVisible, setIsStaffSheetVisible] = useState(false);
+  const [groupForm, setGroupForm] = useState<GroupFormState>(createGroupForm);
   const [serviceForm, setServiceForm] = useState<ServiceFormState>(createEmptyServiceForm);
   const [staffForm, setStaffForm] = useState<StaffFormState>(createStaffForm);
+  const [isSavingGroup, setIsSavingGroup] = useState(false);
   const [isSavingService, setIsSavingService] = useState(false);
   const [isSavingStaff, setIsSavingStaff] = useState(false);
   const [sheetError, setSheetError] = useState<string | null>(null);
 
+  const sortedGroups = useMemo(
+    () => [...(data?.groups ?? [])].sort((left, right) => left.sortOrder - right.sortOrder),
+    [data?.groups],
+  );
   const sortedServices = useMemo(
     () => [...(data?.services ?? [])].sort((left, right) => left.sortOrder - right.sortOrder),
     [data?.services],
@@ -253,6 +283,20 @@ export function MobileServicesScreen({
     () => [...(data?.staff ?? [])].sort((left, right) => left.fullName.localeCompare(right.fullName)),
     [data?.staff],
   );
+
+  const openCreateGroup = () => {
+    setEditingGroup(null);
+    setGroupForm(createGroupForm());
+    setSheetError(null);
+    setIsGroupSheetVisible(true);
+  };
+
+  const openEditGroup = (group: MobileServiceGroupRecord) => {
+    setEditingGroup(group);
+    setGroupForm(createGroupForm(group));
+    setSheetError(null);
+    setIsGroupSheetVisible(true);
+  };
 
   const openCreateService = () => {
     setEditingService(null);
@@ -273,6 +317,126 @@ export function MobileServicesScreen({
     setStaffForm(createStaffForm());
     setSheetError(null);
     setIsStaffSheetVisible(true);
+  };
+
+  const handleMoveGroup = async (
+    groupId: string,
+    direction: 'up' | 'down',
+  ) => {
+    const currentIndex = sortedGroups.findIndex((group) => group.id === groupId);
+    if (currentIndex < 0) {
+      return;
+    }
+
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= sortedGroups.length) {
+      return;
+    }
+
+    const next = [...sortedGroups];
+    [next[currentIndex], next[targetIndex]] = [next[targetIndex], next[currentIndex]];
+    await onReorderServiceGroups(next.map((group) => group.id));
+  };
+
+  const handleMoveService = async (
+    serviceId: string,
+    direction: 'up' | 'down',
+    groupId: string | null,
+  ) => {
+    const scopedServices = sortedServices.filter(
+      (service) => (service.groupId ?? null) === groupId,
+    );
+    const scopedIndex = scopedServices.findIndex((service) => service.id === serviceId);
+    if (scopedIndex < 0) {
+      return;
+    }
+
+    const targetScopedIndex = direction === 'up' ? scopedIndex - 1 : scopedIndex + 1;
+    if (targetScopedIndex < 0 || targetScopedIndex >= scopedServices.length) {
+      return;
+    }
+
+    const targetId = scopedServices[targetScopedIndex]?.id;
+    if (!targetId) {
+      return;
+    }
+
+    const next = [...sortedServices];
+    const sourceIndex = next.findIndex((service) => service.id === serviceId);
+    const targetIndex = next.findIndex((service) => service.id === targetId);
+    if (sourceIndex < 0 || targetIndex < 0) {
+      return;
+    }
+
+    [next[sourceIndex], next[targetIndex]] = [next[targetIndex], next[sourceIndex]];
+    await onReorderServices(next.map((service) => service.id));
+  };
+
+  const handleSaveGroup = async () => {
+    const name = groupForm.name.trim();
+    if (!name) {
+      setSheetError('Group name is required.');
+      return;
+    }
+
+    setIsSavingGroup(true);
+    setSheetError(null);
+
+    try {
+      const payload: MobileServiceGroupInput = { name };
+
+      if (editingGroup) {
+        await onUpdateServiceGroup(editingGroup.id, payload);
+      } else {
+        await onCreateServiceGroup(payload);
+      }
+
+      setIsGroupSheetVisible(false);
+      setEditingGroup(null);
+    } catch (saveError) {
+      setSheetError(saveError instanceof Error ? saveError.message : 'Unable to save service group.');
+    } finally {
+      setIsSavingGroup(false);
+    }
+  };
+
+  const handleDeleteCurrentGroup = async (groupToDelete?: MobileServiceGroupRecord | null) => {
+    const targetGroup = groupToDelete ?? editingGroup;
+    if (!targetGroup) {
+      return;
+    }
+
+    Alert.alert(
+      'Delete service group?',
+      'Services in this group will move back to ungrouped.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              setIsSavingGroup(true);
+              setSheetError(null);
+
+              try {
+                await onDeleteServiceGroup(targetGroup.id);
+                setIsGroupSheetVisible(false);
+                setEditingGroup(null);
+              } catch (deleteError) {
+                setSheetError(
+                  deleteError instanceof Error
+                    ? deleteError.message
+                    : 'Unable to delete service group.',
+                );
+              } finally {
+                setIsSavingGroup(false);
+              }
+            })();
+          },
+        },
+      ],
+    );
   };
 
   const openEditStaff = (member: MobileStaffRecord) => {
@@ -599,28 +763,107 @@ export function MobileServicesScreen({
 
             {activeTab === 'services' ? (
               <>
-                <View style={styles.groupRow}>
-                  {data.groups.length ? (
-                    data.groups.map((group) => (
-                      <View
-                        key={group.id}
-                        style={[
-                          styles.groupPill,
-                          { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
-                        ]}>
-                        <Text style={[styles.groupPillText, { color: theme.text }]}>
-                          {group.name} · {group.servicesCount}
-                        </Text>
-                      </View>
-                    ))
+                <View
+                  style={[
+                    styles.subsectionCard,
+                    { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                  ]}>
+                  <View style={styles.subsectionHeader}>
+                    <View style={styles.subsectionCopy}>
+                      <Text style={[styles.subsectionTitle, { color: theme.text }]}>
+                        Service groups
+                      </Text>
+                      <Text style={[styles.subsectionText, { color: theme.mutedText }]}>
+                        Mirror the booking sections from the web dashboard, then keep them in the right order.
+                      </Text>
+                    </View>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={openCreateGroup}
+                      style={[styles.addButton, { backgroundColor: theme.accent }]}
+                      testID="mobile-open-group-sheet">
+                      <Text style={styles.addButtonText}>Add group</Text>
+                    </Pressable>
+                  </View>
+
+                  {sortedGroups.length ? (
+                    <View style={styles.stack}>
+                      {sortedGroups.map((group, index) => (
+                        <View
+                          key={group.id}
+                          style={[
+                            styles.groupCard,
+                            { backgroundColor: theme.surface, borderColor: theme.border },
+                          ]}>
+                          <View style={styles.itemHeader}>
+                            <View style={styles.itemCopy}>
+                              <Text style={[styles.itemTitle, { color: theme.text }]}>
+                                {group.name}
+                              </Text>
+                              <Text style={[styles.itemMeta, { color: theme.mutedText }]}>
+                                {group.servicesCount} services
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View style={styles.actionRow}>
+                            <Pressable
+                              accessibilityRole="button"
+                              disabled={index === 0}
+                              onPress={() => void handleMoveGroup(group.id, 'up')}
+                              style={[
+                                styles.actionButton,
+                                { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                                index === 0 && styles.disabledButton,
+                              ]}
+                              testID={`mobile-group-up-${group.id}`}>
+                              <Text style={[styles.actionButtonText, { color: theme.text }]}>Up</Text>
+                            </Pressable>
+                            <Pressable
+                              accessibilityRole="button"
+                              disabled={index === sortedGroups.length - 1}
+                              onPress={() => void handleMoveGroup(group.id, 'down')}
+                              style={[
+                                styles.actionButton,
+                                { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                                index === sortedGroups.length - 1 && styles.disabledButton,
+                              ]}
+                              testID={`mobile-group-down-${group.id}`}>
+                              <Text style={[styles.actionButtonText, { color: theme.text }]}>Down</Text>
+                            </Pressable>
+                            <Pressable
+                              accessibilityRole="button"
+                              onPress={() => openEditGroup(group)}
+                              style={[
+                                styles.actionButton,
+                                { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                              ]}
+                              testID={`mobile-group-edit-${group.id}`}>
+                              <Text style={[styles.actionButtonText, { color: theme.text }]}>Rename</Text>
+                            </Pressable>
+                            <Pressable
+                              accessibilityRole="button"
+                              onPress={() => void handleDeleteCurrentGroup(group)}
+                              style={[
+                                styles.actionButton,
+                                { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                              ]}
+                              testID={`mobile-group-delete-${group.id}`}>
+                              <Text style={[styles.actionButtonText, { color: theme.danger }]}>Delete</Text>
+                            </Pressable>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
                   ) : (
                     <View
                       style={[
-                        styles.groupPill,
-                        { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                        styles.noticeCard,
+                        { backgroundColor: theme.surface, borderColor: theme.border },
                       ]}>
-                      <Text style={[styles.groupPillText, { color: theme.mutedText }]}>
-                        Services are currently ungrouped
+                      <Text style={[styles.noticeTitle, { color: theme.text }]}>No groups yet</Text>
+                      <Text style={[styles.noticeText, { color: theme.mutedText }]}>
+                        Leave everything ungrouped for a flat list, or create sections like Manicures and Pedicures.
                       </Text>
                     </View>
                   )}
@@ -628,74 +871,224 @@ export function MobileServicesScreen({
 
                 <View style={styles.stack}>
                   {sortedServices.length ? (
-                    sortedServices.map((service) => (
-                      <View
-                        key={service.id}
-                        style={[
-                          styles.itemCard,
-                          { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
-                        ]}>
-                        <View style={styles.itemHeader}>
-                          <View style={styles.itemCopy}>
-                            <Text style={[styles.itemTitle, { color: theme.text }]}>
-                              {service.name}
-                            </Text>
-                            <Text style={[styles.itemMeta, { color: theme.mutedText }]}>
-                              {service.durationLabel} · {service.priceLabel}
-                            </Text>
-                          </View>
+                    <>
+                      {sortedGroups.map((group) => {
+                        const groupServices = sortedServices.filter(
+                          (service) => service.groupId === group.id,
+                        );
+
+                        if (!groupServices.length) {
+                          return null;
+                        }
+
+                        return (
                           <View
+                            key={group.id}
                             style={[
-                              styles.statusBadge,
-                              {
-                                backgroundColor: service.isActive ? theme.accentSoft : theme.surface,
-                                borderColor: theme.border,
-                              },
+                              styles.subsectionCard,
+                              { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
                             ]}>
-                            <Text
-                              style={[
-                                styles.statusBadgeText,
-                                { color: service.isActive ? theme.accent : theme.mutedText },
-                              ]}>
-                              {service.isActive ? 'Active' : 'Paused'}
+                            <Text style={[styles.subsectionTitle, { color: theme.text }]}>
+                              {group.name}
                             </Text>
+                            <View style={styles.stack}>
+                              {groupServices.map((service, index) => (
+                                <View
+                                  key={service.id}
+                                  style={[
+                                    styles.itemCard,
+                                    { backgroundColor: theme.surface, borderColor: theme.border },
+                                  ]}>
+                                  <View style={styles.itemHeader}>
+                                    <View style={styles.itemCopy}>
+                                      <Text style={[styles.itemTitle, { color: theme.text }]}>
+                                        {service.name}
+                                      </Text>
+                                      <Text style={[styles.itemMeta, { color: theme.mutedText }]}>
+                                        {service.durationLabel} · {service.priceLabel}
+                                      </Text>
+                                    </View>
+                                    <View
+                                      style={[
+                                        styles.statusBadge,
+                                        {
+                                          backgroundColor: service.isActive ? theme.accentSoft : theme.surfaceMuted,
+                                          borderColor: theme.border,
+                                        },
+                                      ]}>
+                                      <Text
+                                        style={[
+                                          styles.statusBadgeText,
+                                          { color: service.isActive ? theme.accent : theme.mutedText },
+                                        ]}>
+                                        {service.isActive ? 'Active' : 'Paused'}
+                                      </Text>
+                                    </View>
+                                  </View>
+
+                                  {service.description ? (
+                                    <Text style={[styles.itemDescription, { color: theme.mutedText }]}>
+                                      {service.description}
+                                    </Text>
+                                  ) : null}
+
+                                  <View style={styles.actionRow}>
+                                    <Pressable
+                                      accessibilityRole="button"
+                                      disabled={index === 0}
+                                      onPress={() => void handleMoveService(service.id, 'up', group.id)}
+                                      style={[
+                                        styles.actionButton,
+                                        { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                                        index === 0 && styles.disabledButton,
+                                      ]}
+                                      testID={`mobile-service-up-${service.id}`}>
+                                      <Text style={[styles.actionButtonText, { color: theme.text }]}>Up</Text>
+                                    </Pressable>
+                                    <Pressable
+                                      accessibilityRole="button"
+                                      disabled={index === groupServices.length - 1}
+                                      onPress={() => void handleMoveService(service.id, 'down', group.id)}
+                                      style={[
+                                        styles.actionButton,
+                                        { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                                        index === groupServices.length - 1 && styles.disabledButton,
+                                      ]}
+                                      testID={`mobile-service-down-${service.id}`}>
+                                      <Text style={[styles.actionButtonText, { color: theme.text }]}>Down</Text>
+                                    </Pressable>
+                                    <Pressable
+                                      accessibilityRole="button"
+                                      onPress={() => openEditService(service)}
+                                      style={[
+                                        styles.actionButton,
+                                        { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                                      ]}>
+                                      <Text style={[styles.actionButtonText, { color: theme.text }]}>Edit</Text>
+                                    </Pressable>
+                                    <Pressable
+                                      accessibilityRole="button"
+                                      onPress={() => void handleDeleteCurrentService(service)}
+                                      style={[
+                                        styles.actionButton,
+                                        { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                                      ]}>
+                                      <Text style={[styles.actionButtonText, { color: theme.danger }]}>
+                                        Delete
+                                      </Text>
+                                    </Pressable>
+                                  </View>
+                                </View>
+                              ))}
+                            </View>
+                          </View>
+                        );
+                      })}
+
+                      {sortedServices.some((service) => !service.groupId) ? (
+                        <View
+                          style={[
+                            styles.subsectionCard,
+                            { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                          ]}>
+                          <Text style={[styles.subsectionTitle, { color: theme.text }]}>
+                            Other services
+                          </Text>
+                          <View style={styles.stack}>
+                            {sortedServices
+                              .filter((service) => !service.groupId)
+                              .map((service, index, ungroupedServices) => (
+                                <View
+                                  key={service.id}
+                                  style={[
+                                    styles.itemCard,
+                                    { backgroundColor: theme.surface, borderColor: theme.border },
+                                  ]}>
+                                  <View style={styles.itemHeader}>
+                                    <View style={styles.itemCopy}>
+                                      <Text style={[styles.itemTitle, { color: theme.text }]}>
+                                        {service.name}
+                                      </Text>
+                                      <Text style={[styles.itemMeta, { color: theme.mutedText }]}>
+                                        {service.durationLabel} · {service.priceLabel}
+                                      </Text>
+                                    </View>
+                                    <View
+                                      style={[
+                                        styles.statusBadge,
+                                        {
+                                          backgroundColor: service.isActive ? theme.accentSoft : theme.surfaceMuted,
+                                          borderColor: theme.border,
+                                        },
+                                      ]}>
+                                      <Text
+                                        style={[
+                                          styles.statusBadgeText,
+                                          { color: service.isActive ? theme.accent : theme.mutedText },
+                                        ]}>
+                                        {service.isActive ? 'Active' : 'Paused'}
+                                      </Text>
+                                    </View>
+                                  </View>
+
+                                  {service.description ? (
+                                    <Text style={[styles.itemDescription, { color: theme.mutedText }]}>
+                                      {service.description}
+                                    </Text>
+                                  ) : null}
+
+                                  <View style={styles.actionRow}>
+                                    <Pressable
+                                      accessibilityRole="button"
+                                      disabled={index === 0}
+                                      onPress={() => void handleMoveService(service.id, 'up', null)}
+                                      style={[
+                                        styles.actionButton,
+                                        { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                                        index === 0 && styles.disabledButton,
+                                      ]}
+                                      testID={`mobile-service-up-${service.id}`}>
+                                      <Text style={[styles.actionButtonText, { color: theme.text }]}>Up</Text>
+                                    </Pressable>
+                                    <Pressable
+                                      accessibilityRole="button"
+                                      disabled={index === ungroupedServices.length - 1}
+                                      onPress={() => void handleMoveService(service.id, 'down', null)}
+                                      style={[
+                                        styles.actionButton,
+                                        { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                                        index === ungroupedServices.length - 1 && styles.disabledButton,
+                                      ]}
+                                      testID={`mobile-service-down-${service.id}`}>
+                                      <Text style={[styles.actionButtonText, { color: theme.text }]}>Down</Text>
+                                    </Pressable>
+                                    <Pressable
+                                      accessibilityRole="button"
+                                      onPress={() => openEditService(service)}
+                                      style={[
+                                        styles.actionButton,
+                                        { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                                      ]}>
+                                      <Text style={[styles.actionButtonText, { color: theme.text }]}>Edit</Text>
+                                    </Pressable>
+                                    <Pressable
+                                      accessibilityRole="button"
+                                      onPress={() => void handleDeleteCurrentService(service)}
+                                      style={[
+                                        styles.actionButton,
+                                        { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                                      ]}>
+                                      <Text style={[styles.actionButtonText, { color: theme.danger }]}>
+                                        Delete
+                                      </Text>
+                                    </Pressable>
+                                  </View>
+                                </View>
+                              ))}
                           </View>
                         </View>
-
-                        {service.description ? (
-                          <Text style={[styles.itemDescription, { color: theme.mutedText }]}>
-                            {service.description}
-                          </Text>
-                        ) : null}
-
-                        <Text style={[styles.metaText, { color: theme.mutedText }]}>
-                          {service.groupName ?? 'Ungrouped'}
-                        </Text>
-
-                        <View style={styles.actionRow}>
-                          <Pressable
-                            accessibilityRole="button"
-                            onPress={() => openEditService(service)}
-                            style={[
-                              styles.actionButton,
-                              { backgroundColor: theme.surface, borderColor: theme.border },
-                            ]}>
-                            <Text style={[styles.actionButtonText, { color: theme.text }]}>Edit</Text>
-                          </Pressable>
-                        <Pressable
-                          accessibilityRole="button"
-                          onPress={() => void handleDeleteCurrentService(service)}
-                          style={[
-                            styles.actionButton,
-                            { backgroundColor: theme.surface, borderColor: theme.border },
-                            ]}>
-                            <Text style={[styles.actionButtonText, { color: theme.danger }]}>
-                              Delete
-                            </Text>
-                          </Pressable>
-                        </View>
-                      </View>
-                    ))
+                      ) : null}
+                    </>
                   ) : (
                     <View
                       style={[
@@ -825,6 +1218,50 @@ export function MobileServicesScreen({
           </View>
         ) : null}
       </ScrollView>
+
+      <FullScreenSheet
+        onClose={() => {
+          setIsGroupSheetVisible(false);
+          setEditingGroup(null);
+          setSheetError(null);
+        }}
+        subtitle="Organize booking sections and keep the public menu in the same order as the web app."
+        title={editingGroup ? 'Rename group' : 'Add group'}
+        visible={isGroupSheetVisible}>
+        <ScrollView contentContainerStyle={styles.sheetContent} style={{ backgroundColor: theme.background }}>
+          {sheetError ? <InlineErrorCard message={sheetError} theme={theme} /> : null}
+
+          <FieldLabel label="Group name" themeText={theme.text} />
+          <TextInput
+            onChangeText={(value) => setGroupForm({ name: value })}
+            placeholder="Manicures"
+            placeholderTextColor={theme.mutedText}
+            style={[styles.formInput, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
+            value={groupForm.name}
+          />
+        </ScrollView>
+        <View style={[styles.sheetFooter, { backgroundColor: theme.background, borderColor: theme.border }]}>
+          {editingGroup ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={isSavingGroup}
+              onPress={() => void handleDeleteCurrentGroup(editingGroup)}
+              style={[styles.destructiveFooterButton, { borderColor: theme.border }]}>
+              <Text style={styles.destructiveFooterButtonText}>Delete</Text>
+            </Pressable>
+          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            disabled={isSavingGroup}
+            onPress={() => void handleSaveGroup()}
+            style={[styles.footerPrimaryButton, { backgroundColor: theme.accent }]}
+            testID="mobile-save-group">
+            <Text style={styles.footerPrimaryButtonText}>
+              {isSavingGroup ? 'Saving...' : editingGroup ? 'Save group' : 'Add group'}
+            </Text>
+          </Pressable>
+        </View>
+      </FullScreenSheet>
 
       <FullScreenSheet
         onClose={() => {
@@ -1263,6 +1700,32 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     gap: 16,
   },
+  subsectionCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 12,
+  },
+  subsectionHeader: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  subsectionCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  subsectionTitle: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: '800',
+  },
+  subsectionText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
   sectionHeader: {
     flexDirection: 'row',
     gap: 14,
@@ -1299,6 +1762,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  groupCard: {
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 10,
   },
   groupPill: {
     borderWidth: 1,
@@ -1363,10 +1833,12 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
   actionButton: {
-    flex: 1,
+    flexGrow: 1,
+    minWidth: 72,
     minHeight: 44,
     borderWidth: 1,
     borderRadius: 16,
@@ -1378,6 +1850,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 18,
     fontWeight: '800',
+  },
+  disabledButton: {
+    opacity: 0.45,
   },
   sheetScreen: {
     flex: 1,

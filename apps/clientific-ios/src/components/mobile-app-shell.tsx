@@ -32,6 +32,7 @@ import type {
   MobileRedeemResult,
   MobileReferralsSummary,
   MobileReviewsSummary,
+  MobileServiceGroupInput,
   MobileServiceInput,
   MobileServicesSummary,
   MobileStaffInput,
@@ -117,11 +118,13 @@ type MobileAppShellProps = {
     input: MobileCheckInSubmissionInput,
   ) => Promise<MobileCheckInMutationResponse>;
   onCreateService: (input: MobileServiceInput) => Promise<void>;
+  onCreateServiceGroup: (input: MobileServiceGroupInput) => Promise<void>;
   onCreateStaff: (input: MobileStaffInput) => Promise<void>;
   onDeleteCustomer: (customerId: string) => Promise<void>;
   onDeleteCustomerGroup: (groupId: string) => Promise<void>;
   onDeleteAppointment: (appointmentId: string) => Promise<void>;
   onDeleteService: (serviceId: string) => Promise<void>;
+  onDeleteServiceGroup: (groupId: string) => Promise<void>;
   onDeleteStaff: (staffId: string) => Promise<void>;
   onFetchCustomerDetail: (customerId: string) => Promise<MobileCustomerDetail>;
   onFetchCustomerMessages: (customerId: string) => Promise<MobileCustomerSmsLogSummary>;
@@ -161,6 +164,7 @@ type MobileAppShellProps = {
   onSaveAiReceptionist: (input: MobileAiReceptionistUpdateInput) => Promise<void>;
   onSaveBusinessHours: (input: MobileBusinessHoursUpdateInput) => Promise<void>;
   onSaveBusinessProfile: (input: MobileOnboardingInput) => Promise<void>;
+  onSendReviewRequest: (customerId: string) => Promise<void>;
   onSendCustomerMessage: (customerId: string, message: string) => Promise<void>;
   onShareCustomerViewLink: (label: string, url: string) => Promise<void>;
   onShareDeal: (deal: MobileDealsSummary['deals'][number]) => Promise<void>;
@@ -179,8 +183,14 @@ type MobileAppShellProps = {
     appointmentId: string,
     input: MobileAppointmentUpdateInput,
   ) => Promise<void>;
+  onUpdateServiceGroup: (
+    groupId: string,
+    input: MobileServiceGroupInput,
+  ) => Promise<void>;
   onUpdateService: (serviceId: string, input: MobileServiceInput) => Promise<void>;
   onUpdateStaff: (staffId: string, input: MobileStaffInput) => Promise<void>;
+  onReorderServiceGroups: (ids: string[]) => Promise<void>;
+  onReorderServices: (ids: string[]) => Promise<void>;
   appointmentComposerCustomers: MobileCustomerRecord[];
   appointmentComposerError: string | null;
   referrals: MobileReferralsSummary | null;
@@ -269,11 +279,13 @@ export function MobileAppShell({
   onCreateCustomerGroup,
   onCreateCheckIn,
   onCreateService,
+  onCreateServiceGroup,
   onCreateStaff,
   onDeleteCustomer,
   onDeleteCustomerGroup,
   onDeleteAppointment,
   onDeleteService,
+  onDeleteServiceGroup,
   onDeleteStaff,
   onFetchCustomerDetail,
   onFetchCustomerMessages,
@@ -313,6 +325,7 @@ export function MobileAppShell({
   onSaveAiReceptionist,
   onSaveBusinessHours,
   onSaveBusinessProfile,
+  onSendReviewRequest,
   onSendCustomerMessage,
   onShareCustomerViewLink,
   onShareDeal,
@@ -322,8 +335,11 @@ export function MobileAppShell({
   onUpdateAppointment,
   onUpdateCustomer,
   onUpdateCustomerGroup,
+  onUpdateServiceGroup,
   onUpdateService,
   onUpdateStaff,
+  onReorderServiceGroups,
+  onReorderServices,
   appointmentComposerCustomers,
   appointmentComposerError,
   referrals,
@@ -409,6 +425,7 @@ export function MobileAppShell({
               onNextPage={onNextCustomersPage}
               onPreviousPage={onPreviousCustomersPage}
               onRefresh={onRefreshCustomers}
+              onSendReviewRequest={onSendReviewRequest}
               onSendCustomerMessage={onSendCustomerMessage}
               onUpdateCustomer={onUpdateCustomer}
               onUpdateGroup={onUpdateCustomerGroup}
@@ -422,6 +439,7 @@ export function MobileAppShell({
               isLoading={isDealsLoading}
               isRefreshing={isDealsRefreshing}
               onOpenFunds={onOpenFunds}
+              onOpenUrl={onOpenExternalUrl}
               onRefresh={onRefreshDeals}
               onShareDeal={onShareDeal}
             />
@@ -472,8 +490,10 @@ export function MobileAppShell({
               onChangeSection={onChangeMoreSection}
               onCreateCheckIn={onCreateCheckIn}
               onCreateService={onCreateService}
+              onCreateServiceGroup={onCreateServiceGroup}
               onCreateStaff={onCreateStaff}
               onDeleteService={onDeleteService}
+              onDeleteServiceGroup={onDeleteServiceGroup}
               onDeleteStaff={onDeleteStaff}
               onJumpCheckInsToToday={onJumpCheckInsToToday}
               onLookupCheckIn={onLookupCheckIn}
@@ -500,6 +520,9 @@ export function MobileAppShell({
               onShareReferral={onShareReferral}
               onShareReviewSurvey={onShareReviewSurvey}
               onSignOut={onSignOut}
+              onReorderServiceGroups={onReorderServiceGroups}
+              onReorderServices={onReorderServices}
+              onUpdateServiceGroup={onUpdateServiceGroup}
               onUpdateService={onUpdateService}
               onUpdateStaff={onUpdateStaff}
               referrals={referrals}

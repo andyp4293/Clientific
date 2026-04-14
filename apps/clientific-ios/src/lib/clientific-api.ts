@@ -430,6 +430,10 @@ export type MobileServiceInput = {
   groupId?: string | null;
 };
 
+export type MobileServiceGroupInput = {
+  name: string;
+};
+
 export type MobileStaffInput = {
   fullName: string;
   email?: string | null;
@@ -987,6 +991,17 @@ export async function sendMobileCustomerMessage(
   );
 }
 
+export async function sendMobileReviewRequest(token: string, customerId: string) {
+  return requestJson<{ success: true; surveyUrl: string }>('/api/mobile/reviews/request', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ customerId }),
+  });
+}
+
 export async function createMobileCustomerGroup(token: string, input: MobileCustomerGroupInput) {
   return requestJson<{ group: MobileCustomerGroupRecord }>('/api/mobile/customer-groups', {
     method: 'POST',
@@ -1041,6 +1056,58 @@ export async function createMobileService(token: string, input: MobileServiceInp
   });
 }
 
+export async function createMobileServiceGroup(
+  token: string,
+  input: MobileServiceGroupInput,
+) {
+  return requestJson<{ group: MobileServiceGroupRecord }>('/api/mobile/service-groups', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateMobileServiceGroup(
+  token: string,
+  groupId: string,
+  input: MobileServiceGroupInput,
+) {
+  return requestJson<{ group: MobileServiceGroupRecord }>(
+    `/api/mobile/service-groups/${groupId}`,
+    {
+      method: 'PATCH',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+export async function deleteMobileServiceGroup(token: string, groupId: string) {
+  return requestJson<{ success: true }>(`/api/mobile/service-groups/${groupId}`, {
+    method: 'DELETE',
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function reorderMobileServiceGroups(token: string, ids: string[]) {
+  return requestJson<{ success: true }>('/api/mobile/service-groups/reorder', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ ids }),
+  });
+}
+
 export async function updateMobileService(
   token: string,
   serviceId: string,
@@ -1062,6 +1129,17 @@ export async function deleteMobileService(token: string, serviceId: string) {
     headers: {
       authorization: `Bearer ${token}`,
     },
+  });
+}
+
+export async function reorderMobileServices(token: string, ids: string[]) {
+  return requestJson<{ success: true }>('/api/mobile/services/reorder', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ ids }),
   });
 }
 

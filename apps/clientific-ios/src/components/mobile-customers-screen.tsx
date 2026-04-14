@@ -52,6 +52,7 @@ type MobileCustomersScreenProps = {
   onNextPage: () => void;
   onPreviousPage: () => void;
   onRefresh: () => Promise<void>;
+  onSendReviewRequest: (customerId: string) => Promise<void>;
   onSendCustomerMessage: (customerId: string, message: string) => Promise<void>;
   onUpdateCustomer: (customerId: string, input: MobileCustomerInput) => Promise<MobileCustomerDetail>;
   onUpdateGroup: (groupId: string, input: MobileCustomerGroupInput) => Promise<void>;
@@ -371,6 +372,7 @@ export function MobileCustomersScreen({
   onNextPage,
   onPreviousPage,
   onRefresh,
+  onSendReviewRequest,
   onSendCustomerMessage,
   onUpdateCustomer,
   onUpdateGroup,
@@ -396,6 +398,7 @@ export function MobileCustomersScreen({
   const [isSavingGroup, setIsSavingGroup] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [isMessageLoading, setIsMessageLoading] = useState(false);
+  const [isSendingReviewRequest, setIsSendingReviewRequest] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
 
   const paginationItems = useMemo(
@@ -1574,6 +1577,54 @@ export function MobileCustomersScreen({
                   onPress={() => openEditCustomer(selectedCustomer)}
                   style={[styles.actionButton, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}>
                   <Text style={[styles.actionButtonText, { color: theme.text }]}>Edit</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={
+                    isSendingReviewRequest ||
+                    !selectedCustomer.phoneDisplay ||
+                    !selectedCustomer.smsConsent ||
+                    selectedCustomer.smsOptedOut
+                  }
+                  onPress={async () => {
+                    setSheetError(null);
+                    setSheetNotice(null);
+                    setIsSendingReviewRequest(true);
+
+                    try {
+                      await onSendReviewRequest(selectedCustomer.id);
+                      setSheetNotice(`Review request sent to ${selectedCustomer.name}.`);
+                    } catch (reviewError) {
+                      setSheetError(
+                        reviewError instanceof Error
+                          ? reviewError.message
+                          : 'Unable to send the review request.',
+                      );
+                    } finally {
+                      setIsSendingReviewRequest(false);
+                    }
+                  }}
+                  style={[
+                    styles.actionButton,
+                    {
+                      backgroundColor:
+                        selectedCustomer.phoneDisplay &&
+                        selectedCustomer.smsConsent &&
+                        !selectedCustomer.smsOptedOut
+                          ? theme.surfaceMuted
+                          : theme.surfaceMuted,
+                      borderColor: theme.border,
+                      opacity:
+                        selectedCustomer.phoneDisplay &&
+                        selectedCustomer.smsConsent &&
+                        !selectedCustomer.smsOptedOut
+                          ? 1
+                          : 0.6,
+                    },
+                  ]}>
+                  <Text style={[styles.actionButtonText, { color: theme.text }]}>
+                    {isSendingReviewRequest ? 'Sending...' : 'Request review'}
+                  </Text>
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"

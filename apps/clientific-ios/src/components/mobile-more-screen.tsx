@@ -28,6 +28,7 @@ import type {
   MobileRedeemResult,
   MobileReferralsSummary,
   MobileReviewsSummary,
+  MobileServiceGroupInput,
   MobileServiceInput,
   MobileServicesSummary,
   MobileStaffInput,
@@ -122,8 +123,10 @@ type MobileMoreScreenProps = {
   onCreateCheckIn: (
     input: MobileCheckInSubmissionInput,
   ) => Promise<MobileCheckInMutationResponse>;
+  onCreateServiceGroup: (input: MobileServiceGroupInput) => Promise<void>;
   onCreateService: (input: MobileServiceInput) => Promise<void>;
   onCreateStaff: (input: MobileStaffInput) => Promise<void>;
+  onDeleteServiceGroup: (groupId: string) => Promise<void>;
   onDeleteService: (serviceId: string) => Promise<void>;
   onDeleteStaff: (staffId: string) => Promise<void>;
   onJumpCheckInsToToday: () => void;
@@ -154,6 +157,12 @@ type MobileMoreScreenProps = {
   onShareReferral: () => Promise<void>;
   onShareReviewSurvey: () => Promise<void>;
   onSignOut: () => Promise<void>;
+  onReorderServiceGroups: (ids: string[]) => Promise<void>;
+  onReorderServices: (ids: string[]) => Promise<void>;
+  onUpdateServiceGroup: (
+    groupId: string,
+    input: MobileServiceGroupInput,
+  ) => Promise<void>;
   onUpdateService: (serviceId: string, input: MobileServiceInput) => Promise<void>;
   onUpdateStaff: (staffId: string, input: MobileStaffInput) => Promise<void>;
   referrals: MobileReferralsSummary | null;
@@ -304,8 +313,10 @@ export function MobileMoreScreen({
   isServicesRefreshing,
   onChangeSection,
   onCreateCheckIn,
+  onCreateServiceGroup,
   onCreateService,
   onCreateStaff,
+  onDeleteServiceGroup,
   onDeleteService,
   onDeleteStaff,
   onJumpCheckInsToToday,
@@ -333,6 +344,9 @@ export function MobileMoreScreen({
   onShareReferral,
   onShareReviewSurvey,
   onSignOut,
+  onReorderServiceGroups,
+  onReorderServices,
+  onUpdateServiceGroup,
   onUpdateService,
   onUpdateStaff,
   referrals,
@@ -540,11 +554,16 @@ export function MobileMoreScreen({
             error={servicesError}
             isLoading={isServicesLoading}
             isRefreshing={isServicesRefreshing}
+            onCreateServiceGroup={onCreateServiceGroup}
             onCreateService={onCreateService}
             onCreateStaff={onCreateStaff}
+            onDeleteServiceGroup={onDeleteServiceGroup}
             onDeleteService={onDeleteService}
             onDeleteStaff={onDeleteStaff}
             onRefresh={onRefreshServices}
+            onReorderServiceGroups={onReorderServiceGroups}
+            onReorderServices={onReorderServices}
+            onUpdateServiceGroup={onUpdateServiceGroup}
             onUpdateService={onUpdateService}
             onUpdateStaff={onUpdateStaff}
           />

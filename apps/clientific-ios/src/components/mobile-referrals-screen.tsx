@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import * as Clipboard from 'expo-clipboard';
 import {
   ActivityIndicator,
   Pressable,
@@ -36,8 +37,18 @@ export function MobileReferralsScreen({
 }: MobileReferralsScreenProps) {
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
+  const [copiedItem, setCopiedItem] = useState<'code' | 'link' | null>(null);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasLiveInvite = Boolean(data?.payoutReady && data?.referralCode);
   const referralUrl = data?.referralCode ? buildReferralInviteUrl(data.referralCode) : null;
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <ScrollView
@@ -108,6 +119,28 @@ export function MobileReferralsScreen({
                     Share the link first. If someone opens signup without the invite attached, they
                     can use the fallback code below.
                   </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      void Clipboard.setStringAsync(referralUrl ?? '');
+                      setCopiedItem('link');
+                      if (copyTimeoutRef.current) {
+                        clearTimeout(copyTimeoutRef.current);
+                      }
+                      copyTimeoutRef.current = setTimeout(
+                        () => setCopiedItem((current) => (current === 'link' ? null : current)),
+                        1600,
+                      );
+                    }}
+                    style={[
+                      styles.secondaryButton,
+                      { backgroundColor: theme.surface, borderColor: theme.border },
+                    ]}
+                    testID="mobile-referrals-copy-link">
+                    <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+                      {copiedItem === 'link' ? 'Copied' : 'Copy link'}
+                    </Text>
+                  </Pressable>
                 </View>
                 <View
                   style={[
@@ -122,6 +155,28 @@ export function MobileReferralsScreen({
                     {business.name} can still share this manually if the invite link is copied into
                     a note, card, or message without the full URL.
                   </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      void Clipboard.setStringAsync(data?.referralCode ?? '');
+                      setCopiedItem('code');
+                      if (copyTimeoutRef.current) {
+                        clearTimeout(copyTimeoutRef.current);
+                      }
+                      copyTimeoutRef.current = setTimeout(
+                        () => setCopiedItem((current) => (current === 'code' ? null : current)),
+                        1600,
+                      );
+                    }}
+                    style={[
+                      styles.secondaryButton,
+                      { backgroundColor: theme.surface, borderColor: theme.border },
+                    ]}
+                    testID="mobile-referrals-copy-code">
+                    <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+                      {copiedItem === 'code' ? 'Copied' : 'Copy code'}
+                    </Text>
+                  </Pressable>
                 </View>
                 <Pressable
                   accessibilityRole="button"
@@ -342,6 +397,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  secondaryButton: {
+    alignSelf: 'flex-start',
+    minHeight: 40,
+    borderWidth: 1,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
   inlineButton: {
     alignSelf: 'flex-start',
     minHeight: 42,
@@ -354,6 +418,11 @@ const styles = StyleSheet.create({
     color: '#f8fffc',
     fontSize: 15,
     lineHeight: 20,
+    fontWeight: '800',
+  },
+  secondaryButtonText: {
+    fontSize: 13,
+    lineHeight: 16,
     fontWeight: '800',
   },
   statsRow: {

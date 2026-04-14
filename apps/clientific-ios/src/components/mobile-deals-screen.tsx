@@ -1,4 +1,5 @@
 import React from 'react';
+import * as Clipboard from 'expo-clipboard';
 import {
   ActivityIndicator,
   Pressable,
@@ -9,7 +10,11 @@ import {
   useColorScheme,
   View,
 } from 'react-native';
-import type { MobileDealRecord, MobileDealsSummary } from '@/lib/clientific-api';
+import {
+  getClientificWebUrl,
+  type MobileDealRecord,
+  type MobileDealsSummary,
+} from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
 
 type MobileDealsScreenProps = {
@@ -18,6 +23,7 @@ type MobileDealsScreenProps = {
   isLoading: boolean;
   isRefreshing: boolean;
   onOpenFunds: () => void;
+  onOpenUrl: (url: string) => Promise<void>;
   onRefresh: () => Promise<void>;
   onShareDeal: (deal: MobileDealRecord) => Promise<void>;
 };
@@ -52,6 +58,7 @@ export function MobileDealsScreen({
   isLoading,
   isRefreshing,
   onOpenFunds,
+  onOpenUrl,
   onRefresh,
   onShareDeal,
 }: MobileDealsScreenProps) {
@@ -221,13 +228,31 @@ export function MobileDealsScreen({
                       </View>
                     </View>
 
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => void onShareDeal(deal)}
-                      style={[styles.shareButton, { borderColor: theme.border }]}
-                      testID={`mobile-deal-share-${deal.id}`}>
-                      <Text style={[styles.shareButtonText, { color: theme.text }]}>Share link</Text>
-                    </Pressable>
+                    <View style={styles.actionRow}>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => void onShareDeal(deal)}
+                        style={[styles.actionButton, { borderColor: theme.border }]}
+                        testID={`mobile-deal-share-${deal.id}`}>
+                        <Text style={[styles.actionButtonText, { color: theme.text }]}>Share</Text>
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() =>
+                          void Clipboard.setStringAsync(`${getClientificWebUrl()}${deal.linkPath}`)
+                        }
+                        style={[styles.actionButton, { borderColor: theme.border }]}
+                        testID={`mobile-deal-copy-${deal.id}`}>
+                        <Text style={[styles.actionButtonText, { color: theme.text }]}>Copy link</Text>
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => void onOpenUrl(`${getClientificWebUrl()}${deal.linkPath}`)}
+                        style={[styles.actionButton, { borderColor: theme.border }]}
+                        testID={`mobile-deal-open-${deal.id}`}>
+                        <Text style={[styles.actionButtonText, { color: theme.text }]}>Open</Text>
+                      </Pressable>
+                    </View>
                   </View>
                 );
               })
@@ -416,17 +441,24 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '700',
   },
-  shareButton: {
+  actionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  actionButton: {
     borderWidth: 1,
     borderRadius: 16,
+    flexGrow: 1,
+    minWidth: 92,
     paddingHorizontal: 14,
     paddingVertical: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  shareButtonText: {
-    fontSize: 14,
-    lineHeight: 18,
+  actionButtonText: {
+    fontSize: 13,
+    lineHeight: 16,
     fontWeight: '800',
   },
   emptyState: {

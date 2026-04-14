@@ -1,6 +1,11 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
+import * as Clipboard from 'expo-clipboard';
 import { MobileReferralsScreen } from '@/components/mobile-referrals-screen';
+
+jest.mock('expo-clipboard', () => ({
+  setStringAsync: jest.fn().mockResolvedValue(undefined),
+}));
 
 const business = {
   id: 'biz-1',
@@ -41,6 +46,14 @@ describe('MobileReferralsScreen', () => {
     expect(screen.getByText('Fallback code')).toBeTruthy();
     expect(screen.getByText('ABCD1234')).toBeTruthy();
     expect(screen.getByTestId('mobile-referrals-share')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('mobile-referrals-copy-link'));
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith(
+      'https://www.clientific.app/register?ref=ABCD1234',
+    );
+
+    fireEvent.press(screen.getByTestId('mobile-referrals-copy-code'));
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith('ABCD1234');
   });
 
   it('keeps sharing locked until payouts are ready', () => {

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import * as Clipboard from 'expo-clipboard';
 import {
   ActivityIndicator,
   Pressable,
@@ -33,6 +34,16 @@ export function MobileReviewsScreen({
 }: MobileReviewsScreenProps) {
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
+  const [copiedSurveyLink, setCopiedSurveyLink] = useState(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <ScrollView
@@ -125,18 +136,39 @@ export function MobileReviewsScreen({
                 {data.surveyUrl ?? 'No survey link available yet'}
               </Text>
               {data.surveyUrl ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => void onOpenUrl(data.surveyUrl!)}
-                  style={[
-                    styles.secondaryButton,
-                    { backgroundColor: theme.surface, borderColor: theme.border },
-                  ]}
-                  testID="mobile-reviews-open-survey">
-                  <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
-                    Open survey
-                  </Text>
-                </Pressable>
+                <View style={styles.linkActionRow}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      void Clipboard.setStringAsync(data.surveyUrl!);
+                      setCopiedSurveyLink(true);
+                      if (copyTimeoutRef.current) {
+                        clearTimeout(copyTimeoutRef.current);
+                      }
+                      copyTimeoutRef.current = setTimeout(() => setCopiedSurveyLink(false), 1600);
+                    }}
+                    style={[
+                      styles.secondaryButton,
+                      { backgroundColor: theme.surface, borderColor: theme.border },
+                    ]}
+                    testID="mobile-reviews-copy-survey">
+                    <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+                      {copiedSurveyLink ? 'Copied' : 'Copy link'}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => void onOpenUrl(data.surveyUrl!)}
+                    style={[
+                      styles.secondaryButton,
+                      { backgroundColor: theme.surface, borderColor: theme.border },
+                    ]}
+                    testID="mobile-reviews-open-survey">
+                    <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+                      Open survey
+                    </Text>
+                  </Pressable>
+                </View>
               ) : null}
             </View>
           </View>
@@ -309,6 +341,11 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     paddingHorizontal: 16,
     paddingVertical: 16,
+    gap: 10,
+  },
+  linkActionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
   linkLabel: {

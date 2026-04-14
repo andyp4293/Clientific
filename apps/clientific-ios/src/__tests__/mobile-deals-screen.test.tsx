@@ -1,6 +1,11 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import * as Clipboard from 'expo-clipboard';
 import { MobileDealsScreen } from '@/components/mobile-deals-screen';
+
+jest.mock('expo-clipboard', () => ({
+  setStringAsync: jest.fn().mockResolvedValue(undefined),
+}));
 
 const data = {
   business: {
@@ -39,6 +44,7 @@ const data = {
 describe('MobileDealsScreen', () => {
   it('renders deal metrics and share actions', () => {
     const onShareDeal = jest.fn().mockResolvedValue(undefined);
+    const onOpenUrl = jest.fn().mockResolvedValue(undefined);
 
     render(
       <MobileDealsScreen
@@ -47,6 +53,7 @@ describe('MobileDealsScreen', () => {
         isLoading={false}
         isRefreshing={false}
         onOpenFunds={jest.fn()}
+        onOpenUrl={onOpenUrl}
         onRefresh={jest.fn().mockResolvedValue(undefined)}
         onShareDeal={onShareDeal}
       />,
@@ -57,5 +64,13 @@ describe('MobileDealsScreen', () => {
 
     fireEvent.press(screen.getByTestId('mobile-deal-share-deal-1'));
     expect(onShareDeal).toHaveBeenCalledWith(data.deals[0]);
+
+    fireEvent.press(screen.getByTestId('mobile-deal-copy-deal-1'));
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith(
+      'https://www.clientific.app/d/deal-1',
+    );
+
+    fireEvent.press(screen.getByTestId('mobile-deal-open-deal-1'));
+    expect(onOpenUrl).toHaveBeenCalledWith('https://www.clientific.app/d/deal-1');
   });
 });
