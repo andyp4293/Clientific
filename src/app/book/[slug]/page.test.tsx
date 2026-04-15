@@ -26,4 +26,12 @@ describe('public booking page source', () => {
     expect(source).toContain('const viewerCanManage = businessData?.viewerCanManage === true;');
     expect(source).not.toContain('useSession');
   });
+
+  it('uses booking submission itself as the transactional SMS consent disclosure', () => {
+    const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('getPublicBookingTransactionalConsentDisclosure(business.name)');
+    expect(source).toContain('smsConsent: true');
+    expect(source).not.toContain('This is optional — you can still book without SMS.');
+  });
 });

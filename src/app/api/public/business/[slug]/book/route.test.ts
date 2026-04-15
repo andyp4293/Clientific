@@ -52,7 +52,7 @@ const APPOINTMENT = {
   business: { name: 'Test Salon' },
 };
 
-describe('POST /api/public/business/[slug]/book - consent split', () => {
+describe('POST /api/public/business/[slug]/book - consent handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -100,7 +100,7 @@ describe('POST /api/public/business/[slug]/book - consent split', () => {
     expect(prisma.appointment.create).not.toHaveBeenCalled();
   });
 
-  it('stores both transactional and marketing consent on new customer + logs FORM_OPT_IN', async () => {
+  it('automatically enables transactional appointment SMS when a customer submits a booking request', async () => {
     vi.mocked(prisma.customer.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.customer.create).mockResolvedValue({
       id: 'cust-1',
@@ -112,8 +112,6 @@ describe('POST /api/public/business/[slug]/book - consent split', () => {
     const res = await POST(
       req({
         ...BASE_BODY,
-        smsConsent: true,
-        smsMarketingConsent: true,
       }),
       { params: Promise.resolve({ slug: 'test-salon' }) }
     );
@@ -123,7 +121,7 @@ describe('POST /api/public/business/[slug]/book - consent split', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           smsConsent: true,
-          smsMarketingConsent: true,
+          smsMarketingConsent: false,
         }),
       })
     );
@@ -132,6 +130,14 @@ describe('POST /api/public/business/[slug]/book - consent split', () => {
         data: expect.objectContaining({
           eventType: 'FORM_OPT_IN',
           source: 'booking_form',
+          metadata: expect.objectContaining({
+            channel: 'public-business-slug-book',
+            consentApplied: true,
+            consentMethod: 'booking_submission',
+            marketingConsent: false,
+            submittedSmsConsentField: false,
+            transactionalConsent: true,
+          }),
         }),
       })
     );
@@ -143,7 +149,7 @@ describe('POST /api/public/business/[slug]/book - consent split', () => {
     );
   });
 
-  it('allows marketing opt-in without turning on transactional consent', async () => {
+  it('keeps marketing opt-in separate while still applying transactional booking consent', async () => {
     vi.mocked(prisma.customer.findFirst).mockResolvedValue({
       id: 'cust-1',
       smsOptedOut: false,
@@ -160,7 +166,6 @@ describe('POST /api/public/business/[slug]/book - consent split', () => {
     const res = await POST(
       req({
         ...BASE_BODY,
-        smsConsent: false,
         smsMarketingConsent: true,
       }),
       { params: Promise.resolve({ slug: 'test-salon' }) }
@@ -169,8 +174,53 @@ describe('POST /api/public/business/[slug]/book - consent split', () => {
     expect(res.status).toBe(200);
     const updateArgs = vi.mocked(prisma.customer.update).mock.calls[0][0] as any;
     expect(updateArgs.data.smsMarketingConsent).toBe(true);
+    expect(updateArgs.data.smsConsent).toBe(true);
+    expect(prisma.smsConsentEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          metadata: expect.objectContaining({
+            transactionalConsent: true,
+            marketingConsent: true,
+            consentApplied: true,
+          }),
+        }),
+      })
+    );
+    expect(sendAppointmentConfirmation).toHaveBeenCalled();
+  });
+
+  it('does not override a prior STOP opt-out just because the booking form was submitted again', async () => {
+    vi.mocked(prisma.customer.findFirst).mockResolvedValue({
+      id: 'cust-1',
+      smsOptedOut: true,
+      phone: '+15551234567',
+      name: 'Jane',
+    } as any);
+    vi.mocked(prisma.customer.update).mockResolvedValue({
+      id: 'cust-1',
+      name: 'Jane',
+      phone: '+15551234567',
+      smsOptedOut: true,
+    } as any);
+
+    const res = await POST(
+      req(BASE_BODY),
+      { params: Promise.resolve({ slug: 'test-salon' }) }
+    );
+
+    expect(res.status).toBe(200);
+    const updateArgs = vi.mocked(prisma.customer.update).mock.calls[0][0] as any;
     expect(updateArgs.data.smsConsent).toBeUndefined();
-    expect(prisma.smsConsentEvent.create).toHaveBeenCalled();
+    expect(prisma.smsConsentEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          metadata: expect.objectContaining({
+            consentApplied: false,
+            transactionalConsent: true,
+          }),
+        }),
+      })
+    );
     expect(sendAppointmentConfirmation).not.toHaveBeenCalled();
   });
 

@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { ChevronDown, Info } from 'lucide-react';
 import { APP_NAME } from '@/lib/brand';
 import { getEmptyAvailabilityState } from '@/lib/booking-availability';
+import { getPublicBookingTransactionalConsentDisclosure } from '@/lib/public-booking-sms-consent';
 import { PublicOwnerBackButton } from '@/components/public/PublicOwnerBackButton';
 import { groupServicesForDisplay } from '@/lib/service-grouping';
 import { toggleServiceSelection } from '@/lib/service-selection';
@@ -132,7 +133,6 @@ export default function PublicBookingPage() {
     phone: '',
     email: '',
     notes: '',
-    smsConsent: false,
     smsMarketingConsent: false,
   });
 
@@ -301,7 +301,7 @@ export default function PublicBookingPage() {
       customerPhone: customerInfo.phone,
       customerEmail: customerInfo.email || undefined,
       notes: customerInfo.notes || undefined,
-      smsConsent: customerInfo.smsConsent,
+      smsConsent: true,
       smsMarketingConsent: customerInfo.smsMarketingConsent,
     });
   };
@@ -755,27 +755,12 @@ export default function PublicBookingPage() {
                   />
                 </div>
 
-                {/* SMS Consent Checkbox */}
-                <button
-                  type="button"
-                  onClick={() => setCustomerInfo({ ...customerInfo, smsConsent: !customerInfo.smsConsent })}
-                  className="w-full text-left bg-primary-50 dark:bg-primary/10 border border-primary-200 dark:border-primary-800 rounded-xl p-4"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 w-5 h-5 flex-shrink-0 rounded border-2 flex items-center justify-center ${
-                      customerInfo.smsConsent ? 'bg-primary border-primary' : 'bg-white dark:bg-gray-700 border-gray-400 dark:border-gray-500'
-                    }`}>
-                      {customerInfo.smsConsent && (
-                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
-                    <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">
-                      <span className="font-medium">Yes, send me SMS appointment reminders and updates.</span> Message and data rates may apply. Message frequency varies. Reply STOP to cancel, HELP for help. This is optional — you can still book without SMS.
-                    </span>
-                  </div>
-                </button>
+                <div className="w-full bg-primary-50 dark:bg-primary/10 border border-primary-200 dark:border-primary-800 rounded-xl p-4">
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                    <span className="font-medium">Appointment text consent.</span>{' '}
+                    {getPublicBookingTransactionalConsentDisclosure(business.name)}
+                  </p>
+                </div>
 
                 <button
                   type="button"
@@ -939,4 +924,3 @@ export default function PublicBookingPage() {
     </div>
   );
 }
-

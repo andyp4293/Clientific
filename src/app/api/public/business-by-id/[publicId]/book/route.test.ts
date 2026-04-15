@@ -93,7 +93,6 @@ describe('POST /api/public/business-by-id/[publicId]/book', () => {
     const res = await POST(
       req({
         ...BASE_BODY,
-        smsConsent: true,
       }),
       { params: Promise.resolve({ publicId: 'pub_123' }) }
     );
@@ -107,13 +106,9 @@ describe('POST /api/public/business-by-id/[publicId]/book', () => {
     );
   });
 
-  it('stores both transactional and marketing consent on new customer + logs FORM_OPT_IN', async () => {
+  it('automatically enables transactional appointment SMS when a booking request is submitted', async () => {
     const res = await POST(
-      req({
-        ...BASE_BODY,
-        smsConsent: true,
-        smsMarketingConsent: true,
-      }),
+      req(BASE_BODY),
       { params: Promise.resolve({ publicId: 'pub_123' }) }
     );
 
@@ -123,8 +118,8 @@ describe('POST /api/public/business-by-id/[publicId]/book', () => {
         data: expect.objectContaining({
           businessId: 'biz-1',
           smsConsent: true,
-          smsMarketingConsent: true,
-          smsMarketingConsentAt: expect.any(Date),
+          smsMarketingConsent: false,
+          smsMarketingConsentAt: null,
         }),
       })
     );
@@ -135,8 +130,11 @@ describe('POST /api/public/business-by-id/[publicId]/book', () => {
           source: 'booking_form',
           metadata: expect.objectContaining({
             transactionalConsent: true,
-            marketingConsent: true,
+            marketingConsent: false,
+            consentApplied: true,
+            consentMethod: 'booking_submission',
             channel: 'public-business-public-id-book',
+            submittedSmsConsentField: false,
           }),
         }),
       })
@@ -149,7 +147,7 @@ describe('POST /api/public/business-by-id/[publicId]/book', () => {
     );
   });
 
-  it('allows marketing opt-in without turning on transactional consent', async () => {
+  it('keeps marketing opt-in separate while still applying transactional booking consent', async () => {
     vi.mocked(prisma.customer.findFirst).mockResolvedValue({
       id: 'cust-1',
       smsOptedOut: false,
@@ -166,7 +164,6 @@ describe('POST /api/public/business-by-id/[publicId]/book', () => {
     const res = await POST(
       req({
         ...BASE_BODY,
-        smsConsent: false,
         smsMarketingConsent: true,
       }),
       { params: Promise.resolve({ publicId: 'pub_123' }) }
@@ -176,14 +173,50 @@ describe('POST /api/public/business-by-id/[publicId]/book', () => {
     const updateArgs = vi.mocked(prisma.customer.update).mock.calls[0][0] as any;
     expect(updateArgs.data.smsMarketingConsent).toBe(true);
     expect(updateArgs.data.smsMarketingConsentAt).toBeInstanceOf(Date);
+    expect(updateArgs.data.smsConsent).toBe(true);
+    expect(prisma.smsConsentEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          metadata: expect.objectContaining({
+            transactionalConsent: true,
+            marketingConsent: true,
+            consentApplied: true,
+            channel: 'public-business-public-id-book',
+          }),
+        }),
+      })
+    );
+    expect(sendAppointmentConfirmation).toHaveBeenCalled();
+  });
+
+  it('does not override a prior STOP opt-out when the same customer submits another booking request', async () => {
+    vi.mocked(prisma.customer.findFirst).mockResolvedValue({
+      id: 'cust-1',
+      smsOptedOut: true,
+      phone: '+15551234567',
+      name: 'Jane',
+    } as any);
+    vi.mocked(prisma.customer.update).mockResolvedValue({
+      id: 'cust-1',
+      name: 'Jane',
+      phone: '+15551234567',
+      smsOptedOut: true,
+    } as any);
+
+    const res = await POST(
+      req(BASE_BODY),
+      { params: Promise.resolve({ publicId: 'pub_123' }) }
+    );
+
+    expect(res.status).toBe(200);
+    const updateArgs = vi.mocked(prisma.customer.update).mock.calls[0][0] as any;
     expect(updateArgs.data.smsConsent).toBeUndefined();
     expect(prisma.smsConsentEvent.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           metadata: expect.objectContaining({
-            transactionalConsent: false,
-            marketingConsent: true,
-            channel: 'public-business-public-id-book',
+            consentApplied: false,
+            transactionalConsent: true,
           }),
         }),
       })

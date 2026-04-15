@@ -13,6 +13,7 @@ import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { createBusinessNotification } from '@/lib/mobile-push';
 import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
 import { weekdayIndexInTimeZone } from '@/lib/timezone';
+import { buildPublicBookingConsentMetadata } from '@/lib/public-booking-sms-consent';
 
 // POST - Create public booking (no auth required)
 export async function POST(
@@ -70,8 +71,14 @@ export async function POST(
       smsMarketingConsent,
     } = await req.json();
 
-    const transactionalConsent = Boolean(smsConsent);
+    const transactionalConsent = true;
     const marketingConsent = Boolean(smsMarketingConsent);
+    const submittedSmsConsentField = Boolean(smsConsent);
+    const ipAddress =
+      req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      req.headers.get('x-real-ip')?.trim() ||
+      null;
+    const userAgent = req.headers.get('user-agent');
 
     // Support both serviceIds[] (new) and serviceId (legacy)
     const serviceIds: string[] = rawServiceIds?.length
@@ -216,6 +223,7 @@ export async function POST(
         OR: buildCustomerPhoneMatchClauses(customerPhone),
       },
     });
+    let consentApplied = true;
 
     if (!customer) {
       customer = await prisma.customer.create({
@@ -231,6 +239,7 @@ export async function POST(
         },
       });
     } else {
+      consentApplied = !customer.smsOptedOut;
       customer = await prisma.customer.update({
         where: { id: customer.id },
         data: {
@@ -280,22 +289,26 @@ export async function POST(
       },
     });
 
-    if (transactionalConsent || marketingConsent) {
-      await prisma.smsConsentEvent.create({
-        data: {
-          businessId: business.id,
-          customerId: customer.id,
-          phone: customer.phone || normalizedCustomerPhone,
-          eventType: 'FORM_OPT_IN',
-          source: 'booking_form',
-          metadata: {
-            transactionalConsent,
-            marketingConsent,
-            channel: 'public-business-public-id-book',
-          },
-        },
-      });
-    }
+    await prisma.smsConsentEvent.create({
+      data: {
+        businessId: business.id,
+        customerId: customer.id,
+        phone: customer.phone || normalizedCustomerPhone,
+        eventType: 'FORM_OPT_IN',
+        source: 'booking_form',
+        ipAddress,
+        userAgent,
+        metadata: buildPublicBookingConsentMetadata({
+          businessName: business.name,
+          channel: 'public-business-public-id-book',
+          consentApplied,
+          ipAddress,
+          marketingConsent,
+          submittedSmsConsentField,
+          userAgent,
+        }),
+      },
+    });
 
     // Send SMS confirmation only if customer consented
     const appBase = getConfiguredAppBaseUrl();
