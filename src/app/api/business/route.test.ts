@@ -209,40 +209,48 @@ describe('PATCH /api/business', () => {
     expect(mockBusinessUpdate).not.toHaveBeenCalled();
   });
 
-  it('allows Starter accounts to save social links when unchanged AI fields are present', async () => {
-    mockSession.mockResolvedValue(activeSession);
-    mockBusiness
-      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
-      .mockResolvedValueOnce({ ...fakeBusiness, subscriptionPlan: 'starter' });
+  it.each([
+    ['googleReviewUrl', 'https://g.page/abc-nails/review'],
+    ['facebookPageUrl', 'https://www.facebook.com/abcnails'],
+    ['yelpUrl', 'https://www.yelp.com/biz/abc-nails'],
+    ['instagramUrl', 'https://www.instagram.com/abcnails'],
+  ] as const)(
+    'allows Starter accounts to save %s when unchanged AI fields are present',
+    async (field, value) => {
+      mockSession.mockResolvedValue(activeSession);
+      mockBusiness
+        .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+        .mockResolvedValueOnce({ ...fakeBusiness, subscriptionPlan: 'starter' });
 
-    mockBusinessUpdate.mockResolvedValue({
-      ...fakeBusiness,
-      subscriptionPlan: 'starter',
-      googleReviewUrl: 'https://g.page/abc-nails/review',
-    });
+      mockBusinessUpdate.mockResolvedValue({
+        ...fakeBusiness,
+        subscriptionPlan: 'starter',
+        [field]: value,
+      });
 
-    const res = await PATCH(
-      makePatchRequest({
-        googleReviewUrl: 'https://g.page/abc-nails/review',
-        aiReceptionistEnabled: false,
-        aiReceptionistPhone: null,
-        aiReceptionistGreeting: null,
-        aiReceptionistFaq: null,
-        smsAiEnabled: false,
-        smsAiPhoneNumber: null,
-        smsAiGreeting: null,
-      })
-    );
+      const res = await PATCH(
+        makePatchRequest({
+          [field]: value,
+          aiReceptionistEnabled: false,
+          aiReceptionistPhone: null,
+          aiReceptionistGreeting: null,
+          aiReceptionistFaq: null,
+          smsAiEnabled: false,
+          smsAiPhoneNumber: null,
+          smsAiGreeting: null,
+        })
+      );
 
-    expect(res.status).toBe(200);
-    expect(mockBusinessUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          googleReviewUrl: 'https://g.page/abc-nails/review',
-        }),
-      })
-    );
-  });
+      expect(res.status).toBe(200);
+      expect(mockBusinessUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            [field]: value,
+          }),
+        })
+      );
+    }
+  );
 
   it('normalizes the transfer-to phone number before saving settings', async () => {
     mockSession.mockResolvedValue(activeSession);
