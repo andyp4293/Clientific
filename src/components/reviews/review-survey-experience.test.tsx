@@ -53,7 +53,7 @@ describe('ReviewSurveyExperience', () => {
     fireEvent.click(screen.getByRole('button', { name: /amazing/i }));
     fireEvent.click(screen.getByRole('button', { name: /continue to review/i }));
 
-    expect(await screen.findByRole('link', { name: /leave a google/i })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: /leave a google review/i })).toHaveAttribute(
       'href',
       'https://google.com/review'
     );

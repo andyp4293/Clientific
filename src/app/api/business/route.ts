@@ -42,6 +42,15 @@ function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === 'string';
 }
 
+function normalizeComparableOptionalString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
+}
+
 function parseAreaCode(phone: string | null | undefined): string | null {
   if (!phone) return null;
   const digits = phone.replace(/\D/g, '');
@@ -386,27 +395,53 @@ export async function PATCH(req: NextRequest) {
       select: {
         name: true,
         phone: true,
-        subscriptionPlan: true,
-        aiReceptionistEnabled: true,
-        vapiPhoneNumberId: true,
-        vapiPhoneNumber: true,
-        smsAiEnabled: true,
-        smsAiPhoneNumber: true,
-      },
-    });
+      subscriptionPlan: true,
+      aiReceptionistEnabled: true,
+      aiReceptionistPhone: true,
+      aiReceptionistGreeting: true,
+      aiReceptionistFaq: true,
+      vapiPhoneNumberId: true,
+      vapiPhoneNumber: true,
+      smsAiEnabled: true,
+      smsAiPhoneNumber: true,
+      smsAiGreeting: true,
+    },
+  });
 
     if (!current) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
+    const normalizedAiReceptionistPhone =
+      aiReceptionistPhone === undefined
+        ? undefined
+        : normalizeOptionalStoredPhoneNumber(aiReceptionistPhone);
+    const normalizedOwnerPhone =
+      ownerPhone === undefined
+        ? undefined
+        : normalizeOptionalStoredPhoneNumber(ownerPhone);
+    const normalizedBusinessPhone =
+      phone === undefined ? undefined : normalizeOptionalStoredPhoneNumber(phone);
+
     const touchesAiReceptionistSettings =
-      aiReceptionistEnabled !== undefined ||
-      aiReceptionistPhone !== undefined ||
-      aiReceptionistGreeting !== undefined ||
-      aiReceptionistFaq !== undefined ||
-      smsAiEnabled !== undefined ||
-      smsAiPhoneNumber !== undefined ||
-      smsAiGreeting !== undefined;
+      (aiReceptionistEnabled !== undefined &&
+        aiReceptionistEnabled !== current.aiReceptionistEnabled) ||
+      (aiReceptionistPhone !== undefined &&
+        normalizedAiReceptionistPhone !==
+          normalizeOptionalStoredPhoneNumber(current.aiReceptionistPhone)) ||
+      (aiReceptionistGreeting !== undefined &&
+        normalizeComparableOptionalString(aiReceptionistGreeting) !==
+          normalizeComparableOptionalString(current.aiReceptionistGreeting)) ||
+      (aiReceptionistFaq !== undefined &&
+        JSON.stringify(aiReceptionistFaq ?? null) !==
+          JSON.stringify(current.aiReceptionistFaq ?? null)) ||
+      (smsAiEnabled !== undefined && smsAiEnabled !== current.smsAiEnabled) ||
+      (smsAiPhoneNumber !== undefined &&
+        normalizeOptionalStoredPhoneNumber(smsAiPhoneNumber) !==
+          normalizeOptionalStoredPhoneNumber(current.smsAiPhoneNumber)) ||
+      (smsAiGreeting !== undefined &&
+        normalizeComparableOptionalString(smsAiGreeting) !==
+          normalizeComparableOptionalString(current.smsAiGreeting));
 
     if (
       touchesAiReceptionistSettings &&
@@ -420,17 +455,6 @@ export async function PATCH(req: NextRequest) {
         { status: 403 }
       );
     }
-
-    const normalizedAiReceptionistPhone =
-      aiReceptionistPhone === undefined
-        ? undefined
-        : normalizeOptionalStoredPhoneNumber(aiReceptionistPhone);
-    const normalizedOwnerPhone =
-      ownerPhone === undefined
-        ? undefined
-        : normalizeOptionalStoredPhoneNumber(ownerPhone);
-    const normalizedBusinessPhone =
-      phone === undefined ? undefined : normalizeOptionalStoredPhoneNumber(phone);
 
     if (
       typeof aiReceptionistPhone === 'string' &&

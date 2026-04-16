@@ -173,7 +173,9 @@ export default function ReviewSurveyExperience({ slug }: { slug: string }) {
               rel="noopener noreferrer"
               className="btn-primary w-full sm:w-auto"
             >
-              Leave a {submissionState.preferredReviewLabel || 'review'}
+              {submissionState.preferredReviewLabel
+                ? `Leave a ${submissionState.preferredReviewLabel} review`
+                : 'Leave a review'}
             </a>
           ) : null}
         </SuccessPanel>

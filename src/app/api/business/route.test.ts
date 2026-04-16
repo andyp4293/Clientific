@@ -70,6 +70,9 @@ const fakeBusiness = {
   subscriptionStatus: 'active',
   trialEndsAt: null,
   aiReceptionistEnabled: false,
+  aiReceptionistPhone: null,
+  aiReceptionistGreeting: null,
+  aiReceptionistFaq: null,
   smsAiEnabled: false,
   smsAiPhoneNumber: null,
   smsAiGreeting: null,
@@ -204,6 +207,41 @@ describe('PATCH /api/business', () => {
       code: 'PLAN_UPGRADE_REQUIRED',
     });
     expect(mockBusinessUpdate).not.toHaveBeenCalled();
+  });
+
+  it('allows Starter accounts to save social links when unchanged AI fields are present', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({ ...fakeBusiness, subscriptionPlan: 'starter' });
+
+    mockBusinessUpdate.mockResolvedValue({
+      ...fakeBusiness,
+      subscriptionPlan: 'starter',
+      googleReviewUrl: 'https://g.page/abc-nails/review',
+    });
+
+    const res = await PATCH(
+      makePatchRequest({
+        googleReviewUrl: 'https://g.page/abc-nails/review',
+        aiReceptionistEnabled: false,
+        aiReceptionistPhone: null,
+        aiReceptionistGreeting: null,
+        aiReceptionistFaq: null,
+        smsAiEnabled: false,
+        smsAiPhoneNumber: null,
+        smsAiGreeting: null,
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockBusinessUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          googleReviewUrl: 'https://g.page/abc-nails/review',
+        }),
+      })
+    );
   });
 
   it('normalizes the transfer-to phone number before saving settings', async () => {
