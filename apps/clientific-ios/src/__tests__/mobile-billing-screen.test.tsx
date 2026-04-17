@@ -13,11 +13,18 @@ const data = {
   currentPlanName: 'Starter',
   currentPlanPriceLabel: '$49/month',
   planSummary: 'For solo teams getting started.',
+  billingProvider: 'stripe' as const,
+  billingProviderLabel: 'Website',
+  managementTitle: 'Managed on the web',
+  managementSummary:
+    'This account started on the web. Plan changes and subscription management still happen in Clientific on the web.',
   subscriptionStatus: 'active',
   subscriptionStatusLabel: 'Active',
   trialDaysRemaining: null,
   trialEndsAtLabel: null,
   nextBillingDateLabel: 'April 30, 2026',
+  paymentMethodSummary: 'VISA ending in 4242',
+  invoiceEmptyState: 'No invoices have posted yet.',
   paymentMethod: {
     brand: 'visa',
     last4: '4242',
@@ -40,8 +47,7 @@ const data = {
 };
 
 describe('MobileBillingScreen', () => {
-  it('opens the billing portal and invoice links', () => {
-    const onOpenPortal = jest.fn().mockResolvedValue(undefined);
+  it('shows website-managed billing copy and still opens invoice links', () => {
     const onOpenUrl = jest.fn().mockResolvedValue(undefined);
 
     render(
@@ -49,18 +55,46 @@ describe('MobileBillingScreen', () => {
         data={data}
         error={null}
         isLoading={false}
-        isOpeningPortal={false}
         isRefreshing={false}
-        onOpenPortal={onOpenPortal}
         onOpenUrl={onOpenUrl}
         onRefresh={jest.fn().mockResolvedValue(undefined)}
       />,
     );
 
-    fireEvent.press(screen.getByTestId('mobile-billing-open-portal'));
+    expect(screen.getByText('Billing access')).toBeTruthy();
+    expect(screen.getByText('Managed on the web')).toBeTruthy();
     fireEvent.press(screen.getByTestId('mobile-billing-open-invoice-inv-1'));
 
-    expect(onOpenPortal).toHaveBeenCalled();
     expect(onOpenUrl).toHaveBeenCalledWith('https://stripe.com/invoice/inv-1');
+  });
+
+  it('shows Apple-managed billing copy for app store subscriptions', () => {
+    render(
+      <MobileBillingScreen
+        data={{
+          ...data,
+          billingProvider: 'app_store',
+          billingProviderLabel: 'App Store',
+          managementTitle: 'Managed by Apple',
+          managementSummary:
+            'This account is billed through the App Store. Purchases, renewals, and receipts stay managed by Apple.',
+          paymentMethodSummary: 'Payment details stay managed by Apple.',
+          invoices: [],
+          invoiceEmptyState: 'App Store receipts stay available from Apple for this subscription.',
+        }}
+        error={null}
+        isLoading={false}
+        isRefreshing={false}
+        onOpenUrl={jest.fn().mockResolvedValue(undefined)}
+        onRefresh={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByText('App Store')).toBeTruthy();
+    expect(screen.getByText('Managed by Apple')).toBeTruthy();
+    expect(screen.getByText('Payment details stay managed by Apple.')).toBeTruthy();
+    expect(
+      screen.getByText('App Store receipts stay available from Apple for this subscription.'),
+    ).toBeTruthy();
   });
 });

@@ -109,6 +109,7 @@ const makeBusiness = (overrides = {}) => ({
   id: 'biz-1',
   email: 'test@example.com',
   name: 'Test Business',
+  billingProvider: 'stripe',
   stripeCustomerId: 'cus_123',
   stripeSubscriptionId: 'sub_123',
   subscriptionPlan: 'starter',
@@ -176,6 +177,19 @@ describe('POST /api/billing/portal', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.url).toBe('https://billing.stripe.com/session_abc');
+  });
+
+  it('blocks portal access for app store-managed subscriptions', async () => {
+    mockSession.mockResolvedValue({ user: { id: 'biz-1', email: 'test@example.com' } });
+    mockFindUnique.mockResolvedValue(makeBusiness({ billingProvider: 'app_store' }));
+
+    const res = await portalPost(makeReq('http://localhost:3000/api/billing/portal', 'POST'));
+
+    expect(res.status).toBe(409);
+    expect(mockPortalCreate).not.toHaveBeenCalled();
+    expect(await res.json()).toEqual({
+      error: 'This subscription is managed through the App Store.',
+    });
   });
 
   it('prefers the session business id before falling back to email', async () => {
@@ -313,7 +327,7 @@ describe('GET /api/billing/details', () => {
     expect(res.status).toBe(200);
     expect(mockFindUnique).toHaveBeenCalledWith({
       where: { id: 'biz-1' },
-      select: { stripeCustomerId: true, stripeSubscriptionId: true },
+      select: { billingProvider: true, stripeCustomerId: true, stripeSubscriptionId: true },
     });
   });
 
@@ -376,6 +390,28 @@ describe('GET /api/billing/details', () => {
 
     const res = await detailsGet(makeReq('http://localhost:3000/api/billing/details'));
     expect(res.status).toBe(500);
+  });
+
+  it('returns empty billing details for app store-managed subscriptions', async () => {
+    mockSession.mockResolvedValue({ user: { id: 'biz-1', email: 'test@example.com' } });
+    mockFindUnique.mockResolvedValue(
+      makeBusiness({
+        billingProvider: 'app_store',
+        stripeCustomerId: 'cus_should_not_load',
+        stripeSubscriptionId: 'sub_should_not_load',
+      }),
+    );
+
+    const res = await detailsGet(makeReq('http://localhost:3000/api/billing/details'));
+
+    expect(res.status).toBe(200);
+    expect(mockSubRetrieve).not.toHaveBeenCalled();
+    expect(mockInvoiceList).not.toHaveBeenCalled();
+    expect(await res.json()).toEqual({
+      paymentMethod: null,
+      invoices: [],
+      billingDetails: null,
+    });
   });
 });
 
@@ -469,6 +505,21 @@ describe('POST /api/checkout/create', () => {
     mockFindUnique.mockResolvedValue(null);
     const res = await checkoutPost(makeReq('http://localhost:3000/api/checkout/create', 'POST', { plan: 'starter' }));
     expect(res.status).toBe(404);
+  });
+
+  it('blocks Stripe checkout for app store-managed subscriptions', async () => {
+    mockSession.mockResolvedValue({ user: { id: 'biz-1', email: 'test@example.com' } });
+    mockFindUnique.mockResolvedValue(makeBusiness({ billingProvider: 'app_store' }));
+
+    const res = await checkoutPost(
+      makeReq('http://localhost:3000/api/checkout/create', 'POST', { plan: 'starter' }),
+    );
+
+    expect(res.status).toBe(409);
+    expect(mockCheckoutCreate).not.toHaveBeenCalled();
+    expect(await res.json()).toEqual({
+      error: 'This subscription is managed through the App Store.',
+    });
   });
 
   it('creates checkout session with 14-day trial for a first-time subscriber still in a local trial', async () => {

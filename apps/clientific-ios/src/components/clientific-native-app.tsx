@@ -74,7 +74,6 @@ import {
   MobileServicesSummary,
   MobileStaffInput,
   loginWithClientific,
-  openMobileBillingPortal,
   redeemMobileCode,
   registerMobilePushToken,
   registerWithClientific,
@@ -179,7 +178,6 @@ export function ClientificNativeApp() {
   const [isRefreshingReviews, setIsRefreshingReviews] = useState(false);
   const [isLoadingBilling, setIsLoadingBilling] = useState(false);
   const [isRefreshingBilling, setIsRefreshingBilling] = useState(false);
-  const [isOpeningBillingPortal, setIsOpeningBillingPortal] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [aiReceptionistError, setAiReceptionistError] = useState<string | null>(null);
@@ -894,24 +892,6 @@ export function ClientificNativeApp() {
     },
     [handleSessionError, session],
   );
-
-  const handleOpenBillingPortal = useCallback(async () => {
-    if (!session) {
-      return;
-    }
-
-    setIsOpeningBillingPortal(true);
-    setBillingError(null);
-
-    try {
-      const response = await openMobileBillingPortal(session.token);
-      await WebBrowser.openBrowserAsync(response.url);
-    } catch (error) {
-      await handleSessionError(error, 'Unable to open the billing portal.', setBillingError);
-    } finally {
-      setIsOpeningBillingPortal(false);
-    }
-  }, [handleSessionError, session]);
 
   const handleLookupRedeemCode = useCallback(
     async (code: string) => {
@@ -2417,7 +2397,6 @@ export function ClientificNativeApp() {
       isAppointmentsLoading={isLoadingAppointments}
       isAppointmentsRefreshing={isRefreshingAppointments}
       isBillingLoading={isLoadingBilling}
-      isBillingPortalOpening={isOpeningBillingPortal}
       isBillingRefreshing={isRefreshingBilling}
       isBusinessHoursLoading={isLoadingBusinessHours}
       isBusinessHoursRefreshing={isRefreshingBusinessHours}
@@ -2476,7 +2455,6 @@ export function ClientificNativeApp() {
       onNextCheckInsDate={goToNextCheckInsDate}
       onNextAppointmentsDate={goToNextAppointmentsDate}
       onNextCustomersPage={goToNextCustomersPage}
-      onOpenBillingPortal={handleOpenBillingPortal}
       onOpenExternalUrl={handleOpenExternalUrl}
       onOpenAppointments={openAppointmentsTab}
       onOpenCustomers={openCustomersTab}

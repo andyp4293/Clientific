@@ -6,6 +6,14 @@ import { PRICING_PLANS } from '@/lib/pricing-plans';
 import { getPricingPlanKey } from '@/lib/plan-utils';
 import { isBusinessOnboardingComplete } from '@/lib/onboarding';
 import { requireMobileSession } from '@/lib/mobile-route';
+import {
+  getBillingInvoiceEmptyState,
+  getBillingManagementSummary,
+  getBillingManagementTitle,
+  getBillingPaymentMethodSummary,
+  getBillingProviderLabel,
+  normalizeBillingProvider,
+} from '@/lib/billing-provider';
 
 function formatCurrency(amount: number, currency = 'USD') {
   return new Intl.NumberFormat('en-US', {
@@ -68,6 +76,7 @@ export async function GET(request: Request) {
         state: true,
         zipCode: true,
         country: true,
+        billingProvider: true,
         stripeCustomerId: true,
         stripeSubscriptionId: true,
       },
@@ -84,10 +93,13 @@ export async function GET(request: Request) {
 
     const planKey = getPricingPlanKey(subscription.subscriptionPlan);
     const plan = planKey ? PRICING_PLANS[planKey] : PRICING_PLANS.STARTER;
+    const billingProvider = normalizeBillingProvider(
+      subscription.billingProvider ?? business.billingProvider,
+    );
 
     let paymentMethod = null;
 
-    if (business.stripeSubscriptionId) {
+    if (billingProvider === 'stripe' && business.stripeSubscriptionId) {
       try {
         const stripeSubscription = await stripe.subscriptions.retrieve(
           business.stripeSubscriptionId,
@@ -128,7 +140,7 @@ export async function GET(request: Request) {
       invoicePdf: string | null;
     }> = [];
 
-    if (business.stripeCustomerId) {
+    if (billingProvider === 'stripe' && business.stripeCustomerId) {
       const invoiceList = await stripe.invoices.list({
         customer: business.stripeCustomerId,
         limit: 10,
@@ -157,6 +169,10 @@ export async function GET(request: Request) {
       currentPlanName: plan.name,
       currentPlanPriceLabel: `${formatPlanPrice(plan.price)}/month`,
       planSummary: plan.summary,
+      billingProvider,
+      billingProviderLabel: getBillingProviderLabel(billingProvider),
+      managementTitle: getBillingManagementTitle(billingProvider),
+      managementSummary: getBillingManagementSummary(billingProvider),
       subscriptionStatus: subscription.subscriptionStatus,
       subscriptionStatusLabel: formatSubscriptionStatus(subscription.subscriptionStatus),
       trialDaysRemaining: subscription.trialDaysRemaining,
@@ -167,13 +183,18 @@ export async function GET(request: Request) {
             year: 'numeric',
           })
         : null,
-      nextBillingDateLabel: subscription.stripeCurrentPeriodEnd
-        ? new Date(subscription.stripeCurrentPeriodEnd).toLocaleDateString('en-US', {
+      nextBillingDateLabel: subscription.subscriptionCurrentPeriodEnd
+        ? new Date(subscription.subscriptionCurrentPeriodEnd).toLocaleDateString('en-US', {
             month: 'long',
             day: 'numeric',
             year: 'numeric',
           })
         : null,
+      paymentMethodSummary: getBillingPaymentMethodSummary(
+        billingProvider,
+        paymentMethod?.label,
+      ),
+      invoiceEmptyState: getBillingInvoiceEmptyState(billingProvider),
       paymentMethod,
       invoices,
     });

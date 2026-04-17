@@ -7,6 +7,7 @@ import {
   canAccessAiReceptionist,
   requiresPlanUpgrade,
 } from './plan-access';
+import { normalizeBillingProvider } from './billing-provider';
 
 export type SubscriptionStatus = 
   | 'trialing'
@@ -145,10 +146,16 @@ export async function getSubscriptionInfo(businessId: string) {
     select: {
       subscriptionPlan: true,
       subscriptionStatus: true,
+      billingProvider: true,
       trialEndsAt: true,
+      subscriptionCurrentPeriodEnd: true,
       stripeCurrentPeriodEnd: true,
       stripeCustomerId: true,
       stripeSubscriptionId: true,
+      appStoreOriginalTransactionId: true,
+      appStoreProductId: true,
+      appStoreEnvironment: true,
+      appStoreLastVerifiedAt: true,
     },
   });
 
@@ -156,9 +163,11 @@ export async function getSubscriptionInfo(businessId: string) {
 
   const trialDaysRemaining = await getTrialDaysRemaining(businessId);
   const isActive = await hasActiveSubscription(businessId);
+  const billingProvider = normalizeBillingProvider(business.billingProvider);
 
   return {
     ...business,
+    billingProvider,
     trialDaysRemaining,
     isActive,
   };

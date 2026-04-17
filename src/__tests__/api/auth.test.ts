@@ -267,6 +267,7 @@ describe('POST /api/auth/register', () => {
     await registerPOST(req('/api/auth/register', validBody));
     const createCall = mockCreate.mock.calls[0][0].data;
     expect(createCall.subscriptionStatus).toBe('trialing');
+    expect(createCall.billingProvider).toBe('stripe');
     expect(createCall.trialEndsAt).toBeInstanceOf(Date);
   });
 

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
 import { getAppBaseUrlFromRequest } from '@/lib/app-url';
 import { requireMobileSession } from '@/lib/mobile-route';
+import { normalizeBillingProvider } from '@/lib/billing-provider';
 
 export async function POST(request: Request) {
   const authorized = await requireMobileSession(request);
@@ -17,12 +18,20 @@ export async function POST(request: Request) {
         id: true,
         email: true,
         name: true,
+        billingProvider: true,
         stripeCustomerId: true,
       },
     });
 
     if (!business) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (normalizeBillingProvider(business.billingProvider) !== 'stripe') {
+      return NextResponse.json(
+        { error: 'This subscription is managed through the App Store.' },
+        { status: 409 },
+      );
     }
 
     let stripeCustomerId = business.stripeCustomerId;

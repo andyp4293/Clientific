@@ -132,11 +132,15 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   await prisma.business.update({
     where: { id: businessId },
     data: {
+      billingProvider: 'stripe',
       stripeCustomerId: session.customer as string,
       stripeSubscriptionId: subscription.id,
       stripePriceId: subscription.items.data[0].price.id,
       subscriptionPlan: plan,
       subscriptionStatus: subscription.status,
+      subscriptionCurrentPeriodEnd: new Date(
+        (subscription as any).current_period_end * 1000
+      ),
       stripeCurrentPeriodEnd: new Date(
         (subscription as any).current_period_end * 1000
       ),
@@ -177,8 +181,12 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   await prisma.business.update({
     where: { id: business.id },
     data: {
+      billingProvider: 'stripe',
       subscriptionStatus: subscription.status,
       stripePriceId: newPriceId,
+      subscriptionCurrentPeriodEnd: new Date(
+        (subscription as any).current_period_end * 1000
+      ),
       stripeCurrentPeriodEnd: new Date(
         (subscription as any).current_period_end * 1000
       ),
@@ -204,7 +212,11 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   await prisma.business.update({
     where: { id: business.id },
     data: {
+      billingProvider: 'stripe',
       subscriptionStatus: 'canceled',
+      subscriptionCurrentPeriodEnd: (subscription as any).current_period_end
+        ? new Date((subscription as any).current_period_end * 1000)
+        : null,
     },
   });
 

@@ -47,11 +47,17 @@ model Business {
   instagramUrl                  String?
   subscriptionPlan              String                 @default("trial")
   subscriptionStatus            String                 @default("trialing")
+  billingProvider               String                 @default("stripe")
   trialEndsAt                   DateTime?
+  subscriptionCurrentPeriodEnd  DateTime?
   stripeCustomerId              String?                @unique
   stripeSubscriptionId          String?                @unique
   stripePriceId                 String?
   stripeCurrentPeriodEnd        DateTime?
+  appStoreOriginalTransactionId String?                @unique
+  appStoreProductId             String?
+  appStoreEnvironment           String?
+  appStoreLastVerifiedAt        DateTime?
   stripeConnectAccountId        String?                @unique
   stripeConnectChargesEnabled   Boolean                @default(false)
   stripeConnectPayoutsEnabled   Boolean                @default(false)

@@ -25,6 +25,7 @@ import {
   hasActiveSubscription,
   requireActiveSubscription,
   checkPlanLimit,
+  getSubscriptionInfo,
 } from '@/lib/subscription';
 
 const mockFindUnique = prisma.business.findUnique as ReturnType<typeof vi.fn>;
@@ -197,5 +198,73 @@ describe('checkPlanLimit', () => {
     const result = await checkPlanLimit('biz-1', 'staff');
     expect(result.allowed).toBe(true);
     expect(result.limit).toBe(Infinity);
+  });
+});
+
+describe('getSubscriptionInfo', () => {
+  it('normalizes existing web accounts to the stripe billing provider', async () => {
+    mockFindUnique
+      .mockResolvedValueOnce({
+        subscriptionPlan: 'starter',
+        subscriptionStatus: 'active',
+        billingProvider: null,
+        trialEndsAt: null,
+        subscriptionCurrentPeriodEnd: new Date('2026-05-01T00:00:00.000Z'),
+        stripeCurrentPeriodEnd: new Date('2026-05-01T00:00:00.000Z'),
+        stripeCustomerId: 'cus_123',
+        stripeSubscriptionId: 'sub_123',
+        appStoreOriginalTransactionId: null,
+        appStoreProductId: null,
+        appStoreEnvironment: null,
+        appStoreLastVerifiedAt: null,
+      })
+      .mockResolvedValueOnce({
+        subscriptionStatus: 'active',
+        trialEndsAt: null,
+      })
+      .mockResolvedValueOnce({
+        subscriptionStatus: 'active',
+        trialEndsAt: null,
+      });
+
+    const result = await getSubscriptionInfo('biz-1');
+
+    expect(result?.billingProvider).toBe('stripe');
+    expect(result?.subscriptionCurrentPeriodEnd).toEqual(
+      new Date('2026-05-01T00:00:00.000Z'),
+    );
+    expect(result?.isActive).toBe(true);
+  });
+
+  it('preserves app store metadata when that provider is already set', async () => {
+    mockFindUnique
+      .mockResolvedValueOnce({
+        subscriptionPlan: 'pro',
+        subscriptionStatus: 'active',
+        billingProvider: 'app_store',
+        trialEndsAt: null,
+        subscriptionCurrentPeriodEnd: new Date('2026-05-20T00:00:00.000Z'),
+        stripeCurrentPeriodEnd: null,
+        stripeCustomerId: null,
+        stripeSubscriptionId: null,
+        appStoreOriginalTransactionId: '10000009999',
+        appStoreProductId: 'clientific.pro.monthly',
+        appStoreEnvironment: 'Sandbox',
+        appStoreLastVerifiedAt: new Date('2026-04-17T00:00:00.000Z'),
+      })
+      .mockResolvedValueOnce({
+        subscriptionStatus: 'active',
+        trialEndsAt: null,
+      })
+      .mockResolvedValueOnce({
+        subscriptionStatus: 'active',
+        trialEndsAt: null,
+      });
+
+    const result = await getSubscriptionInfo('biz-1');
+
+    expect(result?.billingProvider).toBe('app_store');
+    expect(result?.appStoreProductId).toBe('clientific.pro.monthly');
+    expect(result?.appStoreOriginalTransactionId).toBe('10000009999');
   });
 });

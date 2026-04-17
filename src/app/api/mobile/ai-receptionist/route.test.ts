@@ -47,6 +47,7 @@ function makeBusiness(overrides: Record<string, unknown> = {}) {
     zipCode: '10001',
     country: 'US',
     subscriptionPlan: 'pro',
+    billingProvider: 'stripe',
     aiReceptionistEnabled: true,
     aiReceptionistPhone: '+15557654321',
     aiReceptionistGreeting: 'Thanks for calling Clientific Studio.',
@@ -69,6 +70,7 @@ describe('GET /api/mobile/ai-receptionist', () => {
 
     expect(response.status).toBe(200);
     expect(body.hasAccess).toBe(true);
+    expect(body.billingProvider).toBe('stripe');
     expect(body.unifiedNumber).toBe('+18885550123');
     expect(body.aiReceptionistFaq[0]).toMatchObject({
       question: 'Do you take walk-ins?',

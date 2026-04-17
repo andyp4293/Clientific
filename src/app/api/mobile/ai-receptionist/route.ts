@@ -5,6 +5,7 @@ import { isBusinessOnboardingComplete } from '@/lib/onboarding';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
 import { canAccessAiReceptionist } from '@/lib/plan-access';
+import { normalizeBillingProvider } from '@/lib/billing-provider';
 import { getConfiguredAppBaseUrl, getConfiguredWebhookBaseUrl } from '@/lib/app-url';
 import { requireMobileSession } from '@/lib/mobile-route';
 import { requireActiveSubscription } from '@/lib/subscription';
@@ -34,6 +35,7 @@ const AI_RECEPTIONIST_SELECT = {
   zipCode: true,
   country: true,
   subscriptionPlan: true,
+  billingProvider: true,
   aiReceptionistEnabled: true,
   aiReceptionistPhone: true,
   aiReceptionistGreeting: true,
@@ -57,6 +59,7 @@ type AiReceptionistBusiness = {
   zipCode: string | null;
   country: string | null;
   subscriptionPlan: string | null;
+  billingProvider: string | null;
   aiReceptionistEnabled: boolean;
   aiReceptionistPhone: string | null;
   aiReceptionistGreeting: string | null;
@@ -268,6 +271,7 @@ function formatResponse(business: AiReceptionistBusiness) {
       onboardingComplete: isBusinessOnboardingComplete(business),
     },
     subscriptionPlan: business.subscriptionPlan,
+    billingProvider: normalizeBillingProvider(business.billingProvider),
     hasAccess: canAccessAiReceptionist(business.subscriptionPlan),
     aiReceptionistEnabled: business.aiReceptionistEnabled,
     aiReceptionistPhone: business.aiReceptionistPhone,

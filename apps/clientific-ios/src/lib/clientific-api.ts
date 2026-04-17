@@ -538,11 +538,17 @@ export type MobileBillingSummary = {
   currentPlanName: string;
   currentPlanPriceLabel: string;
   planSummary: string;
+  billingProvider: 'stripe' | 'app_store';
+  billingProviderLabel: string;
+  managementTitle: string;
+  managementSummary: string;
   subscriptionStatus: string;
   subscriptionStatusLabel: string;
   trialDaysRemaining: number | null;
   trialEndsAtLabel: string | null;
   nextBillingDateLabel: string | null;
+  paymentMethodSummary: string;
+  invoiceEmptyState: string;
   paymentMethod: {
     brand: string;
     last4: string;
@@ -570,6 +576,7 @@ export type MobileAiReceptionistFaq = {
 export type MobileAiReceptionistSummary = {
   business: MobileBusiness;
   subscriptionPlan: string | null;
+  billingProvider: 'stripe' | 'app_store';
   hasAccess: boolean;
   aiReceptionistEnabled: boolean;
   aiReceptionistPhone: string | null;
@@ -1254,15 +1261,6 @@ export async function updateMobileAiReceptionist(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(input),
-  });
-}
-
-export async function openMobileBillingPortal(token: string) {
-  return requestJson<{ url: string }>('/api/mobile/billing/portal', {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${token}`,
-    },
   });
 }
 

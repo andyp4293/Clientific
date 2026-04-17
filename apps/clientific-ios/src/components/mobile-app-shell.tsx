@@ -82,7 +82,6 @@ type MobileAppShellProps = {
   isAppointmentComposerLoading: boolean;
   isAppointmentsRefreshing: boolean;
   isBillingLoading: boolean;
-  isBillingPortalOpening: boolean;
   isBillingRefreshing: boolean;
   isBusinessHoursLoading: boolean;
   isBusinessHoursRefreshing: boolean;
@@ -137,7 +136,6 @@ type MobileAppShellProps = {
   onNextCheckInsDate: () => void;
   onNextAppointmentsDate: () => void;
   onNextCustomersPage: () => void;
-  onOpenBillingPortal: () => Promise<void>;
   onOpenExternalUrl: (url: string) => Promise<void>;
   onOpenAppointments: () => void;
   onOpenCustomers: () => void;
@@ -245,7 +243,6 @@ export function MobileAppShell({
   isAppointmentComposerLoading,
   isAppointmentsRefreshing,
   isBillingLoading,
-  isBillingPortalOpening,
   isBillingRefreshing,
   isBusinessHoursLoading,
   isBusinessHoursRefreshing,
@@ -298,7 +295,6 @@ export function MobileAppShell({
   onNextCheckInsDate,
   onNextAppointmentsDate,
   onNextCustomersPage,
-  onOpenBillingPortal,
   onOpenExternalUrl,
   onOpenAppointments,
   onOpenCustomers,
@@ -469,7 +465,6 @@ export function MobileAppShell({
               isAiReceptionistRefreshing={isAiReceptionistRefreshing}
               isAiReceptionistSaving={isAiReceptionistSaving}
               isBillingLoading={isBillingLoading}
-              isBillingPortalOpening={isBillingPortalOpening}
               isBillingRefreshing={isBillingRefreshing}
               isBusinessHoursLoading={isBusinessHoursLoading}
               isBusinessHoursRefreshing={isBusinessHoursRefreshing}
@@ -500,7 +495,6 @@ export function MobileAppShell({
               onLookupCheckIn={onLookupCheckIn}
               onLookupRedeemCode={onLookupRedeemCode}
               onNextCheckInsDate={onNextCheckInsDate}
-              onOpenBillingPortal={onOpenBillingPortal}
               onOpenExternalUrl={onOpenExternalUrl}
               onPreviousCheckInsDate={onPreviousCheckInsDate}
               onRedeemCode={onRedeemCode}

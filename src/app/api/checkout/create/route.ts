@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { getAppBaseUrlFromRequest } from '@/lib/app-url';
 import { getPricingPlanKey, normalizeSubscriptionPlan } from '@/lib/plan-utils';
 import { getSessionBusinessId } from '@/lib/session-business';
+import { normalizeBillingProvider } from '@/lib/billing-provider';
 
 function createPriceConfigurationError(message: string) {
   return Object.assign(new Error(message), {
@@ -120,6 +121,13 @@ export async function POST(req: NextRequest) {
 
     if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
+    }
+
+    if (normalizeBillingProvider(business.billingProvider) !== 'stripe') {
+      return NextResponse.json(
+        { error: 'This subscription is managed through the App Store.' },
+        { status: 409 },
+      );
     }
 
     // Create or get Stripe customer

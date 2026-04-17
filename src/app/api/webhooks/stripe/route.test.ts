@@ -199,7 +199,28 @@ describe('Stripe webhook — customer.subscription.updated', () => {
 
     await POST(makeSignedRequest(makeSubscriptionEvent({ status: 'active', trial_end: 1699000000 })));
     expect(mockBusinessUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ subscriptionStatus: 'active' }) })
+      expect.objectContaining({
+        data: expect.objectContaining({
+          billingProvider: 'stripe',
+          subscriptionStatus: 'active',
+          subscriptionCurrentPeriodEnd: new Date(1700000000 * 1000),
+        }),
+      })
+    );
+  });
+
+  it('keeps Stripe as the billing provider when subscription updates arrive', async () => {
+    mockBusinessFindUnique.mockResolvedValue(baseBusiness);
+    mockBusinessUpdate.mockResolvedValue({});
+
+    await POST(makeSignedRequest(makeSubscriptionEvent()));
+
+    expect(mockBusinessUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          billingProvider: 'stripe',
+        }),
+      })
     );
   });
 
@@ -218,7 +239,9 @@ describe('Stripe webhook — customer.subscription.updated', () => {
     expect(mockBusinessUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
+          billingProvider: 'stripe',
           subscriptionPlan: 'pro',
+          subscriptionCurrentPeriodEnd: new Date(1700000000 * 1000),
           stripePriceId: 'price_pro',
         }),
       })
@@ -333,7 +356,9 @@ describe('Stripe webhook — checkout.session.completed (deal purchase)', () => 
       expect.objectContaining({
         where: { id: 'biz-1' },
         data: expect.objectContaining({
+          billingProvider: 'stripe',
           subscriptionPlan: 'pro',
+          subscriptionCurrentPeriodEnd: new Date(1700000000 * 1000),
           stripePriceId: 'price_pro',
         }),
       })

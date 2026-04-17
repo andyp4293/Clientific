@@ -14,6 +14,7 @@ import type {
   MobileAiReceptionistSummary,
   MobileAiReceptionistUpdateInput,
 } from '@/lib/clientific-api';
+import { getAiReceptionistUpgradeSummary } from '@/lib/mobile-billing-copy';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -23,7 +24,6 @@ type MobileAiReceptionistScreenProps = {
   isLoading: boolean;
   isRefreshing: boolean;
   isSaving: boolean;
-  onOpenBilling: () => void;
   onRefresh: () => Promise<void>;
   onSave: (input: MobileAiReceptionistUpdateInput) => Promise<void>;
 };
@@ -67,7 +67,6 @@ export function MobileAiReceptionistScreen({
   isLoading,
   isRefreshing,
   isSaving,
-  onOpenBilling,
   onRefresh,
   onSave,
 }: MobileAiReceptionistScreenProps) {
@@ -199,15 +198,8 @@ export function MobileAiReceptionistScreen({
             ]}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Upgrade required</Text>
             <Text style={[styles.sectionText, { color: theme.mutedText }]}>
-              AI phone coverage is available on Pro and Premium. Billing is the fastest place to upgrade and turn it on.
+              {getAiReceptionistUpgradeSummary(data.billingProvider)}
             </Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={onOpenBilling}
-              style={[styles.primaryButton, { backgroundColor: theme.accent }]}
-              testID="mobile-ai-open-billing">
-              <Text style={styles.primaryButtonText}>Open billing</Text>
-            </Pressable>
           </View>
         ) : draft ? (
           <>

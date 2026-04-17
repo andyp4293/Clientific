@@ -187,11 +187,18 @@ const billing = {
   currentPlanName: 'Starter',
   currentPlanPriceLabel: '$49/month',
   planSummary: 'For solo teams getting started.',
+  billingProvider: 'stripe' as const,
+  billingProviderLabel: 'Website',
+  managementTitle: 'Managed on the web',
+  managementSummary:
+    'This account started on the web. Plan changes and subscription management still happen in Clientific on the web.',
   subscriptionStatus: 'active',
   subscriptionStatusLabel: 'Active',
   trialDaysRemaining: null,
   trialEndsAtLabel: null,
   nextBillingDateLabel: 'April 30, 2026',
+  paymentMethodSummary: 'VISA ending in 4242',
+  invoiceEmptyState: 'No invoices have posted yet.',
   paymentMethod: {
     brand: 'visa',
     last4: '4242',
@@ -216,6 +223,7 @@ const billing = {
 const aiReceptionist = {
   business,
   subscriptionPlan: 'pro',
+  billingProvider: 'stripe' as const,
   hasAccess: true,
   aiReceptionistEnabled: true,
   aiReceptionistPhone: '+15557654321',
@@ -269,7 +277,6 @@ function createProps(
     isAiReceptionistRefreshing: false,
     isAiReceptionistSaving: false,
     isBillingLoading: false,
-    isBillingPortalOpening: false,
     isBillingRefreshing: false,
     isBusinessHoursLoading: false,
     isBusinessHoursRefreshing: false,
@@ -312,7 +319,6 @@ function createProps(
       alreadyUsed: false,
     }),
     onNextCheckInsDate: jest.fn(),
-    onOpenBillingPortal: jest.fn().mockResolvedValue(undefined),
     onOpenExternalUrl: jest.fn().mockResolvedValue(undefined),
     onPreviousCheckInsDate: jest.fn(),
     onRedeemCode: jest.fn().mockResolvedValue({
@@ -433,7 +439,7 @@ describe('MobileMoreScreen', () => {
     );
 
     expect(screen.getByText('Plan and invoices')).toBeTruthy();
-    expect(screen.getByTestId('mobile-billing-open-portal')).toBeTruthy();
+    expect(screen.getByText('Managed on the web')).toBeTruthy();
   });
 
   it('renders native AI receptionist tools when selected', () => {

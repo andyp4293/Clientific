@@ -104,7 +104,6 @@ type MobileMoreScreenProps = {
   isAiReceptionistRefreshing: boolean;
   isAiReceptionistSaving: boolean;
   isBillingLoading: boolean;
-  isBillingPortalOpening: boolean;
   isBillingRefreshing: boolean;
   isBusinessHoursLoading: boolean;
   isBusinessHoursRefreshing: boolean;
@@ -137,7 +136,6 @@ type MobileMoreScreenProps = {
   onLookupCheckIn: (phone: string) => Promise<MobileCheckInLookupResponse>;
   onLookupRedeemCode: (code: string) => Promise<MobileRedeemLookupResponse>;
   onNextCheckInsDate: () => void;
-  onOpenBillingPortal: () => Promise<void>;
   onOpenExternalUrl: (url: string) => Promise<void>;
   onPreviousCheckInsDate: () => void;
   onRedeemCode: (input: {
@@ -281,7 +279,7 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
   {
     key: 'billing',
     label: 'Billing',
-    helper: 'Manage plan access and subscription details.',
+    helper: 'Review plan access, billing source, and invoices.',
     icon: 'billing',
     section: 'account',
     target: 'billing',
@@ -318,7 +316,6 @@ export function MobileMoreScreen({
   isAiReceptionistRefreshing,
   isAiReceptionistSaving,
   isBillingLoading,
-  isBillingPortalOpening,
   isBillingRefreshing,
   isBusinessHoursLoading,
   isBusinessHoursRefreshing,
@@ -349,7 +346,6 @@ export function MobileMoreScreen({
   onLookupCheckIn,
   onLookupRedeemCode,
   onNextCheckInsDate,
-  onOpenBillingPortal,
   onOpenExternalUrl,
   onPreviousCheckInsDate,
   onRedeemCode,
@@ -690,7 +686,6 @@ export function MobileMoreScreen({
             isLoading={isAiReceptionistLoading}
             isRefreshing={isAiReceptionistRefreshing}
             isSaving={isAiReceptionistSaving}
-            onOpenBilling={() => onChangeSection('billing')}
             onRefresh={onRefreshAiReceptionist}
             onSave={onSaveAiReceptionist}
           />
@@ -749,9 +744,7 @@ export function MobileMoreScreen({
             data={billing}
             error={billingError}
             isLoading={isBillingLoading}
-            isOpeningPortal={isBillingPortalOpening}
             isRefreshing={isBillingRefreshing}
-            onOpenPortal={onOpenBillingPortal}
             onOpenUrl={onOpenExternalUrl}
             onRefresh={onRefreshBilling}
           />

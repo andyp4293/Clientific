@@ -11,6 +11,7 @@ const data = {
     onboardingComplete: true,
   },
   subscriptionPlan: 'pro',
+  billingProvider: 'stripe' as const,
   hasAccess: true,
   aiReceptionistEnabled: true,
   aiReceptionistPhone: '+15557654321',
@@ -24,9 +25,7 @@ const data = {
 };
 
 describe('MobileAiReceptionistScreen', () => {
-  it('routes upgrade prompts into billing when the plan lacks access', () => {
-    const onOpenBilling = jest.fn();
-
+  it('shows provider-aware upgrade guidance when the plan lacks access', () => {
     render(
       <MobileAiReceptionistScreen
         data={{ ...data, hasAccess: false, subscriptionPlan: 'starter' }}
@@ -34,14 +33,13 @@ describe('MobileAiReceptionistScreen', () => {
         isLoading={false}
         isRefreshing={false}
         isSaving={false}
-        onOpenBilling={onOpenBilling}
         onRefresh={jest.fn().mockResolvedValue(undefined)}
         onSave={jest.fn().mockResolvedValue(undefined)}
       />,
     );
 
-    fireEvent.press(screen.getByTestId('mobile-ai-open-billing'));
-    expect(onOpenBilling).toHaveBeenCalled();
+    expect(screen.getByText('Upgrade required')).toBeTruthy();
+    expect(screen.getByText(/bills on the web/i)).toBeTruthy();
   });
 
   it('saves edited AI receptionist settings from the native form', () => {
@@ -54,7 +52,6 @@ describe('MobileAiReceptionistScreen', () => {
         isLoading={false}
         isRefreshing={false}
         isSaving={false}
-        onOpenBilling={jest.fn()}
         onRefresh={jest.fn().mockResolvedValue(undefined)}
         onSave={onSave}
       />,

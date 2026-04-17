@@ -204,6 +204,7 @@ export async function POST(request: Request) {
         timezone: timezone || 'America/New_York',
         subscriptionPlan: normalizedPlan,
         subscriptionStatus: 'trialing',
+        billingProvider: 'stripe',
         trialEndsAt,
         referralCode: newReferralCode,
         ...(referrerBusiness && { referredById: referrerBusiness.id }),

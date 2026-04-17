@@ -4,6 +4,7 @@ import { authOptions } from '../../auth/[...nextauth]/route';
 import { stripe } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
 import { getSessionBusinessId } from '@/lib/session-business';
+import { normalizeBillingProvider } from '@/lib/billing-provider';
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,14 +19,18 @@ export async function GET(req: NextRequest) {
     const business = businessId
       ? await prisma.business.findUnique({
           where: { id: businessId },
-          select: { stripeCustomerId: true, stripeSubscriptionId: true },
+          select: { billingProvider: true, stripeCustomerId: true, stripeSubscriptionId: true },
         })
       : await prisma.business.findUnique({
           where: { email: sessionEmail as string },
-          select: { stripeCustomerId: true, stripeSubscriptionId: true },
+          select: { billingProvider: true, stripeCustomerId: true, stripeSubscriptionId: true },
         });
 
-    if (!business?.stripeCustomerId) {
+    if (!business || normalizeBillingProvider(business.billingProvider) !== 'stripe') {
+      return NextResponse.json({ paymentMethod: null, invoices: [], billingDetails: null });
+    }
+
+    if (!business.stripeCustomerId) {
       return NextResponse.json({ paymentMethod: null, invoices: [], billingDetails: null });
     }
 

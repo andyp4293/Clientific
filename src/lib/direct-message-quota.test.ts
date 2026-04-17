@@ -34,7 +34,7 @@ function buildBusiness(overrides: Partial<{
   subscriptionPlan: string;
   subscriptionStatus: string;
   trialEndsAt: Date | null;
-  stripeCurrentPeriodEnd: Date | null;
+  subscriptionCurrentPeriodEnd: Date | null;
 }> = {}) {
   return {
     id: 'biz-1',
@@ -42,7 +42,7 @@ function buildBusiness(overrides: Partial<{
     subscriptionPlan: 'starter',
     subscriptionStatus: 'trialing',
     trialEndsAt: new Date('2026-04-10T15:00:00.000Z'),
-    stripeCurrentPeriodEnd: null,
+    subscriptionCurrentPeriodEnd: null,
     ...overrides,
   };
 }
@@ -60,7 +60,7 @@ describe('direct-message quota helpers', () => {
       buildBusiness({
         subscriptionPlan: 'pro',
         subscriptionStatus: 'active',
-        stripeCurrentPeriodEnd: new Date('2026-05-15T12:00:00.000Z'),
+        subscriptionCurrentPeriodEnd: new Date('2026-05-15T12:00:00.000Z'),
       }),
       new Date('2026-04-20T12:00:00.000Z'),
     );
@@ -111,7 +111,7 @@ describe('direct-message quota helpers', () => {
         subscriptionPlan: 'premium',
         subscriptionStatus: 'active',
         trialEndsAt: null,
-        stripeCurrentPeriodEnd: new Date('2026-06-01T00:00:00.000Z'),
+        subscriptionCurrentPeriodEnd: new Date('2026-06-01T00:00:00.000Z'),
       }),
       312,
       new Date('2026-05-20T10:00:00.000Z'),

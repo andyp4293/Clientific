@@ -57,14 +57,17 @@ describe('GET /api/mobile/billing', () => {
       state: 'NY',
       zipCode: '10001',
       country: 'US',
+      billingProvider: 'stripe',
       stripeCustomerId: 'cus_123',
       stripeSubscriptionId: 'sub_123',
     });
     mockGetSubscriptionInfo.mockResolvedValue({
       subscriptionPlan: 'starter',
       subscriptionStatus: 'active',
+      billingProvider: 'stripe',
       trialDaysRemaining: null,
       trialEndsAt: null,
+      subscriptionCurrentPeriodEnd: new Date('2026-04-30T00:00:00.000Z').toISOString(),
       stripeCurrentPeriodEnd: new Date('2026-04-30T00:00:00.000Z').toISOString(),
     });
     mockRetrieveSubscription.mockResolvedValue({
@@ -102,6 +105,8 @@ describe('GET /api/mobile/billing', () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.currentPlanName).toBe('Starter');
+    expect(body.billingProvider).toBe('stripe');
+    expect(body.managementTitle).toBe('Managed on the web');
     expect(body.paymentMethod).toMatchObject({
       label: 'VISA ending in 4242',
     });
@@ -125,6 +130,7 @@ describe('GET /api/mobile/billing', () => {
       state: 'NY',
       zipCode: '10001',
       country: 'US',
+      billingProvider: 'stripe',
       stripeCustomerId: null,
       stripeSubscriptionId: null,
     });
@@ -138,5 +144,50 @@ describe('GET /api/mobile/billing', () => {
 
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({ error: 'Unable to load billing' });
+  });
+
+  it('skips Stripe lookups for app store-managed subscriptions', async () => {
+    mockFindBusiness.mockResolvedValue({
+      id: 'biz-1',
+      email: 'owner@clientific.app',
+      name: 'Clientific Studio',
+      businessType: 'Salon',
+      phone: '+15551234567',
+      street: '123 Main St',
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      country: 'US',
+      billingProvider: 'app_store',
+      stripeCustomerId: 'cus_stale',
+      stripeSubscriptionId: 'sub_stale',
+    });
+    mockGetSubscriptionInfo.mockResolvedValue({
+      subscriptionPlan: 'pro',
+      subscriptionStatus: 'active',
+      billingProvider: 'app_store',
+      trialDaysRemaining: null,
+      trialEndsAt: null,
+      subscriptionCurrentPeriodEnd: new Date('2026-05-03T00:00:00.000Z').toISOString(),
+      stripeCurrentPeriodEnd: null,
+    });
+
+    const response = await GET(
+      new Request('https://www.clientific.app/api/mobile/billing', {
+        headers: { authorization: 'Bearer token' },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockRetrieveSubscription).not.toHaveBeenCalled();
+    expect(mockListInvoices).not.toHaveBeenCalled();
+
+    const body = await response.json();
+    expect(body.billingProvider).toBe('app_store');
+    expect(body.billingProviderLabel).toBe('App Store');
+    expect(body.managementTitle).toBe('Managed by Apple');
+    expect(body.paymentMethod).toBeNull();
+    expect(body.paymentMethodSummary).toBe('Payment details stay managed by Apple.');
+    expect(body.invoiceEmptyState).toMatch(/receipts/i);
   });
 });

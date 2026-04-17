@@ -14,7 +14,7 @@ const directMessageQuotaBusinessSelect = {
   subscriptionPlan: true,
   subscriptionStatus: true,
   trialEndsAt: true,
-  stripeCurrentPeriodEnd: true,
+  subscriptionCurrentPeriodEnd: true,
 } as const;
 
 type DirectMessageQuotaBusiness = {
@@ -23,7 +23,7 @@ type DirectMessageQuotaBusiness = {
   subscriptionPlan: string;
   subscriptionStatus: string;
   trialEndsAt: Date | null;
-  stripeCurrentPeriodEnd: Date | null;
+  subscriptionCurrentPeriodEnd: Date | null;
 };
 
 type QuotaReadClient = {
@@ -71,10 +71,10 @@ export function getDirectMessageQuotaWindow(
 ): { periodStart: Date; periodEnd: Date } {
   if (
     business.subscriptionStatus === 'active' &&
-    business.stripeCurrentPeriodEnd &&
-    new Date(business.stripeCurrentPeriodEnd) > now
+    business.subscriptionCurrentPeriodEnd &&
+    new Date(business.subscriptionCurrentPeriodEnd) > now
   ) {
-    const periodEnd = new Date(business.stripeCurrentPeriodEnd);
+    const periodEnd = new Date(business.subscriptionCurrentPeriodEnd);
     return {
       periodStart: subMonths(periodEnd, 1),
       periodEnd,

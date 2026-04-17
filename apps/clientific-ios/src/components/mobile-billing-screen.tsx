@@ -16,9 +16,7 @@ type MobileBillingScreenProps = {
   data: MobileBillingSummary | null;
   error: string | null;
   isLoading: boolean;
-  isOpeningPortal: boolean;
   isRefreshing: boolean;
-  onOpenPortal: () => Promise<void>;
   onOpenUrl: (url: string) => Promise<void>;
   onRefresh: () => Promise<void>;
 };
@@ -27,9 +25,7 @@ export function MobileBillingScreen({
   data,
   error,
   isLoading,
-  isOpeningPortal,
   isRefreshing,
-  onOpenPortal,
   onOpenUrl,
   onRefresh,
 }: MobileBillingScreenProps) {
@@ -55,7 +51,7 @@ export function MobileBillingScreen({
         <Text style={[styles.eyebrow, { color: theme.accent }]}>Billing</Text>
         <Text style={[styles.heroTitle, { color: theme.text }]}>Plan and invoices</Text>
         <Text style={[styles.heroSubtitle, { color: theme.mutedText }]}>
-          Review your current plan, payment method, and invoice history without leaving the app.
+          Review your current plan, billing source, and invoice history from one place.
         </Text>
       </View>
 
@@ -117,17 +113,28 @@ export function MobileBillingScreen({
                 </View>
               ) : null}
             </View>
+          </View>
 
-            <Pressable
-              accessibilityRole="button"
-              disabled={isOpeningPortal}
-              onPress={() => void onOpenPortal()}
-              style={[styles.primaryButton, { backgroundColor: theme.accent }]}
-              testID="mobile-billing-open-portal">
-              <Text style={styles.primaryButtonText}>
-                {isOpeningPortal ? 'Opening...' : 'Open billing portal'}
+          <View
+            style={[
+              styles.sectionCard,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Billing access</Text>
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, { color: theme.mutedText }]}>Billing source</Text>
+              <Text style={[styles.detailValue, { color: theme.text }]}>
+                {data.billingProviderLabel}
               </Text>
-            </Pressable>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, { color: theme.mutedText }]}>
+                {data.managementTitle}
+              </Text>
+              <Text style={[styles.detailText, { color: theme.text }]}>
+                {data.managementSummary}
+              </Text>
+            </View>
           </View>
 
           <View
@@ -139,7 +146,7 @@ export function MobileBillingScreen({
             <View style={styles.detailRow}>
               <Text style={[styles.detailLabel, { color: theme.mutedText }]}>Payment method</Text>
               <Text style={[styles.detailValue, { color: theme.text }]}>
-                {data.paymentMethod?.label ?? 'No card saved yet'}
+                {data.paymentMethodSummary}
               </Text>
             </View>
             <View style={styles.detailRow}>
@@ -205,7 +212,7 @@ export function MobileBillingScreen({
               ))
             ) : (
               <Text style={[styles.noticeText, { color: theme.mutedText }]}>
-                No invoices have posted yet.
+                {data.invoiceEmptyState}
               </Text>
             )}
           </View>
@@ -319,19 +326,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
-  primaryButton: {
-    minHeight: 50,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 18,
-  },
-  primaryButtonText: {
-    color: '#f8fffc',
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: '800',
-  },
   secondaryButton: {
     minHeight: 42,
     borderWidth: 1,
@@ -372,6 +366,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     fontWeight: '700',
+  },
+  detailText: {
+    fontSize: 15,
+    lineHeight: 22,
   },
   invoiceCard: {
     borderWidth: 1,
