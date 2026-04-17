@@ -26,12 +26,59 @@ import {
   requireActiveSubscription,
   checkPlanLimit,
   getSubscriptionInfo,
+  isSubscriptionAccessActive,
 } from '@/lib/subscription';
 
 const mockFindUnique = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe('isSubscriptionAccessActive', () => {
+  it('returns false for inactive subscriptions', () => {
+    expect(isSubscriptionAccessActive('inactive', null, null)).toBe(false);
+  });
+
+  it('returns true for active subscriptions with a current period end in the future', () => {
+    expect(
+      isSubscriptionAccessActive(
+        'active',
+        null,
+        new Date(Date.now() + 24 * 60 * 60 * 1000),
+      ),
+    ).toBe(true);
+  });
+
+  it('returns true for grace period subscriptions while the current period is still open', () => {
+    expect(
+      isSubscriptionAccessActive(
+        'grace_period',
+        null,
+        new Date(Date.now() + 24 * 60 * 60 * 1000),
+      ),
+    ).toBe(true);
+  });
+
+  it('returns false for expired grace period subscriptions', () => {
+    expect(
+      isSubscriptionAccessActive(
+        'grace_period',
+        null,
+        new Date(Date.now() - 24 * 60 * 60 * 1000),
+      ),
+    ).toBe(false);
+  });
+
+  it('returns false for expired active subscriptions when a current period end is present', () => {
+    expect(
+      isSubscriptionAccessActive(
+        'active',
+        null,
+        new Date(Date.now() - 24 * 60 * 60 * 1000),
+      ),
+    ).toBe(false);
+  });
 });
 
 // ── hasActiveSubscription ──────────────────────────────────────────────────

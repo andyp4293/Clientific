@@ -50,6 +50,8 @@ model Business {
   billingProvider               String                 @default("stripe")
   trialEndsAt                   DateTime?
   subscriptionCurrentPeriodEnd  DateTime?
+  subscriptionConflictFlaggedAt DateTime?
+  subscriptionConflictSummary   String?
   stripeCustomerId              String?                @unique
   stripeSubscriptionId          String?                @unique
   stripePriceId                 String?
@@ -107,6 +109,7 @@ model Business {
   smsConsentEvents              SmsConsentEvent[]      @relation("BusinessSmsConsentEvents")
   staff                         Staff[]
   bankAccount                   BusinessBankAccount?
+  revenueCatWebhookEvents       RevenueCatWebhookEvent[]
 }
 
 model BusinessBankAccount {
@@ -120,6 +123,18 @@ model BusinessBankAccount {
   routingNumberLast4      String
   accountHolderName       String?
   business                Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model RevenueCatWebhookEvent {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  eventId    String   @unique
+  appUserId  String?
+  eventType  String?
+  businessId String?
+  business   Business? @relation(fields: [businessId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, createdAt])
 }
 
 model BusinessHours {

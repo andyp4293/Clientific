@@ -10,8 +10,10 @@ import {
 import { normalizeBillingProvider } from './billing-provider';
 
 export type SubscriptionStatus = 
+  | 'inactive'
   | 'trialing'
   | 'active'
+  | 'grace_period'
   | 'past_due'
   | 'canceled'
   | 'incomplete'
@@ -27,7 +29,11 @@ function getCachedSubscriptionStatus(businessId: string) {
     () =>
       prisma.business.findUnique({
         where: { id: businessId },
-        select: { subscriptionStatus: true, trialEndsAt: true },
+        select: {
+          subscriptionStatus: true,
+          trialEndsAt: true,
+          subscriptionCurrentPeriodEnd: true,
+        },
       }),
     [`subscription-status-${businessId}`],
     { tags: [`subscription-status-${businessId}`], revalidate: 60 },
@@ -39,11 +45,38 @@ export function isSubscriptionCurrentlyActive(
   trialEndsAt: Date | null | undefined,
   now: Date = new Date(),
 ): boolean {
-  if (subscriptionStatus === 'trialing' && trialEndsAt) {
+  return isSubscriptionAccessActive(
+    subscriptionStatus,
+    trialEndsAt,
+    null,
+    now,
+  );
+}
+
+export function isSubscriptionAccessActive(
+  subscriptionStatus: string | null | undefined,
+  trialEndsAt: Date | null | undefined,
+  subscriptionCurrentPeriodEnd: Date | null | undefined,
+  now: Date = new Date(),
+): boolean {
+  const normalizedStatus = subscriptionStatus?.trim().toLowerCase() ?? '';
+
+  if (
+    (normalizedStatus === 'trialing' || normalizedStatus === 'trial') &&
+    trialEndsAt
+  ) {
     return now < new Date(trialEndsAt);
   }
 
-  return subscriptionStatus === 'active';
+  if (normalizedStatus === 'active' || normalizedStatus === 'grace_period') {
+    if (subscriptionCurrentPeriodEnd) {
+      return now < new Date(subscriptionCurrentPeriodEnd);
+    }
+
+    return normalizedStatus === 'active';
+  }
+
+  return false;
 }
 
 /**
@@ -54,9 +87,10 @@ export async function hasActiveSubscription(businessId: string): Promise<boolean
 
   if (!business) return false;
 
-  return isSubscriptionCurrentlyActive(
+  return isSubscriptionAccessActive(
     business.subscriptionStatus,
     business.trialEndsAt,
+    business.subscriptionCurrentPeriodEnd,
   );
 }
 

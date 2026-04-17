@@ -8,29 +8,73 @@ import {
   Text,
   View,
 } from 'react-native';
+import type { PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
 import type { MobileBillingSummary } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type MobileBillingScreenProps = {
+  appStoreOffering: PurchasesOffering | null;
   data: MobileBillingSummary | null;
   error: string | null;
   isLoading: boolean;
+  isLoadingOffering: boolean;
+  isManagingSubscription: boolean;
+  isPurchasingSubscription: boolean;
   isRefreshing: boolean;
+  isRestoringSubscription: boolean;
+  notice: string | null;
+  onManageSubscription: () => Promise<void>;
   onOpenUrl: (url: string) => Promise<void>;
+  onPurchasePackage: (aPackage: PurchasesPackage) => Promise<void>;
   onRefresh: () => Promise<void>;
+  onRestorePurchases: () => Promise<void>;
+  purchaseError: string | null;
 };
 
+function getPackageHeadline(aPackage: PurchasesPackage) {
+  const title = aPackage.product.title?.trim();
+  if (title) {
+    return title;
+  }
+
+  return aPackage.identifier
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function getPackageSupportingCopy(aPackage: PurchasesPackage) {
+  const description = aPackage.product.description?.trim();
+  if (description) {
+    return description;
+  }
+
+  return 'Unlock the full Clientific business workspace on iPhone with Apple-managed billing.';
+}
+
 export function MobileBillingScreen({
+  appStoreOffering,
   data,
   error,
   isLoading,
+  isLoadingOffering,
+  isManagingSubscription,
+  isPurchasingSubscription,
   isRefreshing,
+  isRestoringSubscription,
+  notice,
+  onManageSubscription,
   onOpenUrl,
+  onPurchasePackage,
   onRefresh,
+  onRestorePurchases,
+  purchaseError,
 }: MobileBillingScreenProps) {
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
+  const isAppStorePurchaseMode = Boolean(data?.canPurchaseInApp);
+  const isAppleManagedMode = Boolean(data?.showManageInApp);
+  const availablePackages = appStoreOffering?.availablePackages ?? [];
 
   return (
     <ScrollView
@@ -51,9 +95,20 @@ export function MobileBillingScreen({
         <Text style={[styles.eyebrow, { color: theme.accent }]}>Billing</Text>
         <Text style={[styles.heroTitle, { color: theme.text }]}>Plan and invoices</Text>
         <Text style={[styles.heroSubtitle, { color: theme.mutedText }]}>
-          Review your current plan, billing source, and invoice history from one place.
+          Review your current plan, billing source, and Apple or website billing controls from one place.
         </Text>
       </View>
+
+      {notice ? (
+        <View
+          style={[
+            styles.noticeCard,
+            { backgroundColor: theme.accentSoft, borderColor: theme.border },
+          ]}>
+          <Text style={[styles.noticeTitle, { color: theme.text }]}>Subscription setup</Text>
+          <Text style={[styles.noticeText, { color: theme.mutedText }]}>{notice}</Text>
+        </View>
+      ) : null}
 
       {error ? (
         <View
@@ -63,6 +118,19 @@ export function MobileBillingScreen({
           ]}>
           <Text style={[styles.noticeTitle, { color: theme.text }]}>Couldn&apos;t load billing</Text>
           <Text style={[styles.noticeText, { color: theme.mutedText }]}>{error}</Text>
+        </View>
+      ) : null}
+
+      {purchaseError ? (
+        <View
+          style={[
+            styles.noticeCard,
+            { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+          ]}>
+          <Text style={[styles.noticeTitle, { color: theme.text }]}>
+            App Store billing needs attention
+          </Text>
+          <Text style={[styles.noticeText, { color: theme.mutedText }]}>{purchaseError}</Text>
         </View>
       ) : null}
 
@@ -88,7 +156,9 @@ export function MobileBillingScreen({
             ]}>
             <Text style={[styles.planEyebrow, { color: theme.mutedText }]}>Current plan</Text>
             <Text style={[styles.planName, { color: theme.text }]}>{data.currentPlanName}</Text>
-            <Text style={[styles.planPrice, { color: theme.text }]}>{data.currentPlanPriceLabel}</Text>
+            <Text style={[styles.planPrice, { color: theme.text }]}>
+              {data.currentPlanPriceLabel}
+            </Text>
             <Text style={[styles.planSummary, { color: theme.mutedText }]}>{data.planSummary}</Text>
 
             <View style={styles.badgeRow}>
@@ -115,6 +185,106 @@ export function MobileBillingScreen({
             </View>
           </View>
 
+          {isAppStorePurchaseMode ? (
+            <View
+              style={[
+                styles.sectionCard,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Choose your plan</Text>
+              <Text style={[styles.detailText, { color: theme.mutedText }]}>
+                Start the 14-day App Store trial, then let Apple handle renewals and receipts for the plan you choose.
+              </Text>
+
+              {isLoadingOffering ? (
+                <View style={styles.loadingInline}>
+                  <ActivityIndicator color={theme.accent} />
+                  <Text style={[styles.loadingText, { color: theme.mutedText }]}>
+                    Loading App Store plans...
+                  </Text>
+                </View>
+              ) : availablePackages.length ? (
+                <View style={styles.packageList}>
+                  {availablePackages.map((aPackage) => (
+                    <View
+                      key={aPackage.identifier}
+                      style={[
+                        styles.packageCard,
+                        { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                      ]}>
+                      <View style={styles.packageHeader}>
+                        <View style={styles.packageCopy}>
+                          <Text style={[styles.packageTitle, { color: theme.text }]}>
+                            {getPackageHeadline(aPackage)}
+                          </Text>
+                          <Text style={[styles.packagePrice, { color: theme.text }]}>
+                            {aPackage.product.priceString}
+                          </Text>
+                        </View>
+                        <View
+                          style={[
+                            styles.statusBadge,
+                            { backgroundColor: theme.accentSoft, borderColor: theme.border },
+                          ]}>
+                          <Text style={[styles.statusBadgeText, { color: theme.accent }]}>
+                            14-day trial
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Text style={[styles.noticeText, { color: theme.mutedText }]}>
+                        {getPackageSupportingCopy(aPackage)}
+                      </Text>
+
+                      <Pressable
+                        accessibilityRole="button"
+                        disabled={isPurchasingSubscription || isRestoringSubscription}
+                        onPress={() => void onPurchasePackage(aPackage)}
+                        style={[
+                          styles.primaryButton,
+                          {
+                            backgroundColor:
+                              isPurchasingSubscription || isRestoringSubscription
+                                ? theme.border
+                                : theme.accent,
+                          },
+                        ]}
+                        testID={`mobile-billing-purchase-${aPackage.identifier}`}>
+                        <Text style={styles.primaryButtonText}>
+                          {isPurchasingSubscription ? 'Starting purchase...' : 'Start App Store trial'}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={[styles.noticeText, { color: theme.mutedText }]}>
+                  App Store plans are not available yet for this account. Pull to refresh or try again shortly.
+                </Text>
+              )}
+
+              <View style={styles.inlineActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={isRestoringSubscription || isPurchasingSubscription}
+                  onPress={() => void onRestorePurchases()}
+                  style={[
+                    styles.secondaryButton,
+                    {
+                      backgroundColor: theme.surfaceMuted,
+                      borderColor: theme.border,
+                      opacity: isRestoringSubscription || isPurchasingSubscription ? 0.7 : 1,
+                    },
+                  ]}
+                  testID="mobile-billing-restore-purchases">
+                  <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+                    {isRestoringSubscription ? 'Restoring...' : 'Restore Purchases'}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+
           <View
             style={[
               styles.sectionCard,
@@ -136,6 +306,58 @@ export function MobileBillingScreen({
               </Text>
             </View>
           </View>
+
+          {isAppleManagedMode ? (
+            <View
+              style={[
+                styles.sectionCard,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                App Store subscription
+              </Text>
+              <Text style={[styles.detailText, { color: theme.mutedText }]}>
+                Restore Apple purchases if you are reinstalling, or open Apple’s subscription management view for renewals, cancellations, and plan changes.
+              </Text>
+              <View style={styles.inlineActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={isRestoringSubscription || isManagingSubscription}
+                  onPress={() => void onRestorePurchases()}
+                  style={[
+                    styles.secondaryButton,
+                    {
+                      backgroundColor: theme.surfaceMuted,
+                      borderColor: theme.border,
+                      opacity: isRestoringSubscription || isManagingSubscription ? 0.7 : 1,
+                    },
+                  ]}
+                  testID="mobile-billing-restore-existing-purchases">
+                  <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+                    {isRestoringSubscription ? 'Restoring...' : 'Restore Purchases'}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={isManagingSubscription || isRestoringSubscription}
+                  onPress={() => void onManageSubscription()}
+                  style={[
+                    styles.primaryButton,
+                    {
+                      backgroundColor:
+                        isManagingSubscription || isRestoringSubscription
+                          ? theme.border
+                          : theme.accent,
+                    },
+                  ]}
+                  testID="mobile-billing-manage-subscription">
+                  <Text style={styles.primaryButtonText}>
+                    {isManagingSubscription ? 'Opening...' : 'Manage Subscription'}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
 
           <View
             style={[
@@ -173,14 +395,18 @@ export function MobileBillingScreen({
               data.invoices.map((invoice) => (
                 <View
                   key={invoice.id}
-                  style={[styles.invoiceCard, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}>
+                  style={[
+                    styles.invoiceCard,
+                    { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                  ]}>
                   <View style={styles.invoiceHeader}>
                     <View style={styles.invoiceCopy}>
                       <Text style={[styles.invoiceAmount, { color: theme.text }]}>
                         {invoice.amountLabel}
                       </Text>
                       <Text style={[styles.invoiceMeta, { color: theme.mutedText }]}>
-                        {invoice.createdLabel ?? 'No date'} · {invoice.description ?? 'Subscription charge'}
+                        {invoice.createdLabel ?? 'No date'} ·{' '}
+                        {invoice.description ?? 'Subscription charge'}
                       </Text>
                     </View>
                     <View
@@ -280,6 +506,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  loadingInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   planCard: {
     borderWidth: 1,
     borderRadius: 26,
@@ -340,6 +571,20 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '800',
   },
+  primaryButton: {
+    minHeight: 46,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    alignSelf: 'flex-start',
+  },
+  primaryButtonText: {
+    color: '#f8fffc',
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
   sectionCard: {
     borderWidth: 1,
     borderRadius: 26,
@@ -370,6 +615,41 @@ const styles = StyleSheet.create({
   detailText: {
     fontSize: 15,
     lineHeight: 22,
+  },
+  inlineActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  packageList: {
+    gap: 12,
+  },
+  packageCard: {
+    borderWidth: 1,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 12,
+  },
+  packageHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  packageCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  packageTitle: {
+    fontSize: 17,
+    lineHeight: 23,
+    fontWeight: '800',
+  },
+  packagePrice: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '700',
   },
   invoiceCard: {
     borderWidth: 1,

@@ -34,6 +34,13 @@ const businessProfile = {
 
 const home = {
   business,
+  subscription: {
+    plan: 'starter',
+    status: 'active',
+    billingProvider: 'stripe' as const,
+    isActive: true,
+    requiresPurchase: false,
+  },
   metrics: [],
   todayAppointments: [],
   referralSnapshot: {
@@ -194,6 +201,9 @@ const billing = {
     'This account started on the web. Plan changes and subscription management still happen in Clientific on the web.',
   subscriptionStatus: 'active',
   subscriptionStatusLabel: 'Active',
+  isActive: true,
+  canPurchaseInApp: false,
+  showManageInApp: false,
   trialDaysRemaining: null,
   trialEndsAtLabel: null,
   nextBillingDateLabel: 'April 30, 2026',
@@ -257,9 +267,12 @@ function createProps(
 ): React.ComponentProps<typeof MobileMoreScreen> {
   return {
     activeSection: 'menu',
+    appStoreOffering: null,
     aiReceptionist,
     aiReceptionistError: null,
     billing,
+    billingNotice: null,
+    billingPurchaseError: null,
     billingError: null,
     business,
     businessHours,
@@ -277,7 +290,9 @@ function createProps(
     isAiReceptionistRefreshing: false,
     isAiReceptionistSaving: false,
     isBillingLoading: false,
+    isBillingOfferingLoading: false,
     isBillingRefreshing: false,
+    isManagingSubscription: false,
     isBusinessHoursLoading: false,
     isBusinessHoursRefreshing: false,
     isBusinessHoursSaving: false,
@@ -288,13 +303,16 @@ function createProps(
     isCustomerViewRefreshing: false,
     isFundsLoading: false,
     isFundsRefreshing: false,
+    isPurchasingSubscription: false,
     isReferralsLoading: false,
     isReferralsRefreshing: false,
+    isRestoringSubscription: false,
     isReviewsLoading: false,
     isReviewsRefreshing: false,
     isSavingBusinessProfile: false,
     isServicesLoading: false,
     isServicesRefreshing: false,
+    subscriptionLocked: false,
     onChangeSection: jest.fn(),
     onCreateCheckIn: jest.fn().mockResolvedValue(undefined),
     onCreateServiceGroup: jest.fn().mockResolvedValue(undefined),
@@ -319,8 +337,10 @@ function createProps(
       alreadyUsed: false,
     }),
     onNextCheckInsDate: jest.fn(),
+    onManageSubscription: jest.fn().mockResolvedValue(undefined),
     onOpenExternalUrl: jest.fn().mockResolvedValue(undefined),
     onPreviousCheckInsDate: jest.fn(),
+    onPurchasePackage: jest.fn().mockResolvedValue(undefined),
     onRedeemCode: jest.fn().mockResolvedValue({
       success: true,
       deal: {
@@ -343,6 +363,7 @@ function createProps(
     onRefreshReferrals: jest.fn().mockResolvedValue(undefined),
     onRefreshReviews: jest.fn().mockResolvedValue(undefined),
     onRefreshServices: jest.fn().mockResolvedValue(undefined),
+    onRestorePurchases: jest.fn().mockResolvedValue(undefined),
     onSaveAiReceptionist: jest.fn().mockResolvedValue(undefined),
     onSaveBusinessHours: jest.fn().mockResolvedValue(undefined),
     onSaveBusinessProfile: jest.fn().mockResolvedValue(undefined),
@@ -440,6 +461,30 @@ describe('MobileMoreScreen', () => {
 
     expect(screen.getByText('Plan and invoices')).toBeTruthy();
     expect(screen.getByText('Managed on the web')).toBeTruthy();
+  });
+
+  it('shows locked menu copy before the App Store trial starts', () => {
+    renderWithThemeProvider(
+      <MobileMoreScreen
+        {...createProps({
+          subscriptionLocked: true,
+          home: {
+            ...home,
+            subscription: {
+              plan: 'trial',
+              status: 'inactive',
+              billingProvider: 'none',
+              isActive: false,
+              requiresPurchase: true,
+            },
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByTestId('mobile-more-subscription-locked')).toBeTruthy();
+    expect(screen.getAllByText('Unlock this in Billing first.').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Locked').length).toBeGreaterThan(0);
   });
 
   it('renders native AI receptionist tools when selected', () => {

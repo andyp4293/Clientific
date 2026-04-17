@@ -27,6 +27,13 @@ const businessProfile = {
 
 const home = {
   business,
+  subscription: {
+    plan: 'starter',
+    status: 'active',
+    billingProvider: 'stripe' as const,
+    isActive: true,
+    requiresPurchase: false,
+  },
   metrics: [
     { label: 'Booked today', value: '3', helper: 'Appointments' },
     { label: 'Checked in', value: '1', helper: 'Guests today' },
@@ -336,6 +343,9 @@ const billing = {
     'This account started on the web. Plan changes and subscription management still happen in Clientific on the web.',
   subscriptionStatus: 'active',
   subscriptionStatusLabel: 'Active',
+  isActive: true,
+  canPurchaseInApp: false,
+  showManageInApp: false,
   trialDaysRemaining: null,
   trialEndsAtLabel: null,
   nextBillingDateLabel: 'April 30, 2026',
@@ -398,7 +408,10 @@ function createShellProps(
     appointmentComposerError: null,
     appointments,
     appointmentsError: null,
+    appStoreOffering: null,
     billing,
+    billingNotice: null,
+    billingPurchaseError: null,
     billingError: null,
     business,
     businessHours,
@@ -426,7 +439,9 @@ function createShellProps(
     isAppointmentsLoading: false,
     isAppointmentsRefreshing: false,
     isBillingLoading: false,
+    isBillingOfferingLoading: false,
     isBillingRefreshing: false,
+    isManagingSubscription: false,
     isBusinessHoursLoading: false,
     isBusinessHoursRefreshing: false,
     isBusinessHoursSaving: false,
@@ -442,8 +457,10 @@ function createShellProps(
     isFundsLoading: false,
     isFundsRefreshing: false,
     isHomeRefreshing: false,
+    isPurchasingSubscription: false,
     isReferralsLoading: false,
     isReferralsRefreshing: false,
+    isRestoringSubscription: false,
     isReviewsLoading: false,
     isReviewsRefreshing: false,
     isSavingBusinessProfile: false,
@@ -513,6 +530,7 @@ function createShellProps(
     onNextCheckInsDate: jest.fn(),
     onNextAppointmentsDate: jest.fn(),
     onNextCustomersPage: jest.fn(),
+    onManageSubscription: jest.fn().mockResolvedValue(undefined),
     onOpenExternalUrl: jest.fn().mockResolvedValue(undefined),
     onOpenAppointments: jest.fn(),
     onOpenCustomers: jest.fn(),
@@ -522,6 +540,7 @@ function createShellProps(
     onPreviousCheckInsDate: jest.fn(),
     onPreviousAppointmentsDate: jest.fn(),
     onPreviousCustomersPage: jest.fn(),
+    onPurchasePackage: jest.fn().mockResolvedValue(undefined),
     onRedeemCode: jest.fn().mockResolvedValue({
       success: true,
       deal: {
@@ -548,6 +567,7 @@ function createShellProps(
     onRefreshReferrals: jest.fn().mockResolvedValue(undefined),
     onRefreshReviews: jest.fn().mockResolvedValue(undefined),
     onRefreshServices: jest.fn().mockResolvedValue(undefined),
+    onRestorePurchases: jest.fn().mockResolvedValue(undefined),
     onSaveAiReceptionist: jest.fn().mockResolvedValue(undefined),
     onSaveBusinessHours: jest.fn().mockResolvedValue(undefined),
     onSaveBusinessProfile: jest.fn().mockResolvedValue(undefined),
@@ -648,5 +668,30 @@ describe('MobileAppShell', () => {
     expect(tabBarStyle.borderRadius).toBe(24);
     expect(tabButtonStyle.minHeight).toBe(48);
     expect(tabButtonStyle.borderRadius).toBe(16);
+  });
+
+  it('dims locked business tabs before the App Store trial starts', () => {
+    render(
+      <MobileAppShell
+        {...createShellProps({
+          home: {
+            ...home,
+            subscription: {
+              plan: 'trial',
+              status: 'inactive',
+              billingProvider: 'none',
+              isActive: false,
+              requiresPurchase: true,
+            },
+          },
+        })}
+      />,
+    );
+
+    const appointmentsTabStyle = StyleSheet.flatten(
+      screen.getByTestId('mobile-tab-appointments').props.style,
+    );
+
+    expect(appointmentsTabStyle.opacity).toBe(0.72);
   });
 });

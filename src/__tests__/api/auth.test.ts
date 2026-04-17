@@ -169,6 +169,14 @@ describe('POST /api/auth/register', () => {
     expect(body.success).toBe(true);
     expect(body.requiresEmailVerification).toBe(true);
     expect(body.business.email).toBe('owner@example.com');
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          subscriptionStatus: 'trialing',
+          billingProvider: 'stripe',
+        }),
+      })
+    );
   });
 
   it('does not default the customer-facing business email to the private account email', async () => {

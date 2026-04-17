@@ -14,6 +14,7 @@ import { SubscriptionBanner } from '@/components/billing/SubscriptionBanner';
 import { NotificationBell } from '@/components/layout/NotificationBell';
 import { ClientificLogo } from '@/components/brand/ClientificLogo';
 import { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/pricing-plans';
+import { isSubscriptionAccessActive } from '@/lib/subscription';
 import { Toaster } from 'sonner';
 
 type DashboardBusinessSnapshot = {
@@ -31,6 +32,7 @@ type DashboardBusinessSnapshot = {
   subscriptionPlan: string | null;
   subscriptionStatus: string | null;
   trialEndsAt: Date | null;
+  subscriptionCurrentPeriodEnd: Date | null;
 };
 
 async function loadDashboardBusiness(
@@ -54,6 +56,7 @@ async function loadDashboardBusiness(
         subscriptionPlan: true,
         subscriptionStatus: true,
         trialEndsAt: true,
+        subscriptionCurrentPeriodEnd: true,
       },
     });
   } catch (error) {
@@ -77,6 +80,7 @@ async function loadDashboardBusiness(
         subscriptionPlan: true,
         subscriptionStatus: true,
         trialEndsAt: true,
+        subscriptionCurrentPeriodEnd: true,
       },
     });
   }
@@ -192,11 +196,11 @@ export default async function DashboardLayout({
   }
 
   if (business) {
-    const trialIsActive =
-      business.subscriptionStatus === 'trialing' &&
-      business.trialEndsAt !== null &&
-      new Date() < new Date(business.trialEndsAt);
-    const hasActiveSubscription = business.subscriptionStatus === 'active' || trialIsActive;
+    const hasActiveSubscription = isSubscriptionAccessActive(
+      business.subscriptionStatus,
+      business.trialEndsAt,
+      business.subscriptionCurrentPeriodEnd,
+    );
     const onboardingComplete = isBusinessOnboardingComplete(business);
 
     if (!isSubscribePage && !hasActiveSubscription && !isReferralCollectionPage) {

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { normalizeBillingProvider } from '@/lib/billing-provider';
+import { isSubscriptionAccessActive } from '@/lib/subscription';
 import { isBusinessOnboardingComplete } from '@/lib/onboarding';
 import { getReferralSharingStatus } from '@/lib/referral-sharing';
 import { getBearerToken, verifyMobileSessionToken } from '@/lib/mobile-session';
@@ -66,6 +68,10 @@ export async function GET(request: Request) {
         stripeConnectChargesEnabled: true,
         stripeConnectPayoutsEnabled: true,
         stripeConnectDetailsSubmitted: true,
+        subscriptionPlan: true,
+        subscriptionStatus: true,
+        billingProvider: true,
+        subscriptionCurrentPeriodEnd: true,
       },
     });
 
@@ -77,6 +83,12 @@ export async function GET(request: Request) {
     const startOfToday = localToUTC(todayKey, 0, 0, business.timezone);
     const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000 - 1);
     const referralSharing = getReferralSharingStatus(business);
+    const billingProvider = normalizeBillingProvider(business.billingProvider);
+    const hasActiveSubscription = isSubscriptionAccessActive(
+      business.subscriptionStatus,
+      business.trialEndsAt,
+      business.subscriptionCurrentPeriodEnd,
+    );
 
     const [checkInsToday, appointmentsToday, activeReferrals, pendingReferrals, earnedCredits] =
       await Promise.all([
@@ -138,6 +150,13 @@ export async function GET(request: Request) {
         name: business.name,
         businessType: business.businessType,
         onboardingComplete: isBusinessOnboardingComplete(business),
+      },
+      subscription: {
+        plan: business.subscriptionPlan,
+        status: business.subscriptionStatus,
+        billingProvider,
+        isActive: hasActiveSubscription,
+        requiresPurchase: !hasActiveSubscription,
       },
       metrics: [
         {

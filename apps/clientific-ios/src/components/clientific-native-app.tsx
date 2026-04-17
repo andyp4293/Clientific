@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as SecureStore from 'expo-secure-store';
+import type { PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
 import {
   createMobileService,
   createMobileServiceGroup,
@@ -80,6 +81,7 @@ import {
   resendVerificationCode,
   sendMobileReviewRequest,
   sendMobileCustomerMessage,
+  syncMobileAppStoreSubscription,
   unregisterMobilePushToken,
   updateMobileAiReceptionist,
   updateMobileAppointment,
@@ -100,6 +102,16 @@ import {
   addPushNotificationResponseListener,
   registerForPushNotificationsAsync,
 } from '@/lib/mobile-push-notifications';
+import {
+  buildMobileRevenueCatAppUserId,
+  clearRevenueCatUser,
+  configureRevenueCatForBusiness,
+  getCurrentRevenueCatOffering,
+  isRevenueCatPurchaseCancelled,
+  presentRevenueCatCustomerCenter,
+  purchaseRevenueCatPackage,
+  restoreRevenueCatPurchases,
+} from '@/lib/mobile-subscriptions';
 import { buildReferralInviteUrl, resolveReferralCodeInput } from '@/lib/referral-links';
 import {
   MobileAppShell,
@@ -178,6 +190,10 @@ export function ClientificNativeApp() {
   const [isRefreshingReviews, setIsRefreshingReviews] = useState(false);
   const [isLoadingBilling, setIsLoadingBilling] = useState(false);
   const [isRefreshingBilling, setIsRefreshingBilling] = useState(false);
+  const [isLoadingBillingOffering, setIsLoadingBillingOffering] = useState(false);
+  const [isPurchasingSubscription, setIsPurchasingSubscription] = useState(false);
+  const [isRestoringSubscription, setIsRestoringSubscription] = useState(false);
+  const [isManagingSubscription, setIsManagingSubscription] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [aiReceptionistError, setAiReceptionistError] = useState<string | null>(null);
@@ -195,6 +211,10 @@ export function ClientificNativeApp() {
   const [businessHoursError, setBusinessHoursError] = useState<string | null>(null);
   const [reviewsError, setReviewsError] = useState<string | null>(null);
   const [billingError, setBillingError] = useState<string | null>(null);
+  const [billingNotice, setBillingNotice] = useState<string | null>(null);
+  const [billingPurchaseError, setBillingPurchaseError] = useState<string | null>(null);
+  const [pendingSubscriptionRedirectMessage, setPendingSubscriptionRedirectMessage] =
+    useState<string | null>(null);
   const [pendingVerification, setPendingVerification] = useState<{
     email: string;
     password: string;
@@ -228,6 +248,7 @@ export function ClientificNativeApp() {
   const [businessHours, setBusinessHours] = useState<MobileBusinessHoursSummary | null>(null);
   const [reviews, setReviews] = useState<MobileReviewsSummary | null>(null);
   const [billing, setBilling] = useState<MobileBillingSummary | null>(null);
+  const [billingOffering, setBillingOffering] = useState<PurchasesOffering | null>(null);
   const [registeredPushToken, setRegisteredPushToken] = useState<string | null>(null);
 
   const signOut = useCallback(async (message?: string) => {
@@ -237,6 +258,7 @@ export function ClientificNativeApp() {
       });
     }
 
+    await clearRevenueCatUser();
     await SecureStore.deleteItemAsync(MOBILE_SESSION_TOKEN_KEY);
     setSession(null);
     setAiReceptionist(null);
@@ -254,6 +276,7 @@ export function ClientificNativeApp() {
     setBusinessHours(null);
     setReviews(null);
     setBilling(null);
+    setBillingOffering(null);
     setActiveTab('dashboard');
     setMoreSection('menu');
     setAuthMode('sign-in');
@@ -274,6 +297,9 @@ export function ClientificNativeApp() {
     setBusinessHoursError(null);
     setReviewsError(null);
     setBillingError(null);
+    setBillingNotice(null);
+    setBillingPurchaseError(null);
+    setPendingSubscriptionRedirectMessage(null);
     setAppointmentsDate(formatMobileDateKey(new Date()));
     setCheckInsDate(formatMobileDateKey(new Date()));
     setCustomersPage(1);
@@ -299,6 +325,18 @@ export function ClientificNativeApp() {
         return;
       }
 
+      if (
+        error instanceof ClientificApiError &&
+        error.status === 403 &&
+        error.code === 'SUBSCRIPTION_REQUIRED'
+      ) {
+        setError(null);
+        setPendingSubscriptionRedirectMessage(
+          'Start the 14-day App Store trial from Billing to unlock this part of Clientific.',
+        );
+        return;
+      }
+
       setError(getReadableError(error, fallback));
     },
     [signOut],
@@ -319,6 +357,15 @@ export function ClientificNativeApp() {
         if (nextHome.business.onboardingComplete) {
           setBusinessProfile(null);
           setBusinessProfileError(null);
+        }
+        if (nextHome.business.onboardingComplete && nextHome.subscription.requiresPurchase) {
+          setActiveTab('more');
+          setMoreSection('billing');
+          setBillingNotice(
+            'Start the 14-day App Store trial to unlock appointments, customers, deals, and the rest of your business tools.',
+          );
+        } else {
+          setBillingNotice(null);
         }
         setHomeError(null);
       } catch (error) {
@@ -718,8 +765,153 @@ export function ClientificNativeApp() {
     [handleSessionError],
   );
 
+  const loadBillingOffering = useCallback(
+    async (businessId: string) => {
+      setIsLoadingBillingOffering(true);
+
+      try {
+        await configureRevenueCatForBusiness(businessId);
+        const offering = await getCurrentRevenueCatOffering();
+        setBillingOffering(offering);
+        setBillingPurchaseError(null);
+      } catch (error) {
+        setBillingPurchaseError(
+          getReadableError(error, 'Unable to load App Store plan options right now.'),
+        );
+      } finally {
+        setIsLoadingBillingOffering(false);
+      }
+    },
+    [],
+  );
+
+  const openBillingPaywall = useCallback(
+    (message?: string) => {
+      setActiveTab('more');
+      setMoreSection('billing');
+      if (message) {
+        setBillingNotice(message);
+      }
+
+      if (session && !billing && !isLoadingBilling) {
+        void loadBilling(session.token);
+      }
+
+      if (session && !billingOffering && !isLoadingBillingOffering) {
+        void loadBillingOffering(session.business.id);
+      }
+    },
+    [
+      billing,
+      billingOffering,
+      isLoadingBilling,
+      isLoadingBillingOffering,
+      loadBilling,
+      loadBillingOffering,
+      session,
+    ],
+  );
+
+  const syncActiveAppStoreSubscription = useCallback(async () => {
+    if (!session) {
+      throw new Error('Sign in again to continue.');
+    }
+
+    const appUserId = buildMobileRevenueCatAppUserId(session.business.id);
+    await syncMobileAppStoreSubscription(session.token, { appUserId });
+    await Promise.all([
+      loadHome(session.token),
+      loadBilling(session.token, true),
+    ]);
+  }, [loadBilling, loadHome, session]);
+
+  const handlePurchaseSubscription = useCallback(
+    async (aPackage: PurchasesPackage) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      setIsPurchasingSubscription(true);
+      setBillingPurchaseError(null);
+      setBillingNotice(null);
+
+      try {
+        await configureRevenueCatForBusiness(session.business.id);
+        await purchaseRevenueCatPackage(aPackage);
+        await syncActiveAppStoreSubscription();
+      } catch (error) {
+        if (isRevenueCatPurchaseCancelled(error)) {
+          return;
+        }
+
+        setBillingPurchaseError(
+          getReadableError(error, 'Unable to complete the App Store purchase right now.'),
+        );
+      } finally {
+        setIsPurchasingSubscription(false);
+      }
+    },
+    [session, syncActiveAppStoreSubscription],
+  );
+
+  const handleRestoreSubscription = useCallback(async () => {
+    if (!session) {
+      throw new Error('Sign in again to continue.');
+    }
+
+    setIsRestoringSubscription(true);
+    setBillingPurchaseError(null);
+
+    try {
+      await configureRevenueCatForBusiness(session.business.id);
+      await restoreRevenueCatPurchases();
+      await syncActiveAppStoreSubscription();
+      setBillingNotice('App Store purchases restored.');
+    } catch (error) {
+      setBillingPurchaseError(
+        getReadableError(error, 'Unable to restore App Store purchases right now.'),
+      );
+    } finally {
+      setIsRestoringSubscription(false);
+    }
+  }, [session, syncActiveAppStoreSubscription]);
+
+  const handleOpenCustomerCenter = useCallback(async () => {
+    if (!session) {
+      throw new Error('Sign in again to continue.');
+    }
+
+    setIsManagingSubscription(true);
+    setBillingPurchaseError(null);
+
+    try {
+      await configureRevenueCatForBusiness(session.business.id);
+      await presentRevenueCatCustomerCenter();
+      await Promise.all([
+        loadHome(session.token),
+        loadBilling(session.token, true),
+      ]);
+    } catch (error) {
+      setBillingPurchaseError(
+        getReadableError(error, 'Unable to open App Store subscription management right now.'),
+      );
+    } finally {
+      setIsManagingSubscription(false);
+    }
+  }, [loadBilling, loadHome, session]);
+
   const handleChangeMoreSection = useCallback(
     (nextSection: MobileMoreSection) => {
+      const subscriptionLocked = home?.subscription.requiresPurchase ?? false;
+      const unlockedSections: MobileMoreSection[] = ['menu', 'settings', 'billing'];
+
+      if (subscriptionLocked && !unlockedSections.includes(nextSection)) {
+        openBillingPaywall(
+          'Finish setup in Billing first. Start the 14-day App Store trial to unlock the rest of the app.',
+        );
+        return;
+      }
+
       if (nextSection === 'payouts' && session && !funds && !isLoadingFunds) {
         setIsLoadingFunds(true);
         void loadFunds(session.token);
@@ -727,23 +919,45 @@ export function ClientificNativeApp() {
 
       setMoreSection(nextSection);
     },
-    [funds, isLoadingFunds, loadFunds, session],
+    [funds, home?.subscription.requiresPurchase, isLoadingFunds, loadFunds, openBillingPaywall, session],
   );
 
   const openFundsTab = useCallback(() => {
+    if (home?.subscription.requiresPurchase) {
+      openBillingPaywall();
+      return;
+    }
+
     setActiveTab('more');
     handleChangeMoreSection('payouts');
-  }, [handleChangeMoreSection]);
+  }, [handleChangeMoreSection, home?.subscription.requiresPurchase, openBillingPaywall]);
 
   const openReferralsTab = useCallback(() => {
+    if (home?.subscription.requiresPurchase) {
+      openBillingPaywall();
+      return;
+    }
+
     setMoreSection('referrals');
     setActiveTab('more');
     if (session && !referrals && !isLoadingReferrals) {
       void loadReferrals(session.token);
     }
-  }, [isLoadingReferrals, loadReferrals, referrals, session]);
+  }, [
+    home?.subscription.requiresPurchase,
+    isLoadingReferrals,
+    loadReferrals,
+    openBillingPaywall,
+    referrals,
+    session,
+  ]);
 
   const openAppointmentsTab = useCallback(() => {
+    if (home?.subscription.requiresPurchase) {
+      openBillingPaywall();
+      return;
+    }
+
     setActiveTab('appointments');
     if (
       session &&
@@ -755,20 +969,40 @@ export function ClientificNativeApp() {
   }, [
     appointments,
     appointmentsDate,
+    home?.subscription.requiresPurchase,
     isLoadingAppointments,
     loadAppointments,
+    openBillingPaywall,
     session,
   ]);
 
   const openCheckInsTab = useCallback(() => {
+    if (home?.subscription.requiresPurchase) {
+      openBillingPaywall();
+      return;
+    }
+
     setMoreSection('checkins');
     setActiveTab('more');
     if (session && (!checkIns || checkIns.selectedDate !== checkInsDate) && !isLoadingCheckIns) {
       void loadCheckIns(session.token, checkInsDate);
     }
-  }, [checkIns, checkInsDate, isLoadingCheckIns, loadCheckIns, session]);
+  }, [
+    checkIns,
+    checkInsDate,
+    home?.subscription.requiresPurchase,
+    isLoadingCheckIns,
+    loadCheckIns,
+    openBillingPaywall,
+    session,
+  ]);
 
   const openCustomersTab = useCallback(() => {
+    if (home?.subscription.requiresPurchase) {
+      openBillingPaywall();
+      return;
+    }
+
     setActiveTab('customers');
     if (
       session &&
@@ -795,17 +1029,36 @@ export function ClientificNativeApp() {
     customers,
     customersPage,
     customersSearchQuery,
+    home?.subscription.requiresPurchase,
     isLoadingCustomers,
     loadCustomers,
+    openBillingPaywall,
     session,
   ]);
 
   const openDealsTab = useCallback(() => {
+    if (home?.subscription.requiresPurchase) {
+      openBillingPaywall();
+      return;
+    }
+
     setActiveTab('deals');
     if (session && !deals && !isLoadingDeals) {
       void loadDeals(session.token);
     }
-  }, [deals, isLoadingDeals, loadDeals, session]);
+  }, [deals, home?.subscription.requiresPurchase, isLoadingDeals, loadDeals, openBillingPaywall, session]);
+
+  const handleChangeTab = useCallback(
+    (nextTab: MobileAppTab) => {
+      if (nextTab !== 'dashboard' && nextTab !== 'more' && home?.subscription.requiresPurchase) {
+        openBillingPaywall();
+        return;
+      }
+
+      setActiveTab(nextTab);
+    },
+    [home?.subscription.requiresPurchase, openBillingPaywall],
+  );
 
   const shareCustomerViewLink = useCallback(
     async (label: string, url: string) => {
@@ -969,6 +1222,83 @@ export function ClientificNativeApp() {
       isActive = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!session?.business.id) {
+      return;
+    }
+
+    void configureRevenueCatForBusiness(session.business.id).catch((error) => {
+      console.warn('RevenueCat configuration failed:', error);
+      setBillingPurchaseError(
+        getReadableError(error, 'Unable to prepare App Store billing for this account.'),
+      );
+    });
+  }, [session?.business.id]);
+
+  useEffect(() => {
+    if (!pendingSubscriptionRedirectMessage || !session) {
+      return;
+    }
+
+    setActiveTab('more');
+    setMoreSection('billing');
+    setBillingNotice(pendingSubscriptionRedirectMessage);
+    setPendingSubscriptionRedirectMessage(null);
+
+    if (!billing && !isLoadingBilling) {
+      void loadBilling(session.token);
+    }
+
+    if (!billingOffering && !isLoadingBillingOffering) {
+      void loadBillingOffering(session.business.id);
+    }
+  }, [
+    billing,
+    billingOffering,
+    isLoadingBilling,
+    isLoadingBillingOffering,
+    loadBilling,
+    loadBillingOffering,
+    pendingSubscriptionRedirectMessage,
+    session,
+  ]);
+
+  useEffect(() => {
+    if (!home?.subscription.requiresPurchase) {
+      return;
+    }
+
+    if (activeTab === 'appointments' || activeTab === 'customers' || activeTab === 'deals') {
+      openBillingPaywall(
+        'Your business tools are locked until you start the 14-day App Store trial.',
+      );
+    }
+  }, [activeTab, home?.subscription.requiresPurchase, openBillingPaywall]);
+
+  useEffect(() => {
+    if (!home?.subscription.requiresPurchase || activeTab !== 'more') {
+      return;
+    }
+
+    const lockedSections = new Set<MobileMoreSection>([
+      'services',
+      'checkins',
+      'redeem',
+      'hours',
+      'aiReceptionist',
+      'customerView',
+      'reviews',
+      'referrals',
+      'payouts',
+    ]);
+
+    if (lockedSections.has(moreSection)) {
+      openBillingPaywall(
+        'Finish setup in Billing first. Start the 14-day App Store trial to unlock the rest of the app.',
+      );
+    }
+  }, [activeTab, home?.subscription.requiresPurchase, moreSection, openBillingPaywall]);
 
   useEffect(() => {
     if (!session?.token) {
@@ -2195,6 +2525,16 @@ export function ClientificNativeApp() {
     if (activeTab === 'more' && moreSection === 'billing' && !billing && !isLoadingBilling) {
       void loadBilling(session.token);
     }
+
+    if (
+      activeTab === 'more' &&
+      moreSection === 'billing' &&
+      home?.subscription.requiresPurchase &&
+      !billingOffering &&
+      !isLoadingBillingOffering
+    ) {
+      void loadBillingOffering(session.business.id);
+    }
   }, [
     activeTab,
     aiReceptionist,
@@ -2216,6 +2556,7 @@ export function ClientificNativeApp() {
     isLoadingAiReceptionist,
     isLoadingAppointments,
     isLoadingBilling,
+    isLoadingBillingOffering,
     isLoadingBusinessHours,
     isLoadingBusinessProfile,
     isLoadingCheckIns,
@@ -2229,6 +2570,7 @@ export function ClientificNativeApp() {
     loadAiReceptionist,
     loadAppointments,
     loadBilling,
+    loadBillingOffering,
     loadBusinessHours,
     loadBusinessProfile,
     loadCheckIns,
@@ -2369,7 +2711,10 @@ export function ClientificNativeApp() {
       appointmentComposerError={appointmentComposerError}
       appointments={appointments}
       appointmentsError={appointmentsError}
+      appStoreOffering={billingOffering}
       billing={billing}
+      billingNotice={billingNotice}
+      billingPurchaseError={billingPurchaseError}
       billingError={billingError}
       business={home.business}
       businessHours={businessHours}
@@ -2397,7 +2742,9 @@ export function ClientificNativeApp() {
       isAppointmentsLoading={isLoadingAppointments}
       isAppointmentsRefreshing={isRefreshingAppointments}
       isBillingLoading={isLoadingBilling}
+      isBillingOfferingLoading={isLoadingBillingOffering}
       isBillingRefreshing={isRefreshingBilling}
+      isManagingSubscription={isManagingSubscription}
       isBusinessHoursLoading={isLoadingBusinessHours}
       isBusinessHoursRefreshing={isRefreshingBusinessHours}
       isBusinessHoursSaving={isSavingBusinessHours}
@@ -2413,8 +2760,10 @@ export function ClientificNativeApp() {
       isFundsLoading={isLoadingFunds}
       isFundsRefreshing={isRefreshingFunds}
       isHomeRefreshing={isRefreshingHome}
+      isPurchasingSubscription={isPurchasingSubscription}
       isReferralsLoading={isLoadingReferrals}
       isReferralsRefreshing={isRefreshingReferrals}
+      isRestoringSubscription={isRestoringSubscription}
       isReviewsLoading={isLoadingReviews}
       isReviewsRefreshing={isRefreshingReviews}
       isSavingBusinessProfile={isSavingBusinessProfile}
@@ -2424,7 +2773,7 @@ export function ClientificNativeApp() {
       moreSection={moreSection}
       onChangeCustomersSearchDraft={setCustomersSearchDraft}
       onChangeMoreSection={handleChangeMoreSection}
-      onChangeTab={setActiveTab}
+      onChangeTab={handleChangeTab}
       onCreateAppointment={handleCreateAppointment}
       onCreateAppointmentCustomer={handleCreateAppointmentCustomer}
       onCreateCustomer={handleCreateCustomer}
@@ -2452,6 +2801,7 @@ export function ClientificNativeApp() {
         }
         await loadAppointmentComposerResources(session.token);
       }}
+      onManageSubscription={handleOpenCustomerCenter}
       onNextCheckInsDate={goToNextCheckInsDate}
       onNextAppointmentsDate={goToNextAppointmentsDate}
       onNextCustomersPage={goToNextCustomersPage}
@@ -2464,6 +2814,7 @@ export function ClientificNativeApp() {
       onPreviousCheckInsDate={goToPreviousCheckInsDate}
       onPreviousAppointmentsDate={goToPreviousAppointmentsDate}
       onPreviousCustomersPage={goToPreviousCustomersPage}
+      onPurchasePackage={handlePurchaseSubscription}
       onRedeemCode={handleRedeemCode}
       onRefreshAiReceptionist={handleRefreshAiReceptionist}
       onRefreshBilling={handleRefreshBilling}
@@ -2479,6 +2830,7 @@ export function ClientificNativeApp() {
       onRefreshReferrals={handleRefreshReferrals}
       onRefreshReviews={handleRefreshReviews}
       onRefreshServices={handleRefreshServices}
+      onRestorePurchases={handleRestoreSubscription}
       onSaveAiReceptionist={handleSaveAiReceptionist}
       onSaveBusinessHours={handleSaveBusinessHours}
       onSaveBusinessProfile={handleSaveBusinessProfile}

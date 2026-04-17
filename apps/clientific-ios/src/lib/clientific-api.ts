@@ -81,6 +81,13 @@ export type MobileAppointmentUpdateInput = {
 
 export type MobileHomeSummary = {
   business: MobileBusiness;
+  subscription: {
+    plan: string | null;
+    status: string | null;
+    billingProvider: 'none' | 'stripe' | 'app_store';
+    isActive: boolean;
+    requiresPurchase: boolean;
+  };
   metrics: MobileHomeMetric[];
   todayAppointments: MobileTodayAppointment[];
   referralSnapshot: {
@@ -538,12 +545,15 @@ export type MobileBillingSummary = {
   currentPlanName: string;
   currentPlanPriceLabel: string;
   planSummary: string;
-  billingProvider: 'stripe' | 'app_store';
+  billingProvider: 'none' | 'stripe' | 'app_store';
   billingProviderLabel: string;
   managementTitle: string;
   managementSummary: string;
   subscriptionStatus: string;
   subscriptionStatusLabel: string;
+  isActive: boolean;
+  canPurchaseInApp: boolean;
+  showManageInApp: boolean;
   trialDaysRemaining: number | null;
   trialEndsAtLabel: string | null;
   nextBillingDateLabel: string | null;
@@ -576,7 +586,7 @@ export type MobileAiReceptionistFaq = {
 export type MobileAiReceptionistSummary = {
   business: MobileBusiness;
   subscriptionPlan: string | null;
-  billingProvider: 'stripe' | 'app_store';
+  billingProvider: 'none' | 'stripe' | 'app_store';
   hasAccess: boolean;
   aiReceptionistEnabled: boolean;
   aiReceptionistPhone: string | null;
@@ -685,6 +695,7 @@ export class ClientificApiError extends Error {
   constructor(
     message: string,
     public readonly status: number,
+    public readonly code: string | null = null,
   ) {
     super(message);
     this.name = 'ClientificApiError';
@@ -699,6 +710,7 @@ async function requestJson<T>(path: string, init?: RequestInit) {
     throw new ClientificApiError(
       typeof data?.error === 'string' ? data.error : 'Request failed',
       response.status,
+      typeof data?.code === 'string' ? data.code : null,
     );
   }
 
@@ -717,7 +729,7 @@ export async function loginWithClientific(input: {
 }
 
 export async function registerWithClientific(input: MobileRegistrationInput) {
-  return requestJson<MobileRegistrationResponse>('/api/auth/register', {
+  return requestJson<MobileRegistrationResponse>('/api/mobile/auth/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
@@ -1239,6 +1251,31 @@ export async function fetchMobileBilling(token: string) {
     headers: {
       authorization: `Bearer ${token}`,
     },
+  });
+}
+
+export async function syncMobileAppStoreSubscription(
+  token: string,
+  input?: { appUserId?: string },
+) {
+  return requestJson<{
+    success: true;
+    subscription: {
+      plan: string;
+      subscriptionStatus: string;
+      billingProvider: 'app_store';
+      productId: string | null;
+      trialEndsAt: string | null;
+      subscriptionCurrentPeriodEnd: string | null;
+      isActive: boolean;
+    };
+  }>('/api/mobile/billing/sync-app-store', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input ?? {}),
   });
 }
 

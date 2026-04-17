@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import type { PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type {
   MobileAiReceptionistUpdateInput,
@@ -54,7 +55,10 @@ type MobileAppShellProps = {
   aiReceptionistError: string | null;
   appointments: MobileAppointmentsSummary | null;
   appointmentsError: string | null;
+  appStoreOffering: PurchasesOffering | null;
   billing: MobileBillingSummary | null;
+  billingNotice: string | null;
+  billingPurchaseError: string | null;
   billingError: string | null;
   business: MobileBusiness;
   businessHours: MobileBusinessHoursSummary | null;
@@ -82,7 +86,9 @@ type MobileAppShellProps = {
   isAppointmentComposerLoading: boolean;
   isAppointmentsRefreshing: boolean;
   isBillingLoading: boolean;
+  isBillingOfferingLoading: boolean;
   isBillingRefreshing: boolean;
+  isManagingSubscription: boolean;
   isBusinessHoursLoading: boolean;
   isBusinessHoursRefreshing: boolean;
   isBusinessHoursSaving: boolean;
@@ -98,8 +104,10 @@ type MobileAppShellProps = {
   isFundsLoading: boolean;
   isFundsRefreshing: boolean;
   isHomeRefreshing: boolean;
+  isPurchasingSubscription: boolean;
   isReferralsLoading: boolean;
   isReferralsRefreshing: boolean;
+  isRestoringSubscription: boolean;
   isReviewsLoading: boolean;
   isReviewsRefreshing: boolean;
   isSavingBusinessProfile: boolean;
@@ -136,6 +144,7 @@ type MobileAppShellProps = {
   onNextCheckInsDate: () => void;
   onNextAppointmentsDate: () => void;
   onNextCustomersPage: () => void;
+  onManageSubscription: () => Promise<void>;
   onOpenExternalUrl: (url: string) => Promise<void>;
   onOpenAppointments: () => void;
   onOpenCustomers: () => void;
@@ -145,6 +154,7 @@ type MobileAppShellProps = {
   onPreviousCheckInsDate: () => void;
   onPreviousAppointmentsDate: () => void;
   onPreviousCustomersPage: () => void;
+  onPurchasePackage: (aPackage: PurchasesPackage) => Promise<void>;
   onRedeemCode: (input: { code: string; transactionAmount?: number | null }) => Promise<MobileRedeemResult>;
   onRefreshAiReceptionist: () => Promise<void>;
   onRefreshBilling: () => Promise<void>;
@@ -160,6 +170,7 @@ type MobileAppShellProps = {
   onRefreshReferrals: () => Promise<void>;
   onRefreshReviews: () => Promise<void>;
   onRefreshServices: () => Promise<void>;
+  onRestorePurchases: () => Promise<void>;
   onSaveAiReceptionist: (input: MobileAiReceptionistUpdateInput) => Promise<void>;
   onSaveBusinessHours: (input: MobileBusinessHoursUpdateInput) => Promise<void>;
   onSaveBusinessProfile: (input: MobileOnboardingInput) => Promise<void>;
@@ -215,7 +226,10 @@ export function MobileAppShell({
   aiReceptionistError,
   appointments,
   appointmentsError,
+  appStoreOffering,
   billing,
+  billingNotice,
+  billingPurchaseError,
   billingError,
   business,
   businessHours,
@@ -243,7 +257,9 @@ export function MobileAppShell({
   isAppointmentComposerLoading,
   isAppointmentsRefreshing,
   isBillingLoading,
+  isBillingOfferingLoading,
   isBillingRefreshing,
+  isManagingSubscription,
   isBusinessHoursLoading,
   isBusinessHoursRefreshing,
   isBusinessHoursSaving,
@@ -259,8 +275,10 @@ export function MobileAppShell({
   isFundsLoading,
   isFundsRefreshing,
   isHomeRefreshing,
+  isPurchasingSubscription,
   isReferralsLoading,
   isReferralsRefreshing,
+  isRestoringSubscription,
   isReviewsLoading,
   isReviewsRefreshing,
   isSavingBusinessProfile,
@@ -295,6 +313,7 @@ export function MobileAppShell({
   onNextCheckInsDate,
   onNextAppointmentsDate,
   onNextCustomersPage,
+  onManageSubscription,
   onOpenExternalUrl,
   onOpenAppointments,
   onOpenCustomers,
@@ -304,6 +323,7 @@ export function MobileAppShell({
   onPreviousCheckInsDate,
   onPreviousAppointmentsDate,
   onPreviousCustomersPage,
+  onPurchasePackage,
   onRedeemCode,
   onRefreshAiReceptionist,
   onRefreshBilling,
@@ -319,6 +339,7 @@ export function MobileAppShell({
   onRefreshReferrals,
   onRefreshReviews,
   onRefreshServices,
+  onRestorePurchases,
   onSaveAiReceptionist,
   onSaveBusinessHours,
   onSaveBusinessProfile,
@@ -349,6 +370,7 @@ export function MobileAppShell({
 }: MobileAppShellProps) {
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
+  const subscriptionLocked = home.subscription.requiresPurchase;
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
@@ -368,6 +390,10 @@ export function MobileAppShell({
               onOpenDeals={onOpenDeals}
               onOpenFunds={onOpenFunds}
               onOpenReferrals={onOpenReferrals}
+              onOpenBilling={() => {
+                onChangeMoreSection('billing');
+                onChangeTab('more');
+              }}
               onRefresh={onRefreshHome}
             />
           ) : null}
@@ -445,9 +471,12 @@ export function MobileAppShell({
           {activeTab === 'more' ? (
             <MobileMoreScreen
               activeSection={moreSection}
+              appStoreOffering={appStoreOffering}
               aiReceptionist={aiReceptionist}
               aiReceptionistError={aiReceptionistError}
               billing={billing}
+              billingNotice={billingNotice}
+              billingPurchaseError={billingPurchaseError}
               billingError={billingError}
               business={business}
               businessHours={businessHours}
@@ -465,7 +494,9 @@ export function MobileAppShell({
               isAiReceptionistRefreshing={isAiReceptionistRefreshing}
               isAiReceptionistSaving={isAiReceptionistSaving}
               isBillingLoading={isBillingLoading}
+              isBillingOfferingLoading={isBillingOfferingLoading}
               isBillingRefreshing={isBillingRefreshing}
+              isManagingSubscription={isManagingSubscription}
               isBusinessHoursLoading={isBusinessHoursLoading}
               isBusinessHoursRefreshing={isBusinessHoursRefreshing}
               isBusinessHoursSaving={isBusinessHoursSaving}
@@ -476,13 +507,16 @@ export function MobileAppShell({
               isCustomerViewRefreshing={isCustomerViewRefreshing}
               isFundsLoading={isFundsLoading}
               isFundsRefreshing={isFundsRefreshing}
+              isPurchasingSubscription={isPurchasingSubscription}
               isReferralsLoading={isReferralsLoading}
               isReferralsRefreshing={isReferralsRefreshing}
+              isRestoringSubscription={isRestoringSubscription}
               isReviewsLoading={isReviewsLoading}
               isReviewsRefreshing={isReviewsRefreshing}
               isSavingBusinessProfile={isSavingBusinessProfile}
               isServicesLoading={isServicesLoading}
               isServicesRefreshing={isServicesRefreshing}
+              subscriptionLocked={subscriptionLocked}
               onChangeSection={onChangeMoreSection}
               onCreateCheckIn={onCreateCheckIn}
               onCreateService={onCreateService}
@@ -495,8 +529,10 @@ export function MobileAppShell({
               onLookupCheckIn={onLookupCheckIn}
               onLookupRedeemCode={onLookupRedeemCode}
               onNextCheckInsDate={onNextCheckInsDate}
+              onManageSubscription={onManageSubscription}
               onOpenExternalUrl={onOpenExternalUrl}
               onPreviousCheckInsDate={onPreviousCheckInsDate}
+              onPurchasePackage={onPurchasePackage}
               onRedeemCode={onRedeemCode}
               onRefreshAiReceptionist={onRefreshAiReceptionist}
               onRefreshBilling={onRefreshBilling}
@@ -508,6 +544,7 @@ export function MobileAppShell({
               onRefreshReferrals={onRefreshReferrals}
               onRefreshReviews={onRefreshReviews}
               onRefreshServices={onRefreshServices}
+              onRestorePurchases={onRestorePurchases}
               onSaveAiReceptionist={onSaveAiReceptionist}
               onSaveBusinessHours={onSaveBusinessHours}
               onSaveBusinessProfile={onSaveBusinessProfile}
@@ -547,6 +584,11 @@ export function MobileAppShell({
                 <Pressable
                   key={tab.key}
                   accessibilityRole="button"
+                  accessibilityState={{
+                    selected: isActive,
+                    disabled:
+                      subscriptionLocked && tab.key !== 'dashboard' && tab.key !== 'more',
+                  }}
                   onPress={() => {
                     if (tab.key === 'more') {
                       onChangeMoreSection('menu');
@@ -557,7 +599,15 @@ export function MobileAppShell({
                   style={[
                     styles.tabButton,
                     {
-                      backgroundColor: isActive ? theme.accentSoft : 'transparent',
+                      backgroundColor: isActive
+                        ? theme.accentSoft
+                        : subscriptionLocked && tab.key !== 'dashboard' && tab.key !== 'more'
+                          ? theme.surfaceMuted
+                          : 'transparent',
+                      opacity:
+                        subscriptionLocked && tab.key !== 'dashboard' && tab.key !== 'more'
+                          ? 0.72
+                          : 1,
                     },
                   ]}
                   testID={`mobile-tab-${tab.key}`}>

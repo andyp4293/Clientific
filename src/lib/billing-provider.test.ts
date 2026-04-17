@@ -20,6 +20,16 @@ describe('billing-provider helpers', () => {
     expect(getBillingProviderLabel('app_store')).toBe('App Store');
   });
 
+  it('preserves the no-subscription placeholder provider for iPhone onboarding', () => {
+    expect(normalizeBillingProvider('none')).toBe('none');
+    expect(getBillingProviderLabel('none')).toBe('No subscription yet');
+    expect(getBillingManagementTitle('none')).toBe('Start your App Store trial');
+    expect(getBillingManagementSummary('none')).toMatch(/pick a plan in the app/i);
+    expect(getBillingPaymentMethodSummary('none', null)).toMatch(/Apple/i);
+    expect(getBillingInvoiceEmptyState('none')).toMatch(/start billing/i);
+    expect(getAiReceptionistUpgradeSummary('none')).toMatch(/Billing/i);
+  });
+
   it('returns website management copy for stripe-backed businesses', () => {
     expect(getBillingProviderLabel('stripe')).toBe('Website');
     expect(getBillingManagementTitle('stripe')).toBe('Managed on the web');

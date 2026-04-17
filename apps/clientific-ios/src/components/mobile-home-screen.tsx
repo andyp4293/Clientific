@@ -21,6 +21,7 @@ type MobileHomeScreenProps = {
   onOpenFunds: () => void;
   onOpenReferrals: () => void;
   onOpenAppointments: () => void;
+  onOpenBilling: () => void;
   onRefresh: () => Promise<void>;
 };
 
@@ -34,6 +35,7 @@ export function MobileHomeScreen({
   onOpenFunds,
   onOpenReferrals,
   onOpenAppointments,
+  onOpenBilling,
   onRefresh,
 }: MobileHomeScreenProps) {
   const colorScheme = useColorScheme();
@@ -78,6 +80,26 @@ export function MobileHomeScreen({
           </View>
         ) : null}
       </View>
+
+      {summary.subscription.requiresPurchase ? (
+        <View
+          style={[
+            styles.noticeCard,
+            { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+          ]}>
+          <Text style={[styles.noticeTitle, { color: theme.text }]}>Start your App Store trial</Text>
+          <Text style={[styles.noticeText, { color: theme.mutedText }]}>
+            Finish subscription setup in Billing to unlock appointments, customers, deals, and the rest of your business tools.
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onOpenBilling}
+            style={[styles.inlineButton, { backgroundColor: theme.accent }]}
+            testID="mobile-home-open-billing">
+            <Text style={styles.inlineButtonText}>Open billing</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {!summary.business.onboardingComplete ? (
         <View

@@ -44,16 +44,18 @@ function formatPlanPrice(price: number) {
 }
 
 function formatSubscriptionStatus(status: string | null | undefined) {
-  const normalized = status?.trim().toLowerCase() || 'active';
+  const normalized = status?.trim().toLowerCase() || 'inactive';
   const labels: Record<string, string> = {
+    inactive: 'No Subscription',
     active: 'Active',
     trialing: 'Free Trial',
+    grace_period: 'Billing Grace Period',
     past_due: 'Past Due',
     canceled: 'Canceled',
     incomplete: 'Incomplete',
   };
 
-  return labels[normalized] ?? 'Active';
+  return labels[normalized] ?? 'Inactive';
 }
 
 export async function GET(request: Request) {
@@ -91,11 +93,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unable to load billing' }, { status: 404 });
     }
 
-    const planKey = getPricingPlanKey(subscription.subscriptionPlan);
-    const plan = planKey ? PRICING_PLANS[planKey] : PRICING_PLANS.STARTER;
     const billingProvider = normalizeBillingProvider(
       subscription.billingProvider ?? business.billingProvider,
     );
+    const planKey = getPricingPlanKey(subscription.subscriptionPlan);
+    const plan = planKey ? PRICING_PLANS[planKey] : PRICING_PLANS.STARTER;
+    const isInactiveNoPlan = billingProvider === 'none' && !subscription.isActive;
 
     let paymentMethod = null;
 
@@ -166,15 +169,22 @@ export async function GET(request: Request) {
         businessType: business.businessType,
         onboardingComplete: isBusinessOnboardingComplete(business),
       },
-      currentPlanName: plan.name,
-      currentPlanPriceLabel: `${formatPlanPrice(plan.price)}/month`,
-      planSummary: plan.summary,
+      currentPlanName: isInactiveNoPlan ? 'No active plan' : plan.name,
+      currentPlanPriceLabel: isInactiveNoPlan
+        ? 'Start a 14-day free trial'
+        : `${formatPlanPrice(plan.price)}/month`,
+      planSummary: isInactiveNoPlan
+        ? 'Pick Starter, Pro, or Premium in the app to unlock appointments, customers, deals, and the rest of your business tools.'
+        : plan.summary,
       billingProvider,
       billingProviderLabel: getBillingProviderLabel(billingProvider),
       managementTitle: getBillingManagementTitle(billingProvider),
       managementSummary: getBillingManagementSummary(billingProvider),
       subscriptionStatus: subscription.subscriptionStatus,
       subscriptionStatusLabel: formatSubscriptionStatus(subscription.subscriptionStatus),
+      isActive: subscription.isActive,
+      canPurchaseInApp: billingProvider !== 'stripe' && !subscription.isActive,
+      showManageInApp: billingProvider === 'app_store',
       trialDaysRemaining: subscription.trialDaysRemaining,
       trialEndsAtLabel: subscription.trialEndsAt
         ? new Date(subscription.trialEndsAt).toLocaleDateString('en-US', {

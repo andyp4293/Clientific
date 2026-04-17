@@ -3,7 +3,7 @@ import { addMonths, subMonths } from 'date-fns';
 import { normalizeSubscriptionPlan, getPricingPlanKey } from './plan-utils';
 import { prisma } from './prisma';
 import { PRICING_PLANS } from './stripe';
-import { isSubscriptionCurrentlyActive } from './subscription';
+import { isSubscriptionAccessActive } from './subscription';
 
 const COUNTED_DIRECT_MESSAGE_STATUSES = ['queued', 'sent'] as const;
 const SERIALIZABLE_RETRY_LIMIT = 2;
@@ -70,7 +70,12 @@ export function getDirectMessageQuotaWindow(
   now: Date = new Date(),
 ): { periodStart: Date; periodEnd: Date } {
   if (
-    business.subscriptionStatus === 'active' &&
+    isSubscriptionAccessActive(
+      business.subscriptionStatus,
+      business.trialEndsAt,
+      business.subscriptionCurrentPeriodEnd,
+      now,
+    ) &&
     business.subscriptionCurrentPeriodEnd &&
     new Date(business.subscriptionCurrentPeriodEnd) > now
   ) {
@@ -107,9 +112,10 @@ export function buildDirectMessageQuotaSnapshot(
     remaining: Math.max(limit - used, 0),
     periodStart,
     periodEnd,
-    isActive: isSubscriptionCurrentlyActive(
+    isActive: isSubscriptionAccessActive(
       business.subscriptionStatus,
       business.trialEndsAt,
+      business.subscriptionCurrentPeriodEnd,
       now,
     ),
   };

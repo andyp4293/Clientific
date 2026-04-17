@@ -190,4 +190,46 @@ describe('GET /api/mobile/billing', () => {
     expect(body.paymentMethodSummary).toBe('Payment details stay managed by Apple.');
     expect(body.invoiceEmptyState).toMatch(/receipts/i);
   });
+
+  it('returns an in-app purchase state for inactive iPhone businesses', async () => {
+    mockFindBusiness.mockResolvedValue({
+      id: 'biz-1',
+      email: 'owner@clientific.app',
+      name: 'Clientific Studio',
+      businessType: 'Salon',
+      phone: '+15551234567',
+      street: '123 Main St',
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      country: 'US',
+      billingProvider: 'none',
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+    });
+    mockGetSubscriptionInfo.mockResolvedValue({
+      subscriptionPlan: 'trial',
+      subscriptionStatus: 'inactive',
+      billingProvider: 'none',
+      isActive: false,
+      trialDaysRemaining: null,
+      trialEndsAt: null,
+      subscriptionCurrentPeriodEnd: null,
+      stripeCurrentPeriodEnd: null,
+    });
+
+    const response = await GET(
+      new Request('https://www.clientific.app/api/mobile/billing', {
+        headers: { authorization: 'Bearer token' },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.currentPlanName).toBe('No active plan');
+    expect(body.billingProvider).toBe('none');
+    expect(body.canPurchaseInApp).toBe(true);
+    expect(body.showManageInApp).toBe(false);
+    expect(body.managementTitle).toBe('Start your App Store trial');
+  });
 });

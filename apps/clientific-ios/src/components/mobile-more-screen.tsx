@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import type { PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
 import type {
   MobileAiReceptionistSummary,
   MobileAiReceptionistUpdateInput,
@@ -84,6 +85,7 @@ type MobileMoreMenuItem = {
 
 type MobileMoreScreenProps = {
   activeSection: MobileMoreSection;
+  appStoreOffering: PurchasesOffering | null;
   aiReceptionist: MobileAiReceptionistSummary | null;
   aiReceptionistError: string | null;
   billing: MobileBillingSummary | null;
@@ -104,7 +106,9 @@ type MobileMoreScreenProps = {
   isAiReceptionistRefreshing: boolean;
   isAiReceptionistSaving: boolean;
   isBillingLoading: boolean;
+  isBillingOfferingLoading: boolean;
   isBillingRefreshing: boolean;
+  isManagingSubscription: boolean;
   isBusinessHoursLoading: boolean;
   isBusinessHoursRefreshing: boolean;
   isBusinessHoursSaving: boolean;
@@ -115,13 +119,18 @@ type MobileMoreScreenProps = {
   isCustomerViewRefreshing: boolean;
   isFundsLoading: boolean;
   isFundsRefreshing: boolean;
+  isPurchasingSubscription: boolean;
   isReferralsLoading: boolean;
   isReferralsRefreshing: boolean;
+  isRestoringSubscription: boolean;
   isReviewsLoading: boolean;
   isReviewsRefreshing: boolean;
   isSavingBusinessProfile: boolean;
   isServicesLoading: boolean;
   isServicesRefreshing: boolean;
+  subscriptionLocked: boolean;
+  billingNotice: string | null;
+  billingPurchaseError: string | null;
   onChangeSection: (section: MobileMoreSection) => void;
   onCreateCheckIn: (
     input: MobileCheckInSubmissionInput,
@@ -137,7 +146,9 @@ type MobileMoreScreenProps = {
   onLookupRedeemCode: (code: string) => Promise<MobileRedeemLookupResponse>;
   onNextCheckInsDate: () => void;
   onOpenExternalUrl: (url: string) => Promise<void>;
+  onManageSubscription: () => Promise<void>;
   onPreviousCheckInsDate: () => void;
+  onPurchasePackage: (aPackage: PurchasesPackage) => Promise<void>;
   onRedeemCode: (input: {
     code: string;
     transactionAmount?: number | null;
@@ -152,6 +163,7 @@ type MobileMoreScreenProps = {
   onRefreshReferrals: () => Promise<void>;
   onRefreshReviews: () => Promise<void>;
   onRefreshServices: () => Promise<void>;
+  onRestorePurchases: () => Promise<void>;
   onSaveAiReceptionist: (input: MobileAiReceptionistUpdateInput) => Promise<void>;
   onSaveBusinessHours: (input: MobileBusinessHoursUpdateInput) => Promise<void>;
   onSaveBusinessProfile: (input: MobileOnboardingInput) => Promise<void>;
@@ -296,6 +308,7 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
 
 export function MobileMoreScreen({
   activeSection,
+  appStoreOffering,
   aiReceptionist,
   aiReceptionistError,
   billing,
@@ -316,7 +329,9 @@ export function MobileMoreScreen({
   isAiReceptionistRefreshing,
   isAiReceptionistSaving,
   isBillingLoading,
+  isBillingOfferingLoading,
   isBillingRefreshing,
+  isManagingSubscription,
   isBusinessHoursLoading,
   isBusinessHoursRefreshing,
   isBusinessHoursSaving,
@@ -327,13 +342,18 @@ export function MobileMoreScreen({
   isCustomerViewRefreshing,
   isFundsLoading,
   isFundsRefreshing,
+  isPurchasingSubscription,
   isReferralsLoading,
   isReferralsRefreshing,
+  isRestoringSubscription,
   isReviewsLoading,
   isReviewsRefreshing,
   isSavingBusinessProfile,
   isServicesLoading,
   isServicesRefreshing,
+  subscriptionLocked,
+  billingNotice,
+  billingPurchaseError,
   onChangeSection,
   onCreateCheckIn,
   onCreateServiceGroup,
@@ -347,7 +367,9 @@ export function MobileMoreScreen({
   onLookupRedeemCode,
   onNextCheckInsDate,
   onOpenExternalUrl,
+  onManageSubscription,
   onPreviousCheckInsDate,
+  onPurchasePackage,
   onRedeemCode,
   onRefreshAiReceptionist,
   onRefreshBilling,
@@ -359,6 +381,7 @@ export function MobileMoreScreen({
   onRefreshReferrals,
   onRefreshReviews,
   onRefreshServices,
+  onRestorePurchases,
   onSaveAiReceptionist,
   onSaveBusinessHours,
   onSaveBusinessProfile,
@@ -381,6 +404,17 @@ export function MobileMoreScreen({
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
   const { themePreference, setThemePreference } = useClientificThemePreference();
+  const lockedTargets = new Set<MobileMoreSection>([
+    'services',
+    'checkins',
+    'redeem',
+    'hours',
+    'aiReceptionist',
+    'customerView',
+    'reviews',
+    'referrals',
+    'payouts',
+  ]);
 
   if (activeSection === 'menu') {
     return (
@@ -420,6 +454,22 @@ export function MobileMoreScreen({
             ) : null}
           </View>
         </View>
+
+        {subscriptionLocked ? (
+          <View
+            style={[
+              styles.lockedNoticeCard,
+              { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+            ]}
+            testID="mobile-more-subscription-locked">
+            <Text style={[styles.lockedNoticeTitle, { color: theme.text }]}>
+              Finish billing setup first
+            </Text>
+            <Text style={[styles.lockedNoticeText, { color: theme.mutedText }]}>
+              Billing is the only unlocked area right now. Start the 14-day App Store trial there to open the rest of your business tools.
+            </Text>
+          </View>
+        ) : null}
 
         <View
           style={[
@@ -483,32 +533,53 @@ export function MobileMoreScreen({
               {MENU_SECTION_LABELS[section]}
             </Text>
             <View style={styles.sectionItems}>
-              {MENU_ITEMS.filter((item) => item.section === section).map((item) => (
-                <Pressable
-                  key={item.key}
-                  accessibilityRole="button"
-                  onPress={() => onChangeSection(item.target)}
-                  style={[
-                    styles.menuItem,
-                    { backgroundColor: theme.surface, borderColor: theme.border },
-                  ]}
-                  testID={`mobile-more-menu-${item.key}`}>
-                  <View
+              {MENU_ITEMS.filter((item) => item.section === section).map((item) => {
+                const isLocked = subscriptionLocked && lockedTargets.has(item.target);
+
+                return (
+                  <Pressable
+                    key={item.key}
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: isLocked }}
+                    onPress={() => onChangeSection(item.target)}
                     style={[
-                      styles.menuIconBadge,
-                      { backgroundColor: theme.accentSoft },
-                    ]}>
-                    <MobileNavIcon color={theme.accent} name={item.icon} size={18} />
-                  </View>
-                  <View style={styles.menuCopy}>
-                    <Text style={[styles.menuTitle, { color: theme.text }]}>{item.label}</Text>
-                    <Text style={[styles.menuHelper, { color: theme.mutedText }]}>
-                      {item.helper}
-                    </Text>
-                  </View>
-                  <MobileNavIcon color={theme.mutedText} name="more" size={18} />
-                </Pressable>
-              ))}
+                      styles.menuItem,
+                      {
+                        backgroundColor: theme.surface,
+                        borderColor: theme.border,
+                        opacity: isLocked ? 0.65 : 1,
+                      },
+                    ]}
+                    testID={`mobile-more-menu-${item.key}`}>
+                    <View
+                      style={[
+                        styles.menuIconBadge,
+                        { backgroundColor: theme.accentSoft },
+                      ]}>
+                      <MobileNavIcon color={theme.accent} name={item.icon} size={18} />
+                    </View>
+                    <View style={styles.menuCopy}>
+                      <Text style={[styles.menuTitle, { color: theme.text }]}>{item.label}</Text>
+                      <Text style={[styles.menuHelper, { color: theme.mutedText }]}>
+                        {isLocked ? 'Unlock this in Billing first.' : item.helper}
+                      </Text>
+                    </View>
+                    {isLocked ? (
+                      <View
+                        style={[
+                          styles.lockedPill,
+                          { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                        ]}>
+                        <Text style={[styles.lockedPillText, { color: theme.text }]}>
+                          Locked
+                        </Text>
+                      </View>
+                    ) : (
+                      <MobileNavIcon color={theme.mutedText} name="more" size={18} />
+                    )}
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
         ))}
@@ -741,12 +812,22 @@ export function MobileMoreScreen({
 
         {activeSection === 'billing' ? (
           <MobileBillingScreen
+            appStoreOffering={appStoreOffering}
             data={billing}
             error={billingError}
             isLoading={isBillingLoading}
+            isLoadingOffering={isBillingOfferingLoading}
+            isManagingSubscription={isManagingSubscription}
+            isPurchasingSubscription={isPurchasingSubscription}
             isRefreshing={isBillingRefreshing}
+            isRestoringSubscription={isRestoringSubscription}
+            notice={billingNotice}
+            onManageSubscription={onManageSubscription}
             onOpenUrl={onOpenExternalUrl}
+            onPurchasePackage={onPurchasePackage}
             onRefresh={onRefreshBilling}
+            onRestorePurchases={onRestorePurchases}
+            purchaseError={billingPurchaseError}
           />
         ) : null}
 
@@ -926,6 +1007,22 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     fontWeight: '800',
   },
+  lockedNoticeCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    gap: 8,
+  },
+  lockedNoticeTitle: {
+    fontSize: 17,
+    lineHeight: 23,
+    fontWeight: '800',
+  },
+  lockedNoticeText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
   sectionBlock: {
     gap: 10,
   },
@@ -967,6 +1064,19 @@ const styles = StyleSheet.create({
   menuHelper: {
     fontSize: 13,
     lineHeight: 18,
+  },
+  lockedPill: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  lockedPillText: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   signOutButton: {
     minHeight: 52,
