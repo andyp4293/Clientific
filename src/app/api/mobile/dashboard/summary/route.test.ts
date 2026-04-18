@@ -40,6 +40,10 @@ beforeEach(() => {
     businessType: 'Salon',
     timezone: 'America/New_York',
     trialEndsAt: null,
+    subscriptionPlan: 'starter',
+    subscriptionStatus: 'active',
+    billingProvider: 'stripe',
+    subscriptionCurrentPeriodEnd: new Date('2026-04-30T00:00:00.000Z'),
     phone: '+15551234567',
     street: '123 Main St',
     city: 'New York',
@@ -96,6 +100,13 @@ describe('GET /api/mobile/dashboard/summary', () => {
       }),
     );
     expect(body.todayAppointments[0].customerName).toBe('Jordan Lee');
+    expect(body.subscription).toEqual({
+      plan: 'starter',
+      status: 'active',
+      billingProvider: 'stripe',
+      isActive: true,
+      requiresPurchase: false,
+    });
   });
 
   it('returns 401 when the bearer token is missing', async () => {
@@ -106,5 +117,46 @@ describe('GET /api/mobile/dashboard/summary', () => {
     );
 
     expect(response.status).toBe(401);
+  });
+
+  it('marks inactive iPhone businesses as requiring an App Store purchase', async () => {
+    mockFindBusiness.mockResolvedValue({
+      id: 'biz-1',
+      email: 'owner@clientific.app',
+      name: 'Clientific Studio',
+      businessType: 'Salon',
+      timezone: 'America/New_York',
+      trialEndsAt: null,
+      subscriptionPlan: 'trial',
+      subscriptionStatus: 'inactive',
+      billingProvider: 'none',
+      subscriptionCurrentPeriodEnd: null,
+      phone: '+15551234567',
+      street: '123 Main St',
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      country: 'US',
+      stripeConnectAccountId: null,
+      stripeConnectChargesEnabled: false,
+      stripeConnectPayoutsEnabled: false,
+      stripeConnectDetailsSubmitted: false,
+    });
+
+    const response = await GET(
+      new Request('https://www.clientific.app/api/mobile/dashboard/summary', {
+        headers: { authorization: 'Bearer token' },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.subscription).toEqual({
+      plan: 'trial',
+      status: 'inactive',
+      billingProvider: 'none',
+      isActive: false,
+      requiresPurchase: true,
+    });
   });
 });

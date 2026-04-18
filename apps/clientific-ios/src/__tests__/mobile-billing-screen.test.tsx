@@ -151,6 +151,8 @@ describe('MobileBillingScreen', () => {
 
     expect(onOpenUrl).toHaveBeenCalledWith('https://stripe.com/invoice/inv-1');
     expect(screen.queryByTestId('mobile-billing-manage-subscription')).toBeNull();
+    expect(screen.queryByTestId('mobile-billing-restore-purchases')).toBeNull();
+    expect(screen.queryByTestId('mobile-billing-purchase-starter_monthly')).toBeNull();
   });
 
   it('shows Apple-managed billing copy and management actions for app store subscriptions', () => {

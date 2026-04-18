@@ -67,6 +67,7 @@ import DashboardLayout from './layout';
 const activeTrialBusiness = {
   subscriptionStatus: 'trialing',
   trialEndsAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  subscriptionCurrentPeriodEnd: null,
   phone: '',
   street: null,
   city: null,
@@ -125,6 +126,7 @@ describe('Dashboard layout onboarding gate', () => {
     mockFindUnique.mockResolvedValue({
       subscriptionStatus: 'trialing',
       trialEndsAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      subscriptionCurrentPeriodEnd: null,
       phone: '(555) 123-4567',
       street: '123 Main St',
       city: 'Austin',
@@ -172,6 +174,7 @@ describe('Dashboard layout onboarding gate', () => {
       .mockResolvedValueOnce({
         subscriptionStatus: 'trialing',
         trialEndsAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        subscriptionCurrentPeriodEnd: null,
         phone: '(555) 123-4567',
         street: '123 Main St',
         city: 'Austin',
@@ -209,6 +212,7 @@ describe('Dashboard layout onboarding gate', () => {
     mockFindUnique.mockResolvedValue({
       subscriptionStatus: 'canceled',
       trialEndsAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      subscriptionCurrentPeriodEnd: null,
       phone: '(555) 123-4567',
       street: '123 Main St',
       city: 'Austin',
@@ -221,5 +225,50 @@ describe('Dashboard layout onboarding gate', () => {
 
     expect(screen.getByText('Payouts content')).toBeInTheDocument();
     expect(mockRedirect).not.toHaveBeenCalledWith('/dashboard/subscribe');
+  });
+
+  it('keeps dashboard routes unlocked for active App Store subscriptions', async () => {
+    mockHeaders.mockReturnValue({
+      get: () => '/dashboard/customers',
+    });
+    mockFindUnique.mockResolvedValue({
+      subscriptionStatus: 'active',
+      trialEndsAt: null,
+      subscriptionCurrentPeriodEnd: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      phone: '(555) 123-4567',
+      street: '123 Main St',
+      city: 'Austin',
+      state: 'TX',
+      zipCode: '78701',
+      country: 'United States',
+    });
+
+    render(await DashboardLayout({ children: <div>Customers content</div> }));
+
+    expect(screen.getByText('Customers content')).toBeInTheDocument();
+    expect(mockRedirect).not.toHaveBeenCalledWith('/dashboard/subscribe');
+  });
+
+  it('redirects expired App Store subscriptions back to subscribe on locked dashboard routes', async () => {
+    mockHeaders.mockReturnValue({
+      get: () => '/dashboard/customers',
+    });
+    mockFindUnique.mockResolvedValue({
+      subscriptionStatus: 'canceled',
+      trialEndsAt: null,
+      subscriptionCurrentPeriodEnd: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      phone: '(555) 123-4567',
+      street: '123 Main St',
+      city: 'Austin',
+      state: 'TX',
+      zipCode: '78701',
+      country: 'United States',
+    });
+
+    await expect(
+      DashboardLayout({ children: <div>Customers content</div> })
+    ).rejects.toThrow('REDIRECT:/dashboard/subscribe');
+
+    expect(mockRedirect).toHaveBeenCalledWith('/dashboard/subscribe');
   });
 });
