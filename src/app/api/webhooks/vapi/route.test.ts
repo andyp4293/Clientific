@@ -197,7 +197,7 @@ describe('POST /api/webhooks/vapi', () => {
     expect(systemPrompt).toContain('could not find them on the team');
   });
 
-  it('switches the assistant to multilingual call handling when spanish callers are enabled', async () => {
+  it('switches spanish-enabled calls to a workflow with keypad language selection', async () => {
     vi.mocked(prisma.business.findFirst).mockResolvedValue({
       ...BASE_BUSINESS,
       aiReceptionistSpanishEnabled: true,
@@ -214,40 +214,79 @@ describe('POST /api/webhooks/vapi', () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    const systemPrompt = body.assistant.model.messages[0].content as string;
+    const selectionNode = body.workflow.nodes.find(
+      (node: any) => node?.name === 'language_selection'
+    );
+    const englishNode = body.workflow.nodes.find(
+      (node: any) => node?.name === 'english_support'
+    );
+    const spanishNode = body.workflow.nodes.find(
+      (node: any) => node?.name === 'spanish_support'
+    );
 
-    expect(body.assistant.firstMessage).toContain('Hi, this is Test Salon.');
-    expect(body.assistant.firstMessage).toContain('For English, say English.');
-    expect(body.assistant.firstMessage).toContain('Or say one.');
-    expect(body.assistant.firstMessage).toContain('Hola, habla Test Salon.');
-    expect(body.assistant.firstMessage).toContain('Para espanol, diga espanol.');
-    expect(body.assistant.firstMessage).toContain('O diga dos.');
-    expect(body.assistant.firstMessage).not.toContain('press 1');
-    expect(body.assistant.firstMessage).not.toContain('Oprima 2');
-    expect(body.assistant.transcriber).toMatchObject({
+    expect(body.assistant).toBeUndefined();
+    expect(body.workflow.server).toMatchObject({
+      url: 'https://www.clientific.app/api/webhooks/vapi',
+    });
+    expect(body.workflow.keypadInputPlan).toEqual({
+      enabled: true,
+      delimiters: [''],
+      timeoutSeconds: 2,
+    });
+    expect(selectionNode.messagePlan.firstMessage).toContain('Hi, this is Test Salon.');
+    expect(selectionNode.messagePlan.firstMessage).toContain('For English, press 1.');
+    expect(selectionNode.messagePlan.firstMessage).toContain('Or say English.');
+    expect(selectionNode.messagePlan.firstMessage).toContain('Hola, habla Test Salon.');
+    expect(selectionNode.messagePlan.firstMessage).toContain('Para espanol, oprima 2.');
+    expect(selectionNode.messagePlan.firstMessage).toContain('O diga espanol.');
+    expect(selectionNode.variableExtractionPlan.output).toEqual([
+      expect.objectContaining({
+        title: 'preferred_language',
+        enum: ['english', 'spanish'],
+      }),
+    ]);
+    expect(selectionNode.transcriber).toMatchObject({
       provider: 'deepgram',
       model: 'nova-2',
       language: 'multi',
     });
-    expect(body.assistant.startSpeakingPlan).toMatchObject({
-      waitSeconds: 0.9,
-    });
-    expect(body.assistant.hooks).toEqual(
+    expect(englishNode.messagePlan.firstMessage).toBe('Okay, English. How can I help you today?');
+    expect(englishNode.prompt).toContain('Respond entirely in English for this call.');
+    expect(englishNode.tools).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          on: 'assistant.speech.interrupted',
+          type: 'function',
+          function: expect.objectContaining({
+            name: 'manage_booking',
+          }),
+        }),
+        expect.objectContaining({ type: 'endCall' }),
+      ]),
+    );
+    expect(spanishNode.messagePlan.firstMessage).toBe(
+      'Perfecto, espanol. Como puedo ayudarle hoy?'
+    );
+    expect(spanishNode.prompt).toContain('Respond entirely in Spanish for this call.');
+    expect(body.workflow.edges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          from: 'language_selection',
+          to: 'english_support',
+          condition: expect.objectContaining({
+            type: 'logic',
+            liquid: '{{ preferred_language == "english" }}',
+          }),
         }),
         expect.objectContaining({
-          on: 'customer.speech.timeout',
-          name: 'language_selector_follow_up',
+          from: 'language_selection',
+          to: 'spanish_support',
+          condition: expect.objectContaining({
+            type: 'logic',
+            liquid: '{{ preferred_language == "spanish" }}',
+          }),
         }),
       ]),
     );
-    expect(systemPrompt).toContain('You are fully bilingual in English and Spanish.');
-    expect(systemPrompt).toContain('If the caller says "English", "Spanish", "one", "two"');
-    expect(systemPrompt).toContain('Okay, English.');
-    expect(systemPrompt).toContain('If the caller answers in Spanish or asks for Spanish');
-    expect(body.assistant.voicemailMessage).toContain('Para espanol');
   });
 
   it('includes specific closure dates in the assistant prompt', async () => {

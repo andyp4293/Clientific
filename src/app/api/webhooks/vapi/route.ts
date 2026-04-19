@@ -870,6 +870,143 @@ Your job:
   };
 }
 
+function replaceLanguageHandlingSection(
+  systemPrompt: string,
+  languageInstructions: string
+): string {
+  const languageSectionPattern = /Language handling:[\s\S]*?\n\nYour job:/;
+  return systemPrompt.replace(
+    languageSectionPattern,
+    `${languageInstructions}\n\nYour job:`
+  );
+}
+
+function buildKeypadLanguageSelectionWorkflow(business: BusinessData) {
+  const assistant = buildAssistantConfig(business);
+  const systemPrompt = assistant.model.messages[0]?.content;
+
+  if (typeof systemPrompt !== 'string') {
+    throw new Error('AI receptionist workflow prompt is missing');
+  }
+
+  const englishSupportPrompt = replaceLanguageHandlingSection(
+    systemPrompt,
+    `Language handling:
+- Respond entirely in English for this call.
+- The caller already chose English from the phone menu.
+- Do not repeat the bilingual menu once the call is in this support path.`
+  );
+
+  const spanishSupportPrompt = replaceLanguageHandlingSection(
+    systemPrompt,
+    `Language handling:
+- Respond entirely in Spanish for this call.
+- The caller already chose Spanish from the phone menu.
+- Do not repeat the bilingual menu once the call is in this support path.`
+  );
+
+  const baseConversationModel = {
+    provider: assistant.model.provider,
+    model: assistant.model.model,
+    temperature: assistant.model.temperature,
+  };
+
+  return {
+    name: `${business.name} Receptionist Workflow`,
+    server: assistant.server,
+    keypadInputPlan: {
+      enabled: true,
+      delimiters: [''],
+      timeoutSeconds: 2,
+    },
+    nodes: [
+      {
+        name: 'language_selection',
+        type: 'conversation',
+        isStart: true,
+        model: {
+          ...baseConversationModel,
+          temperature: 0.2,
+        },
+        transcriber: {
+          provider: 'deepgram',
+          model: 'nova-2',
+          language: 'multi',
+        },
+        voice: assistant.voice,
+        messagePlan: {
+          firstMessage: getAiReceptionistSelectionPrompt(business.name, { mode: 'dtmf' }),
+        },
+        prompt: `You are helping the caller choose English or Spanish for ${business.name}.
+- English, one, or 1 means english.
+- Espanol, Spanish, dos, two, or 2 means spanish.
+- If the choice is unclear, calmly repeat the options and wait again.
+- Extract only the caller's language choice as preferred_language.`,
+        variableExtractionPlan: {
+          output: [
+            {
+              type: 'string',
+              title: 'preferred_language',
+              description: 'Caller preferred language for this call',
+              enum: ['english', 'spanish'],
+            },
+          ],
+        },
+      },
+      {
+        name: 'english_support',
+        type: 'conversation',
+        model: baseConversationModel,
+        tools: assistant.model.tools,
+        transcriber: {
+          provider: 'deepgram',
+          model: 'nova-2',
+          language: 'en',
+        },
+        voice: assistant.voice,
+        messagePlan: {
+          firstMessage: 'Okay, English. How can I help you today?',
+        },
+        prompt: englishSupportPrompt,
+      },
+      {
+        name: 'spanish_support',
+        type: 'conversation',
+        model: baseConversationModel,
+        tools: assistant.model.tools,
+        transcriber: {
+          provider: 'deepgram',
+          model: 'nova-2',
+          language: 'multi',
+        },
+        voice: assistant.voice,
+        messagePlan: {
+          firstMessage: 'Perfecto, espanol. Como puedo ayudarle hoy?',
+        },
+        prompt: spanishSupportPrompt,
+      },
+    ],
+    edges: [
+      {
+        from: 'language_selection',
+        to: 'english_support',
+        condition: {
+          type: 'logic',
+          liquid: '{{ preferred_language == "english" }}',
+        },
+      },
+      {
+        from: 'language_selection',
+        to: 'spanish_support',
+        condition: {
+          type: 'logic',
+          liquid: '{{ preferred_language == "spanish" }}',
+        },
+      },
+    ],
+  };
+}
+
 // ─── Tool: checkAvailability ──────────────────────────────────────────────────
 
 async function findAiBusinessByPhoneNumberId(phoneNumberId: string): Promise<BusinessData | null> {
@@ -1975,8 +2112,18 @@ export async function POST(req: NextRequest) {
           );
         }
 
+        if (business.aiReceptionistSpanishEnabled) {
+          const workflow = buildKeypadLanguageSelectionWorkflow(business);
+          console.log(
+            `[vapi] assistant-request RETURNING WORKFLOW ms=${Date.now() - t0} bizId=${business.id} bizName=${business.name}`
+          );
+          return NextResponse.json({ workflow });
+        }
+
         const assistant = buildAssistantConfig(business);
-        console.log(`[vapi] assistant-request RETURNING ASSISTANT ms=${Date.now() - t0} bizId=${business.id} bizName=${business.name}`);
+        console.log(
+          `[vapi] assistant-request RETURNING ASSISTANT ms=${Date.now() - t0} bizId=${business.id} bizName=${business.name}`
+        );
         return NextResponse.json({ assistant });
       }
 
