@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getConfiguredWebhookBaseUrl } from '@/lib/app-url';
+import {
+  getAiReceptionistSelectionHints,
+  getAiReceptionistVoiceGreeting,
+  getTwilioGatherLanguage,
+  getTwilioVoiceForLanguage,
+} from '@/lib/ai-receptionist-language';
 
 // In-memory store for conversation history keyed by CallSid
 // This persists for the duration of the Vercel function instance lifecycle
@@ -31,6 +37,7 @@ export async function POST(req: NextRequest) {
       timezone: true,
       publicId: true,
       aiReceptionistEnabled: true,
+      aiReceptionistSpanishEnabled: true,
       aiReceptionistPhone: true,
       aiReceptionistGreeting: true,
     },
@@ -51,18 +58,35 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const greeting = business.aiReceptionistGreeting ||
-    `Hi, thank you for calling ${business.name}. How can I help you today?`;
+  const greeting = getAiReceptionistVoiceGreeting(
+    business.name,
+    business.aiReceptionistGreeting,
+    business.aiReceptionistSpanishEnabled,
+  );
 
   const appBase = getConfiguredWebhookBaseUrl();
   const processUrl = `${appBase}/api/webhooks/twilio-voice/process?publicId=${publicId}&callSid=${callSid}`;
 
-  const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+  const englishVoice = getTwilioVoiceForLanguage('en');
+  const englishLanguage = getTwilioGatherLanguage('en');
+
+  const twiml = business.aiReceptionistSpanishEnabled
+    ? `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Joanna">${escapeXml(greeting)}</Say>
-  <Gather input="speech" action="${processUrl}" method="POST" timeout="5" speechTimeout="auto" language="en-US">
+  <Say voice="${englishVoice}">${escapeXml(greeting)}</Say>
+  <Gather input="speech dtmf" numDigits="1" hints="${escapeXml(getAiReceptionistSelectionHints())}" action="${processUrl}" method="POST" timeout="5" speechTimeout="auto" language="${englishLanguage}">
   </Gather>
-  <Say voice="Polly.Joanna">I didn't hear anything. Please call back if you need assistance. Goodbye!</Say>
+  <Say voice="${englishVoice}">I'll keep us in English. How can I help you today?</Say>
+  <Gather input="speech" action="${processUrl}&lang=en" method="POST" timeout="5" speechTimeout="auto" language="${englishLanguage}">
+  </Gather>
+  <Say voice="${englishVoice}">I didn't hear anything. Please call back if you need assistance. Goodbye!</Say>
+</Response>`
+    : `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="${englishVoice}">${escapeXml(greeting)}</Say>
+  <Gather input="speech" action="${processUrl}" method="POST" timeout="5" speechTimeout="auto" language="${englishLanguage}">
+  </Gather>
+  <Say voice="${englishVoice}">I didn't hear anything. Please call back if you need assistance. Goodbye!</Say>
 </Response>`;
 
   return new NextResponse(twiml, {

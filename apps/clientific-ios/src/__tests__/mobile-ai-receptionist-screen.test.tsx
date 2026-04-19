@@ -14,6 +14,7 @@ const data = {
   billingProvider: 'stripe' as const,
   hasAccess: true,
   aiReceptionistEnabled: true,
+  aiReceptionistSpanishEnabled: false,
   aiReceptionistPhone: '+15557654321',
   aiReceptionistGreeting: 'Thanks for calling Clientific Studio.',
   aiReceptionistFaq: [],
@@ -61,10 +62,12 @@ describe('MobileAiReceptionistScreen', () => {
     fireEvent.press(screen.getByTestId('mobile-ai-add-faq'));
     fireEvent.changeText(screen.getByTestId('mobile-ai-faq-question-0'), 'Do you take walk-ins?');
     fireEvent.changeText(screen.getByTestId('mobile-ai-faq-answer-0'), 'Yes, when space opens up.');
+    fireEvent.press(screen.getByTestId('mobile-ai-spanish-toggle'));
     fireEvent.press(screen.getByTestId('mobile-ai-save'));
 
     expect(onSave).toHaveBeenCalledWith({
       aiReceptionistEnabled: true,
+      aiReceptionistSpanishEnabled: true,
       aiReceptionistPhone: '(555) 111-2222',
       aiReceptionistGreeting: 'Thanks for calling Clientific Studio.',
       smsAiGreeting: 'Text us to book.',
@@ -75,5 +78,22 @@ describe('MobileAiReceptionistScreen', () => {
         },
       ],
     });
+  });
+
+  it('shows the spanish caller option when enabled', () => {
+    render(
+      <MobileAiReceptionistScreen
+        data={{ ...data, aiReceptionistSpanishEnabled: true }}
+        error={null}
+        isLoading={false}
+        isRefreshing={false}
+        isSaving={false}
+        onRefresh={jest.fn().mockResolvedValue(undefined)}
+        onSave={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByText('Allow Spanish callers')).toBeTruthy();
+    expect(screen.getByText('On')).toBeTruthy();
   });
 });

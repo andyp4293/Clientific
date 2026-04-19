@@ -35,6 +35,11 @@ import {
 import { createBusinessNotification } from '@/lib/mobile-push';
 import { cancelScheduledAppointmentReminder } from '@/lib/appointment-reminders';
 import { resolveAppointmentServiceDisplayName } from '@/lib/appointment-services';
+import {
+  getAiReceptionistSelectionPrompt,
+  getAiReceptionistVoiceGreeting,
+  getAiReceptionistVoicemailMessage,
+} from '@/lib/ai-receptionist-language';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -163,6 +168,7 @@ type BusinessData = {
   state: string | null;
   timezone: string;
   aiReceptionistGreeting: string | null;
+  aiReceptionistSpanishEnabled: boolean;
   aiReceptionistPhone: string | null;
   aiReceptionistFaq: unknown;
   services: { id: string; name: string; price: number | null; duration: number }[];
@@ -261,6 +267,7 @@ const AI_ENABLED_BUSINESS_SELECT = {
   state: true,
   timezone: true,
   aiReceptionistGreeting: true,
+  aiReceptionistSpanishEnabled: true,
   aiReceptionistPhone: true,
   aiReceptionistFaq: true,
   services: {
@@ -635,6 +642,19 @@ function buildAssistantConfig(business: BusinessData) {
     ? '\nFrequently asked questions:\n' + faqList.map(f => `Q: ${f.question}\nA: ${f.answer}`).join('\n\n')
     : '';
 
+  const languageInstructions = business.aiReceptionistSpanishEnabled
+    ? `
+Language handling:
+- You are fully bilingual in English and Spanish.
+- The first message already offers the caller an English or Spanish choice: "${getAiReceptionistSelectionPrompt()}"
+- If the caller answers in Spanish or asks for Spanish, continue entirely in Spanish for the rest of the call unless they later ask to switch.
+- If the caller answers in English, continue entirely in English.
+- If the caller skips the selector and starts asking for help right away, infer the language from what they say and continue in that language.
+- After the language is clear, do not keep repeating the bilingual selector.`
+    : `
+Language handling:
+- Respond entirely in English for this call.`;
+
   const systemPrompt = `You are the AI receptionist for ${business.name}, a ${business.businessType}.
 
 Today is ${todayStr} (${todayISO}). Always use this date when the caller says "today", "tomorrow", etc.
@@ -650,6 +670,7 @@ ${servicesList}
 ${staffList ? `\nOur team (use the ID field when calling tools, never say the ID aloud):\n${staffList}\n` : ''}
 Location: ${location}
 Online booking: ${bookingUrl}${faqText}
+${languageInstructions}
 
 Your job:
 - If asked about hours, location, services, prices, or staff: answer directly from the information above and do NOT call any tools for these questions
@@ -694,8 +715,11 @@ Your job:
 
   return {
     name: `${business.name} Receptionist`,
-    firstMessage: business.aiReceptionistGreeting ||
-      `Hi, thank you for calling ${business.name}. How can I help you today?`,
+    firstMessage: getAiReceptionistVoiceGreeting(
+      business.name,
+      business.aiReceptionistGreeting,
+      business.aiReceptionistSpanishEnabled,
+    ),
     model: {
       provider: 'openai',
       model: 'gpt-5.2',
@@ -785,7 +809,7 @@ Your job:
     transcriber: {
       provider: 'deepgram',
       model: 'nova-2',
-      language: 'en',
+      language: business.aiReceptionistSpanishEnabled ? 'multi' : 'en',
     },
     voice: {
       provider: '11labs',
@@ -804,7 +828,11 @@ Your job:
     voicemailDetection: {
       provider: 'vapi',
     },
-    voicemailMessage: `Hi, you've reached ${business.name}. We missed your call — please call us back during business hours or book online at ${bookingUrl}.`,
+    voicemailMessage: getAiReceptionistVoicemailMessage(
+      business.name,
+      bookingUrl,
+      business.aiReceptionistSpanishEnabled,
+    ),
     silenceTimeoutSeconds: 60,
   };
 }

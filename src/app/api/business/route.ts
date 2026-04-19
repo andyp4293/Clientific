@@ -246,6 +246,7 @@ function getCachedBusinessDetails(businessId: string) {
           yelpUrl: true,
           instagramUrl: true,
           aiReceptionistEnabled: true,
+          aiReceptionistSpanishEnabled: true,
           aiReceptionistPhone: true,
           aiReceptionistGreeting: true,
           aiReceptionistFaq: true,
@@ -332,6 +333,7 @@ export async function PATCH(req: NextRequest) {
       yelpUrl,
       instagramUrl,
       aiReceptionistEnabled,
+      aiReceptionistSpanishEnabled,
       aiReceptionistPhone,
       aiReceptionistGreeting,
       aiReceptionistFaq,
@@ -383,6 +385,7 @@ export async function PATCH(req: NextRequest) {
       ['publicProfileShowServices', publicProfileShowServices],
       ['publicProfileShowTeam', publicProfileShowTeam],
       ['publicProfileShowSocialLinks', publicProfileShowSocialLinks],
+      ['aiReceptionistSpanishEnabled', aiReceptionistSpanishEnabled],
     ];
     for (const [field, value] of boolFields) {
       if (value !== undefined && typeof value !== 'boolean') {
@@ -397,6 +400,7 @@ export async function PATCH(req: NextRequest) {
         phone: true,
       subscriptionPlan: true,
       aiReceptionistEnabled: true,
+      aiReceptionistSpanishEnabled: true,
       aiReceptionistPhone: true,
       aiReceptionistGreeting: true,
       aiReceptionistFaq: true,
@@ -426,6 +430,8 @@ export async function PATCH(req: NextRequest) {
     const touchesAiReceptionistSettings =
       (aiReceptionistEnabled !== undefined &&
         aiReceptionistEnabled !== current.aiReceptionistEnabled) ||
+      (aiReceptionistSpanishEnabled !== undefined &&
+        aiReceptionistSpanishEnabled !== current.aiReceptionistSpanishEnabled) ||
       (aiReceptionistPhone !== undefined &&
         normalizedAiReceptionistPhone !==
           normalizeOptionalStoredPhoneNumber(current.aiReceptionistPhone)) ||
@@ -808,6 +814,7 @@ export async function PATCH(req: NextRequest) {
         ...(yelpUrl !== undefined && { yelpUrl }),
         ...(instagramUrl !== undefined && { instagramUrl }),
         ...(aiReceptionistEnabled !== undefined && { aiReceptionistEnabled }),
+        ...(aiReceptionistSpanishEnabled !== undefined && { aiReceptionistSpanishEnabled }),
         ...(normalizedAiReceptionistPhone !== undefined && {
           aiReceptionistPhone: normalizedAiReceptionistPhone,
         }),

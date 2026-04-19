@@ -37,6 +37,7 @@ const AI_RECEPTIONIST_SELECT = {
   subscriptionPlan: true,
   billingProvider: true,
   aiReceptionistEnabled: true,
+  aiReceptionistSpanishEnabled: true,
   aiReceptionistPhone: true,
   aiReceptionistGreeting: true,
   aiReceptionistFaq: true,
@@ -61,6 +62,7 @@ type AiReceptionistBusiness = {
   subscriptionPlan: string | null;
   billingProvider: string | null;
   aiReceptionistEnabled: boolean;
+  aiReceptionistSpanishEnabled: boolean;
   aiReceptionistPhone: string | null;
   aiReceptionistGreeting: string | null;
   aiReceptionistFaq: unknown;
@@ -274,6 +276,7 @@ function formatResponse(business: AiReceptionistBusiness) {
     billingProvider: normalizeBillingProvider(business.billingProvider),
     hasAccess: canAccessAiReceptionist(business.subscriptionPlan),
     aiReceptionistEnabled: business.aiReceptionistEnabled,
+    aiReceptionistSpanishEnabled: business.aiReceptionistSpanishEnabled,
     aiReceptionistPhone: business.aiReceptionistPhone,
     aiReceptionistGreeting: business.aiReceptionistGreeting,
     aiReceptionistFaq: faq,
@@ -332,6 +335,7 @@ export async function PATCH(request: Request) {
 
   const {
     aiReceptionistEnabled,
+    aiReceptionistSpanishEnabled,
     aiReceptionistPhone,
     aiReceptionistGreeting,
     aiReceptionistFaq,
@@ -374,6 +378,12 @@ export async function PATCH(request: Request) {
 
     if (aiReceptionistEnabled !== undefined && typeof aiReceptionistEnabled !== 'boolean') {
       return NextResponse.json({ error: 'Enable state must be true or false' }, { status: 400 });
+    }
+    if (
+      aiReceptionistSpanishEnabled !== undefined &&
+      typeof aiReceptionistSpanishEnabled !== 'boolean'
+    ) {
+      return NextResponse.json({ error: 'Spanish toggle must be true or false' }, { status: 400 });
     }
 
     const isNullableString = (value: unknown): value is string | null =>
@@ -657,6 +667,9 @@ export async function PATCH(request: Request) {
       where: { id: authorized.session.businessId },
       data: {
         ...(aiReceptionistEnabled !== undefined ? { aiReceptionistEnabled } : {}),
+        ...(aiReceptionistSpanishEnabled !== undefined
+          ? { aiReceptionistSpanishEnabled }
+          : {}),
         ...(normalizedAiReceptionistPhone !== undefined
           ? { aiReceptionistPhone: normalizedAiReceptionistPhone }
           : {}),

@@ -11,6 +11,7 @@ let mockBusinessResponse = {
     name: 'Test Salon',
     subscriptionPlan: 'pro',
     aiReceptionistEnabled: true,
+    aiReceptionistSpanishEnabled: false,
     aiReceptionistPhone: '+15551234567',
     aiReceptionistGreeting: null,
     aiReceptionistFaq: [],
@@ -53,6 +54,7 @@ describe('AiReceptionistManager', () => {
         name: 'Test Salon',
         subscriptionPlan: 'pro',
         aiReceptionistEnabled: true,
+        aiReceptionistSpanishEnabled: false,
         aiReceptionistPhone: '+15551234567',
         aiReceptionistGreeting: null,
         aiReceptionistFaq: [],
@@ -103,6 +105,7 @@ describe('AiReceptionistManager', () => {
         ...mockBusinessResponse.business,
         subscriptionPlan: 'starter',
         aiReceptionistEnabled: false,
+        aiReceptionistSpanishEnabled: false,
         smsAiEnabled: false,
         smsAiPhoneNumber: null,
         vapiPhoneNumber: null,
@@ -117,5 +120,14 @@ describe('AiReceptionistManager', () => {
       '/pricing'
     );
     expect(screen.queryByText(/enable ai receptionist/i)).not.toBeInTheDocument();
+  });
+
+  it('shows the spanish caller option on the manager page', () => {
+    render(<AiReceptionistManager />);
+
+    expect(screen.getByText(/allow spanish callers/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/start calls with an english or spanish choice/i),
+    ).toBeInTheDocument();
   });
 });

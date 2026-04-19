@@ -49,6 +49,7 @@ function makeBusiness(overrides: Record<string, unknown> = {}) {
     subscriptionPlan: 'pro',
     billingProvider: 'stripe',
     aiReceptionistEnabled: true,
+    aiReceptionistSpanishEnabled: false,
     aiReceptionistPhone: '+15557654321',
     aiReceptionistGreeting: 'Thanks for calling Clientific Studio.',
     aiReceptionistFaq: [{ question: 'Do you take walk-ins?', answer: 'Yes.' }],
@@ -72,6 +73,7 @@ describe('GET /api/mobile/ai-receptionist', () => {
     expect(body.hasAccess).toBe(true);
     expect(body.billingProvider).toBe('stripe');
     expect(body.unifiedNumber).toBe('+18885550123');
+    expect(body.aiReceptionistSpanishEnabled).toBe(false);
     expect(body.aiReceptionistFaq[0]).toMatchObject({
       question: 'Do you take walk-ins?',
       answer: 'Yes.',
@@ -84,6 +86,7 @@ describe('PATCH /api/mobile/ai-receptionist', () => {
     mockFindBusiness.mockResolvedValue(makeBusiness({ vapiPhoneNumberId: null, vapiPhoneNumber: null, smsAiPhoneNumber: null, smsAiEnabled: false }));
     mockUpdateBusiness.mockResolvedValue(
       makeBusiness({
+        aiReceptionistSpanishEnabled: true,
         aiReceptionistPhone: '+15551112222',
         aiReceptionistGreeting: 'Hello from the studio.',
         aiReceptionistFaq: [{ question: 'Parking?', answer: 'Street parking is available.' }],
@@ -101,6 +104,7 @@ describe('PATCH /api/mobile/ai-receptionist', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           aiReceptionistEnabled: true,
+          aiReceptionistSpanishEnabled: true,
           aiReceptionistPhone: '(555) 111-2222',
           aiReceptionistGreeting: 'Hello from the studio.',
           aiReceptionistFaq: [{ question: 'Parking?', answer: 'Street parking is available.' }],
@@ -116,6 +120,7 @@ describe('PATCH /api/mobile/ai-receptionist', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           aiReceptionistEnabled: true,
+          aiReceptionistSpanishEnabled: true,
           aiReceptionistPhone: '5551112222',
           aiReceptionistGreeting: 'Hello from the studio.',
           aiReceptionistFaq: [{ question: 'Parking?', answer: 'Street parking is available.' }],
@@ -124,5 +129,22 @@ describe('PATCH /api/mobile/ai-receptionist', () => {
       }),
     );
     expect(body.aiReceptionistPhone).toBe('+15551112222');
+  });
+
+  it('rejects a non-boolean spanish toggle', async () => {
+    mockFindBusiness.mockResolvedValue(makeBusiness());
+
+    const response = await PATCH(
+      new Request('https://www.clientific.app/api/mobile/ai-receptionist', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aiReceptionistSpanishEnabled: 'yes' }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: 'Spanish toggle must be true or false',
+    });
   });
 });

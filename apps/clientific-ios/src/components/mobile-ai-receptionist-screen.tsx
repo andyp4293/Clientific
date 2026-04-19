@@ -30,6 +30,7 @@ type MobileAiReceptionistScreenProps = {
 
 type DraftState = {
   aiReceptionistEnabled: boolean;
+  aiReceptionistSpanishEnabled: boolean;
   aiReceptionistPhone: string;
   aiReceptionistGreeting: string;
   smsAiGreeting: string;
@@ -39,6 +40,7 @@ type DraftState = {
 function buildDraft(data: MobileAiReceptionistSummary): DraftState {
   return {
     aiReceptionistEnabled: data.aiReceptionistEnabled,
+    aiReceptionistSpanishEnabled: data.aiReceptionistSpanishEnabled,
     aiReceptionistPhone: data.aiReceptionistPhone ?? '',
     aiReceptionistGreeting: data.aiReceptionistGreeting ?? '',
     smsAiGreeting: data.smsAiGreeting ?? '',
@@ -51,6 +53,7 @@ function buildDraft(data: MobileAiReceptionistSummary): DraftState {
 function serializeDraft(draft: DraftState) {
   return JSON.stringify({
     aiReceptionistEnabled: draft.aiReceptionistEnabled,
+    aiReceptionistSpanishEnabled: draft.aiReceptionistSpanishEnabled,
     aiReceptionistPhone: draft.aiReceptionistPhone.trim(),
     aiReceptionistGreeting: draft.aiReceptionistGreeting.trim(),
     smsAiGreeting: draft.smsAiGreeting.trim(),
@@ -114,6 +117,7 @@ export function MobileAiReceptionistScreen({
     try {
       await onSave({
         aiReceptionistEnabled: nextDraft.aiReceptionistEnabled,
+        aiReceptionistSpanishEnabled: nextDraft.aiReceptionistSpanishEnabled,
         aiReceptionistPhone: nextDraft.aiReceptionistPhone.trim() || null,
         aiReceptionistGreeting: nextDraft.aiReceptionistGreeting.trim() || null,
         smsAiGreeting: nextDraft.smsAiGreeting.trim() || null,
@@ -294,6 +298,51 @@ export function MobileAiReceptionistScreen({
               <Text style={[styles.sectionText, { color: theme.mutedText }]}>
                 When callers ask for a real person, the AI transfers the call to this number.
               </Text>
+              <Pressable
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: draft.aiReceptionistSpanishEnabled }}
+                onPress={() =>
+                  setDraft((current) =>
+                    current
+                      ? {
+                          ...current,
+                          aiReceptionistSpanishEnabled: !current.aiReceptionistSpanishEnabled,
+                        }
+                      : current,
+                  )
+                }
+                style={[
+                  styles.languageToggleCard,
+                  { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                ]}
+                testID="mobile-ai-spanish-toggle">
+                <View style={styles.languageToggleCopy}>
+                  <Text style={[styles.languageToggleTitle, { color: theme.text }]}>
+                    Allow Spanish callers
+                  </Text>
+                  <Text style={[styles.sectionText, { color: theme.mutedText }]}>
+                    Start calls with an English or Spanish choice and continue in the selected language.
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.togglePill,
+                    {
+                      backgroundColor: draft.aiReceptionistSpanishEnabled
+                        ? theme.accent
+                        : theme.surface,
+                      borderColor: theme.border,
+                    },
+                  ]}>
+                  <Text
+                    style={[
+                      styles.togglePillText,
+                      { color: draft.aiReceptionistSpanishEnabled ? '#f8fffc' : theme.text },
+                    ]}>
+                    {draft.aiReceptionistSpanishEnabled ? 'On' : 'Off'}
+                  </Text>
+                </View>
+              </Pressable>
               <TextInput
                 onChangeText={(value) =>
                   setDraft((current) => (current ? { ...current, aiReceptionistPhone: value } : current))
@@ -628,6 +677,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  languageToggleCard: {
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  languageToggleCopy: {
+    flex: 1,
+    gap: 6,
+  },
+  languageToggleTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
   textInput: {
     minHeight: 48,
     borderWidth: 1,
@@ -701,6 +769,20 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     fontSize: 14,
     lineHeight: 18,
+    fontWeight: '700',
+  },
+  togglePill: {
+    minWidth: 54,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  togglePillText: {
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '700',
   },
   removeButton: {

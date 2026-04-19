@@ -70,6 +70,7 @@ const fakeBusiness = {
   subscriptionStatus: 'active',
   trialEndsAt: null,
   aiReceptionistEnabled: false,
+  aiReceptionistSpanishEnabled: false,
   aiReceptionistPhone: null,
   aiReceptionistGreeting: null,
   aiReceptionistFaq: null,
@@ -136,6 +137,7 @@ describe('GET /api/business', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.business.id).toBe('biz-1');
+    expect(body.business.aiReceptionistSpanishEnabled).toBe(false);
   });
 
   it('repairs the shared platform sms webhook when it is missing during business fetch', async () => {
@@ -207,6 +209,29 @@ describe('PATCH /api/business', () => {
       code: 'PLAN_UPGRADE_REQUIRED',
     });
     expect(mockBusinessUpdate).not.toHaveBeenCalled();
+  });
+
+  it('saves the spanish caller toggle for eligible plans', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({ ...fakeBusiness, subscriptionPlan: 'pro' });
+    mockBusinessUpdate.mockResolvedValue({
+      ...fakeBusiness,
+      subscriptionPlan: 'pro',
+      aiReceptionistSpanishEnabled: true,
+    });
+
+    const res = await PATCH(makePatchRequest({ aiReceptionistSpanishEnabled: true }));
+
+    expect(res.status).toBe(200);
+    expect(mockBusinessUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          aiReceptionistSpanishEnabled: true,
+        }),
+      }),
+    );
   });
 
   it.each([

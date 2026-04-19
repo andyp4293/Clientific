@@ -589,6 +589,7 @@ export type MobileAiReceptionistSummary = {
   billingProvider: 'none' | 'stripe' | 'app_store';
   hasAccess: boolean;
   aiReceptionistEnabled: boolean;
+  aiReceptionistSpanishEnabled: boolean;
   aiReceptionistPhone: string | null;
   aiReceptionistGreeting: string | null;
   aiReceptionistFaq: MobileAiReceptionistFaq[];
@@ -601,6 +602,7 @@ export type MobileAiReceptionistSummary = {
 
 export type MobileAiReceptionistUpdateInput = {
   aiReceptionistEnabled?: boolean;
+  aiReceptionistSpanishEnabled?: boolean;
   aiReceptionistPhone?: string | null;
   aiReceptionistGreeting?: string | null;
   aiReceptionistFaq?: MobileAiReceptionistFaq[];

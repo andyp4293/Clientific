@@ -68,6 +68,7 @@ const BASE_BUSINESS = {
   state: 'NJ',
   timezone: 'America/New_York',
   aiReceptionistGreeting: null,
+  aiReceptionistSpanishEnabled: false,
   aiReceptionistPhone: null,
   aiReceptionistFaq: [],
   services: [
@@ -194,6 +195,36 @@ describe('POST /api/webhooks/vapi', () => {
     expect(systemPrompt).toContain('Tue off');
     expect(systemPrompt).toContain('Mon 10:00 AM-4:00 PM');
     expect(systemPrompt).toContain('could not find them on the team');
+  });
+
+  it('switches the assistant to multilingual call handling when spanish callers are enabled', async () => {
+    vi.mocked(prisma.business.findFirst).mockResolvedValue({
+      ...BASE_BUSINESS,
+      aiReceptionistSpanishEnabled: true,
+    } as any);
+
+    const res = await POST(
+      req({
+        message: {
+          type: 'assistant-request',
+          phoneNumber: { id: 'phone-1' },
+        },
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const systemPrompt = body.assistant.model.messages[0].content as string;
+
+    expect(body.assistant.firstMessage).toContain('Para espanol, diga espanol u oprima 2.');
+    expect(body.assistant.transcriber).toMatchObject({
+      provider: 'deepgram',
+      model: 'nova-2',
+      language: 'multi',
+    });
+    expect(systemPrompt).toContain('You are fully bilingual in English and Spanish.');
+    expect(systemPrompt).toContain('If the caller answers in Spanish or asks for Spanish');
+    expect(body.assistant.voicemailMessage).toContain('Para espanol');
   });
 
   it('includes specific closure dates in the assistant prompt', async () => {

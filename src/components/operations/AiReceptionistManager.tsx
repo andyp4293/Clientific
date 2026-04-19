@@ -18,6 +18,7 @@ interface Business {
   name: string;
   subscriptionPlan: string | null;
   aiReceptionistEnabled: boolean;
+  aiReceptionistSpanishEnabled: boolean;
   aiReceptionistPhone: string | null;
   aiReceptionistGreeting: string | null;
   aiReceptionistFaq: { question: string; answer: string }[] | null;
@@ -303,6 +304,27 @@ export default function AiReceptionistManager() {
                         {String(secondsLeft % 60).padStart(2, '0')} remaining
                       </p>
                     )}
+                </div>
+              </label>
+            </div>
+
+            <div className="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.aiReceptionistSpanishEnabled ?? false}
+                  onChange={(e) =>
+                    handleInputChange('aiReceptionistSpanishEnabled', e.target.checked)
+                  }
+                  className="mt-0.5 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
+                />
+                <div>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Allow Spanish callers
+                  </span>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Start calls with an English or Spanish choice and continue in the selected language.
+                  </p>
                 </div>
               </label>
             </div>

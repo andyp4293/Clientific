@@ -236,6 +236,7 @@ const aiReceptionist = {
   billingProvider: 'stripe' as const,
   hasAccess: true,
   aiReceptionistEnabled: true,
+  aiReceptionistSpanishEnabled: false,
   aiReceptionistPhone: '+15557654321',
   aiReceptionistGreeting: 'Thanks for calling Clientific Studio.',
   aiReceptionistFaq: [{ question: 'Do you take walk-ins?', answer: 'Yes, when availability opens up.' }],

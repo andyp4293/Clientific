@@ -70,6 +70,7 @@ model Business {
   resetTokenExpiry              DateTime?
   enableOnlineBooking           Boolean                @default(true)
   aiReceptionistEnabled         Boolean                @default(false)
+  aiReceptionistSpanishEnabled  Boolean                @default(false)
   aiReceptionistPhone           String?
   aiReceptionistGreeting        String?
   aiReceptionistFaq             Json?
