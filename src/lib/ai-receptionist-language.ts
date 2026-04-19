@@ -11,7 +11,10 @@ type LanguageSelectionResult = {
   cleanedSpeech: string;
 };
 
-const SPANISH_SELECTION_PROMPT = 'For English, say English or press 1. Para espanol, diga espanol u oprima 2.';
+const ENGLISH_SELECTION_PROMPT_TEMPLATE = (businessName: string) =>
+  `Hi, this is ${businessName}. For English, say English. Or press 1.`;
+const SPANISH_SELECTION_PROMPT_TEMPLATE = (businessName: string) =>
+  `Hola, habla ${businessName}. Para espanol, diga espanol. Oprima 2.`;
 const SPANISH_SELECTION_HINTS = 'English, Ingles, Spanish, Espanol';
 const DEFAULT_ENGLISH_GREETING_TEMPLATE = (businessName: string) =>
   `Hi, thank you for calling ${businessName}. How can I help you today?`;
@@ -76,8 +79,10 @@ function stripLanguageSelectionPhrases(value: string): string {
   );
 }
 
-export function getAiReceptionistSelectionPrompt(): string {
-  return SPANISH_SELECTION_PROMPT;
+export function getAiReceptionistSelectionPrompt(businessName: string): string {
+  return `${ENGLISH_SELECTION_PROMPT_TEMPLATE(businessName)} ${SPANISH_SELECTION_PROMPT_TEMPLATE(
+    businessName,
+  )}`;
 }
 
 export function getAiReceptionistSelectionHints(): string {
@@ -89,13 +94,15 @@ export function getAiReceptionistVoiceGreeting(
   customGreeting: string | null | undefined,
   spanishEnabled: boolean,
 ): string {
+  if (spanishEnabled) {
+    return getAiReceptionistSelectionPrompt(businessName);
+  }
+
   const baseGreeting = collapseWhitespace(
     customGreeting?.trim() || DEFAULT_ENGLISH_GREETING_TEMPLATE(businessName),
   );
 
-  return spanishEnabled
-    ? `${baseGreeting} ${SPANISH_SELECTION_PROMPT}`
-    : baseGreeting;
+  return baseGreeting;
 }
 
 export function getAiReceptionistVoicemailMessage(

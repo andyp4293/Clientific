@@ -646,7 +646,7 @@ function buildAssistantConfig(business: BusinessData) {
     ? `
 Language handling:
 - You are fully bilingual in English and Spanish.
-- The first message already offers the caller an English or Spanish choice: "${getAiReceptionistSelectionPrompt()}"
+- The first message already offers the caller an English or Spanish choice: "${getAiReceptionistSelectionPrompt(business.name)}"
 - If the caller answers in Spanish or asks for Spanish, continue entirely in Spanish for the rest of the call unless they later ask to switch.
 - If the caller answers in English, continue entirely in English.
 - If the caller skips the selector and starts asking for help right away, infer the language from what they say and continue in that language.

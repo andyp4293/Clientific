@@ -11,12 +11,18 @@ import {
 } from './ai-receptionist-language';
 
 describe('ai-receptionist-language helpers', () => {
-  it('appends the bilingual selector when spanish is enabled', () => {
+  it('uses a slower bilingual selector with the business name when spanish is enabled', () => {
+    expect(getAiReceptionistVoiceGreeting('Clientific Studio', null, true)).toBe(
+      getAiReceptionistSelectionPrompt('Clientific Studio'),
+    );
     expect(getAiReceptionistVoiceGreeting('Clientific Studio', null, true)).toContain(
-      getAiReceptionistSelectionPrompt(),
+      'Hi, this is Clientific Studio.',
+    );
+    expect(getAiReceptionistVoiceGreeting('Clientific Studio', null, true)).toContain(
+      'Hola, habla Clientific Studio.',
     );
     expect(getAiReceptionistVoiceGreeting('Clientific Studio', null, false)).not.toContain(
-      getAiReceptionistSelectionPrompt(),
+      getAiReceptionistSelectionPrompt('Clientific Studio'),
     );
   });
 

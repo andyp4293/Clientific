@@ -84,8 +84,10 @@ describe('POST /api/webhooks/twilio-voice', () => {
     const xml = await response.text();
 
     expect(response.status).toBe(200);
-    expect(xml).toContain('For English, say English or press 1.');
-    expect(xml).toContain('Para espanol, diga espanol u oprima 2.');
+    expect(xml).toContain('Hi, this is Test Salon.');
+    expect(xml).toContain('For English, say English. Or press 1.');
+    expect(xml).toContain('Hola, habla Test Salon.');
+    expect(xml).toContain('Para espanol, diga espanol. Oprima 2.');
     expect(xml).toContain('input="speech dtmf"');
     expect(xml).toContain('numDigits="1"');
     expect(xml).toContain('hints="English, Ingles, Spanish, Espanol"');
