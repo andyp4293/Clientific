@@ -946,6 +946,10 @@ function buildWorkflowSupportPrompt(
     language === 'english'
       ? 'Call language: English only. Do not repeat the bilingual language menu.'
       : 'Call language: Spanish only. Do not repeat the bilingual language menu.';
+  const appointmentLanguageDirective =
+    language === 'english'
+      ? 'Handle appointment booking, availability, rescheduling, cancellations, and appointment questions fully in English.'
+      : 'Handle appointment booking, availability, rescheduling, cancellations, and appointment questions fully in Spanish.';
 
   const prompt = `You are the AI receptionist for ${business.name}, a ${business.businessType}. ${languageDirective}
 Today is ${todayStr} (${todayISO}). Use this date when the caller says today, tomorrow, or similar.
@@ -958,6 +962,7 @@ Team (IDs are internal, never say them aloud): ${formatCompactWorkflowStaff(busi
 ${faqText ? `FAQs: ${faqText}` : ''}
 Rules:
 - Keep replies under 2 sentences. Be warm and professional.
+- ${appointmentLanguageDirective}
 - For hours, location, services, prices, staff, or listed FAQs: answer directly without tools.
 - Only answer facts explicitly listed above. Do not guess. ${transferFallback}
 - Never read service IDs or appointment IDs aloud.
@@ -1016,11 +1021,7 @@ function buildKeypadLanguageSelectionWorkflow(business: BusinessData) {
           messagePlan: {
             firstMessage: getAiReceptionistSelectionPrompt(business.name, { mode: 'dtmf' }),
           },
-          prompt: `You are helping the caller choose English or Spanish for ${business.name}.
-- English, one, or 1 means english.
-- Espanol, Spanish, dos, two, or 2 means spanish.
-- If the choice is unclear, calmly repeat the options and wait again.
-- Extract only the caller's language choice as preferred_language.`,
+          prompt: 'For English, press 1 or say English. Para espanol, oprima 2 o diga espanol.',
           variableExtractionPlan: {
             output: [
               {

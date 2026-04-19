@@ -239,6 +239,10 @@ describe('POST /api/webhooks/vapi', () => {
     expect(selectionNode.messagePlan.firstMessage).toContain('Hola, habla Test Salon.');
     expect(selectionNode.messagePlan.firstMessage).toContain('Para espanol, oprima 2.');
     expect(selectionNode.messagePlan.firstMessage).toContain('O diga espanol.');
+    expect(selectionNode.prompt).toBe(
+      'For English, press 1 or say English. Para espanol, oprima 2 o diga espanol.'
+    );
+    expect(selectionNode.prompt).not.toContain('You are helping the caller choose');
     expect(selectionNode.variableExtractionPlan.output).toEqual([
       expect.objectContaining({
         title: 'preferred_language',
@@ -252,6 +256,9 @@ describe('POST /api/webhooks/vapi', () => {
     });
     expect(englishNode.messagePlan.firstMessage).toBe('Okay, English. How can I help you today?');
     expect(englishNode.prompt).toContain('Call language: English only.');
+    expect(englishNode.prompt).toContain(
+      'Handle appointment booking, availability, rescheduling, cancellations, and appointment questions fully in English.'
+    );
     expect(englishNode.prompt.length).toBeLessThanOrEqual(5000);
     expect(englishNode.tools).toEqual(
       expect.arrayContaining([
@@ -268,6 +275,9 @@ describe('POST /api/webhooks/vapi', () => {
       'Perfecto, espanol. Como puedo ayudarle hoy?'
     );
     expect(spanishNode.prompt).toContain('Call language: Spanish only.');
+    expect(spanishNode.prompt).toContain(
+      'Handle appointment booking, availability, rescheduling, cancellations, and appointment questions fully in Spanish.'
+    );
     expect(spanishNode.prompt.length).toBeLessThanOrEqual(5000);
     expect(body.workflow.edges).toEqual(
       expect.arrayContaining([
