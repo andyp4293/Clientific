@@ -218,8 +218,10 @@ describe('POST /api/webhooks/vapi', () => {
 
     expect(body.assistant.firstMessage).toContain('Hi, this is Test Salon.');
     expect(body.assistant.firstMessage).toContain('For English, say English.');
+    expect(body.assistant.firstMessage).toContain('Or say one.');
     expect(body.assistant.firstMessage).toContain('Hola, habla Test Salon.');
     expect(body.assistant.firstMessage).toContain('Para espanol, diga espanol.');
+    expect(body.assistant.firstMessage).toContain('O diga dos.');
     expect(body.assistant.firstMessage).not.toContain('press 1');
     expect(body.assistant.firstMessage).not.toContain('Oprima 2');
     expect(body.assistant.transcriber).toMatchObject({
@@ -227,7 +229,23 @@ describe('POST /api/webhooks/vapi', () => {
       model: 'nova-2',
       language: 'multi',
     });
+    expect(body.assistant.startSpeakingPlan).toMatchObject({
+      waitSeconds: 0.9,
+    });
+    expect(body.assistant.hooks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          on: 'assistant.speech.interrupted',
+        }),
+        expect.objectContaining({
+          on: 'customer.speech.timeout',
+          name: 'language_selector_follow_up',
+        }),
+      ]),
+    );
     expect(systemPrompt).toContain('You are fully bilingual in English and Spanish.');
+    expect(systemPrompt).toContain('If the caller says "English", "Spanish", "one", "two"');
+    expect(systemPrompt).toContain('Okay, English.');
     expect(systemPrompt).toContain('If the caller answers in Spanish or asks for Spanish');
     expect(body.assistant.voicemailMessage).toContain('Para espanol');
   });

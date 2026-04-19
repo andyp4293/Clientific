@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getAiReceptionistSelectionReminder,
   getAiReceptionistSelectionPrompt,
   getAiReceptionistVoiceGreeting,
   getConversationClosing,
@@ -26,13 +27,15 @@ describe('ai-receptionist-language helpers', () => {
     );
   });
 
-  it('can generate a speech-only selector for Vapi callers', () => {
-    const prompt = getAiReceptionistSelectionPrompt('Clientific Studio', { includeDtmf: false });
+  it('can generate a spoken-digit selector for Vapi callers', () => {
+    const prompt = getAiReceptionistSelectionPrompt('Clientific Studio', { mode: 'spoken-digits' });
 
     expect(prompt).toContain('For English, say English.');
+    expect(prompt).toContain('Or say one.');
     expect(prompt).toContain('Para espanol, diga espanol.');
+    expect(prompt).toContain('O diga dos.');
     expect(prompt).not.toContain('press 1');
-    expect(prompt).not.toContain('Oprima 2');
+    expect(prompt).not.toContain('oprima 2');
   });
 
   it('resolves explicit digit language choices', () => {
@@ -64,6 +67,18 @@ describe('ai-receptionist-language helpers', () => {
       explicit: true,
       cleanedSpeech: 'I need a haircut',
     });
+
+    expect(resolveAiReceptionistCallLanguage({ speechResult: 'one' })).toEqual({
+      language: 'en',
+      explicit: true,
+      cleanedSpeech: '',
+    });
+
+    expect(resolveAiReceptionistCallLanguage({ speechResult: 'dos' })).toEqual({
+      language: 'es',
+      explicit: true,
+      cleanedSpeech: '',
+    });
   });
 
   it('infers spanish from common spanish phrases when the caller skips the selector word', () => {
@@ -94,5 +109,6 @@ describe('ai-receptionist-language helpers', () => {
     expect(getLanguageSelectionAcknowledgement('es')).toContain('espanol');
     expect(getTransferConfirmation('es')).toContain('le conecto');
     expect(getConversationClosing('es')).toContain('Adios');
+    expect(getAiReceptionistSelectionReminder({ mode: 'spoken-digits' })).toContain('say one');
   });
 });

@@ -1,4 +1,5 @@
 export type AiReceptionistCallLanguage = 'en' | 'es';
+export type AiReceptionistSelectionMode = 'dtmf' | 'spoken-digits' | 'speech-only';
 
 type LanguageSelectionInput = {
   digits?: string | null;
@@ -11,10 +12,14 @@ type LanguageSelectionResult = {
   cleanedSpeech: string;
 };
 
-const ENGLISH_SELECTION_PROMPT_TEMPLATE = (businessName: string) =>
-  `Hi, this is ${businessName}. For English, say English. Or press 1.`;
-const SPANISH_SELECTION_PROMPT_TEMPLATE = (businessName: string) =>
-  `Hola, habla ${businessName}. Para espanol, diga espanol. Oprima 2.`;
+const ENGLISH_DTMF_SELECTION_PROMPT_TEMPLATE = (businessName: string) =>
+  `Hi, this is ${businessName}. For English, press 1. Or say English.`;
+const SPANISH_DTMF_SELECTION_PROMPT_TEMPLATE = (businessName: string) =>
+  `Hola, habla ${businessName}. Para espanol, oprima 2. O diga espanol.`;
+const ENGLISH_SPOKEN_DIGIT_SELECTION_PROMPT_TEMPLATE = (businessName: string) =>
+  `Hi, this is ${businessName}. For English, say English. Or say one.`;
+const SPANISH_SPOKEN_DIGIT_SELECTION_PROMPT_TEMPLATE = (businessName: string) =>
+  `Hola, habla ${businessName}. Para espanol, diga espanol. O diga dos.`;
 const ENGLISH_SPEECH_ONLY_SELECTION_PROMPT_TEMPLATE = (businessName: string) =>
   `Hi, this is ${businessName}. For English, say English.`;
 const SPANISH_SPEECH_ONLY_SELECTION_PROMPT_TEMPLATE = (businessName: string) =>
@@ -27,6 +32,7 @@ const ENGLISH_SELECTION_PATTERNS = [
   /\benglish\b/i,
   /\bingles\b/i,
   /\bin english\b/i,
+  /\bone\b/i,
 ];
 
 const SPANISH_SELECTION_PATTERNS = [
@@ -35,6 +41,8 @@ const SPANISH_SELECTION_PATTERNS = [
   /\bespañol\b/i,
   /\ben espanol\b/i,
   /\ben español\b/i,
+  /\btwo\b/i,
+  /\bdos\b/i,
 ];
 
 const SPANISH_SIGNAL_PATTERNS = [
@@ -67,11 +75,19 @@ function stripLanguageSelectionPhrases(value: string): string {
   return collapseWhitespace(
     value
       .replace(/\bfor english\b/gi, ' ')
+      .replace(/\bpress 1\b/gi, ' ')
+      .replace(/\bsay one\b/gi, ' ')
+      .replace(/\bone\b/gi, ' ')
       .replace(/\benglish please\b/gi, ' ')
       .replace(/\bingles por favor\b/gi, ' ')
       .replace(/\benglish\b/gi, ' ')
       .replace(/\bingles\b/gi, ' ')
       .replace(/\bpara espanol\b/gi, ' ')
+      .replace(/\boprima 2\b/gi, ' ')
+      .replace(/\bo diga dos\b/gi, ' ')
+      .replace(/\bsay two\b/gi, ' ')
+      .replace(/\btwo\b/gi, ' ')
+      .replace(/\bdos\b/gi, ' ')
       .replace(/\bspanish please\b/gi, ' ')
       .replace(/\bespanol por favor\b/gi, ' ')
       .replace(/\bspanish\b/gi, ' ')
@@ -85,19 +101,41 @@ function stripLanguageSelectionPhrases(value: string): string {
 
 export function getAiReceptionistSelectionPrompt(
   businessName: string,
-  options?: { includeDtmf?: boolean },
+  options?: { mode?: AiReceptionistSelectionMode },
 ): string {
-  const includeDtmf = options?.includeDtmf ?? true;
+  const mode = options?.mode ?? 'dtmf';
 
-  if (!includeDtmf) {
+  if (mode === 'speech-only') {
     return `${ENGLISH_SPEECH_ONLY_SELECTION_PROMPT_TEMPLATE(
       businessName,
     )} ${SPANISH_SPEECH_ONLY_SELECTION_PROMPT_TEMPLATE(businessName)}`;
   }
 
-  return `${ENGLISH_SELECTION_PROMPT_TEMPLATE(businessName)} ${SPANISH_SELECTION_PROMPT_TEMPLATE(
+  if (mode === 'spoken-digits') {
+    return `${ENGLISH_SPOKEN_DIGIT_SELECTION_PROMPT_TEMPLATE(
+      businessName,
+    )} ${SPANISH_SPOKEN_DIGIT_SELECTION_PROMPT_TEMPLATE(businessName)}`;
+  }
+
+  return `${ENGLISH_DTMF_SELECTION_PROMPT_TEMPLATE(businessName)} ${SPANISH_DTMF_SELECTION_PROMPT_TEMPLATE(
     businessName,
   )}`;
+}
+
+export function getAiReceptionistSelectionReminder(
+  options?: { mode?: AiReceptionistSelectionMode },
+): string {
+  const mode = options?.mode ?? 'dtmf';
+
+  if (mode === 'speech-only') {
+    return 'Take your time. For English, say English. Para espanol, diga espanol.';
+  }
+
+  if (mode === 'spoken-digits') {
+    return 'Take your time. For English, say English, or say one. Para espanol, diga espanol, o diga dos.';
+  }
+
+  return 'Take your time. For English, press 1, or say English. Para espanol, oprima 2, o diga espanol.';
 }
 
 export function getAiReceptionistSelectionHints(): string {
@@ -108,7 +146,7 @@ export function getAiReceptionistVoiceGreeting(
   businessName: string,
   customGreeting: string | null | undefined,
   spanishEnabled: boolean,
-  options?: { includeDtmf?: boolean },
+  options?: { mode?: AiReceptionistSelectionMode },
 ): string {
   if (spanishEnabled) {
     return getAiReceptionistSelectionPrompt(businessName, options);

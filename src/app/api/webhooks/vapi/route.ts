@@ -36,6 +36,7 @@ import { createBusinessNotification } from '@/lib/mobile-push';
 import { cancelScheduledAppointmentReminder } from '@/lib/appointment-reminders';
 import { resolveAppointmentServiceDisplayName } from '@/lib/appointment-services';
 import {
+  getAiReceptionistSelectionReminder,
   getAiReceptionistSelectionPrompt,
   getAiReceptionistVoiceGreeting,
   getAiReceptionistVoicemailMessage,
@@ -641,12 +642,15 @@ function buildAssistantConfig(business: BusinessData) {
   const faqText = faqList.length > 0
     ? '\nFrequently asked questions:\n' + faqList.map(f => `Q: ${f.question}\nA: ${f.answer}`).join('\n\n')
     : '';
+  const languageSelectionMode = business.aiReceptionistSpanishEnabled ? 'spoken-digits' as const : 'speech-only' as const;
 
   const languageInstructions = business.aiReceptionistSpanishEnabled
     ? `
 Language handling:
 - You are fully bilingual in English and Spanish.
-- The first message already offers the caller an English or Spanish choice: "${getAiReceptionistSelectionPrompt(business.name, { includeDtmf: false })}"
+- The first message already offers the caller an English or Spanish choice: "${getAiReceptionistSelectionPrompt(business.name, { mode: languageSelectionMode })}"
+- If the caller says "English", "Spanish", "one", "two", "espanol", or "ingles", treat that as the language choice immediately.
+- As soon as the caller picks a language, acknowledge it in one very short sentence before helping them. Example: "Okay, English." or "Perfecto, espanol."
 - If the caller answers in Spanish or asks for Spanish, continue entirely in Spanish for the rest of the call unless they later ask to switch.
 - If the caller answers in English, continue entirely in English.
 - If the caller skips the selector and starts asking for help right away, infer the language from what they say and continue in that language.
@@ -719,8 +723,36 @@ Your job:
       business.name,
       business.aiReceptionistGreeting,
       business.aiReceptionistSpanishEnabled,
-      { includeDtmf: false },
+      { mode: languageSelectionMode },
     ),
+    hooks: business.aiReceptionistSpanishEnabled
+      ? [
+          {
+            on: 'assistant.speech.interrupted',
+            do: [
+              {
+                type: 'say',
+                exact: ['Go ahead.', 'Sure, go ahead.', 'Okay, go ahead.'],
+              },
+            ],
+          },
+          {
+            on: 'customer.speech.timeout',
+            options: {
+              timeoutSeconds: 6,
+              triggerMaxCount: 1,
+              triggerResetMode: 'onUserSpeech',
+            },
+            do: [
+              {
+                type: 'say',
+                exact: getAiReceptionistSelectionReminder({ mode: languageSelectionMode }),
+              },
+            ],
+            name: 'language_selector_follow_up',
+          },
+        ]
+      : undefined,
     model: {
       provider: 'openai',
       model: 'gpt-5.2',
@@ -819,7 +851,7 @@ Your job:
       similarityBoost: 0.75,
     },
     startSpeakingPlan: {
-      waitSeconds: 0.4,
+      waitSeconds: 0.9,
     },
     stopSpeakingPlan: {
       numWords: 0,
