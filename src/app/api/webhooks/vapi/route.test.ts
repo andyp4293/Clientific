@@ -214,21 +214,21 @@ describe('POST /api/webhooks/vapi', () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    const selectionNode = body.workflow.nodes.find(
+    const selectionNode = body.assistant.model.workflow.nodes.find(
       (node: any) => node?.name === 'language_selection'
     );
-    const englishNode = body.workflow.nodes.find(
+    const englishNode = body.assistant.model.workflow.nodes.find(
       (node: any) => node?.name === 'english_support'
     );
-    const spanishNode = body.workflow.nodes.find(
+    const spanishNode = body.assistant.model.workflow.nodes.find(
       (node: any) => node?.name === 'spanish_support'
     );
 
-    expect(body.assistant).toBeUndefined();
-    expect(body.workflow.server).toMatchObject({
+    expect(body.assistant).toBeDefined();
+    expect(body.assistant.server).toMatchObject({
       url: 'https://www.clientific.app/api/webhooks/vapi',
     });
-    expect(body.workflow.keypadInputPlan).toEqual({
+    expect(body.assistant.keypadInputPlan).toEqual({
       enabled: true,
       delimiters: [''],
       timeoutSeconds: 2,
@@ -267,7 +267,7 @@ describe('POST /api/webhooks/vapi', () => {
       'Perfecto, espanol. Como puedo ayudarle hoy?'
     );
     expect(spanishNode.prompt).toContain('Respond entirely in Spanish for this call.');
-    expect(body.workflow.edges).toEqual(
+    expect(body.assistant.model.workflow.edges).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           from: 'language_selection',
@@ -285,6 +285,17 @@ describe('POST /api/webhooks/vapi', () => {
             liquid: '{{ preferred_language == "spanish" }}',
           }),
         }),
+      ]),
+    );
+    expect(body.assistant.model.tools).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'function',
+          function: expect.objectContaining({
+            name: 'manage_booking',
+          }),
+        }),
+        expect.objectContaining({ type: 'endCall' }),
       ]),
     );
   });

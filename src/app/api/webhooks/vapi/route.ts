@@ -881,8 +881,20 @@ function replaceLanguageHandlingSection(
   );
 }
 
-function buildKeypadLanguageSelectionWorkflow(business: BusinessData) {
-  const assistant = buildAssistantConfig(business);
+function buildKeypadLanguageSelectionAssistant(business: BusinessData) {
+  const assistant = buildAssistantConfig(business) as ReturnType<typeof buildAssistantConfig> & {
+    keypadInputPlan?: {
+      enabled: boolean;
+      delimiters: string[];
+      timeoutSeconds: number;
+    };
+    model: ReturnType<typeof buildAssistantConfig>['model'] & {
+      workflow?: {
+        nodes: Array<Record<string, unknown>>;
+        edges: Array<Record<string, unknown>>;
+      };
+    };
+  };
   const systemPrompt = assistant.model.messages[0]?.content;
 
   if (typeof systemPrompt !== 'string') {
@@ -911,14 +923,21 @@ function buildKeypadLanguageSelectionWorkflow(business: BusinessData) {
     temperature: assistant.model.temperature,
   };
 
-  return {
-    name: `${business.name} Receptionist Workflow`,
-    server: assistant.server,
-    keypadInputPlan: {
-      enabled: true,
-      delimiters: [''],
-      timeoutSeconds: 2,
-    },
+  assistant.keypadInputPlan = {
+    enabled: true,
+    delimiters: [''],
+    timeoutSeconds: 2,
+  };
+
+  assistant.hooks = undefined;
+  assistant.firstMessage = getAiReceptionistSelectionPrompt(business.name, { mode: 'dtmf' });
+  assistant.transcriber = {
+    provider: 'deepgram',
+    model: 'nova-2',
+    language: 'multi',
+  };
+
+  assistant.model.workflow = {
     nodes: [
       {
         name: 'language_selection',
@@ -1005,6 +1024,8 @@ function buildKeypadLanguageSelectionWorkflow(business: BusinessData) {
       },
     ],
   };
+
+  return assistant;
 }
 
 // ─── Tool: checkAvailability ──────────────────────────────────────────────────
@@ -2113,11 +2134,11 @@ export async function POST(req: NextRequest) {
         }
 
         if (business.aiReceptionistSpanishEnabled) {
-          const workflow = buildKeypadLanguageSelectionWorkflow(business);
+          const assistant = buildKeypadLanguageSelectionAssistant(business);
           console.log(
-            `[vapi] assistant-request RETURNING WORKFLOW ms=${Date.now() - t0} bizId=${business.id} bizName=${business.name}`
+            `[vapi] assistant-request RETURNING WORKFLOW ASSISTANT ms=${Date.now() - t0} bizId=${business.id} bizName=${business.name}`
           );
-          return NextResponse.json({ workflow });
+          return NextResponse.json({ assistant });
         }
 
         const assistant = buildAssistantConfig(business);
