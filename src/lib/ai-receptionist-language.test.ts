@@ -26,6 +26,15 @@ describe('ai-receptionist-language helpers', () => {
     );
   });
 
+  it('can generate a speech-only selector for Vapi callers', () => {
+    const prompt = getAiReceptionistSelectionPrompt('Clientific Studio', { includeDtmf: false });
+
+    expect(prompt).toContain('For English, say English.');
+    expect(prompt).toContain('Para espanol, diga espanol.');
+    expect(prompt).not.toContain('press 1');
+    expect(prompt).not.toContain('Oprima 2');
+  });
+
   it('resolves explicit digit language choices', () => {
     expect(resolveAiReceptionistCallLanguage({ digits: '1' })).toEqual({
       language: 'en',

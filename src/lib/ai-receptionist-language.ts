@@ -15,6 +15,10 @@ const ENGLISH_SELECTION_PROMPT_TEMPLATE = (businessName: string) =>
   `Hi, this is ${businessName}. For English, say English. Or press 1.`;
 const SPANISH_SELECTION_PROMPT_TEMPLATE = (businessName: string) =>
   `Hola, habla ${businessName}. Para espanol, diga espanol. Oprima 2.`;
+const ENGLISH_SPEECH_ONLY_SELECTION_PROMPT_TEMPLATE = (businessName: string) =>
+  `Hi, this is ${businessName}. For English, say English.`;
+const SPANISH_SPEECH_ONLY_SELECTION_PROMPT_TEMPLATE = (businessName: string) =>
+  `Hola, habla ${businessName}. Para espanol, diga espanol.`;
 const SPANISH_SELECTION_HINTS = 'English, Ingles, Spanish, Espanol';
 const DEFAULT_ENGLISH_GREETING_TEMPLATE = (businessName: string) =>
   `Hi, thank you for calling ${businessName}. How can I help you today?`;
@@ -79,7 +83,18 @@ function stripLanguageSelectionPhrases(value: string): string {
   );
 }
 
-export function getAiReceptionistSelectionPrompt(businessName: string): string {
+export function getAiReceptionistSelectionPrompt(
+  businessName: string,
+  options?: { includeDtmf?: boolean },
+): string {
+  const includeDtmf = options?.includeDtmf ?? true;
+
+  if (!includeDtmf) {
+    return `${ENGLISH_SPEECH_ONLY_SELECTION_PROMPT_TEMPLATE(
+      businessName,
+    )} ${SPANISH_SPEECH_ONLY_SELECTION_PROMPT_TEMPLATE(businessName)}`;
+  }
+
   return `${ENGLISH_SELECTION_PROMPT_TEMPLATE(businessName)} ${SPANISH_SELECTION_PROMPT_TEMPLATE(
     businessName,
   )}`;
@@ -93,9 +108,10 @@ export function getAiReceptionistVoiceGreeting(
   businessName: string,
   customGreeting: string | null | undefined,
   spanishEnabled: boolean,
+  options?: { includeDtmf?: boolean },
 ): string {
   if (spanishEnabled) {
-    return getAiReceptionistSelectionPrompt(businessName);
+    return getAiReceptionistSelectionPrompt(businessName, options);
   }
 
   const baseGreeting = collapseWhitespace(

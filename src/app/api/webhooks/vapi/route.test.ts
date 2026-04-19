@@ -217,9 +217,11 @@ describe('POST /api/webhooks/vapi', () => {
     const systemPrompt = body.assistant.model.messages[0].content as string;
 
     expect(body.assistant.firstMessage).toContain('Hi, this is Test Salon.');
-    expect(body.assistant.firstMessage).toContain('For English, say English. Or press 1.');
+    expect(body.assistant.firstMessage).toContain('For English, say English.');
     expect(body.assistant.firstMessage).toContain('Hola, habla Test Salon.');
-    expect(body.assistant.firstMessage).toContain('Para espanol, diga espanol. Oprima 2.');
+    expect(body.assistant.firstMessage).toContain('Para espanol, diga espanol.');
+    expect(body.assistant.firstMessage).not.toContain('press 1');
+    expect(body.assistant.firstMessage).not.toContain('Oprima 2');
     expect(body.assistant.transcriber).toMatchObject({
       provider: 'deepgram',
       model: 'nova-2',
