@@ -214,21 +214,21 @@ describe('POST /api/webhooks/vapi', () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    const selectionNode = body.assistant.model.workflow.nodes.find(
+    const selectionNode = body.workflow.nodes.find(
       (node: any) => node?.name === 'language_selection'
     );
-    const englishNode = body.assistant.model.workflow.nodes.find(
+    const englishNode = body.workflow.nodes.find(
       (node: any) => node?.name === 'english_support'
     );
-    const spanishNode = body.assistant.model.workflow.nodes.find(
+    const spanishNode = body.workflow.nodes.find(
       (node: any) => node?.name === 'spanish_support'
     );
 
-    expect(body.assistant).toBeDefined();
-    expect(body.assistant.server).toMatchObject({
+    expect(body.workflow).toBeDefined();
+    expect(body.workflow.server).toMatchObject({
       url: 'https://www.clientific.app/api/webhooks/vapi',
     });
-    expect(body.assistant.keypadInputPlan).toEqual({
+    expect(body.workflow.keypadInputPlan).toEqual({
       enabled: true,
       delimiters: [''],
       timeoutSeconds: 2,
@@ -251,7 +251,8 @@ describe('POST /api/webhooks/vapi', () => {
       language: 'multi',
     });
     expect(englishNode.messagePlan.firstMessage).toBe('Okay, English. How can I help you today?');
-    expect(englishNode.prompt).toContain('Respond entirely in English for this call.');
+    expect(englishNode.prompt).toContain('Call language: English only.');
+    expect(englishNode.prompt.length).toBeLessThanOrEqual(5000);
     expect(englishNode.tools).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -266,8 +267,9 @@ describe('POST /api/webhooks/vapi', () => {
     expect(spanishNode.messagePlan.firstMessage).toBe(
       'Perfecto, espanol. Como puedo ayudarle hoy?'
     );
-    expect(spanishNode.prompt).toContain('Respond entirely in Spanish for this call.');
-    expect(body.assistant.model.workflow.edges).toEqual(
+    expect(spanishNode.prompt).toContain('Call language: Spanish only.');
+    expect(spanishNode.prompt.length).toBeLessThanOrEqual(5000);
+    expect(body.workflow.edges).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           from: 'language_selection',
@@ -287,17 +289,7 @@ describe('POST /api/webhooks/vapi', () => {
         }),
       ]),
     );
-    expect(body.assistant.model.tools).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          type: 'function',
-          function: expect.objectContaining({
-            name: 'manage_booking',
-          }),
-        }),
-        expect.objectContaining({ type: 'endCall' }),
-      ]),
-    );
+    expect(selectionNode.prompt.length).toBeLessThanOrEqual(5000);
   });
 
   it('includes specific closure dates in the assistant prompt', async () => {
