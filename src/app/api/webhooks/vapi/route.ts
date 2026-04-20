@@ -36,6 +36,7 @@ import { createBusinessNotification } from '@/lib/mobile-push';
 import { cancelScheduledAppointmentReminder } from '@/lib/appointment-reminders';
 import { resolveAppointmentServiceDisplayName } from '@/lib/appointment-services';
 import {
+  type AiReceptionistCallLanguage,
   getAiReceptionistSelectionReminder,
   getAiReceptionistSelectionPrompt,
   getAiReceptionistVoiceGreeting,
@@ -165,6 +166,7 @@ type BusinessData = {
   businessType: string;
   phone: string;
   notifyNewBookingEmail: boolean;
+  vapiPhoneNumberId: string | null;
   vapiPhoneNumber: string | null;
   publicId: string | null;
   street: string | null;
@@ -258,12 +260,13 @@ const STAFF_CLEAR_PATTERNS = [
   /\bany stylist\b/i,
 ];
 
-const AI_ENABLED_BUSINESS_SELECT = {
+export const AI_ENABLED_BUSINESS_SELECT = {
   id: true,
   name: true,
   businessType: true,
   phone: true,
   notifyNewBookingEmail: true,
+  vapiPhoneNumberId: true,
   vapiPhoneNumber: true,
   publicId: true,
   street: true,
@@ -597,7 +600,10 @@ async function resolveRequestedServices(
 
 // ─── Assistant config builder ─────────────────────────────────────────────────
 
-function buildAssistantConfig(business: BusinessData) {
+export function buildAssistantConfig(
+  business: BusinessData,
+  options?: { forcedLanguage?: AiReceptionistCallLanguage | null }
+) {
   const appUrl = getConfiguredAppBaseUrl();
   const webhookBaseUrl = getConfiguredWebhookBaseUrl();
   const forwardingPhoneNumber = normalizeOptionalPhoneNumber(business.aiReceptionistPhone);
@@ -645,9 +651,24 @@ function buildAssistantConfig(business: BusinessData) {
   const faqText = faqList.length > 0
     ? '\nFrequently asked questions:\n' + faqList.map(f => `Q: ${f.question}\nA: ${f.answer}`).join('\n\n')
     : '';
-  const languageSelectionMode = business.aiReceptionistSpanishEnabled ? 'dtmf' as const : 'speech-only' as const;
+  const forcedLanguage = options?.forcedLanguage ?? null;
+  const shouldOfferLanguageSelection =
+    business.aiReceptionistSpanishEnabled && !forcedLanguage;
+  const languageSelectionMode = shouldOfferLanguageSelection ? ('dtmf' as const) : ('speech-only' as const);
 
-  const languageInstructions = business.aiReceptionistSpanishEnabled
+  const languageInstructions = forcedLanguage === 'es'
+    ? `
+Language handling:
+- The caller has already selected Spanish, so respond entirely in Spanish for the rest of the call unless they later ask to switch languages.
+- Do not repeat the bilingual language menu.
+- Never ask for the caller's phone number or callback number at the beginning of the call. The caller's phone number is already available in the background. Only discuss their phone number later if the caller explicitly asks about it or a later booking step truly requires clarification.`
+    : forcedLanguage === 'en'
+    ? `
+Language handling:
+- The caller has already selected English, so respond entirely in English for the rest of the call unless they later ask to switch languages.
+- Do not repeat the bilingual language menu.
+- Never ask for the caller's phone number or callback number at the beginning of the call. The caller's phone number is already available in the background. Only discuss their phone number later if the caller explicitly asks about it or a later booking step truly requires clarification.`
+    : business.aiReceptionistSpanishEnabled
     ? `
 Language handling:
 - You are fully bilingual in English and Spanish.
@@ -695,13 +716,18 @@ ${buildSharedReceptionistOperationalRules({
 
   return {
     name: `${business.name} Receptionist`,
-    firstMessage: getAiReceptionistVoiceGreeting(
-      business.name,
-      business.aiReceptionistGreeting,
-      business.aiReceptionistSpanishEnabled,
-      { mode: languageSelectionMode },
-    ),
-    hooks: business.aiReceptionistSpanishEnabled
+    firstMessage:
+      forcedLanguage === 'es'
+        ? 'Como puedo ayudarle hoy?'
+        : forcedLanguage === 'en'
+          ? 'How can I help you today?'
+          : getAiReceptionistVoiceGreeting(
+              business.name,
+              business.aiReceptionistGreeting,
+              business.aiReceptionistSpanishEnabled,
+              { mode: languageSelectionMode },
+            ),
+    hooks: shouldOfferLanguageSelection
       ? [
           {
             on: 'assistant.speech.interrupted',
@@ -819,7 +845,12 @@ ${buildSharedReceptionistOperationalRules({
     transcriber: {
       provider: 'deepgram',
       model: 'nova-2',
-      language: business.aiReceptionistSpanishEnabled ? 'multi' : 'en',
+      language:
+        forcedLanguage === 'en'
+          ? 'en'
+          : business.aiReceptionistSpanishEnabled
+            ? 'multi'
+            : 'en',
     },
     voice: {
       provider: '11labs',
@@ -841,7 +872,7 @@ ${buildSharedReceptionistOperationalRules({
     voicemailMessage: getAiReceptionistVoicemailMessage(
       business.name,
       bookingUrl,
-      business.aiReceptionistSpanishEnabled,
+      shouldOfferLanguageSelection,
     ),
     silenceTimeoutSeconds: 60,
   };

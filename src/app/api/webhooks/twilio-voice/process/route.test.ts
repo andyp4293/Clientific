@@ -5,24 +5,18 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
     },
   },
 }));
 
-vi.mock('@/lib/app-url', () => ({
-  getConfiguredAppBaseUrl: vi.fn(() => 'https://www.clientific.app'),
-}));
-
-vi.mock('@/lib/openai', () => ({
-  generateVoiceResponse: vi.fn(),
-}));
-
 import { prisma } from '@/lib/prisma';
-import { generateVoiceResponse } from '@/lib/openai';
 import { POST } from './route';
 
 const mockFindBusiness = prisma.business.findUnique as ReturnType<typeof vi.fn>;
-const mockGenerateVoiceResponse = generateVoiceResponse as ReturnType<typeof vi.fn>;
+const mockFindBusinessByPhone = prisma.business.findFirst as ReturnType<typeof vi.fn>;
+const mockFetch = vi.fn();
+global.fetch = mockFetch as any;
 
 function buildRequest(url: string, formValues: Record<string, string>) {
   const formData = new FormData();
@@ -37,47 +31,61 @@ function buildRequest(url: string, formValues: Record<string, string>) {
 }
 
 const business = {
+  id: 'biz-1',
   name: 'Test Salon',
   businessType: 'Salon',
   phone: '+15551234567',
+  notifyNewBookingEmail: false,
+  vapiPhoneNumberId: 'vapi-pn-1',
+  vapiPhoneNumber: '+19084184377',
   street: '123 Main St',
   city: 'Howell',
   state: 'NJ',
+  timezone: 'America/New_York',
   publicId: 'AB-123456',
   aiReceptionistEnabled: true,
   aiReceptionistSpanishEnabled: true,
   aiReceptionistPhone: '+15557654321',
   aiReceptionistFaq: [{ question: 'Do you take walk-ins?', answer: 'Yes, if availability opens up.' }],
-  services: [{ name: 'Gel Manicure', price: 45, duration: 45, description: 'Classic gel manicure.' }],
+  services: [{ id: 'svc-1', name: 'Gel Manicure', price: 45, duration: 45 }],
+  staff: [],
   businessHours: { hours: { 1: { isOpen: true, openTime: '09:00', closeTime: '17:00' } } },
+  closureDates: [],
 };
 
 describe('POST /api/webhooks/twilio-voice/process', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFindBusiness.mockResolvedValue(business);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        phoneCallProviderDetails: {
+          twiml: '<?xml version="1.0" encoding="UTF-8"?><Response><Say>Connected to Vapi</Say></Response>',
+        },
+      }),
+    });
   });
 
-  it('acknowledges a spanish digit choice and switches the gather language', async () => {
+  it('hands a spanish digit choice into a spanish Vapi assistant', async () => {
     const response = await POST(
       buildRequest(
         'https://www.clientific.app/api/webhooks/twilio-voice/process?publicId=AB-123456&callSid=call-es-choice',
-        { Digits: '2' },
+        { Digits: '2', Caller: '+19087272437' },
       ),
     );
 
     const xml = await response.text();
+    const payload = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
 
     expect(response.status).toBe(200);
-    expect(xml).toContain('Perfecto, seguire en espanol. En que puedo ayudarle hoy?');
-    expect(xml).toContain('voice="Polly.Lupe"');
-    expect(xml).toContain('language="es-US"');
-    expect(mockGenerateVoiceResponse).not.toHaveBeenCalled();
+    expect(xml).toContain('Connected to Vapi');
+    expect(payload.phoneNumberId).toBe('vapi-pn-1');
+    expect(payload.customer).toEqual({ number: '+19087272437' });
+    expect(payload.assistant.firstMessage).toBe('Como puedo ayudarle hoy?');
   });
 
-  it('continues in spanish when the first utterance is clearly spanish', async () => {
-    mockGenerateVoiceResponse.mockResolvedValue('Claro, tenemos citas manana por la tarde.');
-
+  it('routes directly into spanish when the caller starts in spanish', async () => {
     const response = await POST(
       buildRequest(
         'https://www.clientific.app/api/webhooks/twilio-voice/process?publicId=AB-123456&callSid=call-es-inferred',
@@ -86,32 +94,48 @@ describe('POST /api/webhooks/twilio-voice/process', () => {
     );
 
     const xml = await response.text();
+    const payload = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
 
     expect(response.status).toBe(200);
-    expect(mockGenerateVoiceResponse).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userMessage: 'Hola, necesito una cita manana por la tarde',
-        systemPrompt: expect.stringContaining('The caller has already selected Spanish'),
-      }),
-    );
-    expect(xml).toContain('Claro, tenemos citas manana por la tarde.');
-    expect(xml).toContain('voice="Polly.Lupe"');
-    expect(xml).toContain('language="es-US"');
+    expect(xml).toContain('Connected to Vapi');
+    expect(payload.assistant.firstMessage).toBe('Como puedo ayudarle hoy?');
+    expect(payload.assistant.transcriber.language).toBe('multi');
   });
 
-  it('uses the spanish transfer phrase when the caller asks for a person in spanish', async () => {
+  it('defaults to english handoff when no choice is captured', async () => {
     const response = await POST(
       buildRequest(
-        'https://www.clientific.app/api/webhooks/twilio-voice/process?publicId=AB-123456&callSid=call-es-transfer&lang=es',
-        { SpeechResult: 'Quiero hablar con una persona real' },
+        'https://www.clientific.app/api/webhooks/twilio-voice/process?publicId=AB-123456&callSid=call-en-default',
+        {},
       ),
     );
 
     const xml = await response.text();
+    const payload = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
 
     expect(response.status).toBe(200);
-    expect(xml).toContain('Claro, le conecto ahora. Un momento por favor.');
-    expect(xml).toContain('<Dial>+15557654321</Dial>');
-    expect(mockGenerateVoiceResponse).not.toHaveBeenCalled();
+    expect(xml).toContain('Connected to Vapi');
+    expect(payload.assistant.firstMessage).toBe('How can I help you today?');
+    expect(payload.assistant.transcriber.language).toBe('en');
+  });
+
+  it('can recover the business by dialed number when publicId is unavailable', async () => {
+    mockFindBusiness.mockResolvedValue(null);
+    mockFindBusinessByPhone.mockResolvedValue(business);
+
+    const response = await POST(
+      buildRequest(
+        'https://www.clientific.app/api/webhooks/twilio-voice/process?callSid=call-phone-lookup',
+        { Digits: '1', To: '+19084184377' },
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockFindBusinessByPhone).toHaveBeenCalledWith({
+      where: {
+        vapiPhoneNumber: '9084184377',
+      },
+      select: expect.any(Object),
+    });
   });
 });

@@ -64,6 +64,7 @@ const fakeBusiness = {
   id: 'biz-1',
   name: 'Test Salon',
   slug: 'test-salon',
+  publicId: 'AB-123456',
   email: 'owner@test.com',
   subscriptionPlan: 'pro',
   ownerPhone: null,
@@ -440,7 +441,7 @@ describe('PATCH /api/business', () => {
 
     expect(res.status).toBe(200);
     expect(mockTwilioIncomingUpdate).toHaveBeenCalledWith({
-      voiceUrl: 'https://api.vapi.ai/twilio/inbound_call',
+      voiceUrl: 'https://www.clientific.app/api/webhooks/twilio-voice?publicId=AB-123456',
       voiceMethod: 'POST',
       statusCallback: 'https://api.vapi.ai/twilio/status',
       statusCallbackMethod: 'POST',
@@ -507,7 +508,7 @@ describe('PATCH /api/business', () => {
 
     expect(res.status).toBe(200);
     expect(mockTwilioIncomingUpdate).toHaveBeenCalledWith({
-      voiceUrl: 'https://api.vapi.ai/twilio/inbound_call',
+      voiceUrl: 'http://localhost:3000/api/webhooks/twilio-voice?publicId=AB-123456',
       voiceMethod: 'POST',
       statusCallback: 'https://api.vapi.ai/twilio/status',
       statusCallbackMethod: 'POST',
@@ -564,7 +565,7 @@ describe('PATCH /api/business', () => {
 
     expect(res.status).toBe(200);
     expect(mockTwilioIncomingUpdate).toHaveBeenNthCalledWith(1, {
-      voiceUrl: 'https://api.vapi.ai/twilio/inbound_call',
+      voiceUrl: 'https://www.clientific.app/api/webhooks/twilio-voice?publicId=AB-123456',
       voiceMethod: 'POST',
       statusCallback: 'https://api.vapi.ai/twilio/status',
       statusCallbackMethod: 'POST',
@@ -572,7 +573,7 @@ describe('PATCH /api/business', () => {
       smsMethod: 'POST',
     });
     expect(mockTwilioIncomingUpdate).toHaveBeenNthCalledWith(2, {
-      voiceUrl: 'https://api.vapi.ai/twilio/inbound_call',
+      voiceUrl: 'https://www.clientific.app/api/webhooks/twilio-voice?publicId=AB-123456',
       voiceMethod: 'POST',
       statusCallback: 'https://api.vapi.ai/twilio/status',
       statusCallbackMethod: 'POST',
@@ -743,7 +744,7 @@ describe('PATCH /api/business', () => {
       limit: 1,
     });
     expect(mockTwilioIncomingUpdate).toHaveBeenCalledWith({
-      voiceUrl: 'https://api.vapi.ai/twilio/inbound_call',
+      voiceUrl: 'https://www.clientific.app/api/webhooks/twilio-voice?publicId=AB-123456',
       voiceMethod: 'POST',
       statusCallback: 'https://api.vapi.ai/twilio/status',
       statusCallbackMethod: 'POST',

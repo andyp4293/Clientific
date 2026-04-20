@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { getConfiguredWebhookBaseUrl } from '@/lib/app-url';
 import {
   getAiReceptionistSelectionHints,
@@ -7,10 +6,10 @@ import {
   getTwilioGatherLanguage,
   getTwilioVoiceForLanguage,
 } from '@/lib/ai-receptionist-language';
-
-// In-memory store for conversation history keyed by CallSid
-// This persists for the duration of the Vercel function instance lifecycle
-const conversationStore = new Map<string, Array<{ role: 'user' | 'assistant'; content: string }>>();
+import {
+  findAiReceptionistBusiness,
+  initiateVapiBypassCall,
+} from './shared';
 
 export async function POST(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -18,30 +17,13 @@ export async function POST(req: NextRequest) {
 
   const body = await req.formData();
   const callSid = body.get('CallSid') as string;
-
-  // Initialize conversation history for this call
-  if (callSid && !conversationStore.has(callSid)) {
-    conversationStore.set(callSid, []);
-  }
+  const callerNumber =
+    ((body.get('Caller') as string) || (body.get('From') as string) || '').trim() || null;
+  const toNumber =
+    ((body.get('To') as string) || (body.get('Called') as string) || '').trim() || null;
 
   // Look up business
-  const business = await prisma.business.findUnique({
-    where: { publicId: publicId || undefined },
-    select: {
-      name: true,
-      businessType: true,
-      phone: true,
-      street: true,
-      city: true,
-      state: true,
-      timezone: true,
-      publicId: true,
-      aiReceptionistEnabled: true,
-      aiReceptionistSpanishEnabled: true,
-      aiReceptionistPhone: true,
-      aiReceptionistGreeting: true,
-    },
-  });
+  const business = await findAiReceptionistBusiness({ publicId, toNumber });
 
   // If not found or not enabled, forward to real phone or hang up
   if (!business || !business.aiReceptionistEnabled) {
@@ -65,27 +47,46 @@ export async function POST(req: NextRequest) {
   );
 
   const appBase = getConfiguredWebhookBaseUrl();
-  const processUrl = `${appBase}/api/webhooks/twilio-voice/process?publicId=${publicId}&callSid=${callSid}`;
+  const processQuery = new URLSearchParams();
+  if (publicId) {
+    processQuery.set('publicId', publicId);
+  }
+  if (callSid) {
+    processQuery.set('callSid', callSid);
+  }
+  const processUrl = `${appBase}/api/webhooks/twilio-voice/process${
+    processQuery.size ? `?${processQuery.toString()}` : ''
+  }`;
 
   const englishVoice = getTwilioVoiceForLanguage('en');
   const englishLanguage = getTwilioGatherLanguage('en');
 
-  const twiml = business.aiReceptionistSpanishEnabled
-    ? `<?xml version="1.0" encoding="UTF-8"?>
+  if (!business.aiReceptionistSpanishEnabled) {
+    const twiml = await initiateVapiBypassCall({
+      business,
+      callerNumber,
+      forcedLanguage: 'en',
+    });
+
+    if (twiml) {
+      return new NextResponse(twiml, {
+        headers: { 'Content-Type': 'text/xml' },
+      });
+    }
+
+    return new NextResponse(
+      `<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="${englishVoice}">I'm sorry, we're having trouble connecting your call right now. Please try again in a moment.</Say></Response>`,
+      { headers: { 'Content-Type': 'text/xml' } }
+    );
+  }
+
+  const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="${englishVoice}">${escapeXml(greeting)}</Say>
   <Gather input="speech dtmf" numDigits="1" hints="${escapeXml(getAiReceptionistSelectionHints())}" action="${processUrl}" method="POST" timeout="5" speechTimeout="auto" language="${englishLanguage}">
   </Gather>
-  <Say voice="${englishVoice}">I'll keep us in English. How can I help you today?</Say>
-  <Gather input="speech" action="${processUrl}&lang=en" method="POST" timeout="5" speechTimeout="auto" language="${englishLanguage}">
-  </Gather>
-  <Say voice="${englishVoice}">I didn't hear anything. Please call back if you need assistance. Goodbye!</Say>
-</Response>`
-    : `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="${englishVoice}">${escapeXml(greeting)}</Say>
-  <Gather input="speech" action="${processUrl}" method="POST" timeout="5" speechTimeout="auto" language="${englishLanguage}">
-  </Gather>
+  <Say voice="${englishVoice}">I'll keep us in English.</Say>
+  <Redirect method="POST">${processUrl}&lang=en</Redirect>
   <Say voice="${englishVoice}">I didn't hear anything. Please call back if you need assistance. Goodbye!</Say>
 </Response>`;
 

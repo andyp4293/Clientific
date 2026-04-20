@@ -24,7 +24,6 @@ type TwilioProvisionedNumber = {
   phoneNumber: string;
 };
 
-const VAPI_TWILIO_INBOUND_CALL_URL = 'https://api.vapi.ai/twilio/inbound_call';
 const VAPI_TWILIO_STATUS_CALLBACK_URL = 'https://api.vapi.ai/twilio/status';
 
 function getTrimmedEnv(name: string): string | null {
@@ -112,10 +111,26 @@ async function provisionTwilioPhoneNumber(preferredAreaCode?: string | null): Pr
   };
 }
 
-async function syncTwilioIncomingNumberWebhooks(numberSid: string, appUrl: string): Promise<void> {
+function buildTwilioIncomingVoiceWebhookUrl(
+  webhookBaseUrl: string,
+  publicId: string | null | undefined
+): string {
+  const trimmedBaseUrl = webhookBaseUrl.replace(/\/$/, '');
+  if (!publicId) {
+    return `${trimmedBaseUrl}/api/webhooks/twilio-voice`;
+  }
+
+  return `${trimmedBaseUrl}/api/webhooks/twilio-voice?publicId=${encodeURIComponent(publicId)}`;
+}
+
+async function syncTwilioIncomingNumberWebhooks(
+  numberSid: string,
+  appUrl: string,
+  voiceWebhookUrl: string
+): Promise<void> {
   const client = getTwilioClient();
   const baseRouting = {
-    voiceUrl: VAPI_TWILIO_INBOUND_CALL_URL,
+    voiceUrl: voiceWebhookUrl,
     voiceMethod: 'POST',
     statusCallback: VAPI_TWILIO_STATUS_CALLBACK_URL,
     statusCallbackMethod: 'POST',
@@ -179,13 +194,14 @@ async function releaseTwilioNumberByPhone(phoneNumber: string | null | undefined
 
 async function syncTwilioIncomingNumberWebhooksByPhone(
   phoneNumber: string | null | undefined,
-  appUrl: string
+  appUrl: string,
+  voiceWebhookUrl: string
 ): Promise<void> {
   const match = await findTwilioNumberByPhone(phoneNumber);
   if (!match?.sid) {
     throw new Error('Twilio could not find the AI receptionist number to repair call routing');
   }
-  await syncTwilioIncomingNumberWebhooks(match.sid, appUrl);
+  await syncTwilioIncomingNumberWebhooks(match.sid, appUrl, voiceWebhookUrl);
 }
 
 async function vapiRequest(method: string, path: string, body?: object) {
@@ -406,6 +422,7 @@ export async function PATCH(req: NextRequest) {
       aiReceptionistFaq: true,
       vapiPhoneNumberId: true,
       vapiPhoneNumber: true,
+      publicId: true,
       smsAiEnabled: true,
       smsAiPhoneNumber: true,
       smsAiGreeting: true,
@@ -668,7 +685,7 @@ export async function PATCH(req: NextRequest) {
           throw new Error('AI receptionist number provisioning failed: number is blocked in Vapi');
         }
 
-        await syncTwilioIncomingNumberWebhooks(twilioNumber.sid, appUrl);
+        await syncTwilioIncomingNumberWebhooks(twilioNumber.sid, appUrl, voiceWebhookUrl);
 
         return {
           phoneNumberId: initialState.id,
@@ -694,6 +711,10 @@ export async function PATCH(req: NextRequest) {
     const appUrl = getConfiguredAppBaseUrl();
     const webhookBaseUrl = getConfiguredWebhookBaseUrl();
     const serverUrl = `${webhookBaseUrl}/api/webhooks/vapi`;
+    const voiceWebhookUrl = buildTwilioIncomingVoiceWebhookUrl(
+      webhookBaseUrl,
+      current.publicId ?? null
+    );
 
     if (vapiConfigured && finalEnabled && !current.vapiPhoneNumberId) {
       const provisioned = await provisionVapiNumber();
@@ -772,7 +793,11 @@ export async function PATCH(req: NextRequest) {
         console.warn('[vapi] Existing number is still activating; setup remains pending');
       } else {
         if (hasTwilioCredentials()) {
-          await syncTwilioIncomingNumberWebhooksByPhone(resolvedPhoneNumber, appUrl);
+          await syncTwilioIncomingNumberWebhooksByPhone(
+            resolvedPhoneNumber,
+            appUrl,
+            voiceWebhookUrl
+          );
         } else {
           console.warn(
             '[twilio] Skipping AI receptionist routing sync because Twilio credentials are not configured'
