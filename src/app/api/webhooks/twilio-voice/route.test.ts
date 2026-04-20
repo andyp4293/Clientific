@@ -121,10 +121,10 @@ describe('POST /api/webhooks/twilio-voice', () => {
     expect(xml).toContain('hints="English, Ingles, Spanish, Espanol"');
     expect(xml).toContain("I'll keep us in English.");
     expect(xml).toContain(
-      'action="https://www.clientific.app/api/webhooks/twilio-voice/process?publicId=AB-123456&callSid=call-2"',
+      'action="https://www.clientific.app/api/webhooks/twilio-voice/process?publicId=AB-123456&amp;callSid=call-2"',
     );
     expect(xml).toContain(
-      '<Redirect method="POST">https://www.clientific.app/api/webhooks/twilio-voice/process?publicId=AB-123456&callSid=call-2&lang=en</Redirect>',
+      '<Redirect method="POST">https://www.clientific.app/api/webhooks/twilio-voice/process?publicId=AB-123456&amp;callSid=call-2&amp;lang=en</Redirect>',
     );
     expect(mockFetch).not.toHaveBeenCalled();
   });

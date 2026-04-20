@@ -83,10 +83,10 @@ export async function POST(req: NextRequest) {
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="${englishVoice}">${escapeXml(greeting)}</Say>
-  <Gather input="speech dtmf" numDigits="1" hints="${escapeXml(getAiReceptionistSelectionHints())}" action="${processUrl}" method="POST" timeout="5" speechTimeout="auto" language="${englishLanguage}">
+  <Gather input="speech dtmf" numDigits="1" hints="${escapeXml(getAiReceptionistSelectionHints())}" action="${escapeXml(processUrl)}" method="POST" timeout="5" speechTimeout="auto" language="${englishLanguage}">
   </Gather>
   <Say voice="${englishVoice}">I'll keep us in English.</Say>
-  <Redirect method="POST">${processUrl}&lang=en</Redirect>
+  <Redirect method="POST">${escapeXml(`${processUrl}&lang=en`)}</Redirect>
   <Say voice="${englishVoice}">I didn't hear anything. Please call back if you need assistance. Goodbye!</Say>
 </Response>`;
 
