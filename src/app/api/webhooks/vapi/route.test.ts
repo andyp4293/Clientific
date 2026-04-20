@@ -260,7 +260,6 @@ describe('POST /api/webhooks/vapi', () => {
     expect(selectionNode.model).toMatchObject({
       provider: 'openai',
       model: 'gpt-4.1-mini',
-      fallbackModels: ['gpt-4.1', 'gpt-4.1-nano'],
     });
     expect(englishNode.messagePlan.firstMessage).toBe('How can I help you today?');
     expect(englishNode.prompt).toContain('Call language: English only.');
@@ -270,7 +269,6 @@ describe('POST /api/webhooks/vapi', () => {
     expect(englishNode.model).toMatchObject({
       provider: 'openai',
       model: 'gpt-4.1-mini',
-      fallbackModels: ['gpt-4.1', 'gpt-4.1-nano'],
     });
     expect(englishNode.prompt.length).toBeLessThanOrEqual(5000);
     expect(englishNode.tools).toEqual(
@@ -292,7 +290,6 @@ describe('POST /api/webhooks/vapi', () => {
     expect(spanishNode.model).toMatchObject({
       provider: 'openai',
       model: 'gpt-4.1-mini',
-      fallbackModels: ['gpt-4.1', 'gpt-4.1-nano'],
     });
     expect(spanishNode.prompt.length).toBeLessThanOrEqual(5000);
     expect(body.workflow.edges).toEqual(

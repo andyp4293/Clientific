@@ -995,7 +995,6 @@ function buildKeypadLanguageSelectionWorkflow(business: BusinessData) {
   const baseConversationModel = {
     provider: assistant.model.provider,
     model: assistant.model.model,
-    fallbackModels: assistant.model.fallbackModels,
     temperature: assistant.model.temperature,
   };
 
