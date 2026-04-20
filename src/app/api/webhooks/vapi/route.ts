@@ -914,8 +914,8 @@ function buildSharedReceptionistOperationalRules({
     : '- If the caller wants to move multiple appointments at once, pass every selected appointment ID together in appointmentIds. If those appointments are with the same specific staff member, the tool will keep them back to back starting from the requested time.';
 
   const bookingConfirmationRule = compact
-    ? '- After booking, relay the confirmation and ask if they need anything else. Only end after they clearly say they are done.'
-    : '- The tool confirms the booking — relay the confirmation to the caller and always ask "Is there anything else I can help you with?"';
+    ? '- After booking, tell the caller the appointment has been requested, not confirmed, and that they will get a text letting them know whether the business accepts it. Then ask if they need anything else. Only end after they clearly say they are done.'
+    : '- The tool places the booking in requested status — tell the caller it has been requested, not confirmed, and that they will get a text letting them know whether the business accepts it. Then ask "Is there anything else I can help you with?"';
 
   const waitBeforeEndingRule = compact
     ? `- If they clearly say they are done, say exactly "Happy to help! Have a wonderful day — goodbye!" and then call ${doneToolName}.`
@@ -1652,7 +1652,7 @@ async function handleCreateBooking(
     }
   }
 
-  return `Booking confirmed! ${customerName}, your ${serviceSelection.spokenLabel}${withWhom} is set for ${formattedTime}. ${business.name} will follow up shortly. Is there anything else I can help you with?`;
+  return `Request received! ${customerName}, your ${serviceSelection.spokenLabel}${withWhom} has been requested for ${formattedTime}. You'll get a text letting you know whether ${business.name} accepts it. Is there anything else I can help you with?`;
 }
 
 async function findManagedAppointmentsForCaller(
@@ -2014,7 +2014,7 @@ async function handleToolCalls(body: any): Promise<NextResponse> {
             result = await handleCheckAvailability(business, parsedArgs, callId, callerPhone);
           } else if (action === 'createBooking') {
             result = await handleCreateBooking(business, parsedArgs, callerPhone, callId);
-            outcome = result.startsWith('Booking confirmed!') || result.startsWith('Done')
+            outcome = result.startsWith('Request received!') || result.startsWith('Done')
               ? 'booked'
               : 'conflict';
           } else if (action === 'getAppointments') {

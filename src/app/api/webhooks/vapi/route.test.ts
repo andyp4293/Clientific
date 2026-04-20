@@ -782,7 +782,7 @@ describe('POST /api/webhooks/vapi', () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.results[0].result).toContain('Booking confirmed!');
+    expect(body.results[0].result).toContain('Request received!');
     expect(prisma.appointment.count).not.toHaveBeenCalled();
     expect(prisma.appointment.create).toHaveBeenCalledTimes(1);
     const createArg = vi.mocked(prisma.appointment.create).mock.calls[0]?.[0];
@@ -963,7 +963,7 @@ describe('POST /api/webhooks/vapi', () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.results[0].result).toContain('Booking confirmed!');
+    expect(body.results[0].result).toContain('Request received!');
     expect(prisma.appointment.create).toHaveBeenCalledTimes(1);
     expect(sendAppointmentConfirmation).toHaveBeenCalledWith(
       '5551234567',
@@ -1010,7 +1010,7 @@ describe('POST /api/webhooks/vapi', () => {
 
     expect(bookingRes.status).toBe(200);
     const bookingBody = await bookingRes.json();
-    expect(bookingBody.results[0].result).toContain('Booking confirmed!');
+    expect(bookingBody.results[0].result).toContain('Request received!');
     expect(prisma.appointment.create).toHaveBeenCalledTimes(1);
     expect(prisma.appointment.update).not.toHaveBeenCalledWith({
       where: { id: 'appt-1' },
