@@ -45,6 +45,9 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const VAPI_PRIMARY_MODEL = 'gpt-4.1-mini';
+const VAPI_FALLBACK_MODELS = ['gpt-4.1', 'gpt-4.1-nano'];
+
 // ─── Serialization error detection ───────────────────────────────────────────
 
 function isSerializationError(err: any): boolean {
@@ -755,7 +758,8 @@ Your job:
       : undefined,
     model: {
       provider: 'openai',
-      model: 'gpt-5.2',
+      model: VAPI_PRIMARY_MODEL,
+      fallbackModels: VAPI_FALLBACK_MODELS,
       temperature: 0.4,
       messages: [{ role: 'system', content: systemPrompt }],
       tools: [
@@ -991,6 +995,7 @@ function buildKeypadLanguageSelectionWorkflow(business: BusinessData) {
   const baseConversationModel = {
     provider: assistant.model.provider,
     model: assistant.model.model,
+    fallbackModels: assistant.model.fallbackModels,
     temperature: assistant.model.temperature,
   };
 

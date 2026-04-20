@@ -187,6 +187,9 @@ describe('POST /api/webhooks/vapi', () => {
     const toolProps = body.assistant.model.tools[0].function.parameters.properties;
     const systemPrompt = body.assistant.model.messages[0].content as string;
 
+    expect(body.assistant.model.provider).toBe('openai');
+    expect(body.assistant.model.model).toBe('gpt-4.1-mini');
+    expect(body.assistant.model.fallbackModels).toEqual(['gpt-4.1', 'gpt-4.1-nano']);
     expect(toolProps.serviceIds).toBeDefined();
     expect(systemPrompt).toContain('Do NOT split them into separate bookings');
     expect(systemPrompt).toContain('serviceIds for every requested service');
@@ -254,11 +257,21 @@ describe('POST /api/webhooks/vapi', () => {
       model: 'nova-2',
       language: 'multi',
     });
+    expect(selectionNode.model).toMatchObject({
+      provider: 'openai',
+      model: 'gpt-4.1-mini',
+      fallbackModels: ['gpt-4.1', 'gpt-4.1-nano'],
+    });
     expect(englishNode.messagePlan.firstMessage).toBe('How can I help you today?');
     expect(englishNode.prompt).toContain('Call language: English only.');
     expect(englishNode.prompt).toContain(
       'Handle appointment booking, availability, rescheduling, cancellations, and appointment questions fully in English.'
     );
+    expect(englishNode.model).toMatchObject({
+      provider: 'openai',
+      model: 'gpt-4.1-mini',
+      fallbackModels: ['gpt-4.1', 'gpt-4.1-nano'],
+    });
     expect(englishNode.prompt.length).toBeLessThanOrEqual(5000);
     expect(englishNode.tools).toEqual(
       expect.arrayContaining([
@@ -276,6 +289,11 @@ describe('POST /api/webhooks/vapi', () => {
     expect(spanishNode.prompt).toContain(
       'Handle appointment booking, availability, rescheduling, cancellations, and appointment questions fully in Spanish.'
     );
+    expect(spanishNode.model).toMatchObject({
+      provider: 'openai',
+      model: 'gpt-4.1-mini',
+      fallbackModels: ['gpt-4.1', 'gpt-4.1-nano'],
+    });
     expect(spanishNode.prompt.length).toBeLessThanOrEqual(5000);
     expect(body.workflow.edges).toEqual(
       expect.arrayContaining([
