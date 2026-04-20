@@ -254,7 +254,7 @@ describe('POST /api/webhooks/vapi', () => {
       model: 'nova-2',
       language: 'multi',
     });
-    expect(englishNode.messagePlan.firstMessage).toBe('Okay, English. How can I help you today?');
+    expect(englishNode.messagePlan.firstMessage).toBe('How can I help you today?');
     expect(englishNode.prompt).toContain('Call language: English only.');
     expect(englishNode.prompt).toContain(
       'Handle appointment booking, availability, rescheduling, cancellations, and appointment questions fully in English.'
@@ -271,9 +271,7 @@ describe('POST /api/webhooks/vapi', () => {
         expect.objectContaining({ type: 'endCall' }),
       ]),
     );
-    expect(spanishNode.messagePlan.firstMessage).toBe(
-      'Perfecto, espanol. Como puedo ayudarle hoy?'
-    );
+    expect(spanishNode.messagePlan.firstMessage).toBe('Como puedo ayudarle hoy?');
     expect(spanishNode.prompt).toContain('Call language: Spanish only.');
     expect(spanishNode.prompt).toContain(
       'Handle appointment booking, availability, rescheduling, cancellations, and appointment questions fully in Spanish.'

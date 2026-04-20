@@ -650,7 +650,7 @@ Language handling:
 - You are fully bilingual in English and Spanish.
 - The first message already offers the caller an English or Spanish choice: "${getAiReceptionistSelectionPrompt(business.name, { mode: languageSelectionMode })}"
 - If the caller says "English", "Spanish", "one", "two", "espanol", or "ingles", treat that as the language choice immediately.
-- As soon as the caller picks a language, acknowledge it in one very short sentence before helping them. Example: "Okay, English." or "Perfecto, espanol."
+- As soon as the caller picks a language, help them in that language right away without repeating the language choice back to them unless clarification is needed.
 - If the caller answers in Spanish or asks for Spanish, continue entirely in Spanish for the rest of the call unless they later ask to switch.
 - If the caller answers in English, continue entirely in English.
 - If the caller skips the selector and starts asking for help right away, infer the language from what they say and continue in that language.
@@ -1045,7 +1045,7 @@ function buildKeypadLanguageSelectionWorkflow(business: BusinessData) {
           },
           voice: assistant.voice,
           messagePlan: {
-            firstMessage: 'Okay, English. How can I help you today?',
+            firstMessage: 'How can I help you today?',
           },
           prompt: buildWorkflowSupportPrompt(business, 'english'),
         },
@@ -1061,7 +1061,7 @@ function buildKeypadLanguageSelectionWorkflow(business: BusinessData) {
           },
           voice: assistant.voice,
           messagePlan: {
-            firstMessage: 'Perfecto, espanol. Como puedo ayudarle hoy?',
+            firstMessage: 'Como puedo ayudarle hoy?',
           },
           prompt: buildWorkflowSupportPrompt(business, 'spanish'),
         },
