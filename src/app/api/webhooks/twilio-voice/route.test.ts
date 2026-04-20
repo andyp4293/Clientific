@@ -119,6 +119,11 @@ describe('POST /api/webhooks/twilio-voice', () => {
     expect(xml).toContain('input="speech dtmf"');
     expect(xml).toContain('numDigits="1"');
     expect(xml).toContain('hints="English, Ingles, Spanish, Espanol"');
+    expect(xml).toContain('<Gather input="speech dtmf"');
+    expect(xml).toContain('<Say voice="Polly.Joanna">Hi, this is Test Salon.');
+    expect(xml.indexOf('<Gather input="speech dtmf"')).toBeLessThan(
+      xml.indexOf('<Say voice="Polly.Joanna">Hi, this is Test Salon.'),
+    );
     expect(xml).toContain("I'll keep us in English.");
     expect(xml).toContain(
       'action="https://www.clientific.app/api/webhooks/twilio-voice/process?publicId=AB-123456&amp;callSid=call-2"',

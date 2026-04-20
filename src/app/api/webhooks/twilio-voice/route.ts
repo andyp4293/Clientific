@@ -82,8 +82,8 @@ export async function POST(req: NextRequest) {
 
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="${englishVoice}">${escapeXml(greeting)}</Say>
   <Gather input="speech dtmf" numDigits="1" hints="${escapeXml(getAiReceptionistSelectionHints())}" action="${escapeXml(processUrl)}" method="POST" timeout="5" speechTimeout="auto" language="${englishLanguage}">
+    <Say voice="${englishVoice}">${escapeXml(greeting)}</Say>
   </Gather>
   <Say voice="${englishVoice}">I'll keep us in English.</Say>
   <Redirect method="POST">${escapeXml(`${processUrl}&lang=en`)}</Redirect>
