@@ -195,6 +195,8 @@ describe('POST /api/webhooks/vapi', () => {
     expect(systemPrompt).toContain('serviceIds for every requested service');
     expect(systemPrompt).toContain('maximum is 5 services in one appointment');
     expect(systemPrompt).toContain('keep that same staffId on every later manage_booking call');
+    expect(systemPrompt).toContain('do not ask for it again unless it was unclear, contradicted, or they changed it');
+    expect(systemPrompt).toContain('ask only for that missing detail instead of re-asking for the full booking');
     expect(systemPrompt).toContain('Tue off');
     expect(systemPrompt).toContain('Mon 10:00 AM-4:00 PM');
     expect(systemPrompt).toContain('could not find them on the team');
@@ -255,6 +257,12 @@ describe('POST /api/webhooks/vapi', () => {
     );
     expect(systemPrompt).toContain(
       "If the caller's requested service is unclear, sounds misheard, or does not clearly match one of the listed services"
+    );
+    expect(systemPrompt).toContain(
+      'If the caller already gave the date, time, service, name, or staff preference, keep that information'
+    );
+    expect(systemPrompt).toContain(
+      'keep that new detail but continue asking only for the still-missing service clarification'
     );
     expect(systemPrompt).toContain(
       'If a booking or appointment request is still in progress, you are not done. Ask a short follow-up or clarification question instead of ending the call.'
