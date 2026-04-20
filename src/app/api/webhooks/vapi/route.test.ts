@@ -46,7 +46,7 @@ vi.mock('@/lib/app-url', () => ({
 import { prisma } from '@/lib/prisma';
 import { sendAppointmentBatchConfirmation, sendAppointmentConfirmation } from '@/lib/twilio';
 import { cancelScheduledAppointmentReminder } from '@/lib/appointment-reminders';
-import { POST } from './route';
+import { buildAssistantConfig, POST } from './route';
 
 function req(body: Record<string, unknown>) {
   return new NextRequest('http://localhost/api/webhooks/vapi', {
@@ -280,6 +280,37 @@ describe('POST /api/webhooks/vapi', () => {
         }),
         expect.objectContaining({ type: 'endCall' }),
       ]),
+    );
+  });
+
+  it('keeps the same booking-memory guardrails on the forced Spanish assistant path', () => {
+    const assistant = buildAssistantConfig(
+      {
+        ...BASE_BUSINESS,
+        aiReceptionistSpanishEnabled: true,
+      } as any,
+      { forcedLanguage: 'es' },
+    );
+    const systemPrompt = assistant.model.messages[0].content as string;
+
+    expect(assistant.firstMessage).toBe('Como puedo ayudarle hoy?');
+    expect(assistant.transcriber).toMatchObject({
+      provider: 'deepgram',
+      model: 'nova-2',
+      language: 'multi',
+    });
+    expect(systemPrompt).toContain('The caller has already selected Spanish');
+    expect(systemPrompt).toContain(
+      'If the caller already gave the date, time, service, name, or staff preference, keep that information'
+    );
+    expect(systemPrompt).toContain(
+      'ask only for that missing detail instead of re-asking for the full booking'
+    );
+    expect(systemPrompt).toContain(
+      'keep that new detail but continue asking only for the still-missing service clarification'
+    );
+    expect(systemPrompt).toContain(
+      'tell the caller it has been requested, not confirmed, and that they will get a text letting them know whether the business accepts it'
     );
   });
 
