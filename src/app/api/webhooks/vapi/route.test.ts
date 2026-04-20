@@ -266,6 +266,15 @@ describe('POST /api/webhooks/vapi', () => {
     expect(englishNode.prompt).toContain(
       'Handle appointment booking, availability, rescheduling, cancellations, and appointment questions fully in English.'
     );
+    expect(englishNode.prompt).toContain(
+      "If the caller's requested service is unclear, sounds misheard, or does not clearly match one of the listed services"
+    );
+    expect(englishNode.prompt).toContain(
+      'If a booking or appointment request is still in progress, you are not done.'
+    );
+    expect(englishNode.prompt).toContain(
+      'Questions about whether the business is for sale'
+    );
     expect(englishNode.model).toMatchObject({
       provider: 'openai',
       model: 'gpt-4.1-mini',
@@ -286,6 +295,9 @@ describe('POST /api/webhooks/vapi', () => {
     expect(spanishNode.prompt).toContain('Call language: Spanish only.');
     expect(spanishNode.prompt).toContain(
       'Handle appointment booking, availability, rescheduling, cancellations, and appointment questions fully in Spanish.'
+    );
+    expect(spanishNode.prompt).toContain(
+      "If the caller's requested service is unclear, sounds misheard, or does not clearly match one of the listed services"
     );
     expect(spanishNode.model).toMatchObject({
       provider: 'openai',
