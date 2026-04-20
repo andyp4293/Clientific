@@ -200,7 +200,7 @@ describe('POST /api/webhooks/vapi', () => {
     expect(systemPrompt).toContain('could not find them on the team');
   });
 
-  it('switches spanish-enabled calls to a workflow with keypad language selection', async () => {
+  it('keeps spanish-enabled calls on the main assistant flow with keypad-aware language instructions', async () => {
     vi.mocked(prisma.business.findFirst).mockResolvedValue({
       ...BASE_BUSINESS,
       aiReceptionistSpanishEnabled: true,
@@ -217,70 +217,52 @@ describe('POST /api/webhooks/vapi', () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    const selectionNode = body.workflow.nodes.find(
-      (node: any) => node?.name === 'language_selection'
-    );
-    const englishNode = body.workflow.nodes.find(
-      (node: any) => node?.name === 'english_support'
-    );
-    const spanishNode = body.workflow.nodes.find(
-      (node: any) => node?.name === 'spanish_support'
-    );
+    const systemPrompt = body.assistant.model.messages[0].content as string;
 
-    expect(body.workflow).toBeDefined();
-    expect(body.workflow.server).toMatchObject({
+    expect(body.workflow).toBeUndefined();
+    expect(body.assistant).toBeDefined();
+    expect(body.assistant.server).toMatchObject({
       url: 'https://www.clientific.app/api/webhooks/vapi',
     });
-    expect(body.workflow.keypadInputPlan).toEqual({
-      enabled: true,
-      delimiters: [''],
-      timeoutSeconds: 2,
-    });
-    expect(selectionNode.messagePlan.firstMessage).toContain('Hi, this is Test Salon.');
-    expect(selectionNode.messagePlan.firstMessage).toContain('For English, press 1.');
-    expect(selectionNode.messagePlan.firstMessage).toContain('Or say English.');
-    expect(selectionNode.messagePlan.firstMessage).toContain('Hola, habla Test Salon.');
-    expect(selectionNode.messagePlan.firstMessage).toContain('Para espanol, oprima 2.');
-    expect(selectionNode.messagePlan.firstMessage).toContain('O diga espanol.');
-    expect(selectionNode.prompt).toBe(
-      'For English, press 1 or say English. Para espanol, oprima 2 o diga espanol.'
-    );
-    expect(selectionNode.prompt).not.toContain('You are helping the caller choose');
-    expect(selectionNode.variableExtractionPlan.output).toEqual([
-      expect.objectContaining({
-        title: 'preferred_language',
-        enum: ['english', 'spanish'],
-      }),
-    ]);
-    expect(selectionNode.transcriber).toMatchObject({
+    expect(body.assistant.firstMessage).toContain('Hi, this is Test Salon.');
+    expect(body.assistant.firstMessage).toContain('For English, press 1.');
+    expect(body.assistant.firstMessage).toContain('Or say English.');
+    expect(body.assistant.firstMessage).toContain('Hola, habla Test Salon.');
+    expect(body.assistant.firstMessage).toContain('Para espanol, oprima 2.');
+    expect(body.assistant.firstMessage).toContain('O diga espanol.');
+    expect(body.assistant.transcriber).toMatchObject({
       provider: 'deepgram',
       model: 'nova-2',
       language: 'multi',
     });
-    expect(selectionNode.model).toMatchObject({
+    expect(body.assistant.model).toMatchObject({
       provider: 'openai',
       model: 'gpt-4.1-mini',
+      fallbackModels: ['gpt-4.1', 'gpt-4.1-nano'],
     });
-    expect(englishNode.messagePlan.firstMessage).toBe('How can I help you today?');
-    expect(englishNode.prompt).toContain('Call language: English only.');
-    expect(englishNode.prompt).toContain(
-      'Handle appointment booking, availability, rescheduling, cancellations, and appointment questions fully in English.'
+    expect(systemPrompt).toContain('You are fully bilingual in English and Spanish.');
+    expect(systemPrompt).toContain(
+      'Vapi may surface keypad selections in the transcript as phrases like "Press User\'s Keypad Entry: 1"'
     );
-    expect(englishNode.prompt).toContain(
+    expect(systemPrompt).toContain(
+      'Treat 1 as English and 2 as Spanish immediately.'
+    );
+    expect(systemPrompt).toContain(
+      'If the caller only chooses a language and has not asked their actual question yet, continue naturally with "How can I help you today?" in English or "Como puedo ayudarle hoy?" in Spanish.'
+    );
+    expect(systemPrompt).toContain(
+      "Never ask for the caller's phone number or callback number at the beginning of the call."
+    );
+    expect(systemPrompt).toContain(
       "If the caller's requested service is unclear, sounds misheard, or does not clearly match one of the listed services"
     );
-    expect(englishNode.prompt).toContain(
-      'If a booking or appointment request is still in progress, ask a short follow-up or clarification question instead of ending the call.'
+    expect(systemPrompt).toContain(
+      'If a booking or appointment request is still in progress, you are not done. Ask a short follow-up or clarification question instead of ending the call.'
     );
-    expect(englishNode.prompt).toContain(
+    expect(systemPrompt).toContain(
       'Questions about whether the business is for sale'
     );
-    expect(englishNode.model).toMatchObject({
-      provider: 'openai',
-      model: 'gpt-4.1-mini',
-    });
-    expect(englishNode.prompt.length).toBeLessThanOrEqual(5000);
-    expect(englishNode.tools).toEqual(
+    expect(body.assistant.model.tools).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           type: 'function',
@@ -291,40 +273,6 @@ describe('POST /api/webhooks/vapi', () => {
         expect.objectContaining({ type: 'endCall' }),
       ]),
     );
-    expect(spanishNode.messagePlan.firstMessage).toBe('Como puedo ayudarle hoy?');
-    expect(spanishNode.prompt).toContain('Call language: Spanish only.');
-    expect(spanishNode.prompt).toContain(
-      'Handle appointment booking, availability, rescheduling, cancellations, and appointment questions fully in Spanish.'
-    );
-    expect(spanishNode.prompt).toContain(
-      "If the caller's requested service is unclear, sounds misheard, or does not clearly match one of the listed services"
-    );
-    expect(spanishNode.model).toMatchObject({
-      provider: 'openai',
-      model: 'gpt-4.1-mini',
-    });
-    expect(spanishNode.prompt.length).toBeLessThanOrEqual(5000);
-    expect(body.workflow.edges).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          from: 'language_selection',
-          to: 'english_support',
-          condition: expect.objectContaining({
-            type: 'logic',
-            liquid: '{{ preferred_language == "english" }}',
-          }),
-        }),
-        expect.objectContaining({
-          from: 'language_selection',
-          to: 'spanish_support',
-          condition: expect.objectContaining({
-            type: 'logic',
-            liquid: '{{ preferred_language == "spanish" }}',
-          }),
-        }),
-      ]),
-    );
-    expect(selectionNode.prompt.length).toBeLessThanOrEqual(5000);
   });
 
   it('includes specific closure dates in the assistant prompt', async () => {

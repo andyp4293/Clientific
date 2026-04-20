@@ -645,7 +645,7 @@ function buildAssistantConfig(business: BusinessData) {
   const faqText = faqList.length > 0
     ? '\nFrequently asked questions:\n' + faqList.map(f => `Q: ${f.question}\nA: ${f.answer}`).join('\n\n')
     : '';
-  const languageSelectionMode = business.aiReceptionistSpanishEnabled ? 'spoken-digits' as const : 'speech-only' as const;
+  const languageSelectionMode = business.aiReceptionistSpanishEnabled ? 'dtmf' as const : 'speech-only' as const;
 
   const languageInstructions = business.aiReceptionistSpanishEnabled
     ? `
@@ -653,11 +653,14 @@ Language handling:
 - You are fully bilingual in English and Spanish.
 - The first message already offers the caller an English or Spanish choice: "${getAiReceptionistSelectionPrompt(business.name, { mode: languageSelectionMode })}"
 - If the caller says "English", "Spanish", "one", "two", "espanol", or "ingles", treat that as the language choice immediately.
+- Vapi may surface keypad selections in the transcript as phrases like "Press User's Keypad Entry: 1", "User's Keypad Entry: 2", or "Wrangler Press User's Keypad Entry: 1". Treat 1 as English and 2 as Spanish immediately.
 - As soon as the caller picks a language, help them in that language right away without repeating the language choice back to them unless clarification is needed.
+- If the caller only chooses a language and has not asked their actual question yet, continue naturally with "How can I help you today?" in English or "Como puedo ayudarle hoy?" in Spanish.
 - If the caller answers in Spanish or asks for Spanish, continue entirely in Spanish for the rest of the call unless they later ask to switch.
 - If the caller answers in English, continue entirely in English.
 - If the caller skips the selector and starts asking for help right away, infer the language from what they say and continue in that language.
-- After the language is clear, do not keep repeating the bilingual selector.`
+- After the language is clear, do not keep repeating the bilingual selector.
+- Never ask for the caller's phone number or callback number at the beginning of the call. The caller's phone number is already available in the background. Only discuss their phone number later if the caller explicitly asks about it or a later booking step truly requires clarification.`
     : `
 Language handling:
 - Respond entirely in English for this call.`;
@@ -964,216 +967,6 @@ function buildSharedReceptionistOperationalRules({
     `- If you do not know the answer and a transfer destination is configured, do not guess. First say you do not have that information and ask if they would like to be transferred to someone who might be able to help. ${transferFallback}`,
     '- Never read service IDs or appointment IDs aloud; they are internal references only.',
   ].join('\n');
-}
-
-const VAPI_WORKFLOW_PROMPT_MAX_CHARS = 5000;
-
-function formatCompactWorkflowServices(
-  services: BusinessData['services']
-) {
-  if (!services.length) return 'No services listed.';
-
-  return services
-    .map((service) => {
-      const price = service.price ? `$${service.price}` : 'price varies';
-      return `${service.name} [${service.id}] ${service.duration}m ${price}`;
-    })
-    .join('; ');
-}
-
-function formatCompactWorkflowStaff(
-  business: BusinessData
-) {
-  if (!business.staff.length) return 'No team members listed.';
-
-  return business.staff
-    .map((staffMember) => {
-      const availability = formatStaffAvailabilitySummary({
-        workDays: staffMember.workDays,
-        workHours: staffMember.workHours,
-        businessHours: business.businessHours?.hours,
-      });
-      return `${staffMember.fullName} [${staffMember.id}]${staffMember.role !== 'staff' ? ` ${staffMember.role}` : ''} ${availability}`;
-    })
-    .join('; ');
-}
-
-function formatCompactWorkflowFaq(
-  business: BusinessData
-) {
-  const faqList = (
-    Array.isArray(business.aiReceptionistFaq)
-      ? (business.aiReceptionistFaq as { question: string; answer: string }[])
-      : []
-  ).filter((faq) => faq.question && faq.answer);
-
-  if (!faqList.length) return null;
-
-  return faqList
-    .map((faq) => `${faq.question}: ${faq.answer}`)
-    .join(' | ');
-}
-
-function buildWorkflowSupportPrompt(
-  business: BusinessData,
-  language: 'english' | 'spanish',
-) {
-  const appUrl = getConfiguredAppBaseUrl();
-  const bookingUrl = `${appUrl}/book/${business.publicId}`;
-  const now = new Date();
-  const todayStr = now.toLocaleDateString('en-US', {
-    timeZone: business.timezone,
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-  const todayISO = now.toLocaleDateString('en-CA', { timeZone: business.timezone });
-  const location =
-    [business.street, business.city, business.state].filter(Boolean).join(', ') ||
-    'Location not listed.';
-  const forwardingPhoneNumber = normalizeOptionalPhoneNumber(business.aiReceptionistPhone);
-  const faqText = formatCompactWorkflowFaq(business);
-  const transferFallback = forwardingPhoneNumber
-    ? 'If the caller agrees, say exactly "Let me connect you now." and use transferCall.'
-    : 'If no forwarding phone number is configured, say "Let me take a message for the team."';
-
-  const languageDirective =
-    language === 'english'
-      ? 'Call language: English only. Do not repeat the bilingual language menu.'
-      : 'Call language: Spanish only. Do not repeat the bilingual language menu.';
-  const appointmentLanguageDirective =
-    language === 'english'
-      ? 'Handle appointment booking, availability, rescheduling, cancellations, and appointment questions fully in English.'
-      : 'Handle appointment booking, availability, rescheduling, cancellations, and appointment questions fully in Spanish.';
-
-  const prompt = `You are the AI receptionist for ${business.name}, a ${business.businessType}. ${languageDirective}
-Today is ${todayStr} (${todayISO}). Use this date when the caller says today, tomorrow, or similar.
-Facts: Hours=${formatBusinessHours(business.businessHours?.hours)} Closures=${formatSpecialClosures(
-    business.closureDates,
-    business.timezone
-  )} Location=${location} Booking=${bookingUrl}
-Services (IDs are internal, never say them aloud): ${formatCompactWorkflowServices(business.services)}
-Team (IDs are internal, never say them aloud): ${formatCompactWorkflowStaff(business)}
-${faqText ? `FAQs: ${faqText}` : ''}
-Rules:
-${buildSharedReceptionistOperationalRules({
-  appointmentLanguageDirective,
-  transferFallback,
-  doneToolName: 'endCall',
-  compact: true,
-})}`;
-
-  if (prompt.length > VAPI_WORKFLOW_PROMPT_MAX_CHARS) {
-    throw new Error(
-      `AI receptionist workflow prompt exceeds ${VAPI_WORKFLOW_PROMPT_MAX_CHARS} characters for business ${business.id} (actual=${prompt.length})`
-    );
-  }
-
-  return prompt;
-}
-
-function buildKeypadLanguageSelectionWorkflow(business: BusinessData) {
-  const assistant = buildAssistantConfig(business);
-
-  const baseConversationModel = {
-    provider: assistant.model.provider,
-    model: assistant.model.model,
-    temperature: assistant.model.temperature,
-  };
-
-  return {
-    workflow: {
-      name: `${business.name} Receptionist Workflow`,
-      server: assistant.server,
-      keypadInputPlan: {
-        enabled: true,
-        delimiters: [''],
-        timeoutSeconds: 2,
-      },
-      nodes: [
-        {
-          name: 'language_selection',
-          type: 'conversation',
-          isStart: true,
-          model: {
-            ...baseConversationModel,
-            temperature: 0.2,
-          },
-          transcriber: {
-            provider: 'deepgram',
-            model: 'nova-2',
-            language: 'multi',
-          },
-          voice: assistant.voice,
-          messagePlan: {
-            firstMessage: getAiReceptionistSelectionPrompt(business.name, { mode: 'dtmf' }),
-          },
-          prompt: 'For English, press 1 or say English. Para espanol, oprima 2 o diga espanol.',
-          variableExtractionPlan: {
-            output: [
-              {
-                type: 'string',
-                title: 'preferred_language',
-                description: 'Caller preferred language for this call',
-                enum: ['english', 'spanish'],
-              },
-            ],
-          },
-        },
-        {
-          name: 'english_support',
-          type: 'conversation',
-          model: baseConversationModel,
-          tools: assistant.model.tools,
-          transcriber: {
-            provider: 'deepgram',
-            model: 'nova-2',
-            language: 'en',
-          },
-          voice: assistant.voice,
-          messagePlan: {
-            firstMessage: 'How can I help you today?',
-          },
-          prompt: buildWorkflowSupportPrompt(business, 'english'),
-        },
-        {
-          name: 'spanish_support',
-          type: 'conversation',
-          model: baseConversationModel,
-          tools: assistant.model.tools,
-          transcriber: {
-            provider: 'deepgram',
-            model: 'nova-2',
-            language: 'multi',
-          },
-          voice: assistant.voice,
-          messagePlan: {
-            firstMessage: 'Como puedo ayudarle hoy?',
-          },
-          prompt: buildWorkflowSupportPrompt(business, 'spanish'),
-        },
-      ],
-      edges: [
-        {
-          from: 'language_selection',
-          to: 'english_support',
-          condition: {
-            type: 'logic',
-            liquid: '{{ preferred_language == "english" }}',
-          },
-        },
-        {
-          from: 'language_selection',
-          to: 'spanish_support',
-          condition: {
-            type: 'logic',
-            liquid: '{{ preferred_language == "spanish" }}',
-          },
-        },
-      ],
-    },
-  };
 }
 
 // ─── Tool: checkAvailability ──────────────────────────────────────────────────
@@ -2279,14 +2072,6 @@ export async function POST(req: NextRequest) {
             { error: 'Business not found or AI receptionist disabled' },
             { status: 404 }
           );
-        }
-
-        if (business.aiReceptionistSpanishEnabled) {
-          const workflowResponse = buildKeypadLanguageSelectionWorkflow(business);
-          console.log(
-            `[vapi] assistant-request RETURNING WORKFLOW ms=${Date.now() - t0} bizId=${business.id} bizName=${business.name}`
-          );
-          return NextResponse.json(workflowResponse);
         }
 
         const assistant = buildAssistantConfig(business);
