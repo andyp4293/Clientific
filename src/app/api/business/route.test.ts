@@ -441,7 +441,7 @@ describe('PATCH /api/business', () => {
 
     expect(res.status).toBe(200);
     expect(mockTwilioIncomingUpdate).toHaveBeenCalledWith({
-      voiceUrl: 'https://www.clientific.app/api/webhooks/twilio-voice?publicId=AB-123456',
+      voiceUrl: 'https://api.vapi.ai/twilio/inbound_call',
       voiceMethod: 'POST',
       statusCallback: 'https://api.vapi.ai/twilio/status',
       statusCallbackMethod: 'POST',
@@ -508,7 +508,7 @@ describe('PATCH /api/business', () => {
 
     expect(res.status).toBe(200);
     expect(mockTwilioIncomingUpdate).toHaveBeenCalledWith({
-      voiceUrl: 'http://localhost:3000/api/webhooks/twilio-voice?publicId=AB-123456',
+      voiceUrl: 'https://api.vapi.ai/twilio/inbound_call',
       voiceMethod: 'POST',
       statusCallback: 'https://api.vapi.ai/twilio/status',
       statusCallbackMethod: 'POST',
@@ -565,7 +565,7 @@ describe('PATCH /api/business', () => {
 
     expect(res.status).toBe(200);
     expect(mockTwilioIncomingUpdate).toHaveBeenNthCalledWith(1, {
-      voiceUrl: 'https://www.clientific.app/api/webhooks/twilio-voice?publicId=AB-123456',
+      voiceUrl: 'https://api.vapi.ai/twilio/inbound_call',
       voiceMethod: 'POST',
       statusCallback: 'https://api.vapi.ai/twilio/status',
       statusCallbackMethod: 'POST',
@@ -573,7 +573,7 @@ describe('PATCH /api/business', () => {
       smsMethod: 'POST',
     });
     expect(mockTwilioIncomingUpdate).toHaveBeenNthCalledWith(2, {
-      voiceUrl: 'https://www.clientific.app/api/webhooks/twilio-voice?publicId=AB-123456',
+      voiceUrl: 'https://api.vapi.ai/twilio/inbound_call',
       voiceMethod: 'POST',
       statusCallback: 'https://api.vapi.ai/twilio/status',
       statusCallbackMethod: 'POST',
@@ -743,6 +743,55 @@ describe('PATCH /api/business', () => {
       phoneNumber: '+19084184377',
       limit: 1,
     });
+    expect(mockTwilioIncomingUpdate).toHaveBeenCalledWith({
+      voiceUrl: 'https://api.vapi.ai/twilio/inbound_call',
+      voiceMethod: 'POST',
+      statusCallback: 'https://api.vapi.ai/twilio/status',
+      statusCallbackMethod: 'POST',
+      smsUrl: 'https://www.clientific.app/api/webhooks/twilio-sms',
+      smsMethod: 'POST',
+    });
+  });
+
+  it('routes spanish-enabled AI numbers through the Twilio language selector webhook', async () => {
+    process.env.VAPI_PRIVATE_KEY = 'vapi_test_key';
+
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        ...fakeBusiness,
+        aiReceptionistEnabled: true,
+        aiReceptionistSpanishEnabled: true,
+        vapiPhoneNumberId: 'vapi-pn-1',
+        vapiPhoneNumber: '+19084184377',
+        smsAiEnabled: true,
+        smsAiPhoneNumber: '+19084184377',
+      });
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: 'vapi-pn-1',
+        number: '+19084184377',
+        server: { url: 'https://www.clientific.app/api/webhooks/vapi' },
+      }),
+    });
+
+    mockBusinessUpdate.mockResolvedValue({
+      ...fakeBusiness,
+      aiReceptionistEnabled: true,
+      aiReceptionistSpanishEnabled: true,
+      vapiPhoneNumberId: 'vapi-pn-1',
+      vapiPhoneNumber: '+19084184377',
+      smsAiEnabled: true,
+      smsAiPhoneNumber: '+19084184377',
+    });
+
+    const res = await PATCH(makePatchRequest({ aiReceptionistSpanishEnabled: true }));
+
+    expect(res.status).toBe(200);
     expect(mockTwilioIncomingUpdate).toHaveBeenCalledWith({
       voiceUrl: 'https://www.clientific.app/api/webhooks/twilio-voice?publicId=AB-123456',
       voiceMethod: 'POST',

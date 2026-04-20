@@ -24,6 +24,7 @@ type TwilioProvisionedNumber = {
   phoneNumber: string;
 };
 
+const VAPI_TWILIO_INBOUND_CALL_URL = 'https://api.vapi.ai/twilio/inbound_call';
 const VAPI_TWILIO_STATUS_CALLBACK_URL = 'https://api.vapi.ai/twilio/status';
 
 function getTrimmedEnv(name: string): string | null {
@@ -111,10 +112,15 @@ async function provisionTwilioPhoneNumber(preferredAreaCode?: string | null): Pr
   };
 }
 
-function buildTwilioIncomingVoiceWebhookUrl(
+function buildAiReceptionistVoiceWebhookUrl(
   webhookBaseUrl: string,
-  publicId: string | null | undefined
+  publicId: string | null | undefined,
+  spanishEnabled: boolean
 ): string {
+  if (!spanishEnabled) {
+    return VAPI_TWILIO_INBOUND_CALL_URL;
+  }
+
   const trimmedBaseUrl = webhookBaseUrl.replace(/\/$/, '');
   if (!publicId) {
     return `${trimmedBaseUrl}/api/webhooks/twilio-voice`;
@@ -541,6 +547,10 @@ export async function PATCH(req: NextRequest) {
     const finalEnabled = aiReceptionistEnabled !== undefined
       ? aiReceptionistEnabled
       : current.aiReceptionistEnabled;
+    const finalSpanishEnabled =
+      aiReceptionistSpanishEnabled !== undefined
+        ? aiReceptionistSpanishEnabled
+        : current.aiReceptionistSpanishEnabled;
 
     const vapiUpdates: {
       vapiPhoneNumberId?: string | null;
@@ -711,9 +721,10 @@ export async function PATCH(req: NextRequest) {
     const appUrl = getConfiguredAppBaseUrl();
     const webhookBaseUrl = getConfiguredWebhookBaseUrl();
     const serverUrl = `${webhookBaseUrl}/api/webhooks/vapi`;
-    const voiceWebhookUrl = buildTwilioIncomingVoiceWebhookUrl(
+    const voiceWebhookUrl = buildAiReceptionistVoiceWebhookUrl(
       webhookBaseUrl,
-      current.publicId ?? null
+      current.publicId ?? null,
+      finalSpanishEnabled
     );
 
     if (vapiConfigured && finalEnabled && !current.vapiPhoneNumberId) {
