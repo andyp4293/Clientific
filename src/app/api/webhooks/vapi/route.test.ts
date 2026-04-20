@@ -270,7 +270,7 @@ describe('POST /api/webhooks/vapi', () => {
       "If the caller's requested service is unclear, sounds misheard, or does not clearly match one of the listed services"
     );
     expect(englishNode.prompt).toContain(
-      'If a booking or appointment request is still in progress, you are not done.'
+      'If a booking or appointment request is still in progress, ask a short follow-up or clarification question instead of ending the call.'
     );
     expect(englishNode.prompt).toContain(
       'Questions about whether the business is for sale'

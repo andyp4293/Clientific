@@ -860,7 +860,7 @@ function buildSharedReceptionistOperationalRules({
     : '- Before calling a tool, say one short natural phrase — vary it each time and match it to the situation. Examples: "Let me check that.", "Let me see what\'s open.", "Let me look at the schedule.", "Let me get that booked for you.", "Let me lock that in.", "Let me pull that up.", "One moment.", "Sure, let me grab that." — never repeat the same phrase twice in a row. If you need to call two tools back-to-back (e.g. getAppointments then cancelAppointment), say the phrase only once before the first tool — do NOT say another phrase between them';
 
   const unknownAnswerRule = compact
-    ? '- Only answer a factual business question when the answer is explicitly supported by the information above. If it is not listed above, do not infer or make it up. Say you do not have that information and ask whether they would like to be transferred.'
+    ? '- Only answer facts explicitly supported above. If something is not listed, do not guess. Say you do not have that information and ask whether they would like to be transferred.'
     : '- Only answer a factual business question when the answer is explicitly supported by the information above. If it is not listed above, do not infer, assume, or make it up.\n- For any question outside the information above, clearly say you do not have that information and ask whether they would like to be transferred to someone who might be able to help.';
 
   const unknownPolicyRule = compact
@@ -911,20 +911,19 @@ function buildSharedReceptionistOperationalRules({
       unknownAnswerRule,
       '- If a caller asks about a listed special closure date, tell them the business is closed that day.',
       '- If the caller asks whether a staff member works on a specific day or time, answer from the team availability above. Never say someone is available outside the listed days or hours.',
-      '- If the caller asks for a staff member who is not listed on the team, say you could not find them on the team, do not guess, and ask if they would like to be transferred to someone who might be able to help.',
+      '- If the caller asks for a staff member who is not listed on the team, say you could not find them on the team and offer transfer.',
       unknownPolicyRule,
       '- Whenever you say a date out loud, always use the full weekday and full month name.',
       '- For new bookings, gather the requested service or services, any staff preference, and the preferred date/time. Maximum 5 services. Keep multiple services in one combined appointment.',
-      '- If the caller\'s requested service is unclear, sounds misheard, or does not clearly match one of the listed services, ask a short clarification question before using any booking tool. Do not guess, do not treat the caller as done, and do not end the call while that booking request is still unresolved.',
+      '- If the caller\'s requested service is unclear, sounds misheard, or does not clearly match one of the listed services, ask a short clarification question before using any booking tool. Do not guess or end the call while that booking request is unresolved.',
       '- Once a caller names a specific staff member, keep that same staffId on every later manage_booking call until the caller changes staff or says anyone is fine.',
       '- For availability, call manage_booking with action "checkAvailability" and include date, serviceIds, requestedTime if provided, and staffId if requested.',
-      '- If a requested slot is available and the caller phone matches exactly one saved customer, confirm the stored first name. Otherwise ask what name to use. If the time is taken, offer the 3 closest alternatives. If no specific time was given, offer the available options. If the tool says the staff member is off or unavailable, do not keep offering that same staff member.',
+      '- If a requested slot is available and the caller phone matches exactly one saved customer, confirm the stored first name. Otherwise ask what name to use. If the time is taken, offer the 3 closest alternatives. If the tool says the staff member is off or unavailable, do not keep offering that same staff member.',
       '- After choosing the slot, briefly summarize the booking and wait for confirmation before calling createBooking.',
       '- After they confirm, call createBooking with the chosen serviceIds, exact slotTime, staffId if used, customerName only when needed, and notes for any special requests they already mentioned. Do not call createBooking until they confirm.',
       '- After booking, relay the confirmation and ask if they need anything else. For existing bookings, use getAppointments before cancelAppointment or updateAppointment when needed. Never cancel just to reschedule.',
-      '- If they only want to update booking time, name, or notes, use updateAppointment.',
       '- If they ask for a human, manager, or real person, say exactly "Let me connect you now." Then call transferCall.',
-      '- If a booking or appointment request is still in progress, you are not done. Ask a short follow-up or clarification question instead of ending the call.',
+      '- If a booking or appointment request is still in progress, ask a short follow-up or clarification question instead of ending the call.',
       doneRule,
       '- Before calling a tool, say one short natural phrase like "Let me check that."',
       `- If you do not know the answer and a transfer destination is configured, do not guess. First say you do not have that information and ask if they would like to be transferred to someone who might be able to help. ${transferFallback}`,
