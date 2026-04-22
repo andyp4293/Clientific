@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import type { PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
 import type { MobileBillingSummary } from '@/lib/clientific-api';
+import { APP_PRIVACY_URL, APP_TERMS_URL } from '@/lib/clientific-brand';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -50,6 +51,37 @@ function getPackageSupportingCopy(aPackage: PurchasesPackage) {
   }
 
   return 'Unlock the full Clientific business workspace on iPhone with Apple-managed billing.';
+}
+
+function getPackageDurationCopy(aPackage: PurchasesPackage) {
+  const period = aPackage.product.subscriptionPeriod;
+
+  if (!period) {
+    return 'Auto-renewing subscription';
+  }
+
+  switch (period) {
+    case 'P1W':
+      return 'Weekly auto-renewing subscription';
+    case 'P1M':
+      return 'Monthly auto-renewing subscription';
+    case 'P2M':
+      return 'Every 2 months auto-renewing subscription';
+    case 'P3M':
+      return 'Every 3 months auto-renewing subscription';
+    case 'P6M':
+      return 'Every 6 months auto-renewing subscription';
+    case 'P1Y':
+      return 'Yearly auto-renewing subscription';
+    default:
+      return 'Auto-renewing subscription';
+  }
+}
+
+function getPackageRenewalCopy(aPackage: PurchasesPackage) {
+  return `After the 14-day free trial, renews for ${aPackage.product.priceString}/${getPackageDurationCopy(aPackage)
+    .replace(' auto-renewing subscription', '')
+    .toLowerCase()} unless canceled at least 24 hours before renewal.`;
 }
 
 export function MobileBillingScreen({
@@ -236,6 +268,13 @@ export function MobileBillingScreen({
                         {getPackageSupportingCopy(aPackage)}
                       </Text>
 
+                      <Text style={[styles.packageDetail, { color: theme.mutedText }]}>
+                        {getPackageDurationCopy(aPackage)}
+                      </Text>
+                      <Text style={[styles.packageLegal, { color: theme.mutedText }]}>
+                        {getPackageRenewalCopy(aPackage)}
+                      </Text>
+
                       <Pressable
                         accessibilityRole="button"
                         disabled={isPurchasingSubscription || isRestoringSubscription}
@@ -281,6 +320,33 @@ export function MobileBillingScreen({
                     {isRestoringSubscription ? 'Restoring...' : 'Restore Purchases'}
                   </Text>
                 </Pressable>
+              </View>
+
+              <View
+                style={[
+                  styles.subscriptionLegalCard,
+                  { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                ]}>
+                <Text style={[styles.legalText, { color: theme.mutedText }]}>
+                  Manage or cancel subscriptions in your App Store account settings.
+                </Text>
+                <View style={styles.legalLinksRow}>
+                  <Pressable
+                    accessibilityRole="link"
+                    onPress={() => void onOpenUrl(APP_TERMS_URL)}
+                    testID="mobile-billing-open-terms">
+                    <Text style={[styles.legalLink, { color: theme.accent }]}>Terms of Use</Text>
+                  </Pressable>
+                  <Text style={[styles.legalDivider, { color: theme.mutedText }]}>•</Text>
+                  <Pressable
+                    accessibilityRole="link"
+                    onPress={() => void onOpenUrl(APP_PRIVACY_URL)}
+                    testID="mobile-billing-open-privacy">
+                    <Text style={[styles.legalLink, { color: theme.accent }]}>
+                      Privacy Policy
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
           ) : null}
@@ -650,6 +716,41 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
     fontWeight: '700',
+  },
+  packageDetail: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
+  packageLegal: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  subscriptionLegalCard: {
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  legalText: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  legalLinksRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+  },
+  legalLink: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
+  legalDivider: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   invoiceCard: {
     borderWidth: 1,

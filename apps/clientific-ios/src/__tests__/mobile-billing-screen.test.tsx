@@ -2,6 +2,7 @@ import React from 'react';
 import type { PurchasesOffering } from 'react-native-purchases';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { MobileBillingScreen } from '@/components/mobile-billing-screen';
+import { APP_PRIVACY_URL, APP_TERMS_URL } from '@/lib/clientific-brand';
 
 const data = {
   business: {
@@ -182,7 +183,7 @@ describe('MobileBillingScreen', () => {
   });
 
   it('shows the App Store purchase wall for inactive iPhone accounts', () => {
-    const { onPurchasePackage, onRestorePurchases } = renderScreen({
+    const { onOpenUrl, onPurchasePackage, onRestorePurchases } = renderScreen({
       appStoreOffering,
       data: {
         ...data,
@@ -209,10 +210,20 @@ describe('MobileBillingScreen', () => {
     expect(screen.getByText('Choose your plan')).toBeTruthy();
     expect(screen.getByText('Starter')).toBeTruthy();
     expect(screen.getByText('14-day trial')).toBeTruthy();
+    expect(screen.getByText('Monthly auto-renewing subscription')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'After the 14-day free trial, renews for $49.00/monthly unless canceled at least 24 hours before renewal.',
+      ),
+    ).toBeTruthy();
     fireEvent.press(screen.getByTestId('mobile-billing-purchase-starter_monthly'));
     fireEvent.press(screen.getByTestId('mobile-billing-restore-purchases'));
+    fireEvent.press(screen.getByTestId('mobile-billing-open-terms'));
+    fireEvent.press(screen.getByTestId('mobile-billing-open-privacy'));
 
     expect(onPurchasePackage).toHaveBeenCalled();
     expect(onRestorePurchases).toHaveBeenCalled();
+    expect(onOpenUrl).toHaveBeenCalledWith(APP_TERMS_URL);
+    expect(onOpenUrl).toHaveBeenCalledWith(APP_PRIVACY_URL);
   });
 });
