@@ -8,6 +8,47 @@ import {
 } from '@/lib/revenuecat';
 import { isSubscriptionAccessActive } from '@/lib/subscription';
 
+function getRevenueCatSyncRetryDelaysMs() {
+  if (process.env.NODE_ENV === 'test') {
+    return [0, 0, 0, 0];
+  }
+
+  return [0, 1000, 2000, 4000];
+}
+
+async function sleep(ms: number) {
+  if (ms <= 0) {
+    return;
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchSubscriberSnapshotWithRetry(appUserId: string) {
+  let lastError: unknown = null;
+
+  for (const delayMs of getRevenueCatSyncRetryDelaysMs()) {
+    await sleep(delayMs);
+
+    try {
+      const subscriber = await fetchRevenueCatSubscriber(appUserId);
+      const snapshot = resolveRevenueCatSubscriberSnapshot(subscriber);
+
+      if (snapshot) {
+        return snapshot;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastError) {
+    console.warn('RevenueCat subscriber sync retries exhausted:', lastError);
+  }
+
+  return null;
+}
+
 export async function POST(request: Request) {
   const authorized = await requireMobileSession(request);
   if ('error' in authorized) {
@@ -27,8 +68,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const subscriber = await fetchRevenueCatSubscriber(expectedAppUserId);
-    const snapshot = resolveRevenueCatSubscriberSnapshot(subscriber);
+    const snapshot = await fetchSubscriberSnapshotWithRetry(expectedAppUserId);
 
     if (!snapshot) {
       return NextResponse.json(

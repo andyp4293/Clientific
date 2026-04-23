@@ -99,6 +99,10 @@ import { APP_PRIVACY_URL, APP_TERMS_URL } from '@/lib/clientific-brand';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
+  hasActiveAppStorePurchaseResult,
+  isPendingAppStoreSyncError,
+} from '@/lib/app-store-sync';
+import {
   addPushNotificationResponseListener,
   registerForPushNotificationsAsync,
 } from '@/lib/mobile-push-notifications';
@@ -831,15 +835,29 @@ export function ClientificNativeApp() {
         throw new Error('Sign in again to continue.');
       }
 
+      let purchaseResult:
+        | Awaited<ReturnType<typeof purchaseRevenueCatPackage>>
+        | null = null;
+
       setIsPurchasingSubscription(true);
       setBillingPurchaseError(null);
       setBillingNotice(null);
 
       try {
         await configureRevenueCatForBusiness(session.business.id);
-        await purchaseRevenueCatPackage(aPackage);
+        purchaseResult = await purchaseRevenueCatPackage(aPackage);
         await syncActiveAppStoreSubscription();
       } catch (error) {
+        if (
+          isPendingAppStoreSyncError(error) &&
+          hasActiveAppStorePurchaseResult(purchaseResult)
+        ) {
+          setBillingNotice(
+            'Your App Store purchase went through and is still syncing. Pull to refresh in a few seconds if your plan does not unlock right away.',
+          );
+          return;
+        }
+
         if (isRevenueCatPurchaseCancelled(error)) {
           return;
         }
@@ -859,15 +877,29 @@ export function ClientificNativeApp() {
       throw new Error('Sign in again to continue.');
     }
 
+    let restoreResult:
+      | Awaited<ReturnType<typeof restoreRevenueCatPurchases>>
+      | null = null;
+
     setIsRestoringSubscription(true);
     setBillingPurchaseError(null);
 
     try {
       await configureRevenueCatForBusiness(session.business.id);
-      await restoreRevenueCatPurchases();
+      restoreResult = await restoreRevenueCatPurchases();
       await syncActiveAppStoreSubscription();
       setBillingNotice('App Store purchases restored.');
     } catch (error) {
+      if (
+        isPendingAppStoreSyncError(error) &&
+        hasActiveAppStorePurchaseResult(restoreResult)
+      ) {
+        setBillingNotice(
+          'Your App Store purchases are still syncing. Pull to refresh in a few seconds if your plan does not unlock right away.',
+        );
+        return;
+      }
+
       setBillingPurchaseError(
         getReadableError(error, 'Unable to restore App Store purchases right now.'),
       );

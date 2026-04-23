@@ -131,6 +131,23 @@ describe('POST /api/mobile/billing/sync-app-store', () => {
     );
   });
 
+  it('retries RevenueCat lookup before failing when sandbox entitlements are delayed', async () => {
+    mockResolveRevenueCatSubscriberSnapshot
+      .mockReturnValueOnce(null)
+      .mockReturnValueOnce(null)
+      .mockReturnValue(snapshot);
+
+    const response = await POST(
+      new Request('https://www.clientific.app/api/mobile/billing/sync-app-store', {
+        method: 'POST',
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockFetchRevenueCatSubscriber).toHaveBeenCalledTimes(3);
+    expect(mockResolveRevenueCatSubscriberSnapshot).toHaveBeenCalledTimes(3);
+  });
+
   it('surfaces ownership conflicts for restores tied to another business', async () => {
     mockApplyRevenueCatSubscriptionSnapshot.mockResolvedValue({
       applied: false,
