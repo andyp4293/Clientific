@@ -14,6 +14,7 @@ import type {
   MobileAiReceptionistSummary,
   MobileAiReceptionistUpdateInput,
 } from '@/lib/clientific-api';
+import { formatPhoneForDialing } from '@/lib/clientific-phone';
 import { getAiReceptionistUpgradeSummary } from '@/lib/mobile-billing-copy';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -101,6 +102,8 @@ export function MobileAiReceptionistScreen({
       : data?.aiReceptionistEnabled
         ? 'pending'
         : 'disabled';
+  const forwardingDialNumber = formatPhoneForDialing(data?.unifiedNumber);
+  const iphoneForwardingCode = forwardingDialNumber ? `*21*${forwardingDialNumber}#` : '';
 
   async function submitDraft(partial?: Partial<DraftState>) {
     if (!draft) {
@@ -265,6 +268,25 @@ export function MobileAiReceptionistScreen({
                   {data.unifiedNumber ?? 'Not assigned yet'}
                 </Text>
               </View>
+
+              {forwardingDialNumber ? (
+                <View
+                  style={[
+                    styles.forwardingTipCard,
+                    { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                  ]}>
+                  <Text style={[styles.forwardingTipTitle, { color: theme.text }]}>
+                    Forwarding shortcut
+                  </Text>
+                  <Text style={[styles.sectionText, { color: theme.mutedText }]}>
+                    If your carrier uses star codes, dial the destination number without the plus
+                    sign.
+                  </Text>
+                  <Text style={[styles.forwardingTipCode, { color: theme.text }]}>
+                    {iphoneForwardingCode}
+                  </Text>
+                </View>
+              ) : null}
 
               <Pressable
                 accessibilityRole="button"
@@ -666,6 +688,23 @@ const styles = StyleSheet.create({
   statusNumberValue: {
     fontSize: 18,
     lineHeight: 24,
+    fontWeight: '800',
+  },
+  forwardingTipCard: {
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 6,
+  },
+  forwardingTipTitle: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
+  forwardingTipCode: {
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: '800',
   },
   sectionTitle: {

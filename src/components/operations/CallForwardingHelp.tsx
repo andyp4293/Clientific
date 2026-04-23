@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react';
 import { APP_SUPPORT_PATH } from '@/lib/brand';
 
 type CallForwardingHelpProps = {
-  forwardingNumber: string;
+  forwardingDialNumber: string;
   iphoneForwardingCode: string;
 };
 
@@ -50,7 +50,7 @@ function ToggleChevron({ open }: { open: boolean }) {
 }
 
 export function CallForwardingHelp({
-  forwardingNumber,
+  forwardingDialNumber,
   iphoneForwardingCode,
 }: CallForwardingHelpProps) {
   const [showForwardingSteps, setShowForwardingSteps] = useState(false);
@@ -80,7 +80,7 @@ export function CallForwardingHelp({
         <>
           Type in{' '}
           <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">
-            {forwardingNumber}
+            {forwardingDialNumber}
           </span>{' '}
           and save. You are done.
         </>,
@@ -97,7 +97,7 @@ export function CallForwardingHelp({
         <>
           Wait for a stutter dial tone, then dial{' '}
           <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">
-            {forwardingNumber}
+            {forwardingDialNumber}
           </span>
         </>,
         'Wait for a confirmation tone. You are done.',

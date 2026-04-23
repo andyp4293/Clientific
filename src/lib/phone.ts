@@ -96,6 +96,16 @@ export function formatPhoneForDisplay(phone: string | null | undefined): string 
   return trimmed;
 }
 
+export function formatPhoneForDialing(phone: string | null | undefined): string {
+  if (typeof phone !== 'string') return '';
+
+  const trimmed = phone.trim();
+  if (!trimmed) return '';
+
+  const digits = digitsOnly(trimmed);
+  return digits || trimmed;
+}
+
 export function buildCustomerPhoneMatchClauses(
   phone: string | null | undefined
 ): Array<{ phoneLookupKey?: string; phone?: string }> {

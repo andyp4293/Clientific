@@ -86,8 +86,8 @@ describe('AiReceptionistManager', () => {
     expect(screen.getByRole('heading', { name: 'iPhone' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Android' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Landline' })).toBeInTheDocument();
-    expect(screen.getByText('*21*+19084184377#')).toBeInTheDocument();
-    expect(screen.getAllByText(/\+19084184377/).length).toBeGreaterThan(0);
+    expect(screen.getByText('*21*19084184377#')).toBeInTheDocument();
+    expect(screen.getAllByText(/\b19084184377\b/).length).toBeGreaterThan(0);
 
     expect(screen.getByRole('link', { name: /Need help\? Contact support/i })).toHaveAttribute(
       'href',

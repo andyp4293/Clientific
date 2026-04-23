@@ -96,4 +96,21 @@ describe('MobileAiReceptionistScreen', () => {
     expect(screen.getByText('Allow Spanish callers')).toBeTruthy();
     expect(screen.getByText('On')).toBeTruthy();
   });
+
+  it('shows a dialer-safe forwarding shortcut without the plus sign', () => {
+    render(
+      <MobileAiReceptionistScreen
+        data={data}
+        error={null}
+        isLoading={false}
+        isRefreshing={false}
+        isSaving={false}
+        onRefresh={jest.fn().mockResolvedValue(undefined)}
+        onSave={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByText('Forwarding shortcut')).toBeTruthy();
+    expect(screen.getByText('*21*18885550123#')).toBeTruthy();
+  });
 });

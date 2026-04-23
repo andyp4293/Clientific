@@ -3,6 +3,7 @@ import {
   buildCustomerPhoneData,
   buildCustomerPhoneMatchClauses,
   buildPhoneLookupKey,
+  formatPhoneForDialing,
   formatPhoneForDisplay,
   normalizeOptionalPhoneNumber,
 } from './phone';
@@ -52,5 +53,11 @@ describe('phone helpers', () => {
   it('formats US numbers for front-desk display', () => {
     expect(formatPhoneForDisplay('+18482612613')).toBe('(848) 261-2613');
     expect(formatPhoneForDisplay('8482612613')).toBe('(848) 261-2613');
+  });
+
+  it('formats phone numbers for dialer-safe forwarding shortcuts', () => {
+    expect(formatPhoneForDialing('+18482612613')).toBe('18482612613');
+    expect(formatPhoneForDialing('(848) 261-2613')).toBe('8482612613');
+    expect(formatPhoneForDialing('[YOUR AI NUMBER]')).toBe('[YOUR AI NUMBER]');
   });
 });

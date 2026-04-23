@@ -11,6 +11,7 @@ import {
   getAiReceptionistSetupState,
   readAiReceptionistActivationUntil,
 } from '@/lib/ai-receptionist-settings';
+import { formatPhoneForDialing } from '@/lib/phone';
 import { canAccessAiReceptionist } from '@/lib/plan-access';
 
 interface Business {
@@ -203,7 +204,8 @@ export default function AiReceptionistManager() {
   );
   const unifiedBusinessAiNumber = aiSetupState.unifiedNumber;
   const forwardingNumber = unifiedBusinessAiNumber || '[YOUR AI NUMBER]';
-  const iphoneForwardingCode = `*21*${forwardingNumber}#`;
+  const forwardingDialNumber = formatPhoneForDialing(forwardingNumber);
+  const iphoneForwardingCode = `*21*${forwardingDialNumber}#`;
 
   if (isLoading) {
     return (
@@ -557,7 +559,7 @@ export default function AiReceptionistManager() {
                       need to do.
                     </p>
                     <CallForwardingHelp
-                      forwardingNumber={forwardingNumber}
+                      forwardingDialNumber={forwardingDialNumber}
                       iphoneForwardingCode={iphoneForwardingCode}
                     />
                   </div>

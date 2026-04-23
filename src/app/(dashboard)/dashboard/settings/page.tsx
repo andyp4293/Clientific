@@ -24,6 +24,7 @@ import {
   getAiReceptionistSetupState,
   readAiReceptionistActivationUntil,
 } from '@/lib/ai-receptionist-settings';
+import { formatPhoneForDialing } from '@/lib/phone';
 
 async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -525,7 +526,8 @@ export default function SettingsPage() {
   );
   const unifiedBusinessAiNumber = aiSetupState.unifiedNumber;
   const forwardingNumber = unifiedBusinessAiNumber || '[YOUR AI NUMBER]';
-  const iphoneForwardingCode = `*21*${forwardingNumber}#`;
+  const forwardingDialNumber = formatPhoneForDialing(forwardingNumber);
+  const iphoneForwardingCode = `*21*${forwardingDialNumber}#`;
 
   return (
     <div>
@@ -1327,7 +1329,7 @@ export default function SettingsPage() {
                         to do.
                       </p>
                       <CallForwardingHelp
-                        forwardingNumber={forwardingNumber}
+                        forwardingDialNumber={forwardingDialNumber}
                         iphoneForwardingCode={iphoneForwardingCode}
                       />
                     </div>
