@@ -1363,6 +1363,15 @@ export async function updateMobileBusinessProfile(
   });
 }
 
+export async function deleteMobileBusinessAccount(token: string) {
+  return requestJson<{ success: true }>('/api/mobile/business', {
+    method: 'DELETE',
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
 export async function registerMobilePushToken(
   token: string,
   input: {

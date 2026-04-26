@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,8 +19,10 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 type MobileOnboardingScreenProps = {
   context?: 'onboarding' | 'settings';
   error: string | null;
+  isDeletingAccount?: boolean;
   isSaving: boolean;
   onBack?: () => void;
+  onDeleteAccount?: () => Promise<void>;
   profile: MobileBusinessProfile;
   onSignOut: () => Promise<void>;
   onSubmit: (input: MobileOnboardingInput) => Promise<void>;
@@ -48,8 +51,10 @@ function getDefaultTimezone() {
 export function MobileOnboardingScreen({
   context = 'onboarding',
   error,
+  isDeletingAccount = false,
   isSaving,
   onBack,
+  onDeleteAccount,
   profile,
   onSignOut,
   onSubmit,
@@ -89,6 +94,31 @@ export function MobileOnboardingScreen({
     ? 'Update your business contact and location details without leaving the app.'
     : 'Add the business contact and location details the app needs before you jump into referrals, funds, and daily activity.';
   const primaryActionLabel = isSettingsMode ? 'Save changes' : 'Finish setup';
+  const isBusy = isSaving || isDeletingAccount;
+
+  const handleDeleteAccount = () => {
+    if (!onDeleteAccount) {
+      return;
+    }
+
+    Alert.alert(
+      'Delete account?',
+      'This permanently deletes your business account, customers, appointments, deals, payout setup, and saved settings from Clientific. App Store subscriptions must still be canceled in your Apple account settings.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: () => {
+            void onDeleteAccount();
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
@@ -329,7 +359,7 @@ export function MobileOnboardingScreen({
             <View style={styles.actions}>
               <Pressable
                 accessibilityRole="button"
-                disabled={isSaving}
+                disabled={isBusy}
                 onPress={() =>
                   void onSubmit({
                     ownerPhone: form.ownerPhone,
@@ -345,7 +375,7 @@ export function MobileOnboardingScreen({
                 }
                 style={[
                   styles.primaryButton,
-                  { backgroundColor: theme.accent, opacity: isSaving ? 0.72 : 1 },
+                  { backgroundColor: theme.accent, opacity: isBusy ? 0.72 : 1 },
                 ]}
                 testID="mobile-onboarding-submit">
                 {isSaving ? (
@@ -365,6 +395,45 @@ export function MobileOnboardingScreen({
                 </Pressable>
               ) : null}
             </View>
+
+            {isSettingsMode && onDeleteAccount ? (
+              <View
+                style={[
+                  styles.dangerCard,
+                  { backgroundColor: theme.surface, borderColor: theme.border },
+                ]}>
+                <Text style={[styles.dangerTitle, { color: theme.danger }]}>Delete account</Text>
+                <Text style={[styles.dangerText, { color: theme.mutedText }]}>
+                  Permanently delete your Clientific business account and the data tied to it,
+                  including appointments, customers, deals, referrals, payouts, and settings.
+                </Text>
+                <Text style={[styles.dangerText, { color: theme.mutedText }]}>
+                  If you started a subscription through Apple, cancel it separately in your App
+                  Store account settings to avoid future renewals.
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={isBusy}
+                  onPress={handleDeleteAccount}
+                  style={[
+                    styles.deleteButton,
+                    {
+                      backgroundColor: theme.surfaceMuted,
+                      borderColor: theme.danger,
+                      opacity: isBusy ? 0.72 : 1,
+                    },
+                  ]}
+                  testID="mobile-settings-delete-account">
+                  {isDeletingAccount ? (
+                    <ActivityIndicator color={theme.danger} />
+                  ) : (
+                    <Text style={[styles.deleteButtonText, { color: theme.danger }]}>
+                      Delete account
+                    </Text>
+                  )}
+                </Pressable>
+              </View>
+            ) : null}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -524,6 +593,35 @@ const styles = StyleSheet.create({
   actions: {
     gap: 10,
     paddingTop: 4,
+  },
+  dangerCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    gap: 10,
+  },
+  dangerTitle: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: '800',
+  },
+  dangerText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  deleteButton: {
+    minHeight: 52,
+    borderWidth: 1,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  deleteButtonText: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '800',
   },
   primaryButton: {
     minHeight: 54,

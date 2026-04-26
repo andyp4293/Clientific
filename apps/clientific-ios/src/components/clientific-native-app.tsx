@@ -19,6 +19,7 @@ import {
   createMobileCheckIn,
   createMobileAppointment,
   ClientificApiError,
+  deleteMobileBusinessAccount,
   deleteMobileService,
   deleteMobileServiceGroup,
   deleteMobileStaff,
@@ -181,6 +182,7 @@ export function ClientificNativeApp() {
   const [isRefreshingDeals, setIsRefreshingDeals] = useState(false);
   const [isLoadingBusinessProfile, setIsLoadingBusinessProfile] = useState(false);
   const [isSavingBusinessProfile, setIsSavingBusinessProfile] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isLoadingReferrals, setIsLoadingReferrals] = useState(false);
   const [isRefreshingReferrals, setIsRefreshingReferrals] = useState(false);
   const [isLoadingFunds, setIsLoadingFunds] = useState(false);
@@ -304,6 +306,7 @@ export function ClientificNativeApp() {
     setBillingNotice(null);
     setBillingPurchaseError(null);
     setPendingSubscriptionRedirectMessage(null);
+    setIsDeletingAccount(false);
     setAppointmentsDate(formatMobileDateKey(new Date()));
     setCheckInsDate(formatMobileDateKey(new Date()));
     setCustomersPage(1);
@@ -1589,6 +1592,39 @@ export function ClientificNativeApp() {
     [handleSessionError, loadHome, session],
   );
 
+  const handleDeleteAccount = useCallback(async () => {
+    if (!session) {
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    setBusinessProfileError(null);
+
+    try {
+      if (registeredPushToken) {
+        await unregisterMobilePushToken(session.token, registeredPushToken).catch((error) => {
+          console.warn('Unable to unregister mobile push token before deletion:', error);
+        });
+      }
+
+      await deleteMobileBusinessAccount(session.token);
+      await signOut();
+      setAuthNotice('Your account and business data were permanently deleted.');
+      setAuthError(null);
+    } catch (error) {
+      if (error instanceof ClientificApiError && error.status === 401) {
+        await signOut('Your mobile session expired. Sign in again.');
+        return;
+      }
+
+      setBusinessProfileError(
+        getReadableError(error, 'Unable to delete your account right now.'),
+      );
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  }, [registeredPushToken, session, signOut]);
+
   const handleSaveBusinessHours = useCallback(
     async (input: {
       hours: Array<{
@@ -2781,6 +2817,7 @@ export function ClientificNativeApp() {
       isBusinessHoursRefreshing={isRefreshingBusinessHours}
       isBusinessHoursSaving={isSavingBusinessHours}
       isBusinessProfileLoading={isLoadingBusinessProfile}
+      isDeletingAccount={isDeletingAccount}
       isCheckInsLoading={isLoadingCheckIns}
       isCheckInsRefreshing={isRefreshingCheckIns}
       isCustomerViewLoading={isLoadingCustomerView}
@@ -2814,6 +2851,7 @@ export function ClientificNativeApp() {
       onCreateServiceGroup={handleCreateServiceGroup}
       onCreateService={handleCreateService}
       onCreateStaff={handleCreateStaff}
+      onDeleteAccount={handleDeleteAccount}
       onDeleteCustomer={handleDeleteCustomer}
       onDeleteCustomerGroup={handleDeleteCustomerGroup}
       onDeleteAppointment={handleDeleteAppointment}

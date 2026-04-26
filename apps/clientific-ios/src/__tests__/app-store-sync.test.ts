@@ -3,6 +3,17 @@ import {
   hasActiveAppStorePurchaseResult,
   isPendingAppStoreSyncError,
 } from '@/lib/app-store-sync';
+import type { CustomerInfo, PurchasesEntitlementInfo } from 'react-native-purchases';
+
+const emptyEntitlements = {
+  active: {},
+  all: {},
+  verification: 'NOT_REQUESTED' as CustomerInfo['entitlements']['verification'],
+} as CustomerInfo['entitlements'];
+
+const activeEntitlement = {
+  identifier: 'clientific_access',
+} as PurchasesEntitlementInfo;
 
 describe('app-store-sync helpers', () => {
   it('detects the transient RevenueCat sync error code', () => {
@@ -28,8 +39,8 @@ describe('app-store-sync helpers', () => {
       hasActiveAppStorePurchaseResult({
         customerInfo: {
           activeSubscriptions: ['app.clientific.mobile.starter.monthly'],
-          entitlements: { active: {} },
-        },
+          entitlements: emptyEntitlements,
+        } as unknown as CustomerInfo,
       }),
     ).toBe(true);
 
@@ -38,10 +49,12 @@ describe('app-store-sync helpers', () => {
         activeSubscriptions: [],
         entitlements: {
           active: {
-            clientific_access: {
-              identifier: 'clientific_access',
-            },
+            clientific_access: activeEntitlement,
           },
+          all: {
+            clientific_access: activeEntitlement,
+          },
+          verification: 'NOT_REQUESTED' as CustomerInfo['entitlements']['verification'],
         },
       }),
     ).toBe(true);
@@ -50,8 +63,8 @@ describe('app-store-sync helpers', () => {
       hasActiveAppStorePurchaseResult({
         customerInfo: {
           activeSubscriptions: [],
-          entitlements: { active: {} },
-        },
+          entitlements: emptyEntitlements,
+        } as unknown as CustomerInfo,
       }),
     ).toBe(false);
   });

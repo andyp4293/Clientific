@@ -93,6 +93,7 @@ type MobileAppShellProps = {
   isBusinessHoursRefreshing: boolean;
   isBusinessHoursSaving: boolean;
   isBusinessProfileLoading: boolean;
+  isDeletingAccount: boolean;
   isCheckInsLoading: boolean;
   isCheckInsRefreshing: boolean;
   isCustomerViewLoading: boolean;
@@ -128,6 +129,7 @@ type MobileAppShellProps = {
   onCreateService: (input: MobileServiceInput) => Promise<void>;
   onCreateServiceGroup: (input: MobileServiceGroupInput) => Promise<void>;
   onCreateStaff: (input: MobileStaffInput) => Promise<void>;
+  onDeleteAccount: () => Promise<void>;
   onDeleteCustomer: (customerId: string) => Promise<void>;
   onDeleteCustomerGroup: (groupId: string) => Promise<void>;
   onDeleteAppointment: (appointmentId: string) => Promise<void>;
@@ -264,6 +266,7 @@ export function MobileAppShell({
   isBusinessHoursRefreshing,
   isBusinessHoursSaving,
   isBusinessProfileLoading,
+  isDeletingAccount,
   isCheckInsLoading,
   isCheckInsRefreshing,
   isCustomerViewLoading,
@@ -297,6 +300,7 @@ export function MobileAppShell({
   onCreateService,
   onCreateServiceGroup,
   onCreateStaff,
+  onDeleteAccount,
   onDeleteCustomer,
   onDeleteCustomerGroup,
   onDeleteAppointment,
@@ -501,6 +505,7 @@ export function MobileAppShell({
               isBusinessHoursRefreshing={isBusinessHoursRefreshing}
               isBusinessHoursSaving={isBusinessHoursSaving}
               isBusinessProfileLoading={isBusinessProfileLoading}
+              isDeletingAccount={isDeletingAccount}
               isCheckInsLoading={isCheckInsLoading}
               isCheckInsRefreshing={isCheckInsRefreshing}
               isCustomerViewLoading={isCustomerViewLoading}
@@ -522,6 +527,7 @@ export function MobileAppShell({
               onCreateService={onCreateService}
               onCreateServiceGroup={onCreateServiceGroup}
               onCreateStaff={onCreateStaff}
+              onDeleteAccount={onDeleteAccount}
               onDeleteService={onDeleteService}
               onDeleteServiceGroup={onDeleteServiceGroup}
               onDeleteStaff={onDeleteStaff}

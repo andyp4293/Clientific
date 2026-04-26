@@ -157,3 +157,24 @@ export async function PATCH(request: Request) {
     business: formatBusinessResponse(updatedBusiness),
   });
 }
+
+export async function DELETE(request: Request) {
+  const authorized = await getAuthorizedBusiness(request);
+  if ('error' in authorized) {
+    return authorized.error;
+  }
+
+  try {
+    await prisma.business.delete({
+      where: { id: authorized.business.id },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('DELETE /api/mobile/business error:', error);
+    return NextResponse.json(
+      { error: 'Unable to delete your account right now.' },
+      { status: 500 },
+    );
+  }
+}

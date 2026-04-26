@@ -9,6 +9,7 @@ vi.mock('@/lib/prisma', () => ({
     business: {
       findUnique: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
     },
   },
 }));
@@ -22,12 +23,13 @@ vi.mock('@/lib/moderation', () => ({
 
 import { getBearerToken, verifyMobileSessionToken } from '@/lib/mobile-session';
 import { prisma } from '@/lib/prisma';
-import { GET, PATCH } from './route';
+import { DELETE, GET, PATCH } from './route';
 
 const mockGetBearerToken = getBearerToken as ReturnType<typeof vi.fn>;
 const mockVerifyMobileSessionToken = verifyMobileSessionToken as ReturnType<typeof vi.fn>;
 const mockFindBusiness = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockUpdateBusiness = prisma.business.update as ReturnType<typeof vi.fn>;
+const mockDeleteBusiness = prisma.business.delete as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -63,6 +65,7 @@ beforeEach(() => {
     country: 'United States',
     timezone: 'America/New_York',
   });
+  mockDeleteBusiness.mockResolvedValue({ id: 'biz-1' });
 });
 
 describe('mobile business route', () => {
@@ -136,5 +139,20 @@ describe('mobile business route', () => {
 
     expect(response.status).toBe(400);
     expect(mockUpdateBusiness).not.toHaveBeenCalled();
+  });
+
+  it('deletes the signed-in business account', async () => {
+    const response = await DELETE(
+      new Request('https://www.clientific.app/api/mobile/business', {
+        method: 'DELETE',
+        headers: { authorization: 'Bearer token' },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ success: true });
+    expect(mockDeleteBusiness).toHaveBeenCalledWith({
+      where: { id: 'biz-1' },
+    });
   });
 });

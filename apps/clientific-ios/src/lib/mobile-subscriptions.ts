@@ -10,6 +10,12 @@ import RevenueCatUI from 'react-native-purchases-ui';
 let isRevenueCatConfigured = false;
 let configuredAppUserId: string | null = null;
 
+const REVENUECAT_LOGIN_TIMEOUT_MS = 12_000;
+const REVENUECAT_OFFERINGS_TIMEOUT_MS = 12_000;
+const REVENUECAT_PURCHASE_TIMEOUT_MS = 45_000;
+const REVENUECAT_RESTORE_TIMEOUT_MS = 20_000;
+const REVENUECAT_CUSTOMER_CENTER_TIMEOUT_MS = 15_000;
+
 function getRevenueCatApiKey() {
   const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY?.trim();
   if (!apiKey) {
@@ -21,6 +27,29 @@ function getRevenueCatApiKey() {
 
 export function buildMobileRevenueCatAppUserId(businessId: string) {
   return `business:${businessId}`;
+}
+
+async function withRevenueCatTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  timeoutMessage: string,
+) {
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+          reject(new Error(timeoutMessage));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+  }
 }
 
 export async function configureRevenueCatForBusiness(businessId: string) {
@@ -38,7 +67,11 @@ export async function configureRevenueCatForBusiness(businessId: string) {
   }
 
   if (configuredAppUserId !== appUserId) {
-    await Purchases.logIn(appUserId);
+    await withRevenueCatTimeout(
+      Purchases.logIn(appUserId),
+      REVENUECAT_LOGIN_TIMEOUT_MS,
+      'App Store account sync is taking longer than expected. Pull to refresh and try again.',
+    );
     configuredAppUserId = appUserId;
   }
 
@@ -60,7 +93,11 @@ export async function clearRevenueCatUser() {
 }
 
 export async function getCurrentRevenueCatOffering() {
-  const offerings = await Purchases.getOfferings();
+  const offerings = await withRevenueCatTimeout(
+    Purchases.getOfferings(),
+    REVENUECAT_OFFERINGS_TIMEOUT_MS,
+    'App Store plans are taking longer than expected to load. Pull to refresh and try again.',
+  );
   return (
     offerings.current ??
     Object.values(offerings.all ?? {}).find(
@@ -71,15 +108,27 @@ export async function getCurrentRevenueCatOffering() {
 }
 
 export async function purchaseRevenueCatPackage(aPackage: PurchasesPackage) {
-  return Purchases.purchasePackage(aPackage);
+  return withRevenueCatTimeout(
+    Purchases.purchasePackage(aPackage),
+    REVENUECAT_PURCHASE_TIMEOUT_MS,
+    'The App Store purchase is taking longer than expected. If you were charged, pull to refresh or use Restore Purchases in a few seconds.',
+  );
 }
 
 export async function restoreRevenueCatPurchases(): Promise<CustomerInfo> {
-  return Purchases.restorePurchases();
+  return withRevenueCatTimeout(
+    Purchases.restorePurchases(),
+    REVENUECAT_RESTORE_TIMEOUT_MS,
+    'App Store restore is taking longer than expected. Pull to refresh and try again.',
+  );
 }
 
 export async function presentRevenueCatCustomerCenter() {
-  return RevenueCatUI.presentCustomerCenter();
+  return withRevenueCatTimeout(
+    RevenueCatUI.presentCustomerCenter(),
+    REVENUECAT_CUSTOMER_CENTER_TIMEOUT_MS,
+    'App Store subscription management is taking longer than expected to open. Please try again.',
+  );
 }
 
 export function isRevenueCatPurchaseCancelled(error: unknown) {

@@ -113,6 +113,7 @@ type MobileMoreScreenProps = {
   isBusinessHoursRefreshing: boolean;
   isBusinessHoursSaving: boolean;
   isBusinessProfileLoading: boolean;
+  isDeletingAccount: boolean;
   isCheckInsLoading: boolean;
   isCheckInsRefreshing: boolean;
   isCustomerViewLoading: boolean;
@@ -141,6 +142,7 @@ type MobileMoreScreenProps = {
   onDeleteServiceGroup: (groupId: string) => Promise<void>;
   onDeleteService: (serviceId: string) => Promise<void>;
   onDeleteStaff: (staffId: string) => Promise<void>;
+  onDeleteAccount: () => Promise<void>;
   onJumpCheckInsToToday: () => void;
   onLookupCheckIn: (phone: string) => Promise<MobileCheckInLookupResponse>;
   onLookupRedeemCode: (code: string) => Promise<MobileRedeemLookupResponse>;
@@ -336,6 +338,7 @@ export function MobileMoreScreen({
   isBusinessHoursRefreshing,
   isBusinessHoursSaving,
   isBusinessProfileLoading,
+  isDeletingAccount,
   isCheckInsLoading,
   isCheckInsRefreshing,
   isCustomerViewLoading,
@@ -362,6 +365,7 @@ export function MobileMoreScreen({
   onDeleteServiceGroup,
   onDeleteService,
   onDeleteStaff,
+  onDeleteAccount,
   onJumpCheckInsToToday,
   onLookupCheckIn,
   onLookupRedeemCode,
@@ -857,8 +861,10 @@ export function MobileMoreScreen({
             <MobileOnboardingScreen
               context="settings"
               error={businessProfileError}
+              isDeletingAccount={isDeletingAccount}
               isSaving={isSavingBusinessProfile}
               onBack={() => onChangeSection('menu')}
+              onDeleteAccount={onDeleteAccount}
               profile={businessProfile}
               onSignOut={onSignOut}
               onSubmit={onSaveBusinessProfile}

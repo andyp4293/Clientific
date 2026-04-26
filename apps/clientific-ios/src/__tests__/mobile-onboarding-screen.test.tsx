@@ -1,4 +1,5 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { MobileOnboardingScreen } from '@/components/mobile-onboarding-screen';
 
@@ -20,6 +21,10 @@ const profile = {
 };
 
 describe('MobileOnboardingScreen', () => {
+  beforeEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it('submits the onboarding form', () => {
     const onSubmit = jest.fn().mockResolvedValue(undefined);
 
@@ -51,5 +56,32 @@ describe('MobileOnboardingScreen', () => {
         country: 'United States',
       }),
     );
+  });
+
+  it('shows account deletion in settings mode and confirms before deleting', () => {
+    const onDeleteAccount = jest.fn().mockResolvedValue(undefined);
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_, __, buttons) => {
+      const destructiveAction = buttons?.find((button) => button.style === 'destructive');
+      destructiveAction?.onPress?.();
+    });
+
+    render(
+      <MobileOnboardingScreen
+        context="settings"
+        error={null}
+        isDeletingAccount={false}
+        isSaving={false}
+        onBack={jest.fn()}
+        onDeleteAccount={onDeleteAccount}
+        profile={{ ...profile, onboardingComplete: true }}
+        onSignOut={jest.fn().mockResolvedValue(undefined)}
+        onSubmit={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId('mobile-settings-delete-account'));
+
+    expect(alertSpy).toHaveBeenCalled();
+    expect(onDeleteAccount).toHaveBeenCalled();
   });
 });
