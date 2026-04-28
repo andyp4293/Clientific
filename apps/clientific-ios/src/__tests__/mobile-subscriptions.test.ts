@@ -1,6 +1,8 @@
 import Purchases from 'react-native-purchases';
 import RevenueCatUI from 'react-native-purchases-ui';
 import {
+  configureRevenueCatForBusiness,
+  getAppStoreBillingUnavailableMessage,
   getCurrentRevenueCatOffering,
   presentRevenueCatCustomerCenter,
   purchaseRevenueCatPackage,
@@ -63,6 +65,23 @@ describe('mobile-subscriptions', () => {
     await expect(getCurrentRevenueCatOffering()).resolves.toEqual({
       identifier: 'default',
     });
+  });
+
+  it('surfaces a user-safe App Store message when RevenueCat credentials are missing', async () => {
+    const originalApiKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
+    delete process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
+
+    try {
+      await expect(configureRevenueCatForBusiness('biz-1')).rejects.toThrow(
+        getAppStoreBillingUnavailableMessage(),
+      );
+    } finally {
+      if (originalApiKey === undefined) {
+        delete process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
+      } else {
+        process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY = originalApiKey;
+      }
+    }
   });
 
   it('times out if App Store plans never load', async () => {

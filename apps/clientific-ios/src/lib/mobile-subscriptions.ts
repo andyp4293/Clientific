@@ -10,6 +10,8 @@ import RevenueCatUI from 'react-native-purchases-ui';
 let isRevenueCatConfigured = false;
 let configuredAppUserId: string | null = null;
 
+const APP_STORE_BILLING_UNAVAILABLE_MESSAGE =
+  'App Store billing is temporarily unavailable right now. Please try again shortly.';
 const REVENUECAT_LOGIN_TIMEOUT_MS = 12_000;
 const REVENUECAT_OFFERINGS_TIMEOUT_MS = 12_000;
 const REVENUECAT_PURCHASE_TIMEOUT_MS = 45_000;
@@ -19,10 +21,14 @@ const REVENUECAT_CUSTOMER_CENTER_TIMEOUT_MS = 15_000;
 function getRevenueCatApiKey() {
   const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY?.trim();
   if (!apiKey) {
-    throw new Error('RevenueCat is not configured for this build.');
+    throw new Error(APP_STORE_BILLING_UNAVAILABLE_MESSAGE);
   }
 
   return apiKey;
+}
+
+export function getAppStoreBillingUnavailableMessage() {
+  return APP_STORE_BILLING_UNAVAILABLE_MESSAGE;
 }
 
 export function buildMobileRevenueCatAppUserId(businessId: string) {
