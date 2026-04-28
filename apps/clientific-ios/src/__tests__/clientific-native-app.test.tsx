@@ -263,7 +263,10 @@ jest.mock('@/components/mobile-app-shell', () => {
       billingNotice,
       billingPurchaseError,
       home,
+      onChangeMoreSection,
+      onChangeTab,
       onOpenCustomers,
+      onRefreshBilling,
     }: any) => (
       <View>
         <Text testID="mock-shell-tab">{activeTab}</Text>
@@ -278,6 +281,17 @@ jest.mock('@/components/mobile-app-shell', () => {
         <Pressable testID="mock-shell-open-customers" onPress={onOpenCustomers}>
           <Text>customers</Text>
         </Pressable>
+        <Pressable
+          testID="mock-shell-open-billing"
+          onPress={() => {
+            onChangeMoreSection('billing');
+            onChangeTab('more');
+          }}>
+          <Text>billing</Text>
+        </Pressable>
+        <Pressable testID="mock-shell-refresh-billing" onPress={onRefreshBilling}>
+          <Text>refresh billing</Text>
+        </Pressable>
       </View>
     ),
   };
@@ -287,6 +301,10 @@ import { ClientificNativeApp } from '@/components/clientific-native-app';
 
 const { __mockClientificApi: mockClientificApi } = jest.requireMock('@/lib/clientific-api') as {
   __mockClientificApi: Record<string, jest.Mock>;
+};
+
+const mockMobileSubscriptions = jest.requireMock('@/lib/mobile-subscriptions') as {
+  getCurrentRevenueCatOffering: jest.Mock;
 };
 
 const secureStoreMock = SecureStore as typeof SecureStore & {
@@ -402,5 +420,45 @@ describe('ClientificNativeApp', () => {
       /Start the 14-day App Store trial from Billing/i,
     );
     expect(screen.queryByTestId('mock-shell-billing-error')).toBeNull();
+  });
+
+  it('loads App Store offerings once on entry and only retries on an explicit billing refresh', async () => {
+    secureStoreMock.__setItem('clientific.mobile.session.token', 'existing-token');
+    mockClientificApi.fetchMobileHomeSummary.mockResolvedValue(lockedHome);
+    mockMobileSubscriptions.getCurrentRevenueCatOffering.mockResolvedValue(null);
+
+    render(<ClientificNativeApp />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-shell-tab').props.children).toBe('dashboard');
+    });
+
+    fireEvent.press(screen.getByTestId('mock-shell-open-billing'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-shell-tab').props.children).toBe('more');
+      expect(screen.getByTestId('mock-shell-more-section').props.children).toBe('billing');
+    });
+
+    await waitFor(() => {
+      expect(mockMobileSubscriptions.getCurrentRevenueCatOffering).toHaveBeenCalled();
+    });
+
+    const baselineCallCount = mockMobileSubscriptions.getCurrentRevenueCatOffering.mock.calls.length;
+
+    await waitFor(async () => {
+      await Promise.resolve();
+      expect(mockMobileSubscriptions.getCurrentRevenueCatOffering).toHaveBeenCalledTimes(
+        baselineCallCount,
+      );
+    });
+
+    fireEvent.press(screen.getByTestId('mock-shell-refresh-billing'));
+
+    await waitFor(() => {
+      expect(mockMobileSubscriptions.getCurrentRevenueCatOffering).toHaveBeenCalledTimes(
+        baselineCallCount + 1,
+      );
+    });
   });
 });

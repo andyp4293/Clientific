@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -256,6 +256,7 @@ export function ClientificNativeApp() {
   const [billing, setBilling] = useState<MobileBillingSummary | null>(null);
   const [billingOffering, setBillingOffering] = useState<PurchasesOffering | null>(null);
   const [registeredPushToken, setRegisteredPushToken] = useState<string | null>(null);
+  const hasAttemptedBillingOfferingLoadRef = useRef(false);
 
   const signOut = useCallback(async (message?: string) => {
     if (session?.token && registeredPushToken) {
@@ -283,6 +284,7 @@ export function ClientificNativeApp() {
     setReviews(null);
     setBilling(null);
     setBillingOffering(null);
+    hasAttemptedBillingOfferingLoadRef.current = false;
     setActiveTab('dashboard');
     setMoreSection('menu');
     setAuthMode('sign-in');
@@ -773,7 +775,13 @@ export function ClientificNativeApp() {
   );
 
   const loadBillingOffering = useCallback(
-    async (businessId: string) => {
+    async (businessId: string, options?: { force?: boolean }) => {
+      const force = options?.force ?? false;
+      if (hasAttemptedBillingOfferingLoadRef.current && !force) {
+        return;
+      }
+
+      hasAttemptedBillingOfferingLoadRef.current = true;
       setIsLoadingBillingOffering(true);
 
       try {
@@ -782,6 +790,7 @@ export function ClientificNativeApp() {
         setBillingOffering(offering);
         setBillingPurchaseError(null);
       } catch (error) {
+        setBillingOffering(null);
         setBillingPurchaseError(
           getReadableError(error, 'Unable to load App Store plan options right now.'),
         );
@@ -1257,6 +1266,10 @@ export function ClientificNativeApp() {
       isActive = false;
     };
   }, []);
+
+  useEffect(() => {
+    hasAttemptedBillingOfferingLoadRef.current = false;
+  }, [session?.business.id]);
 
   useEffect(() => {
     if (!session?.business.id) {
@@ -1771,8 +1784,14 @@ export function ClientificNativeApp() {
       return;
     }
 
-    await loadBilling(session.token, true);
-  }, [loadBilling, session]);
+    const refreshTasks: Promise<unknown>[] = [loadBilling(session.token, true)];
+
+    if (home?.subscription.requiresPurchase) {
+      refreshTasks.push(loadBillingOffering(session.business.id, { force: true }));
+    }
+
+    await Promise.all(refreshTasks);
+  }, [home?.subscription.requiresPurchase, loadBilling, loadBillingOffering, session]);
 
   const handleRefreshBusinessProfile = useCallback(async () => {
     if (!session) {
