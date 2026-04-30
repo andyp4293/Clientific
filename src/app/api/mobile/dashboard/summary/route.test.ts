@@ -43,7 +43,7 @@ beforeEach(() => {
     subscriptionPlan: 'starter',
     subscriptionStatus: 'active',
     billingProvider: 'stripe',
-    subscriptionCurrentPeriodEnd: new Date('2026-04-30T00:00:00.000Z'),
+    subscriptionCurrentPeriodEnd: new Date('2026-05-30T00:00:00.000Z'),
     phone: '+15551234567',
     street: '123 Main St',
     city: 'New York',
