@@ -3,6 +3,7 @@ import RevenueCatUI from 'react-native-purchases-ui';
 import {
   configureRevenueCatForBusiness,
   getAppStoreBillingUnavailableMessage,
+  getAppStorePlansUnavailableMessage,
   getCurrentRevenueCatOffering,
   presentRevenueCatCustomerCenter,
   purchaseRevenueCatPackage,
@@ -114,6 +115,47 @@ describe('mobile-subscriptions', () => {
     ]);
   });
 
+  it('falls back to direct App Store product lookup when RevenueCat offerings throw a configuration error', async () => {
+    mockPurchases.getOfferings.mockRejectedValue(
+      new Error(
+        "There's a problem with your configuration. None of the products registered in the RevenueCat dashboard could be fetched from App Store Connect.",
+      ),
+    );
+    mockPurchases.getProducts.mockResolvedValue([
+      {
+        identifier: 'app.clientific.mobile.starter.monthly',
+        description: 'Starter plan',
+        title: 'Starter',
+        priceString: '$39.00',
+        subscriptionPeriod: 'P1M',
+      },
+    ]);
+
+    const offering = await getCurrentRevenueCatOffering();
+
+    expect(mockPurchases.getProducts).toHaveBeenCalledWith(
+      [
+        'clientific_starter_monthly',
+        'clientific_pro_monthly',
+        'clientific_premium_monthly',
+      ],
+      'SUBSCRIPTION',
+    );
+    expect(offering?.availablePackages.map((entry: { identifier: string }) => entry.identifier)).toEqual([
+      'app.clientific.mobile.starter.monthly',
+    ]);
+  });
+
+  it('returns no offering instead of surfacing a raw RevenueCat configuration error', async () => {
+    const configurationError = new Error(
+      "There's a problem with your configuration. None of the products registered in the RevenueCat dashboard could be fetched from App Store Connect.",
+    );
+    mockPurchases.getOfferings.mockRejectedValue(configurationError);
+    mockPurchases.getProducts.mockRejectedValue(configurationError);
+
+    await expect(getCurrentRevenueCatOffering()).resolves.toBeNull();
+  });
+
   it('surfaces a user-safe App Store message when RevenueCat credentials are missing', async () => {
     const originalApiKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
     delete process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
@@ -131,15 +173,31 @@ describe('mobile-subscriptions', () => {
     }
   });
 
+  it('surfaces a user-safe App Store plans unavailable message when RevenueCat returns a configuration issue', async () => {
+    mockPurchases.getOfferings.mockResolvedValue({
+      current: null,
+      all: {},
+    });
+    mockPurchases.getProducts.mockRejectedValue(
+      new Error(
+        "There's a problem with your configuration. None of the products registered in the RevenueCat dashboard could be fetched from App Store Connect.",
+      ),
+    );
+
+    await expect(getCurrentRevenueCatOffering()).resolves.toBeNull();
+    expect(getAppStorePlansUnavailableMessage()).toMatch(/App Store plans are not available yet/i);
+  });
+
   it('times out if App Store plans never load', async () => {
     mockPurchases.getOfferings.mockReturnValue(new Promise(() => undefined));
 
     const promise = getCurrentRevenueCatOffering();
-    jest.advanceTimersByTime(12_000);
-
-    await expect(promise).rejects.toThrow(
+    const rejection = expect(promise).rejects.toThrow(
       'App Store plans are taking longer than expected to load. Pull to refresh and try again.',
     );
+    await jest.advanceTimersByTimeAsync(12_000);
+
+    await rejection;
   });
 
   it('times out if a purchase never resolves', async () => {

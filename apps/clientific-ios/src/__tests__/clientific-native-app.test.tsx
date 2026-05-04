@@ -1,6 +1,9 @@
 import React from 'react';
+import * as ExpoLinking from 'expo-linking';
 import * as SecureStore from 'expo-secure-store';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+
+type MockExpoLinkingListener = (payload: { url: string }) => void;
 
 jest.mock('@/lib/clientific-api', () => {
   const mockClientificApi = {
@@ -173,6 +176,14 @@ jest.mock('@/lib/mobile-subscriptions', () => ({
   buildMobileRevenueCatAppUserId: jest.fn((businessId: string) => `business:${businessId}`),
   clearRevenueCatUser: jest.fn(async () => undefined),
   configureRevenueCatForBusiness: jest.fn(async () => undefined),
+  getSafeAppStoreBillingErrorMessage: jest.fn(
+    (error: unknown, fallback = 'App Store billing is temporarily unavailable right now. Please try again shortly.') => {
+      if (error instanceof Error && /configuration|revenuecat|app store connect|offerings-empty|rev\.cat/i.test(error.message)) {
+        return 'App Store plans are not available yet for this account. Pull to refresh or try again shortly.';
+      }
+      return fallback;
+    },
+  ),
   getCurrentRevenueCatOffering: jest.fn(async () => null),
   isRevenueCatPurchaseCancelled: jest.fn(() => false),
   presentRevenueCatCustomerCenter: jest.fn(async () => undefined),
@@ -187,6 +198,31 @@ jest.mock('@/lib/referral-links', () => ({
     error: null,
   })),
 }));
+
+jest.mock('expo-linking', () => {
+  const listeners = new Set<MockExpoLinkingListener>();
+
+  const api = {
+    getInitialURL: jest.fn(async () => null),
+    addEventListener: jest.fn((_event: string, listener: MockExpoLinkingListener) => {
+      listeners.add(listener);
+      return {
+        remove: () => listeners.delete(listener),
+      };
+    }),
+    __emitUrl: (url: string) => {
+      listeners.forEach((listener) => listener({ url }));
+    },
+    __reset: () => {
+      listeners.clear();
+      api.getInitialURL.mockReset();
+      api.getInitialURL.mockResolvedValue(null);
+      api.addEventListener.mockClear();
+    },
+  };
+
+  return api;
+});
 
 jest.mock('@/components/mobile-auth-screen', () => {
   const React = require('react');
@@ -304,7 +340,15 @@ const { __mockClientificApi: mockClientificApi } = jest.requireMock('@/lib/clien
 };
 
 const mockMobileSubscriptions = jest.requireMock('@/lib/mobile-subscriptions') as {
+  getSafeAppStoreBillingErrorMessage: jest.Mock;
   getCurrentRevenueCatOffering: jest.Mock;
+};
+
+const mockExpoLinking = ExpoLinking as typeof ExpoLinking & {
+  __emitUrl: (url: string) => void;
+  __reset: () => void;
+  getInitialURL: jest.Mock;
+  addEventListener: jest.Mock;
 };
 
 const secureStoreMock = SecureStore as typeof SecureStore & {
@@ -350,14 +394,39 @@ const lockedHome = {
   },
 };
 
+const appStoreBillingSummary = {
+  business: activeHome.business,
+  currentPlanName: 'Trial',
+  currentPlanPriceLabel: '$0',
+  planSummary: 'Start the 14-day App Store trial to unlock the full Clientific workspace.',
+  billingProvider: 'none' as const,
+  billingProviderLabel: 'App Store',
+  managementTitle: 'App Store billing',
+  managementSummary: 'Manage or cancel subscriptions in your App Store account settings.',
+  subscriptionStatus: 'inactive',
+  subscriptionStatusLabel: 'Inactive',
+  isActive: false,
+  canPurchaseInApp: true,
+  showManageInApp: false,
+  trialDaysRemaining: null,
+  trialEndsAtLabel: null,
+  nextBillingDateLabel: null,
+  paymentMethodSummary: 'Apple will manage billing after purchase.',
+  invoiceEmptyState: 'No invoices yet.',
+  paymentMethod: null,
+  invoices: [],
+};
+
 beforeEach(() => {
   secureStoreMock.__reset();
+  mockExpoLinking.__reset();
   Object.values(mockClientificApi).forEach((mockFn) => mockFn.mockReset());
   mockClientificApi.fetchMobileHomeSummary.mockResolvedValue(activeHome);
   mockClientificApi.loginWithClientific.mockResolvedValue({
     token: 'mobile-token',
     business: activeHome.business,
   });
+  mockClientificApi.fetchMobileBilling.mockResolvedValue(appStoreBillingSummary);
   mockClientificApi.registerWithClientific.mockResolvedValue({
     success: true,
     verificationEmailSent: true,
@@ -459,6 +528,57 @@ describe('ClientificNativeApp', () => {
       expect(mockMobileSubscriptions.getCurrentRevenueCatOffering).toHaveBeenCalledTimes(
         baselineCallCount + 1,
       );
+    });
+  });
+
+  it('never surfaces raw RevenueCat configuration troubleshooting text in billing', async () => {
+    secureStoreMock.__setItem('clientific.mobile.session.token', 'existing-token');
+    mockClientificApi.fetchMobileHomeSummary.mockResolvedValue(lockedHome);
+    mockMobileSubscriptions.getCurrentRevenueCatOffering.mockRejectedValue(
+      new Error(
+        "There's a problem with your configuration. None of the products registered in the RevenueCat dashboard could be fetched from App Store Connect. More information: https://rev.cat/why-are-offerings-empty",
+      ),
+    );
+
+    render(<ClientificNativeApp />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-shell-tab').props.children).toBe('dashboard');
+    });
+
+    fireEvent.press(screen.getByTestId('mock-shell-open-billing'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-shell-more-section').props.children).toBe('billing');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-shell-billing-error').props.children).toBe(
+        'App Store plans are not available yet for this account. Pull to refresh or try again shortly.',
+      );
+    });
+
+    expect(screen.queryByText(/RevenueCat dashboard/i)).toBeNull();
+    expect(screen.queryByText(/rev\.cat/i)).toBeNull();
+  });
+
+  it('opens billing when the app receives a billing deep link', async () => {
+    secureStoreMock.__setItem('clientific.mobile.session.token', 'existing-token');
+    mockClientificApi.fetchMobileHomeSummary.mockResolvedValue(lockedHome);
+
+    render(<ClientificNativeApp />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-shell-tab').props.children).toBe('dashboard');
+    });
+
+    act(() => {
+      mockExpoLinking.__emitUrl('clientific://app?tab=more&section=billing');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-shell-tab').props.children).toBe('more');
+      expect(screen.getByTestId('mock-shell-more-section').props.children).toBe('billing');
     });
   });
 });

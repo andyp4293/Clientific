@@ -13,12 +13,39 @@ let configuredAppUserId: string | null = null;
 
 const APP_STORE_BILLING_UNAVAILABLE_MESSAGE =
   'App Store billing is temporarily unavailable right now. Please try again shortly.';
+const APP_STORE_PLANS_UNAVAILABLE_MESSAGE =
+  'App Store plans are not available yet for this account. Pull to refresh or try again shortly.';
 const REVENUECAT_LOGIN_TIMEOUT_MS = 12_000;
 const REVENUECAT_OFFERINGS_TIMEOUT_MS = 12_000;
 const REVENUECAT_PURCHASE_TIMEOUT_MS = 45_000;
 const REVENUECAT_RESTORE_TIMEOUT_MS = 20_000;
 const REVENUECAT_CUSTOMER_CENTER_TIMEOUT_MS = 15_000;
 const FALLBACK_OFFERING_IDENTIFIER = '__clientific_fallback_offering__';
+
+function isRevenueCatConfigurationErrorMessage(message: string) {
+  const normalized = message.trim().toLowerCase();
+
+  return (
+    normalized.includes("there's a problem with your configuration") ||
+    normalized.includes('there is an issue with your configuration') ||
+    normalized.includes('none of the products registered in the revenuecat dashboard') ||
+    normalized.includes('could be fetched from app store connect') ||
+    normalized.includes('could be fetched from the storekit configuration') ||
+    normalized.includes('why-are-offerings-empty') ||
+    normalized.includes('rev.cat/sdk-troubleshooting')
+  );
+}
+
+function isAlreadySafeAppStoreBillingMessage(message: string) {
+  const normalized = message.trim();
+
+  return (
+    normalized === APP_STORE_BILLING_UNAVAILABLE_MESSAGE ||
+    normalized === APP_STORE_PLANS_UNAVAILABLE_MESSAGE ||
+    normalized.startsWith('App Store ') ||
+    normalized.startsWith('The App Store ')
+  );
+}
 
 function getConfiguredRevenueCatProductIdSets() {
   const explicitProductIds = [
@@ -164,6 +191,27 @@ export function getAppStoreBillingUnavailableMessage() {
   return APP_STORE_BILLING_UNAVAILABLE_MESSAGE;
 }
 
+export function getAppStorePlansUnavailableMessage() {
+  return APP_STORE_PLANS_UNAVAILABLE_MESSAGE;
+}
+
+export function getSafeAppStoreBillingErrorMessage(
+  error: unknown,
+  fallback = APP_STORE_BILLING_UNAVAILABLE_MESSAGE,
+) {
+  if (error instanceof Error && error.message) {
+    if (isAlreadySafeAppStoreBillingMessage(error.message)) {
+      return error.message;
+    }
+
+    if (isRevenueCatConfigurationErrorMessage(error.message)) {
+      return APP_STORE_PLANS_UNAVAILABLE_MESSAGE;
+    }
+  }
+
+  return fallback;
+}
+
 export function buildMobileRevenueCatAppUserId(businessId: string) {
   return `business:${businessId}`;
 }
@@ -232,23 +280,69 @@ export async function clearRevenueCatUser() {
 }
 
 export async function getCurrentRevenueCatOffering() {
-  const offerings = await withRevenueCatTimeout(
-    Purchases.getOfferings(),
-    REVENUECAT_OFFERINGS_TIMEOUT_MS,
-    'App Store plans are taking longer than expected to load. Pull to refresh and try again.',
-  );
-  const primaryOffering =
-    offerings.current ??
-    Object.values(offerings.all ?? {}).find(
-      (offering): offering is PurchasesOffering => Boolean(offering),
-    ) ??
-    null;
+  try {
+    const offerings = await withRevenueCatTimeout(
+      Purchases.getOfferings(),
+      REVENUECAT_OFFERINGS_TIMEOUT_MS,
+      'App Store plans are taking longer than expected to load. Pull to refresh and try again.',
+    );
+    const primaryOffering =
+      offerings.current ??
+      Object.values(offerings.all ?? {}).find(
+        (offering): offering is PurchasesOffering => Boolean(offering),
+      ) ??
+      null;
 
-  if (primaryOffering?.availablePackages?.length) {
-    return primaryOffering;
+    if (primaryOffering?.availablePackages?.length) {
+      return primaryOffering;
+    }
+  } catch (error) {
+    if (!isRevenueCatConfigurationErrorMessage(error instanceof Error ? error.message : '')) {
+      throw new Error(
+        getSafeAppStoreBillingErrorMessage(
+          error,
+          'Unable to load App Store plan options right now.',
+        ),
+      );
+    }
+
+    try {
+      return await loadFallbackOfferingFromProducts();
+    } catch (fallbackError) {
+      if (
+        isRevenueCatConfigurationErrorMessage(
+          fallbackError instanceof Error ? fallbackError.message : '',
+        ) ||
+        isRevenueCatConfigurationErrorMessage(
+          error instanceof Error ? error.message : '',
+        )
+      ) {
+        return null;
+      }
+
+      throw new Error(
+        getSafeAppStoreBillingErrorMessage(
+          fallbackError,
+          'Unable to load App Store plan options right now.',
+        ),
+      );
+    }
   }
 
-  return loadFallbackOfferingFromProducts();
+  try {
+    return await loadFallbackOfferingFromProducts();
+  } catch (error) {
+    if (isRevenueCatConfigurationErrorMessage(error instanceof Error ? error.message : '')) {
+      return null;
+    }
+
+    throw new Error(
+      getSafeAppStoreBillingErrorMessage(
+        error,
+        'Unable to load App Store plan options right now.',
+      ),
+    );
+  }
 }
 
 export async function purchaseRevenueCatPackage(aPackage: PurchasesPackage) {

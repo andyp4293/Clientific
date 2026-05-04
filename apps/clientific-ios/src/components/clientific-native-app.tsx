@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import * as SecureStore from 'expo-secure-store';
 import type { CustomerInfo, PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
@@ -113,6 +114,7 @@ import {
   clearRevenueCatUser,
   configureRevenueCatForBusiness,
   getCurrentRevenueCatOffering,
+  getSafeAppStoreBillingErrorMessage,
   isRevenueCatPurchaseCancelled,
   presentRevenueCatCustomerCenter,
   purchaseRevenueCatPackage,
@@ -187,6 +189,33 @@ function getLocalAppStorePlanCopy(plan: 'starter' | 'pro' | 'premium') {
       };
   }
 }
+
+function resolveMobileBillingDeepLink(url: string | null) {
+  if (!url) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    const path = parsed.pathname.replace(/^\/+/, '').toLowerCase();
+    const tab = parsed.searchParams.get('tab')?.toLowerCase() ?? null;
+    const section = parsed.searchParams.get('section')?.toLowerCase() ?? null;
+
+    return (
+      host === 'billing' ||
+      path === 'billing' ||
+      tab === 'billing' ||
+      section === 'billing' ||
+      (tab === 'more' && section === 'billing')
+    );
+  } catch {
+    return false;
+  }
+}
+
+const SHOULD_OPEN_DEBUG_BILLING_ON_LAUNCH =
+  __DEV__ && process.env.EXPO_PUBLIC_MOBILE_DEBUG_INITIAL_SECTION === 'billing';
 
 export function ClientificNativeApp() {
   const colorScheme = useColorScheme();
@@ -290,6 +319,16 @@ export function ClientificNativeApp() {
   const [billingOffering, setBillingOffering] = useState<PurchasesOffering | null>(null);
   const [registeredPushToken, setRegisteredPushToken] = useState<string | null>(null);
   const hasAttemptedBillingOfferingLoadRef = useRef(false);
+
+  const openBillingFromDeepLink = useCallback((url: string | null) => {
+    if (!resolveMobileBillingDeepLink(url)) {
+      return false;
+    }
+
+    setActiveTab('more');
+    setMoreSection('billing');
+    return true;
+  }, []);
 
   const signOut = useCallback(async (message?: string) => {
     if (session?.token && registeredPushToken) {
@@ -824,9 +863,7 @@ export function ClientificNativeApp() {
         setBillingPurchaseError(null);
       } catch (error) {
         setBillingOffering(null);
-        setBillingPurchaseError(
-          getReadableError(error, 'Unable to load App Store plan options right now.'),
-        );
+        setBillingPurchaseError(getSafeAppStoreBillingErrorMessage(error));
       } finally {
         setIsLoadingBillingOffering(false);
       }
@@ -983,12 +1020,15 @@ export function ClientificNativeApp() {
           return;
         }
 
-        if (isRevenueCatPurchaseCancelled(error)) {
-          return;
-        }
+      if (isRevenueCatPurchaseCancelled(error)) {
+        return;
+      }
 
         setBillingPurchaseError(
-          getReadableError(error, 'Unable to complete the App Store purchase right now.'),
+          getSafeAppStoreBillingErrorMessage(
+            error,
+            'Unable to complete the App Store purchase right now.',
+          ),
         );
       } finally {
         setIsPurchasingSubscription(false);
@@ -1027,7 +1067,10 @@ export function ClientificNativeApp() {
       }
 
       setBillingPurchaseError(
-        getReadableError(error, 'Unable to restore App Store purchases right now.'),
+        getSafeAppStoreBillingErrorMessage(
+          error,
+          'Unable to restore App Store purchases right now.',
+        ),
       );
     } finally {
       setIsRestoringSubscription(false);
@@ -1051,7 +1094,10 @@ export function ClientificNativeApp() {
       ]);
     } catch (error) {
       setBillingPurchaseError(
-        getReadableError(error, 'Unable to open App Store subscription management right now.'),
+        getSafeAppStoreBillingErrorMessage(
+          error,
+          'Unable to open App Store subscription management right now.',
+        ),
       );
     } finally {
       setIsManagingSubscription(false);
@@ -1386,15 +1432,42 @@ export function ClientificNativeApp() {
   }, [session?.business.id]);
 
   useEffect(() => {
+    let isMounted = true;
+
+    void Linking.getInitialURL().then((url) => {
+      if (!isMounted) {
+        return;
+      }
+
+      openBillingFromDeepLink(url);
+    });
+
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      openBillingFromDeepLink(url);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.remove();
+    };
+  }, [openBillingFromDeepLink]);
+
+  useEffect(() => {
+    if (!SHOULD_OPEN_DEBUG_BILLING_ON_LAUNCH) {
+      return;
+    }
+
+    openBillingFromDeepLink('clientific://app?tab=more&section=billing');
+  }, [openBillingFromDeepLink]);
+
+  useEffect(() => {
     if (!session?.business.id) {
       return;
     }
 
     void configureRevenueCatForBusiness(session.business.id).catch((error) => {
       console.warn('RevenueCat configuration failed:', error);
-      setBillingPurchaseError(
-        getReadableError(error, 'Unable to prepare App Store billing for this account.'),
-      );
+      setBillingPurchaseError(getSafeAppStoreBillingErrorMessage(error));
     });
   }, [session?.business.id]);
 
