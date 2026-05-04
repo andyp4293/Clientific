@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as SecureStore from 'expo-secure-store';
-import type { PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
+import type { CustomerInfo, PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
 import {
   createMobileService,
   createMobileServiceGroup,
@@ -101,7 +101,8 @@ import { getClientificTheme } from '@/lib/clientific-mobile-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   hasActiveAppStorePurchaseResult,
-  isPendingAppStoreSyncError,
+  isRecoverableAppStoreSyncError,
+  resolvePendingAppStoreSyncSnapshot,
 } from '@/lib/app-store-sync';
 import {
   addPushNotificationResponseListener,
@@ -153,6 +154,38 @@ function shiftMobileDateKey(dateKey: string, direction: -1 | 1) {
   const nextDate = new Date(year, (month || 1) - 1, day || 1);
   nextDate.setDate(nextDate.getDate() + direction);
   return formatMobileDateKey(nextDate);
+}
+
+function formatMobileLongDateLabel(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  return new Date(value).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function getLocalAppStorePlanCopy(plan: 'starter' | 'pro' | 'premium') {
+  switch (plan) {
+    case 'starter':
+      return {
+        name: 'Starter',
+        priceLabel: '$39/month',
+      };
+    case 'pro':
+      return {
+        name: 'Pro',
+        priceLabel: '$69/month',
+      };
+    case 'premium':
+      return {
+        name: 'Premium',
+        priceLabel: '$99/month',
+      };
+  }
 }
 
 export function ClientificNativeApp() {
@@ -841,6 +874,85 @@ export function ClientificNativeApp() {
     ]);
   }, [loadBilling, loadHome, session]);
 
+  const applyPendingAppStoreSyncSnapshot = useCallback(
+    (
+      customerInfo:
+        | Pick<CustomerInfo, 'activeSubscriptions' | 'entitlements' | 'subscriptionsByProductIdentifier' | 'latestExpirationDate'>
+        | null
+        | undefined,
+    ) => {
+      const fallbackBusiness = session?.business;
+      if (!fallbackBusiness) {
+        return false;
+      }
+
+      const snapshot = resolvePendingAppStoreSyncSnapshot(customerInfo);
+      if (!snapshot) {
+        return false;
+      }
+
+      const planCopy = getLocalAppStorePlanCopy(snapshot.plan);
+      const trialEndsAtLabel = formatMobileLongDateLabel(snapshot.trialEndsAt);
+      const nextBillingDateLabel = formatMobileLongDateLabel(
+        snapshot.subscriptionCurrentPeriodEnd,
+      );
+
+      setHome((current) =>
+        current
+          ? {
+              ...current,
+              subscription: {
+                plan: snapshot.plan,
+                status: snapshot.subscriptionStatus,
+                billingProvider: 'app_store',
+                isActive: true,
+                requiresPurchase: false,
+              },
+            }
+          : current,
+      );
+
+      setBilling((current) => ({
+        business: current?.business ?? fallbackBusiness,
+        currentPlanName: planCopy.name,
+        currentPlanPriceLabel: planCopy.priceLabel,
+        planSummary:
+          'Your App Store subscription is active and managed by Apple. Pull to refresh in a few seconds if invoices or trial dates need a moment to catch up.',
+        billingProvider: 'app_store',
+        billingProviderLabel: 'App Store',
+        managementTitle: 'Manage in the App Store',
+        managementSummary:
+          'Use the App Store to manage renewals, cancellations, and payment details for this subscription.',
+        subscriptionStatus: snapshot.subscriptionStatus,
+        subscriptionStatusLabel:
+          snapshot.subscriptionStatus === 'trialing' ? 'Trialing' : 'Active',
+        isActive: true,
+        canPurchaseInApp: false,
+        showManageInApp: true,
+        trialDaysRemaining:
+          snapshot.subscriptionStatus === 'trialing' && snapshot.trialEndsAt
+            ? Math.max(
+                0,
+                Math.ceil(
+                  (new Date(snapshot.trialEndsAt).getTime() - Date.now()) /
+                    (24 * 60 * 60 * 1000),
+                ),
+              )
+            : null,
+        trialEndsAtLabel,
+        nextBillingDateLabel,
+        paymentMethodSummary: 'Billing is managed by Apple.',
+        invoiceEmptyState:
+          'Receipts and renewal details are managed in your App Store account.',
+        paymentMethod: null,
+        invoices: current?.invoices ?? [],
+      }));
+
+      return true;
+    },
+    [session?.business],
+  );
+
   const handlePurchaseSubscription = useCallback(
     async (aPackage: PurchasesPackage) => {
       if (!session) {
@@ -861,8 +973,9 @@ export function ClientificNativeApp() {
         await syncActiveAppStoreSubscription();
       } catch (error) {
         if (
-          isPendingAppStoreSyncError(error) &&
-          hasActiveAppStorePurchaseResult(purchaseResult)
+          hasActiveAppStorePurchaseResult(purchaseResult) &&
+          isRecoverableAppStoreSyncError(error) &&
+          applyPendingAppStoreSyncSnapshot(purchaseResult?.customerInfo)
         ) {
           setBillingNotice(
             'Your App Store purchase went through and is still syncing. Pull to refresh in a few seconds if your plan does not unlock right away.',
@@ -881,7 +994,7 @@ export function ClientificNativeApp() {
         setIsPurchasingSubscription(false);
       }
     },
-    [session, syncActiveAppStoreSubscription],
+    [applyPendingAppStoreSyncSnapshot, session, syncActiveAppStoreSubscription],
   );
 
   const handleRestoreSubscription = useCallback(async () => {
@@ -903,8 +1016,9 @@ export function ClientificNativeApp() {
       setBillingNotice('App Store purchases restored.');
     } catch (error) {
       if (
-        isPendingAppStoreSyncError(error) &&
-        hasActiveAppStorePurchaseResult(restoreResult)
+        hasActiveAppStorePurchaseResult(restoreResult) &&
+        isRecoverableAppStoreSyncError(error) &&
+        applyPendingAppStoreSyncSnapshot(restoreResult)
       ) {
         setBillingNotice(
           'Your App Store purchases are still syncing. Pull to refresh in a few seconds if your plan does not unlock right away.',
@@ -918,7 +1032,7 @@ export function ClientificNativeApp() {
     } finally {
       setIsRestoringSubscription(false);
     }
-  }, [session, syncActiveAppStoreSubscription]);
+  }, [applyPendingAppStoreSyncSnapshot, session, syncActiveAppStoreSubscription]);
 
   const handleOpenCustomerCenter = useCallback(async () => {
     if (!session) {

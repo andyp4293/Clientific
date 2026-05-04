@@ -98,6 +98,18 @@ function getRevenueCatSecretKey() {
   return secretKey;
 }
 
+function getRevenueCatSubscriberLookupApiKey() {
+  const v1ApiKey =
+    process.env.REVENUECAT_V1_API_KEY?.trim() ??
+    process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY?.trim();
+
+  if (v1ApiKey) {
+    return v1ApiKey;
+  }
+
+  return getRevenueCatSecretKey();
+}
+
 export function buildRevenueCatAppUserId(businessId: string) {
   return `business:${businessId}`;
 }
@@ -228,8 +240,9 @@ export async function fetchRevenueCatSubscriber(appUserId: string) {
     `${getRevenueCatApiBaseUrl()}/subscribers/${encodeURIComponent(appUserId)}`,
     {
       headers: {
-        Authorization: `Bearer ${getRevenueCatSecretKey()}`,
+        Authorization: `Bearer ${getRevenueCatSubscriberLookupApiKey()}`,
         'Content-Type': 'application/json',
+        'X-Platform': 'ios',
       },
       cache: 'no-store',
     },

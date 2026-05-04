@@ -10,6 +10,7 @@ vi.mock('@/lib/prisma', () => ({
 }));
 
 import {
+  fetchRevenueCatSubscriber,
   buildRevenueCatAppUserId,
   getRevenueCatProductPlan,
   parseRevenueCatAppUserId,
@@ -21,6 +22,9 @@ const envSnapshot = {
   starter: process.env.REVENUECAT_STARTER_PRODUCT_ID,
   pro: process.env.REVENUECAT_PRO_PRODUCT_ID,
   premium: process.env.REVENUECAT_PREMIUM_PRODUCT_ID,
+  revenueCatV1ApiKey: process.env.REVENUECAT_V1_API_KEY,
+  revenueCatPublicIosApiKey: process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY,
+  revenueCatSecretApiKey: process.env.REVENUECAT_SECRET_API_KEY,
 };
 
 beforeEach(() => {
@@ -33,7 +37,11 @@ afterEach(() => {
   process.env.REVENUECAT_STARTER_PRODUCT_ID = envSnapshot.starter;
   process.env.REVENUECAT_PRO_PRODUCT_ID = envSnapshot.pro;
   process.env.REVENUECAT_PREMIUM_PRODUCT_ID = envSnapshot.premium;
+  process.env.REVENUECAT_V1_API_KEY = envSnapshot.revenueCatV1ApiKey;
+  process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY = envSnapshot.revenueCatPublicIosApiKey;
+  process.env.REVENUECAT_SECRET_API_KEY = envSnapshot.revenueCatSecretApiKey;
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('RevenueCat helpers', () => {
@@ -141,5 +149,34 @@ describe('RevenueCat helpers', () => {
       plan: 'starter',
       subscriptionStatus: 'canceled',
     });
+  });
+
+  it('uses the RevenueCat v1 lookup key for subscriber fetches when configured', async () => {
+    process.env.REVENUECAT_V1_API_KEY = 'appl_v1_lookup_key';
+    process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY = 'appl_public_key';
+    process.env.REVENUECAT_SECRET_API_KEY = 'sk_secret_key';
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        subscriber: {
+          subscriptions: {},
+        },
+      }),
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchRevenueCatSubscriber('business:biz_123');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.revenuecat.com/v1/subscribers/business%3Abiz_123',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer appl_v1_lookup_key',
+          'X-Platform': 'ios',
+        }),
+      }),
+    );
   });
 });

@@ -31,12 +31,12 @@ const snapshot = {
   billingProvider: 'app_store' as const,
   plan: 'pro' as const,
   subscriptionStatus: 'trialing' as const,
-  trialEndsAt: new Date('2026-05-01T00:00:00.000Z'),
-  subscriptionCurrentPeriodEnd: new Date('2026-05-01T00:00:00.000Z'),
+  trialEndsAt: new Date('2026-06-01T00:00:00.000Z'),
+  subscriptionCurrentPeriodEnd: new Date('2026-06-01T00:00:00.000Z'),
   productId: 'clientific_pro_monthly',
   originalTransactionId: 'orig_123',
   environment: 'Sandbox',
-  lastVerifiedAt: new Date('2026-04-17T00:00:00.000Z'),
+  lastVerifiedAt: new Date('2026-05-04T00:00:00.000Z'),
 };
 
 beforeEach(() => {
@@ -95,9 +95,9 @@ describe('POST /api/mobile/billing/sync-app-store', () => {
 
     const body = await response.json();
     expect(response.status).toBe(200);
-    expect(body.subscription.trialEndsAt).toBe('2026-05-01T00:00:00.000Z');
+    expect(body.subscription.trialEndsAt).toBe('2026-06-01T00:00:00.000Z');
     expect(body.subscription.subscriptionCurrentPeriodEnd).toBe(
-      '2026-05-01T00:00:00.000Z',
+      '2026-06-01T00:00:00.000Z',
     );
   });
 

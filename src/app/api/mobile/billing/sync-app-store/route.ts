@@ -10,10 +10,10 @@ import { isSubscriptionAccessActive } from '@/lib/subscription';
 
 function getRevenueCatSyncRetryDelaysMs() {
   if (process.env.NODE_ENV === 'test') {
-    return [0, 0, 0, 0];
+    return [0, 0, 0, 0, 0];
   }
 
-  return [0, 1000, 2000, 4000];
+  return [0, 1000, 2000, 4000, 8000];
 }
 
 async function sleep(ms: number) {
