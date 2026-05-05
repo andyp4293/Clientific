@@ -6,6 +6,15 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { PRICING_PLANS } from '@/lib/pricing-plans';
 import { getPricingPlanKey } from '@/lib/plan-utils';
+import {
+  getBillingInvoiceEmptyState,
+  getBillingManagementSummary,
+  getBillingManagementTitle,
+  getBillingPaymentMethodSummary,
+  normalizeBillingProvider,
+} from '@/lib/billing-provider';
+
+const APPLE_SUBSCRIPTION_HELP_URL = 'https://support.apple.com/118428';
 
 interface SubscriptionInfo {
   subscriptionPlan: string;
@@ -14,6 +23,7 @@ interface SubscriptionInfo {
   stripeCurrentPeriodEnd: string | null;
   trialDaysRemaining: number | null;
   isActive: boolean;
+  billingProvider: string | null;
 }
 
 interface PaymentMethod {
@@ -123,23 +133,6 @@ export default function BillingPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const openPortal = async () => {
-    setPortalLoading(true);
-    try {
-      const res = await fetch('/api/billing/portal', { method: 'POST' });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        toast.error(data.error || 'Failed to open billing portal.');
-        setPortalLoading(false);
-      }
-    } catch {
-      toast.error('Failed to open billing portal. Please try again.');
-      setPortalLoading(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="w-full max-w-5xl space-y-6 pb-8">
@@ -160,6 +153,45 @@ export default function BillingPage() {
   const planKey = getPricingPlanKey(subscription?.subscriptionPlan);
   const planDetails = planKey ? PRICING_PLANS[planKey] : PRICING_PLANS.STARTER;
   const isTrial = subscription?.subscriptionStatus === 'trialing';
+  const billingProvider = normalizeBillingProvider(subscription?.billingProvider);
+  const isAppStoreManaged = billingProvider === 'app_store';
+  const isWebManaged = billingProvider === 'stripe';
+  const isUnsubscribed = billingProvider === 'none';
+  const managementTitle = getBillingManagementTitle(billingProvider);
+  const managementSummary = getBillingManagementSummary(billingProvider);
+  const paymentMethodSummary = getBillingPaymentMethodSummary(
+    billingProvider,
+    paymentMethod
+      ? `${cardBrandLabel(paymentMethod.brand)} ending in ${paymentMethod.last4}`
+      : null,
+  );
+  const invoiceEmptyState = getBillingInvoiceEmptyState(billingProvider);
+
+  const openPortal = async () => {
+    if (!isWebManaged) {
+      toast.error(
+        isAppStoreManaged
+          ? 'This subscription is managed through Apple. Use your iPhone or iPad App Store subscription settings.'
+          : 'No website subscription is active yet.',
+      );
+      return;
+    }
+
+    setPortalLoading(true);
+    try {
+      const res = await fetch('/api/billing/portal', { method: 'POST' });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error(data.error || 'Failed to open billing portal.');
+        setPortalLoading(false);
+      }
+    } catch {
+      toast.error('Failed to open billing portal. Please try again.');
+      setPortalLoading(false);
+    }
+  };
 
   return (
     <div className="w-full max-w-5xl space-y-6 pb-8">
@@ -171,7 +203,7 @@ export default function BillingPage() {
               Subscription and billing details
             </h1>
             <p className="brand-hero-muted text-sm leading-6 sm:text-base">
-              Review your plan, payment method, and invoice history from one place.
+              Review your plan, payment method, and invoice history from one place, and manage the subscription where you originally bought it.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[22rem]">
@@ -235,6 +267,29 @@ export default function BillingPage() {
         </div>
       ) : null}
 
+      <div
+        className={`rounded-2xl border p-4 sm:p-5 ${
+          isAppStoreManaged
+            ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/30'
+            : isWebManaged
+              ? 'border-sky-200 bg-sky-50 dark:border-sky-900/50 dark:bg-sky-950/30'
+              : 'border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30'
+        }`}
+      >
+        <p className="text-sm font-semibold text-gray-950 dark:text-white">{managementTitle}</p>
+        <p className="mt-1 text-sm leading-6 text-gray-700 dark:text-gray-300">{managementSummary}</p>
+        {isAppStoreManaged ? (
+          <p className="mt-2 text-sm leading-6 text-gray-700 dark:text-gray-300">
+            Manage this subscription where you bought it. Clientific web billing does not control App Store renewals, cancellations, refunds, or payment details.
+          </p>
+        ) : null}
+        {isWebManaged ? (
+          <p className="mt-2 text-sm leading-6 text-gray-700 dark:text-gray-300">
+            This subscription started on the web, so plan changes and billing updates stay in Clientific on the web instead of the iPhone app.
+          </p>
+        ) : null}
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-[1.15fr,0.85fr]">
         <div className="card rounded-[28px] p-6">
           <div className="flex items-start justify-between gap-4">
@@ -291,12 +346,36 @@ export default function BillingPage() {
             </div>
 
             <div className="flex flex-shrink-0 flex-col gap-2">
-              <button onClick={openPortal} disabled={portalLoading} className="btn-primary text-sm">
-                {portalLoading ? 'Loading...' : 'Manage Subscription'}
-              </button>
-              <Link href="/pricing" className="btn-outline text-center text-sm">
-                View All Plans
-              </Link>
+              {isWebManaged ? (
+                <>
+                  <button onClick={openPortal} disabled={portalLoading} className="btn-primary text-sm">
+                    {portalLoading ? 'Loading...' : 'Manage Subscription'}
+                  </button>
+                  <Link href="/pricing" className="btn-outline text-center text-sm">
+                    View All Plans
+                  </Link>
+                </>
+              ) : null}
+              {isAppStoreManaged ? (
+                <a
+                  href={APPLE_SUBSCRIPTION_HELP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary text-center text-sm"
+                >
+                  Manage Through Apple
+                </a>
+              ) : null}
+              {isUnsubscribed ? (
+                <>
+                  <Link href="/pricing" className="btn-primary text-center text-sm">
+                    View All Plans
+                  </Link>
+                  <p className="max-w-[18rem] text-xs leading-5 text-gray-500 dark:text-gray-400">
+                    If this business started on iPhone, begin the App Store trial there. Website billing can be started from the pricing page.
+                  </p>
+                </>
+              ) : null}
             </div>
           </div>
 
@@ -327,7 +406,7 @@ export default function BillingPage() {
               <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 Payment Method
               </p>
-              {paymentMethod ? (
+              {isWebManaged && paymentMethod ? (
                 <div className="flex items-center gap-4">
                   <div className="flex h-8 w-12 flex-shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-gray-700 to-gray-900 shadow dark:from-gray-600 dark:to-gray-800">
                     <svg className="h-4 w-7 text-white opacity-70" viewBox="0 0 48 32" fill="currentColor">
@@ -359,15 +438,36 @@ export default function BillingPage() {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">No payment method on file</p>
-                    <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">Add one to continue after your trial</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{paymentMethodSummary}</p>
+                    <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
+                      {isWebManaged
+                        ? 'Add one to continue after your trial'
+                        : isAppStoreManaged
+                          ? 'Use the App Store on your iPhone or iPad to update payment details.'
+                          : 'Start a subscription first to add billing details.'}
+                    </p>
                   </div>
                 </div>
               )}
             </div>
-            <button onClick={openPortal} disabled={portalLoading} className="btn-outline flex-shrink-0 text-sm">
-              {paymentMethod ? 'Update' : 'Add Card'}
-            </button>
+            {isWebManaged ? (
+              <button onClick={openPortal} disabled={portalLoading} className="btn-outline flex-shrink-0 text-sm">
+                {paymentMethod ? 'Update' : 'Add Card'}
+              </button>
+            ) : isAppStoreManaged ? (
+              <a
+                href={APPLE_SUBSCRIPTION_HELP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-outline flex-shrink-0 text-sm"
+              >
+                Apple Billing Help
+              </a>
+            ) : (
+              <Link href="/pricing" className="btn-outline flex-shrink-0 text-sm">
+                View Plans
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -387,7 +487,7 @@ export default function BillingPage() {
                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
               />
             </svg>
-            <p className="text-sm text-gray-500 dark:text-gray-400">No invoices yet</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{invoiceEmptyState}</p>
           </div>
         ) : (
           <div className="-mx-6 overflow-x-auto px-6">
@@ -443,21 +543,40 @@ export default function BillingPage() {
         )}
       </div>
 
-      <div className="card rounded-[28px] border border-red-200 p-6 dark:border-red-900/50">
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-          Cancel Subscription
-        </p>
-        <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-          You can cancel at any time. You&apos;ll retain access until the end of your billing period.
-        </p>
-        <button
-          onClick={openPortal}
-          disabled={portalLoading}
-          className="text-sm font-medium text-red-600 transition-colors hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-        >
-          Cancel subscription
-        </button>
-      </div>
+      {isWebManaged ? (
+        <div className="card rounded-[28px] border border-red-200 p-6 dark:border-red-900/50">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            Cancel Subscription
+          </p>
+          <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+            You can cancel at any time. You&apos;ll retain access until the end of your billing period.
+          </p>
+          <button
+            onClick={openPortal}
+            disabled={portalLoading}
+            className="text-sm font-medium text-red-600 transition-colors hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+          >
+            Cancel subscription
+          </button>
+        </div>
+      ) : isAppStoreManaged ? (
+        <div className="card rounded-[28px] border border-amber-200 p-6 dark:border-amber-900/50">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            App Store-managed subscription
+          </p>
+          <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+            To cancel or change this subscription, use the App Store subscription settings on the iPhone or iPad where you bought it.
+          </p>
+          <a
+            href={APPLE_SUBSCRIPTION_HELP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-amber-700 transition-colors hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200"
+          >
+            See Apple subscription help
+          </a>
+        </div>
+      ) : null}
     </div>
   );
 }
