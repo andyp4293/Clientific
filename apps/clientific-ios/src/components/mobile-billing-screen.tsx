@@ -33,6 +33,32 @@ type MobileBillingScreenProps = {
   purchaseError: string | null;
 };
 
+type AppStorePlanKey = 'starter' | 'pro' | 'premium';
+
+function getPackagePlanKey(aPackage: PurchasesPackage): AppStorePlanKey | null {
+  const searchValue = [
+    aPackage.identifier,
+    aPackage.product.identifier,
+    aPackage.product.title,
+  ]
+    .join(' ')
+    .toLowerCase();
+
+  if (searchValue.includes('starter')) {
+    return 'starter';
+  }
+
+  if (searchValue.includes('premium')) {
+    return 'premium';
+  }
+
+  if (searchValue.includes('pro')) {
+    return 'pro';
+  }
+
+  return null;
+}
+
 function getPackageHeadline(aPackage: PurchasesPackage) {
   const title = aPackage.product.title?.trim();
   if (title) {
@@ -45,12 +71,50 @@ function getPackageHeadline(aPackage: PurchasesPackage) {
 }
 
 function getPackageSupportingCopy(aPackage: PurchasesPackage) {
+  const planKey = getPackagePlanKey(aPackage);
+
+  switch (planKey) {
+    case 'starter':
+      return 'Includes online booking, calendar management, customer CRM, reminders, analytics, paid deals, referrals, secure payouts, up to 10 staff profiles, and 25 direct customer SMS messages each month.';
+    case 'pro':
+      return 'Includes everything in Starter plus AI receptionist phone coverage, SMS AI booking and FAQ automation, up to 50 staff profiles, and 100 direct customer SMS messages each month.';
+    case 'premium':
+      return 'Includes everything in Pro plus AI receptionist phone coverage, SMS AI booking and FAQ automation, unlimited staff profiles, and 500 direct customer SMS messages each month.';
+  }
+
   const description = aPackage.product.description?.trim();
   if (description) {
     return description;
   }
 
   return 'Unlock the full Clientific business workspace on iPhone with Apple-managed billing.';
+}
+
+function getPackageFeatureBullets(aPackage: PurchasesPackage) {
+  const planKey = getPackagePlanKey(aPackage);
+
+  switch (planKey) {
+    case 'starter':
+      return [
+        'Online booking, calendar management, and walk-in check-in',
+        'Customer CRM, visit history, SMS reminders, and business analytics',
+        'Paid deals, referrals, secure payouts, up to 10 staff, and 25 direct customer SMS messages each month',
+      ];
+    case 'pro':
+      return [
+        'Everything in Starter',
+        'AI receptionist phone coverage with SMS AI booking and FAQ automation',
+        'Up to 50 staff profiles and 100 direct customer SMS messages each month',
+      ];
+    case 'premium':
+      return [
+        'Everything in Pro',
+        'Highest launch tier with AI receptionist phone coverage and SMS AI booking automation',
+        'Unlimited staff profiles and 500 direct customer SMS messages each month',
+      ];
+    default:
+      return [];
+  }
 }
 
 function getPackageDurationCopy(aPackage: PurchasesPackage) {
@@ -225,7 +289,7 @@ export function MobileBillingScreen({
               ]}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>Choose your plan</Text>
               <Text style={[styles.detailText, { color: theme.mutedText }]}>
-                Start the 14-day App Store trial, then let Apple handle renewals and receipts for the plan you choose.
+                Starter unlocks booking, CRM, reminders, analytics, deals, referrals, and secure payouts. Pro and Premium also add AI receptionist phone coverage and SMS AI booking automation.
               </Text>
 
               {isLoadingOffering ? (
@@ -237,64 +301,91 @@ export function MobileBillingScreen({
                 </View>
               ) : availablePackages.length ? (
                 <View style={styles.packageList}>
-                  {availablePackages.map((aPackage) => (
-                    <View
-                      key={aPackage.identifier}
-                      style={[
-                        styles.packageCard,
-                        { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
-                      ]}>
-                      <View style={styles.packageHeader}>
-                        <View style={styles.packageCopy}>
-                          <Text style={[styles.packageTitle, { color: theme.text }]}>
-                            {getPackageHeadline(aPackage)}
-                          </Text>
-                          <Text style={[styles.packagePrice, { color: theme.text }]}>
-                            {aPackage.product.priceString}
-                          </Text>
-                        </View>
-                        <View
-                          style={[
-                            styles.statusBadge,
-                            { backgroundColor: theme.accentSoft, borderColor: theme.border },
-                          ]}>
-                          <Text style={[styles.statusBadgeText, { color: theme.accent }]}>
-                            14-day trial
-                          </Text>
-                        </View>
-                      </View>
+                  {availablePackages.map((aPackage) => {
+                    const featureBullets = getPackageFeatureBullets(aPackage);
 
-                      <Text style={[styles.noticeText, { color: theme.mutedText }]}>
-                        {getPackageSupportingCopy(aPackage)}
-                      </Text>
-
-                      <Text style={[styles.packageDetail, { color: theme.mutedText }]}>
-                        {getPackageDurationCopy(aPackage)}
-                      </Text>
-                      <Text style={[styles.packageLegal, { color: theme.mutedText }]}>
-                        {getPackageRenewalCopy(aPackage)}
-                      </Text>
-
-                      <Pressable
-                        accessibilityRole="button"
-                        disabled={isPurchasingSubscription || isRestoringSubscription}
-                        onPress={() => void onPurchasePackage(aPackage)}
+                    return (
+                      <View
+                        key={aPackage.identifier}
                         style={[
-                          styles.primaryButton,
-                          {
-                            backgroundColor:
-                              isPurchasingSubscription || isRestoringSubscription
-                                ? theme.border
-                                : theme.accent,
-                          },
-                        ]}
-                        testID={`mobile-billing-purchase-${aPackage.identifier}`}>
-                        <Text style={styles.primaryButtonText}>
-                          {isPurchasingSubscription ? 'Starting purchase...' : 'Start App Store trial'}
+                          styles.packageCard,
+                          { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                        ]}>
+                        <View style={styles.packageHeader}>
+                          <View style={styles.packageCopy}>
+                            <Text style={[styles.packageTitle, { color: theme.text }]}>
+                              {getPackageHeadline(aPackage)}
+                            </Text>
+                            <Text style={[styles.packagePrice, { color: theme.text }]}>
+                              {aPackage.product.priceString}
+                            </Text>
+                          </View>
+                          <View
+                            style={[
+                              styles.statusBadge,
+                              { backgroundColor: theme.accentSoft, borderColor: theme.border },
+                            ]}>
+                            <Text style={[styles.statusBadgeText, { color: theme.accent }]}>
+                              14-day trial
+                            </Text>
+                          </View>
+                        </View>
+
+                        <Text style={[styles.noticeText, { color: theme.mutedText }]}>
+                          {getPackageSupportingCopy(aPackage)}
                         </Text>
-                      </Pressable>
-                    </View>
-                  ))}
+
+                        {featureBullets.length ? (
+                          <View style={styles.packageFeatureList}>
+                            {featureBullets.map((feature) => (
+                              <View key={feature} style={styles.packageFeatureRow}>
+                                <Text
+                                  style={[
+                                    styles.packageFeatureBullet,
+                                    { color: theme.accent },
+                                  ]}>
+                                  •
+                                </Text>
+                                <Text
+                                  style={[
+                                    styles.packageFeatureText,
+                                    { color: theme.mutedText },
+                                  ]}>
+                                  {feature}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        ) : null}
+
+                        <Text style={[styles.packageDetail, { color: theme.mutedText }]}>
+                          {getPackageDurationCopy(aPackage)}
+                        </Text>
+                        <Text style={[styles.packageLegal, { color: theme.mutedText }]}>
+                          {getPackageRenewalCopy(aPackage)}
+                        </Text>
+
+                        <Pressable
+                          accessibilityRole="button"
+                          disabled={isPurchasingSubscription || isRestoringSubscription}
+                          onPress={() => void onPurchasePackage(aPackage)}
+                          style={[
+                            styles.primaryButton,
+                            {
+                              backgroundColor:
+                                isPurchasingSubscription || isRestoringSubscription
+                                  ? theme.border
+                                  : theme.accent,
+                            },
+                          ]}
+                          testID={`mobile-billing-purchase-${aPackage.identifier}`}>
+                          <Text style={styles.primaryButtonText}>
+                            {isPurchasingSubscription ? 'Starting purchase...' : 'Start App Store trial'}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    );
+                  })}
                 </View>
               ) : (
                 <Text style={[styles.noticeText, { color: theme.mutedText }]}>
@@ -559,6 +650,24 @@ const styles = StyleSheet.create({
   noticeText: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  packageFeatureList: {
+    gap: 8,
+  },
+  packageFeatureRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  packageFeatureBullet: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '700',
+  },
+  packageFeatureText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 22,
   },
   loadingCard: {
     borderWidth: 1,

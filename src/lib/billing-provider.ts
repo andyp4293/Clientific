@@ -42,7 +42,7 @@ export function getBillingManagementSummary(
   const normalized = normalizeBillingProvider(provider);
 
   if (normalized === 'none') {
-    return 'This iPhone account has not started a subscription yet. Pick a plan in the app to unlock appointments, customers, deals, and the rest of the business tools.';
+    return 'This iPhone account has not started a subscription yet. Starter unlocks booking, CRM, reminders, analytics, deals, referrals, and secure payouts. Pro and Premium also add AI receptionist phone coverage.';
   }
 
   return normalized === 'app_store'

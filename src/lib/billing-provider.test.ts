@@ -24,7 +24,12 @@ describe('billing-provider helpers', () => {
     expect(normalizeBillingProvider('none')).toBe('none');
     expect(getBillingProviderLabel('none')).toBe('No subscription yet');
     expect(getBillingManagementTitle('none')).toBe('Start your App Store trial');
-    expect(getBillingManagementSummary('none')).toMatch(/pick a plan in the app/i);
+    expect(getBillingManagementSummary('none')).toContain(
+      'Starter unlocks booking, CRM, reminders, analytics, deals, referrals, and secure payouts.',
+    );
+    expect(getBillingManagementSummary('none')).toContain(
+      'Pro and Premium also add AI receptionist phone coverage.',
+    );
     expect(getBillingPaymentMethodSummary('none', null)).toMatch(/Apple/i);
     expect(getBillingInvoiceEmptyState('none')).toMatch(/start billing/i);
     expect(getAiReceptionistUpgradeSummary('none')).toMatch(/Billing/i);

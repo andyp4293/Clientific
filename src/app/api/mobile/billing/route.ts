@@ -174,7 +174,7 @@ export async function GET(request: Request) {
         ? 'Start a 14-day free trial'
         : `${formatPlanPrice(plan.price)}/month`,
       planSummary: isInactiveNoPlan
-        ? 'Pick Starter, Pro, or Premium in the app to unlock appointments, customers, deals, and the rest of your business tools.'
+        ? 'Starter unlocks booking, CRM, reminders, analytics, deals, referrals, and secure payouts. Pro and Premium also add AI receptionist phone coverage.'
         : plan.summary,
       billingProvider,
       billingProviderLabel: getBillingProviderLabel(billingProvider),

@@ -470,7 +470,7 @@ export function MobileMoreScreen({
               Finish billing setup first
             </Text>
             <Text style={[styles.lockedNoticeText, { color: theme.mutedText }]}>
-              Billing is the only unlocked area right now. Start the 14-day App Store trial there to open the rest of your business tools.
+              Billing is the only unlocked area right now. Start the 14-day App Store trial there to unlock booking, CRM, reminders, analytics, deals, referrals, and secure payouts. Pro and Premium also add AI receptionist phone coverage.
             </Text>
           </View>
         ) : null}

@@ -89,7 +89,7 @@ export function MobileHomeScreen({
           ]}>
           <Text style={[styles.noticeTitle, { color: theme.text }]}>Start your App Store trial</Text>
           <Text style={[styles.noticeText, { color: theme.mutedText }]}>
-            Finish subscription setup in Billing to unlock appointments, customers, deals, and the rest of your business tools.
+            Finish subscription setup in Billing to unlock booking, CRM, reminders, analytics, deals, referrals, and secure payouts. Pro and Premium also add AI receptionist phone coverage.
           </Text>
           <Pressable
             accessibilityRole="button"

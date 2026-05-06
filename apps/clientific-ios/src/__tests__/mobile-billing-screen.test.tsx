@@ -67,7 +67,7 @@ const appStoreOffering = {
       },
       webCheckoutUrl: null,
       product: {
-        identifier: 'clientific_starter_monthly',
+        identifier: 'app.clientific.mobile.starter.monthly',
         description: 'Starter plan from Apple.',
         title: 'Starter',
         price: 49,
@@ -77,6 +77,82 @@ const appStoreOffering = {
         pricePerYear: null,
         pricePerWeekString: null,
         pricePerMonthString: '$49.00',
+        pricePerYearString: null,
+        currencyCode: 'USD',
+        introPrice: null,
+        discounts: null,
+        productCategory: 'SUBSCRIPTION',
+        productType: 'AUTO_RENEWABLE_SUBSCRIPTION',
+        subscriptionPeriod: 'P1M',
+        defaultOption: null,
+        subscriptionOptions: null,
+        presentedOfferingIdentifier: 'default',
+        presentedOfferingContext: {
+          offeringIdentifier: 'default',
+          placementIdentifier: null,
+          targetingContext: null,
+        },
+      },
+    },
+    {
+      identifier: 'pro_monthly',
+      packageType: 'MONTHLY',
+      offeringIdentifier: 'default',
+      presentedOfferingContext: {
+        offeringIdentifier: 'default',
+        placementIdentifier: null,
+        targetingContext: null,
+      },
+      webCheckoutUrl: null,
+      product: {
+        identifier: 'app.clientific.mobile.pro.monthly',
+        description: 'Pro plan from Apple.',
+        title: 'Pro',
+        price: 69,
+        priceString: '$69.00',
+        pricePerWeek: null,
+        pricePerMonth: 69,
+        pricePerYear: null,
+        pricePerWeekString: null,
+        pricePerMonthString: '$69.00',
+        pricePerYearString: null,
+        currencyCode: 'USD',
+        introPrice: null,
+        discounts: null,
+        productCategory: 'SUBSCRIPTION',
+        productType: 'AUTO_RENEWABLE_SUBSCRIPTION',
+        subscriptionPeriod: 'P1M',
+        defaultOption: null,
+        subscriptionOptions: null,
+        presentedOfferingIdentifier: 'default',
+        presentedOfferingContext: {
+          offeringIdentifier: 'default',
+          placementIdentifier: null,
+          targetingContext: null,
+        },
+      },
+    },
+    {
+      identifier: 'premium_monthly',
+      packageType: 'MONTHLY',
+      offeringIdentifier: 'default',
+      presentedOfferingContext: {
+        offeringIdentifier: 'default',
+        placementIdentifier: null,
+        targetingContext: null,
+      },
+      webCheckoutUrl: null,
+      product: {
+        identifier: 'app.clientific.mobile.premium.monthly',
+        description: 'Premium plan from Apple.',
+        title: 'Premium',
+        price: 99,
+        priceString: '$99.00',
+        pricePerWeek: null,
+        pricePerMonth: 99,
+        pricePerYear: null,
+        pricePerWeekString: null,
+        pricePerMonthString: '$99.00',
         pricePerYearString: null,
         currencyCode: 'USD',
         introPrice: null,
@@ -190,7 +266,7 @@ describe('MobileBillingScreen', () => {
         currentPlanName: 'No active plan',
         currentPlanPriceLabel: 'Start a 14-day free trial',
         planSummary:
-          'Pick Starter, Pro, or Premium in the app to unlock appointments, customers, deals, and the rest of your business tools.',
+          'Starter unlocks booking, CRM, reminders, analytics, deals, referrals, and secure payouts. Pro and Premium also add AI receptionist phone coverage.',
         billingProvider: 'none',
         billingProviderLabel: 'No subscription yet',
         managementTitle: 'Start your App Store trial',
@@ -204,13 +280,42 @@ describe('MobileBillingScreen', () => {
         paymentMethodSummary: 'Choose a plan in the app to start billing through Apple.',
         invoices: [],
       },
-      notice: 'Start the 14-day App Store trial to unlock appointments, customers, deals, and the rest of your business tools.',
+      notice:
+        'Start the 14-day App Store trial to unlock booking, CRM, reminders, analytics, deals, referrals, and secure payouts. Pro and Premium also add AI receptionist phone coverage.',
     });
 
     expect(screen.getByText('Choose your plan')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Starter unlocks booking, CRM, reminders, analytics, deals, referrals, and secure payouts. Pro and Premium also add AI receptionist phone coverage and SMS AI booking automation.',
+      ),
+    ).toBeTruthy();
     expect(screen.getByText('Starter')).toBeTruthy();
-    expect(screen.getByText('14-day trial')).toBeTruthy();
-    expect(screen.getByText('Monthly auto-renewing subscription')).toBeTruthy();
+    expect(screen.getByText('Pro')).toBeTruthy();
+    expect(screen.getByText('Premium')).toBeTruthy();
+    expect(screen.getAllByText('14-day trial').length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(
+        'Includes online booking, calendar management, customer CRM, reminders, analytics, paid deals, referrals, secure payouts, up to 10 staff profiles, and 25 direct customer SMS messages each month.',
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Includes everything in Starter plus AI receptionist phone coverage, SMS AI booking and FAQ automation, up to 50 staff profiles, and 100 direct customer SMS messages each month.',
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Includes everything in Pro plus AI receptionist phone coverage, SMS AI booking and FAQ automation, unlimited staff profiles, and 500 direct customer SMS messages each month.',
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText('AI receptionist phone coverage with SMS AI booking and FAQ automation'),
+    ).toBeTruthy();
+    expect(
+      screen.getByText('Unlimited staff profiles and 500 direct customer SMS messages each month'),
+    ).toBeTruthy();
+    expect(screen.getAllByText('Monthly auto-renewing subscription').length).toBeGreaterThan(0);
     expect(
       screen.getByText(
         'After the 14-day free trial, renews for $49.00/monthly unless canceled at least 24 hours before renewal.',

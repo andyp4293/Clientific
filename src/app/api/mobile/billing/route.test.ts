@@ -231,5 +231,7 @@ describe('GET /api/mobile/billing', () => {
     expect(body.canPurchaseInApp).toBe(true);
     expect(body.showManageInApp).toBe(false);
     expect(body.managementTitle).toBe('Start your App Store trial');
+    expect(body.planSummary).toContain('Starter unlocks booking, CRM, reminders, analytics');
+    expect(body.planSummary).toContain('Pro and Premium also add AI receptionist phone coverage.');
   });
 });

@@ -413,7 +413,7 @@ export function ClientificNativeApp() {
       ) {
         setError(null);
         setPendingSubscriptionRedirectMessage(
-          'Start the 14-day App Store trial from Billing to unlock this part of Clientific.',
+          'Start the 14-day App Store trial from Billing to unlock booking, CRM, reminders, analytics, deals, referrals, and secure payouts. Pro and Premium also add AI receptionist phone coverage.',
         );
         return;
       }
@@ -443,7 +443,7 @@ export function ClientificNativeApp() {
           setActiveTab('more');
           setMoreSection('billing');
           setBillingNotice(
-            'Start the 14-day App Store trial to unlock appointments, customers, deals, and the rest of your business tools.',
+            'Start the 14-day App Store trial to unlock booking, CRM, reminders, analytics, deals, referrals, and secure payouts. Pro and Premium also add AI receptionist phone coverage.',
           );
         } else {
           setBillingNotice(null);
@@ -1111,7 +1111,7 @@ export function ClientificNativeApp() {
 
       if (subscriptionLocked && !unlockedSections.includes(nextSection)) {
         openBillingPaywall(
-          'Finish setup in Billing first. Start the 14-day App Store trial to unlock the rest of the app.',
+          'Finish setup in Billing first. Start the 14-day App Store trial to unlock booking, CRM, reminders, analytics, deals, referrals, and secure payouts. Pro and Premium also add AI receptionist phone coverage.',
         );
         return;
       }
@@ -1530,7 +1530,7 @@ export function ClientificNativeApp() {
 
     if (lockedSections.has(moreSection)) {
       openBillingPaywall(
-        'Finish setup in Billing first. Start the 14-day App Store trial to unlock the rest of the app.',
+        'Finish setup in Billing first. Start the 14-day App Store trial to unlock booking, CRM, reminders, analytics, deals, referrals, and secure payouts. Pro and Premium also add AI receptionist phone coverage.',
       );
     }
   }, [activeTab, home?.subscription.requiresPurchase, moreSection, openBillingPaywall]);
