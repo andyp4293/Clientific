@@ -192,12 +192,13 @@ describe('MobileScheduleScreen', () => {
     expect(onJumpToToday).toHaveBeenCalledTimes(1);
   });
 
-  it('lets the user jump to another visible day from the date strip', () => {
+  it('opens the schedule calendar and lets the user pick another day', () => {
     const onSelectDate = jest.fn();
 
     renderScreen({ onSelectDate });
 
-    fireEvent.press(screen.getByTestId('mobile-schedule-date-chip-2099-04-01'));
+    fireEvent.press(screen.getByTestId('mobile-schedule-open-calendar'));
+    fireEvent.press(screen.getByTestId('mobile-calendar-day-2099-04-01'));
 
     expect(onSelectDate).toHaveBeenCalledWith('2099-04-01');
   });
@@ -257,17 +258,18 @@ describe('MobileScheduleScreen', () => {
     renderScreen({ onUpdateAppointment });
 
     fireEvent.press(screen.getByTestId('mobile-appointment-edit-appt-1'));
+    fireEvent.press(screen.getByTestId('mobile-schedule-edit-open-calendar'));
+    fireEvent.press(screen.getByTestId('mobile-calendar-day-2026-04-01'));
     fireEvent.press(screen.getByTestId('mobile-schedule-edit-time-12:00'));
-    fireEvent.press(screen.getByText('1 hr'));
     fireEvent.press(screen.getByTestId('mobile-schedule-edit-submit'));
 
-    const expectedStartTime = new Date('2026-03-31T12:00').toISOString();
+    const expectedStartTime = new Date('2026-04-01T12:00').toISOString();
 
     await waitFor(() => {
       expect(onUpdateAppointment).toHaveBeenCalledWith(
         'appt-1',
         expect.objectContaining({
-          duration: 60,
+          duration: 45,
           startTime: expectedStartTime,
         }),
       );

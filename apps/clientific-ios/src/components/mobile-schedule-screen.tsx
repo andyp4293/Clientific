@@ -77,6 +77,8 @@ type AppointmentEditFormState = {
   notes: string;
 };
 
+type CalendarTarget = 'schedule' | 'create' | 'edit';
+
 function formatDateKey(date: Date) {
   return date.toLocaleDateString('en-CA');
 }
@@ -96,29 +98,37 @@ function parseDateKey(dateKey: string) {
   return new Date(year, month - 1, day, 12);
 }
 
-function addDaysToDateKey(dateKey: string, days: number) {
-  const base = parseDateKey(dateKey) ?? new Date();
-  base.setDate(base.getDate() + days);
-  return formatDateKey(base);
+function addMonths(date: Date, months: number) {
+  return new Date(date.getFullYear(), date.getMonth() + months, 1, 12);
 }
 
-function buildDateChoices(centerDateKey: string, radius = 3) {
-  return Array.from({ length: radius * 2 + 1 }, (_, index) => {
-    const dateKey = addDaysToDateKey(centerDateKey, index - radius);
-    const date = parseDateKey(dateKey) ?? new Date(`${dateKey}T12:00:00`);
+function buildCalendarMonth(anchorDate: Date) {
+  const monthStart = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1, 12);
+  const gridStart = new Date(monthStart);
+  gridStart.setDate(monthStart.getDate() - monthStart.getDay());
+
+  const todayKey = formatDateKey(new Date());
+  const cells = Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    const dateKey = formatDateKey(date);
     return {
       date,
       dateKey,
-      dayLabel: date.toLocaleDateString('en-US', { weekday: 'short' }),
       dayNumber: date.getDate(),
-      monthLabel: date.toLocaleDateString('en-US', { month: 'short' }),
-      fullLabel: date.toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-      }),
+      inCurrentMonth: date.getMonth() === monthStart.getMonth(),
+      isToday: dateKey === todayKey,
     };
   });
+
+  return {
+    monthLabel: monthStart.toLocaleDateString('en-US', {
+      month: 'long',
+      year: 'numeric',
+    }),
+    weekdayLabels: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    cells,
+  };
 }
 
 function getDefaultTimeOptions(duration: number) {
@@ -248,57 +258,6 @@ function OptionChip({
   );
 }
 
-function DateChoiceChip({
-  dayLabel,
-  dayNumber,
-  monthLabel,
-  onPress,
-  selected,
-  testID,
-}: {
-  dayLabel: string;
-  dayNumber: number;
-  monthLabel: string;
-  onPress: () => void;
-  selected: boolean;
-  testID?: string;
-}) {
-  const colorScheme = useColorScheme();
-  const theme = getClientificTheme(colorScheme);
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={[
-        styles.dateChoiceChip,
-        selected
-          ? { backgroundColor: theme.accent, borderColor: theme.accent }
-          : { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
-      ]}
-      testID={testID}>
-      <Text
-        style={
-          selected ? styles.dateChoiceEyebrowSelected : [styles.dateChoiceEyebrow, { color: theme.mutedText }]
-        }>
-        {dayLabel}
-      </Text>
-      <Text
-        style={
-          selected ? styles.dateChoiceDaySelected : [styles.dateChoiceDay, { color: theme.text }]
-        }>
-        {dayNumber}
-      </Text>
-      <Text
-        style={
-          selected ? styles.dateChoiceMonthSelected : [styles.dateChoiceMonth, { color: theme.mutedText }]
-        }>
-        {monthLabel}
-      </Text>
-    </Pressable>
-  );
-}
-
 function TimeSlotChip({
   label,
   onPress,
@@ -331,6 +290,171 @@ function TimeSlotChip({
         {label}
       </Text>
     </Pressable>
+  );
+}
+
+function CalendarDateButton({
+  helperLabel,
+  onPress,
+  selectedDateKey,
+  testID,
+}: {
+  helperLabel?: string;
+  onPress: () => void;
+  selectedDateKey: string;
+  testID?: string;
+}) {
+  const colorScheme = useColorScheme();
+  const theme = getClientificTheme(colorScheme);
+  const selectedDate = parseDateKey(selectedDateKey) ?? new Date(`${selectedDateKey}T12:00:00`);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={[
+        styles.calendarDateButton,
+        { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+      ]}
+      testID={testID}>
+      <View style={styles.calendarDateButtonCopy}>
+        <Text style={[styles.calendarDateButtonLabel, { color: theme.mutedText }]}>
+          {helperLabel ?? 'Selected date'}
+        </Text>
+        <Text style={[styles.calendarDateButtonValue, { color: theme.text }]}>
+          {selectedDate.toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+          })}
+        </Text>
+      </View>
+      <Text style={[styles.calendarDateButtonAction, { color: theme.accent }]}>Calendar</Text>
+    </Pressable>
+  );
+}
+
+function CalendarPickerModal({
+  monthAnchor,
+  onClose,
+  onNextMonth,
+  onPreviousMonth,
+  onSelectDate,
+  selectedDateKey,
+  visible,
+}: {
+  monthAnchor: Date;
+  onClose: () => void;
+  onNextMonth: () => void;
+  onPreviousMonth: () => void;
+  onSelectDate: (dateKey: string) => void;
+  selectedDateKey: string;
+  visible: boolean;
+}) {
+  const colorScheme = useColorScheme();
+  const theme = getClientificTheme(colorScheme);
+  const { cells, monthLabel, weekdayLabels } = useMemo(
+    () => buildCalendarMonth(monthAnchor),
+    [monthAnchor],
+  );
+
+  return (
+    <Modal animationType="fade" transparent visible={visible}>
+      <View style={styles.calendarOverlay}>
+        <View
+          style={[
+            styles.calendarModal,
+            { backgroundColor: theme.surface, borderColor: theme.border },
+          ]}>
+          <View style={styles.calendarHeader}>
+            <View style={styles.calendarHeaderCopy}>
+              <Text style={[styles.calendarHeaderEyebrow, { color: theme.accent }]}>
+                Calendar
+              </Text>
+              <Text style={[styles.calendarHeaderTitle, { color: theme.text }]}>{monthLabel}</Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onClose}
+              style={[
+                styles.calendarCloseButton,
+                { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+              ]}>
+              <Text style={[styles.calendarCloseButtonText, { color: theme.text }]}>Close</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.calendarMonthActions}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onPreviousMonth}
+              style={[styles.calendarMonthButton, { borderColor: theme.border }]}>
+              <Text style={[styles.calendarMonthButtonText, { color: theme.text }]}>Prev month</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onNextMonth}
+              style={[styles.calendarMonthButton, { borderColor: theme.border }]}>
+              <Text style={[styles.calendarMonthButtonText, { color: theme.text }]}>Next month</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.calendarWeekdayRow}>
+            {weekdayLabels.map((label) => (
+              <Text
+                key={label}
+                style={[styles.calendarWeekdayLabel, { color: theme.mutedText }]}>
+                {label}
+              </Text>
+            ))}
+          </View>
+
+          <View style={styles.calendarGrid}>
+            {cells.map((cell) => {
+              const isSelected = cell.dateKey === selectedDateKey;
+              return (
+                <Pressable
+                  key={cell.dateKey}
+                  accessibilityRole="button"
+                  onPress={() => onSelectDate(cell.dateKey)}
+                  style={[
+                    styles.calendarDayCell,
+                    {
+                      backgroundColor: isSelected
+                        ? theme.accent
+                        : cell.isToday
+                          ? theme.accentSoft
+                          : theme.surfaceMuted,
+                      borderColor: isSelected
+                        ? theme.accent
+                        : cell.isToday
+                          ? theme.accent
+                          : theme.border,
+                    },
+                  ]}
+                  testID={`mobile-calendar-day-${cell.dateKey}`}>
+                  <Text
+                    style={[
+                      isSelected
+                        ? styles.calendarDayTextSelected
+                        : styles.calendarDayText,
+                      {
+                        color: isSelected
+                          ? '#ffffff'
+                          : cell.inCurrentMonth
+                            ? theme.text
+                            : theme.mutedText,
+                      },
+                    ]}>
+                    {cell.dayNumber}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -444,6 +568,10 @@ export function MobileScheduleScreen({
   const [sheetError, setSheetError] = useState<string | null>(null);
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const [calendarTarget, setCalendarTarget] = useState<CalendarTarget | null>(null);
+  const [calendarMonthAnchor, setCalendarMonthAnchor] = useState<Date>(
+    parseDateKey(data?.selectedDate ?? formatDateKey(new Date())) ?? new Date(),
+  );
   const [activeAppointmentAction, setActiveAppointmentAction] = useState<{
     id: string;
     action: 'confirm' | 'cancel';
@@ -451,6 +579,20 @@ export function MobileScheduleScreen({
 
   const availableServices = servicesSummary?.services.filter((service) => service.isActive) ?? [];
   const availableStaff = servicesSummary?.staff.filter((staff) => staff.isActive) ?? [];
+  const selectedCreateService =
+    availableServices.find((service) => service.id === createForm.serviceId) ?? null;
+  const selectedEditService =
+    editingAppointment?.serviceId
+      ? availableServices.find((service) => service.id === editingAppointment.serviceId) ?? null
+      : null;
+  const createEffectiveDuration = selectedCreateService?.duration ?? createForm.duration;
+  const editEffectiveDuration = selectedEditService?.duration ?? editForm.duration;
+  const createEligibleStaff = selectedCreateService
+    ? availableStaff.filter((staff) => staff.serviceIds.includes(selectedCreateService.id))
+    : availableStaff;
+  const editEligibleStaff = selectedEditService
+    ? availableStaff.filter((staff) => staff.serviceIds.includes(selectedEditService.id))
+    : availableStaff;
   const selectedExistingCustomer =
     customerMode === 'existing'
       ? composerCustomers.find((customer) => customer.id === createForm.customerId) ?? null
@@ -477,41 +619,38 @@ export function MobileScheduleScreen({
   }, [composerCustomers, customerSearch]);
 
   const selectedScheduleDateKey = data?.selectedDate ?? formatDateKey(new Date());
-  const visibleScheduleDates = useMemo(
-    () => buildDateChoices(selectedScheduleDateKey),
-    [selectedScheduleDateKey],
-  );
   const pendingAppointments = useMemo(
     () => data?.appointments.filter((appointment) => appointment.canConfirm) ?? [],
     [data?.appointments],
-  );
-  const createDateChoices = useMemo(() => buildDateChoices(createForm.date), [createForm.date]);
-  const editDateChoices = useMemo(
-    () => buildDateChoices(editForm.date || selectedScheduleDateKey),
-    [editForm.date, selectedScheduleDateKey],
   );
   const createSuggestedTimeOptions = useMemo(
     () =>
       getSuggestedTimeOptions({
         dateKey: createForm.date,
-        duration: createForm.duration,
+        duration: createEffectiveDuration,
         staffId: createForm.staffId,
-        staff: availableStaff,
+        staff: createEligibleStaff,
       }),
-    [availableStaff, createForm.date, createForm.duration, createForm.staffId],
+    [createEffectiveDuration, createEligibleStaff, createForm.date, createForm.staffId],
   );
   const editSuggestedTimeOptions = useMemo(
     () =>
       editingAppointment
         ? getSuggestedTimeOptions({
             dateKey: editForm.date,
-            duration: editForm.duration,
+            duration: editEffectiveDuration,
             staffId: editingAppointment.staffId ?? '',
-            staff: availableStaff,
+            staff: editEligibleStaff,
           })
         : [],
-    [availableStaff, editForm.date, editForm.duration, editingAppointment],
+    [editEffectiveDuration, editEligibleStaff, editForm.date, editingAppointment],
   );
+  const activeCalendarDateKey =
+    calendarTarget === 'create'
+      ? createForm.date
+      : calendarTarget === 'edit'
+        ? editForm.date
+        : selectedScheduleDateKey;
 
   useEffect(() => {
     if (!isCreateSheetVisible) {
@@ -575,6 +714,22 @@ export function MobileScheduleScreen({
   }, [createForm.time, createSuggestedTimeOptions, isCreateSheetVisible]);
 
   useEffect(() => {
+    if (!selectedCreateService || !createForm.staffId) {
+      return;
+    }
+
+    if (createEligibleStaff.some((staff) => staff.id === createForm.staffId)) {
+      return;
+    }
+
+    setCreateForm((current) => ({
+      ...current,
+      staffId: '',
+      time: '',
+    }));
+  }, [createEligibleStaff, createForm.staffId, selectedCreateService]);
+
+  useEffect(() => {
     if (!editingAppointment || !editSuggestedTimeOptions.length) {
       return;
     }
@@ -602,6 +757,31 @@ export function MobileScheduleScreen({
     setSheetError(null);
     setEditingAppointment(appointment);
     setEditForm(createEditForm(appointment));
+  };
+
+  const openCalendar = (target: CalendarTarget, dateKey: string) => {
+    setCalendarTarget(target);
+    setCalendarMonthAnchor(parseDateKey(dateKey) ?? new Date(`${dateKey}T12:00:00`));
+  };
+
+  const closeCalendar = () => {
+    setCalendarTarget(null);
+  };
+
+  const handleCalendarSelect = (dateKey: string) => {
+    if (calendarTarget === 'schedule') {
+      onSelectDate(dateKey);
+    }
+
+    if (calendarTarget === 'create') {
+      setCreateForm((current) => ({ ...current, date: dateKey, time: '' }));
+    }
+
+    if (calendarTarget === 'edit') {
+      setEditForm((current) => ({ ...current, date: dateKey, time: '' }));
+    }
+
+    closeCalendar();
   };
 
   const closeCreateSheet = () => {
@@ -668,7 +848,7 @@ export function MobileScheduleScreen({
         serviceId: createForm.serviceId || null,
         staffId: createForm.staffId || null,
         startTime: start.toISOString(),
-        duration: createForm.duration,
+        duration: createEffectiveDuration,
         notes: createForm.notes.trim() || null,
         appointmentSmsConsent: createForm.appointmentSmsConsent,
       });
@@ -705,7 +885,7 @@ export function MobileScheduleScreen({
     try {
       await onUpdateAppointment(editingAppointment.id, {
         startTime: start.toISOString(),
-        duration: editForm.duration,
+        duration: editEffectiveDuration,
         notes: editForm.notes.trim() || null,
       });
       setEditingAppointment(null);
@@ -789,6 +969,13 @@ export function MobileScheduleScreen({
             </Pressable>
           </View>
 
+          <CalendarDateButton
+            helperLabel="Appointment day"
+            onPress={() => openCalendar('schedule', selectedScheduleDateKey)}
+            selectedDateKey={selectedScheduleDateKey}
+            testID="mobile-schedule-open-calendar"
+          />
+
           <View style={styles.dateRow}>
             <Pressable
               accessibilityRole="button"
@@ -824,20 +1011,6 @@ export function MobileScheduleScreen({
               testID="mobile-schedule-next">
               <Text style={[styles.dateButtonText, { color: theme.text }]}>Next</Text>
             </Pressable>
-          </View>
-
-          <View style={styles.scheduleDateStrip}>
-            {visibleScheduleDates.map((dateChoice) => (
-              <DateChoiceChip
-                key={dateChoice.dateKey}
-                dayLabel={dateChoice.dayLabel}
-                dayNumber={dateChoice.dayNumber}
-                monthLabel={dateChoice.monthLabel}
-                onPress={() => onSelectDate(dateChoice.dateKey)}
-                selected={selectedScheduleDateKey === dateChoice.dateKey}
-                testID={`mobile-schedule-date-chip-${dateChoice.dateKey}`}
-              />
-            ))}
           </View>
         </View>
 
@@ -1175,86 +1348,23 @@ export function MobileScheduleScreen({
               styles.detailSectionCard,
               { backgroundColor: theme.surface, borderColor: theme.border },
             ]}>
-            <SectionLabel label="When" />
-            <View style={styles.quickDateRow}>
-              <Text style={[styles.helperText, { color: theme.mutedText }]}>
-                Choose the day, then tap a time slot instead of typing it manually.
-              </Text>
-            </View>
-
-            <SectionLabel label="Date" />
-            <View style={styles.dateChoiceGrid}>
-              {createDateChoices.map((dateChoice) => (
-                <DateChoiceChip
-                  key={dateChoice.dateKey}
-                  dayLabel={dateChoice.dayLabel}
-                  dayNumber={dateChoice.dayNumber}
-                  monthLabel={dateChoice.monthLabel}
-                  onPress={() =>
-                    setCreateForm((current) => ({ ...current, date: dateChoice.dateKey }))
-                  }
-                  selected={createForm.date === dateChoice.dateKey}
-                  testID={`mobile-schedule-create-date-${dateChoice.dateKey}`}
-                />
-              ))}
-            </View>
-
-            <Text style={[styles.helperText, { color: theme.mutedText }]}>
-              The appointment will save for {createForm.date} at{' '}
-              {createForm.time ? formatTimePreview(createForm.time) : 'the selected time'}.
-            </Text>
-
-            <SectionLabel label="Duration" />
-            <View style={styles.segmentRow}>
-              {[30, 45, 60, 90, 120].map((duration) => (
-                <OptionChip
-                  key={duration}
-                  label={duration >= 60 ? `${duration / 60} hr` : `${duration} min`}
-                  onPress={() =>
-                    setCreateForm((current) => ({ ...current, duration }))
-                  }
-                  selected={createForm.duration === duration}
-                />
-              ))}
-            </View>
-
-            <SectionLabel label="Start time" />
-            <View style={styles.timeSlotGrid}>
-              {createSuggestedTimeOptions.map((timeValue) => (
-                <TimeSlotChip
-                  key={timeValue}
-                  label={formatScheduleTimeLabel(timeValue)}
-                  onPress={() =>
-                    setCreateForm((current) => ({ ...current, time: timeValue }))
-                  }
-                  selected={createForm.time === timeValue}
-                  testID={`mobile-schedule-create-time-${timeValue}`}
-                />
-              ))}
-            </View>
-            {!createSuggestedTimeOptions.length ? (
-              <Text style={[styles.warningText, { color: '#c47f00' }]}>
-                No suggested times are available for this day yet. Pick another date or staff
-                member.
-              </Text>
-            ) : null}
-          </View>
-
-          <View
-            style={[
-              styles.detailSectionCard,
-              { backgroundColor: theme.surface, borderColor: theme.border },
-            ]}>
             <SectionLabel label="Service & staff" />
             <Text style={[styles.helperText, { color: theme.mutedText }]}>
-              Keep these optional for quick front-desk entry, or add them now for a fuller booking.
+              Pick the service first so Clientific can suggest the right appointment length and
+              availability.
             </Text>
 
             <SectionLabel label="Service" />
             <View style={styles.segmentRow}>
               <OptionChip
-                label="No service"
-                onPress={() => setCreateForm((current) => ({ ...current, serviceId: '' }))}
+                label="Manual booking"
+                onPress={() =>
+                  setCreateForm((current) => ({
+                    ...current,
+                    serviceId: '',
+                    time: '',
+                  }))
+                }
                 selected={!createForm.serviceId}
               />
               {availableServices.map((service) => (
@@ -1266,12 +1376,49 @@ export function MobileScheduleScreen({
                       ...current,
                       serviceId: service.id,
                       duration: service.duration,
+                      time: '',
                     }))
                   }
                   selected={createForm.serviceId === service.id}
                 />
               ))}
             </View>
+
+            {selectedCreateService ? (
+              <View
+                style={[
+                  styles.summaryCard,
+                  { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                ]}>
+                <Text style={[styles.summaryCardTitle, { color: theme.text }]}>
+                  {selectedCreateService.name}
+                </Text>
+                <Text style={[styles.summaryCardText, { color: theme.mutedText }]}>
+                  {selectedCreateService.durationLabel} appointment
+                  {selectedCreateService.priceLabel ? ` · ${selectedCreateService.priceLabel}` : ''}
+                </Text>
+              </View>
+            ) : (
+              <>
+                <Text style={[styles.warningText, { color: '#c47f00' }]}>
+                  Select a service for the cleanest booking flow, or keep it manual for an off-menu
+                  appointment.
+                </Text>
+                <SectionLabel label="Manual duration" />
+                <View style={styles.segmentRow}>
+                  {[30, 45, 60, 90, 120].map((duration) => (
+                    <OptionChip
+                      key={duration}
+                      label={duration >= 60 ? `${duration / 60} hr` : `${duration} min`}
+                      onPress={() =>
+                        setCreateForm((current) => ({ ...current, duration, time: '' }))
+                      }
+                      selected={createForm.duration === duration}
+                    />
+                  ))}
+                </View>
+              </>
+            )}
 
             <SectionLabel label="Staff" />
             <View style={styles.segmentRow}>
@@ -1280,12 +1427,12 @@ export function MobileScheduleScreen({
                 onPress={() => setCreateForm((current) => ({ ...current, staffId: '' }))}
                 selected={!createForm.staffId}
               />
-              {availableStaff.map((staff) => (
+              {createEligibleStaff.map((staff) => (
                 <OptionChip
                   key={staff.id}
                   label={staff.fullName}
                   onPress={() =>
-                    setCreateForm((current) => ({ ...current, staffId: staff.id }))
+                    setCreateForm((current) => ({ ...current, staffId: staff.id, time: '' }))
                   }
                   selected={createForm.staffId === staff.id}
                 />
@@ -1308,6 +1455,74 @@ export function MobileScheduleScreen({
               ]}
               value={createForm.notes}
             />
+          </View>
+
+          <View
+            style={[
+              styles.detailSectionCard,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}>
+            <SectionLabel label="When" />
+            <Text style={[styles.helperText, { color: theme.mutedText }]}>
+              Use the calendar to pick the day, then choose from the available slots for this
+              appointment.
+            </Text>
+
+            <CalendarDateButton
+              helperLabel="Appointment date"
+              onPress={() => openCalendar('create', createForm.date)}
+              selectedDateKey={createForm.date}
+              testID="mobile-schedule-create-open-calendar"
+            />
+
+            <View style={styles.quickDateRow}>
+              {[
+                { label: 'Today', value: formatDateKey(new Date()) },
+                { label: 'Tomorrow', value: getTomorrowKey() },
+              ].map((choice) => (
+                <OptionChip
+                  key={choice.label}
+                  label={choice.label}
+                  onPress={() =>
+                    setCreateForm((current) => ({ ...current, date: choice.value, time: '' }))
+                  }
+                  selected={createForm.date === choice.value}
+                />
+              ))}
+            </View>
+
+            <Text style={[styles.helperText, { color: theme.mutedText }]}>
+              {selectedCreateService
+                ? `Available slots are based on ${selectedCreateService.name} (${selectedCreateService.durationLabel}).`
+                : `Manual slots are using a ${createForm.duration}-minute appointment length.`}
+            </Text>
+
+            <SectionLabel label="Available start times" />
+            <View style={styles.timeSlotGrid}>
+              {createSuggestedTimeOptions.map((timeValue) => (
+                <TimeSlotChip
+                  key={timeValue}
+                  label={formatScheduleTimeLabel(timeValue)}
+                  onPress={() =>
+                    setCreateForm((current) => ({ ...current, time: timeValue }))
+                  }
+                  selected={createForm.time === timeValue}
+                  testID={`mobile-schedule-create-time-${timeValue}`}
+                />
+              ))}
+            </View>
+            {!createSuggestedTimeOptions.length ? (
+              <Text style={[styles.warningText, { color: '#c47f00' }]}>
+                No suggested times are available for this day yet. Pick another date or staff
+                member.
+              </Text>
+            ) : null}
+
+            <SectionLabel label="Notes" />
+            <Text style={[styles.helperText, { color: theme.mutedText }]}>
+              The appointment will save for {createForm.date} at{' '}
+              {createForm.time ? formatTimePreview(createForm.time) : 'the selected time'}.
+            </Text>
           </View>
 
           <View
@@ -1428,34 +1643,50 @@ export function MobileScheduleScreen({
                   styles.detailSectionCard,
                   { backgroundColor: theme.surface, borderColor: theme.border },
                 ]}>
+                <SectionLabel label="Service" />
+                <Text style={[styles.helperText, { color: theme.mutedText }]}>
+                  {selectedEditService
+                    ? `${selectedEditService.name} uses ${selectedEditService.durationLabel}, so the slot suggestions stay aligned with that service.`
+                    : 'This appointment is using manual timing, so you can keep the custom duration.'}
+                </Text>
+                {selectedEditService ? (
+                  <View
+                    style={[
+                      styles.summaryCard,
+                      { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                    ]}>
+                    <Text style={[styles.summaryCardTitle, { color: theme.text }]}>
+                      {selectedEditService.name}
+                    </Text>
+                    <Text style={[styles.summaryCardText, { color: theme.mutedText }]}>
+                      {selectedEditService.durationLabel}
+                    </Text>
+                  </View>
+                ) : null}
+
                 <SectionLabel label="Date" />
-                <View style={styles.dateChoiceGrid}>
-                  {editDateChoices.map((dateChoice) => (
-                    <DateChoiceChip
-                      key={dateChoice.dateKey}
-                      dayLabel={dateChoice.dayLabel}
-                      dayNumber={dateChoice.dayNumber}
-                      monthLabel={dateChoice.monthLabel}
-                      onPress={() =>
-                        setEditForm((current) => ({ ...current, date: dateChoice.dateKey }))
-                      }
-                      selected={editForm.date === dateChoice.dateKey}
-                      testID={`mobile-schedule-edit-date-${dateChoice.dateKey}`}
-                    />
-                  ))}
-                </View>
-                <SectionLabel label="Duration" />
-                <View style={styles.segmentRow}>
-                  {[30, 45, 60, 90, 120].map((duration) => (
-                    <OptionChip
-                      key={duration}
-                      label={duration >= 60 ? `${duration / 60} hr` : `${duration} min`}
-                      onPress={() => setEditForm((current) => ({ ...current, duration }))}
-                      selected={editForm.duration === duration}
-                    />
-                  ))}
-                </View>
-                <SectionLabel label="Start time" />
+                <CalendarDateButton
+                  helperLabel="Appointment date"
+                  onPress={() => openCalendar('edit', editForm.date)}
+                  selectedDateKey={editForm.date}
+                  testID="mobile-schedule-edit-open-calendar"
+                />
+                {!selectedEditService ? (
+                  <>
+                    <SectionLabel label="Manual duration" />
+                    <View style={styles.segmentRow}>
+                      {[30, 45, 60, 90, 120].map((duration) => (
+                        <OptionChip
+                          key={duration}
+                          label={duration >= 60 ? `${duration / 60} hr` : `${duration} min`}
+                          onPress={() => setEditForm((current) => ({ ...current, duration }))}
+                          selected={editForm.duration === duration}
+                        />
+                      ))}
+                    </View>
+                  </>
+                ) : null}
+                <SectionLabel label="Available start times" />
                 <View style={styles.timeSlotGrid}>
                   {editSuggestedTimeOptions.map((timeValue) => (
                     <TimeSlotChip
@@ -1517,6 +1748,16 @@ export function MobileScheduleScreen({
           </Pressable>
         </View>
       </AppointmentSheet>
+
+      <CalendarPickerModal
+        monthAnchor={calendarMonthAnchor}
+        onClose={closeCalendar}
+        onNextMonth={() => setCalendarMonthAnchor((current) => addMonths(current, 1))}
+        onPreviousMonth={() => setCalendarMonthAnchor((current) => addMonths(current, -1))}
+        onSelectDate={handleCalendarSelect}
+        selectedDateKey={activeCalendarDateKey}
+        visible={Boolean(calendarTarget)}
+      />
     </>
   );
 }
@@ -1577,6 +1818,37 @@ const styles = StyleSheet.create({
   dateRow: {
     flexDirection: 'row',
     gap: 10,
+  },
+  calendarDateButton: {
+    borderWidth: 1,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    gap: 14,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  calendarDateButtonCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  calendarDateButtonLabel: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  calendarDateButtonValue: {
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: '800',
+  },
+  calendarDateButtonAction: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '800',
   },
   dateButton: {
     flex: 1,
@@ -1822,6 +2094,23 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 10,
   },
+  summaryCard: {
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 4,
+  },
+  summaryCardTitle: {
+    fontSize: 15,
+    lineHeight: 19,
+    fontWeight: '800',
+  },
+  summaryCardText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '600',
+  },
   optionChip: {
     borderWidth: 1,
     borderRadius: 999,
@@ -1837,62 +2126,6 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 13,
     lineHeight: 16,
-    fontWeight: '700',
-  },
-  scheduleDateStrip: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  dateChoiceGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  dateChoiceChip: {
-    minWidth: 84,
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-  },
-  dateChoiceEyebrow: {
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  dateChoiceEyebrowSelected: {
-    color: '#f8fffc',
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  dateChoiceDay: {
-    fontSize: 24,
-    lineHeight: 28,
-    fontWeight: '800',
-  },
-  dateChoiceDaySelected: {
-    color: '#ffffff',
-    fontSize: 24,
-    lineHeight: 28,
-    fontWeight: '800',
-  },
-  dateChoiceMonth: {
-    fontSize: 12,
-    lineHeight: 15,
-    fontWeight: '700',
-  },
-  dateChoiceMonthSelected: {
-    color: '#f8fffc',
-    fontSize: 12,
-    lineHeight: 15,
     fontWeight: '700',
   },
   input: {
@@ -2113,6 +2346,105 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '600',
+  },
+  calendarOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(3, 7, 18, 0.52)',
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+  },
+  calendarModal: {
+    borderWidth: 1,
+    borderRadius: 28,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 20,
+    gap: 16,
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  calendarHeaderCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  calendarHeaderEyebrow: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '800',
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
+  },
+  calendarHeaderTitle: {
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: '800',
+  },
+  calendarCloseButton: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  calendarCloseButtonText: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
+  calendarMonthActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  calendarMonthButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  calendarMonthButtonText: {
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: '700',
+  },
+  calendarWeekdayRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  calendarWeekdayLabel: {
+    flex: 1,
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '800',
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  calendarDayCell: {
+    width: '13.6%',
+    aspectRatio: 1,
+    borderWidth: 1,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarDayText: {
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: '700',
+  },
+  calendarDayTextSelected: {
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: '800',
   },
   detailHeadline: {
     fontSize: 18,
