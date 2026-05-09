@@ -104,6 +104,14 @@ function getNotificationsMenuCopy(
   return 'Finish notification setup so owners get a pop-up when someone books.';
 }
 
+function getSettingsMenuCopy(unreadCount: number) {
+  if (unreadCount > 0) {
+    return `${unreadCount} unread alerts plus your profile, theme, and privacy controls live here.`;
+  }
+
+  return 'Manage profile, alerts, theme, and privacy from one place.';
+}
+
 type MobileMoreScreenProps = {
   activeSection: MobileMoreSection;
   appStoreOffering: PurchasesOffering | null;
@@ -290,14 +298,6 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
     target: 'aiReceptionist',
   },
   {
-    key: 'notifications',
-    label: 'Notifications & Alerts',
-    helper: 'Review owner alerts and manage push notifications on this phone.',
-    icon: 'notifications',
-    section: 'account',
-    target: 'notifications',
-  },
-  {
     key: 'preview',
     label: 'Customer View',
     helper: 'Preview what guests see before you share links.',
@@ -340,7 +340,7 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
   {
     key: 'settings',
     label: 'Settings',
-    helper: 'Update business profile and app-level details.',
+    helper: 'Manage profile, alerts, theme, and privacy from one place.',
     icon: 'settings',
     section: 'account',
     target: 'settings',
@@ -461,6 +461,8 @@ export function MobileMoreScreen({
     notificationsPermissionStatus,
     notifications?.unreadCount ?? 0,
   );
+  const settingsMenuCopy = getSettingsMenuCopy(notifications?.unreadCount ?? 0);
+  const [settingsView, setSettingsView] = React.useState<'home' | 'profile'>('home');
   const lockedTargets = new Set<MobileMoreSection>([
     'services',
     'checkins',
@@ -472,6 +474,12 @@ export function MobileMoreScreen({
     'referrals',
     'payouts',
   ]);
+
+  React.useEffect(() => {
+    if (activeSection !== 'settings') {
+      setSettingsView('home');
+    }
+  }, [activeSection]);
 
   if (activeSection === 'menu') {
     return (
@@ -528,105 +536,6 @@ export function MobileMoreScreen({
           </View>
         ) : null}
 
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => onChangeSection('notifications')}
-          style={[
-            styles.notificationsCard,
-            { backgroundColor: theme.surface, borderColor: theme.border },
-          ]}
-          testID="mobile-more-notification-settings-card">
-          <View style={styles.notificationsCardHeader}>
-            <View
-              style={[
-                styles.notificationsIconBadge,
-                { backgroundColor: theme.accentSoft, borderColor: theme.border },
-              ]}>
-              <MobileNavIcon color={theme.accent} name="notifications" size={18} />
-            </View>
-            <View style={styles.notificationsCardCopy}>
-              <Text style={[styles.notificationsCardEyebrow, { color: theme.accent }]}>
-                Alerts
-              </Text>
-              <Text style={[styles.notificationsCardTitle, { color: theme.text }]}>
-                Notification settings
-              </Text>
-              <Text style={[styles.notificationsCardText, { color: theme.mutedText }]}>
-                {notificationsMenuCopy}
-              </Text>
-            </View>
-            {notifications?.unreadCount ? (
-              <View
-                style={[
-                  styles.unreadPill,
-                  { backgroundColor: theme.accent, borderColor: theme.accent },
-                ]}>
-                <Text style={styles.unreadPillText}>
-                  {notifications.unreadCount > 9 ? '9+' : notifications.unreadCount}
-                </Text>
-              </View>
-            ) : (
-              <MobileNavIcon color={theme.mutedText} name="more" size={18} />
-            )}
-          </View>
-        </Pressable>
-
-        <View
-          style={[
-            styles.appearanceCard,
-            { backgroundColor: theme.surface, borderColor: theme.border },
-          ]}
-          testID="mobile-more-appearance-card">
-          <Text style={[styles.appearanceEyebrow, { color: theme.accent }]}>Appearance</Text>
-          <Text style={[styles.appearanceTitle, { color: theme.text }]}>Theme mode</Text>
-          <Text style={[styles.appearanceSubtitle, { color: theme.mutedText }]}>
-            Match the web app with light, dark, or automatic system mode.
-          </Text>
-          <View style={styles.appearanceOptions}>
-            {THEME_OPTIONS.map((option) => {
-              const isSelected = themePreference === option.value;
-
-              return (
-                <Pressable
-                  key={option.value}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: isSelected }}
-                  onPress={() => void setThemePreference(option.value)}
-                  style={[
-                    styles.appearanceOption,
-                    {
-                      backgroundColor: isSelected ? theme.accentSoft : theme.surfaceMuted,
-                      borderColor: isSelected ? theme.accent : theme.border,
-                    },
-                  ]}
-                  testID={`mobile-theme-option-${option.value}`}>
-                  <View style={styles.appearanceOptionHeader}>
-                    <Text
-                      style={[
-                        styles.appearanceOptionLabel,
-                        { color: isSelected ? theme.accent : theme.text },
-                      ]}>
-                      {option.label}
-                    </Text>
-                    {isSelected ? (
-                      <View
-                        style={[
-                          styles.appearanceOptionBadge,
-                          { backgroundColor: theme.accent },
-                        ]}>
-                        <Text style={styles.appearanceOptionBadgeText}>Active</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  <Text style={[styles.appearanceOptionDescription, { color: theme.mutedText }]}>
-                    {option.description}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
         {(['operations', 'growth', 'account'] as MobileMoreMenuSection[]).map((section) => (
           <View key={section} style={styles.sectionBlock}>
             <Text style={[styles.sectionLabel, { color: theme.mutedText }]}>
@@ -661,14 +570,14 @@ export function MobileMoreScreen({
                     <View style={styles.menuCopy}>
                       <Text style={[styles.menuTitle, { color: theme.text }]}>{item.label}</Text>
                       <Text style={[styles.menuHelper, { color: theme.mutedText }]}>
-                        {item.target === 'notifications'
-                          ? notificationsMenuCopy
+                        {item.target === 'settings'
+                          ? settingsMenuCopy
                           : isLocked
                             ? 'Unlock this in Billing first.'
                             : item.helper}
                       </Text>
                     </View>
-                    {item.target === 'notifications' && notifications?.unreadCount ? (
+                    {item.target === 'settings' && notifications?.unreadCount ? (
                       <View
                         style={[
                           styles.unreadPill,
@@ -697,83 +606,6 @@ export function MobileMoreScreen({
             </View>
           </View>
         ))}
-
-        <View style={styles.sectionBlock}>
-          <Text style={[styles.sectionLabel, { color: theme.mutedText }]}>Legal & Support</Text>
-          <View style={styles.sectionItems}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => void onOpenExternalUrl(APP_PRIVACY_URL)}
-              style={[
-                styles.menuItem,
-                { backgroundColor: theme.surface, borderColor: theme.border },
-              ]}
-              testID="mobile-more-privacy-policy">
-              <View
-                style={[
-                  styles.menuIconBadge,
-                  { backgroundColor: theme.accentSoft },
-                ]}>
-                <MobileNavIcon color={theme.accent} name="legal" size={18} />
-              </View>
-              <View style={styles.menuCopy}>
-                <Text style={[styles.menuTitle, { color: theme.text }]}>Privacy Policy</Text>
-                <Text style={[styles.menuHelper, { color: theme.mutedText }]}>
-                  Review how Clientific handles business, customer, and mobile app data.
-                </Text>
-              </View>
-              <MobileNavIcon color={theme.mutedText} name="more" size={18} />
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => void onOpenExternalUrl(APP_TERMS_URL)}
-              style={[
-                styles.menuItem,
-                { backgroundColor: theme.surface, borderColor: theme.border },
-              ]}
-              testID="mobile-more-terms-of-service">
-              <View
-                style={[
-                  styles.menuIconBadge,
-                  { backgroundColor: theme.accentSoft },
-                ]}>
-                <MobileNavIcon color={theme.accent} name="legal" size={18} />
-              </View>
-              <View style={styles.menuCopy}>
-                <Text style={[styles.menuTitle, { color: theme.text }]}>Terms of Service</Text>
-                <Text style={[styles.menuHelper, { color: theme.mutedText }]}>
-                  Read the current service terms for the web platform and iPhone app.
-                </Text>
-              </View>
-              <MobileNavIcon color={theme.mutedText} name="more" size={18} />
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => void onOpenExternalUrl(APP_SUPPORT_URL)}
-              style={[
-                styles.menuItem,
-                { backgroundColor: theme.surface, borderColor: theme.border },
-              ]}
-              testID="mobile-more-support">
-              <View
-                style={[
-                  styles.menuIconBadge,
-                  { backgroundColor: theme.accentSoft },
-                ]}>
-                <MobileNavIcon color={theme.accent} name="support" size={18} />
-              </View>
-              <View style={styles.menuCopy}>
-                <Text style={[styles.menuTitle, { color: theme.text }]}>Support</Text>
-                <Text style={[styles.menuHelper, { color: theme.mutedText }]}>
-                  Open the support page or contact {APP_SUPPORT_EMAIL} if you need help.
-                </Text>
-              </View>
-              <MobileNavIcon color={theme.mutedText} name="more" size={18} />
-            </Pressable>
-          </View>
-        </View>
 
         <Pressable
           accessibilityRole="button"
@@ -963,39 +795,319 @@ export function MobileMoreScreen({
         ) : null}
 
         {activeSection === 'settings' ? (
-          isBusinessProfileLoading || !businessProfile ? (
-            <View
-              style={[
-                styles.loadingCard,
-                { backgroundColor: theme.surface, borderColor: theme.border },
-              ]}>
-              <ActivityIndicator color={theme.accent} />
-              <Text style={[styles.loadingTitle, { color: theme.text }]}>Loading settings</Text>
-              <Text style={[styles.loadingText, { color: theme.mutedText }]}>
-                Pulling in the business profile details you can edit on mobile.
-              </Text>
-              {businessProfileError ? (
+          settingsView === 'profile' ? (
+            isBusinessProfileLoading || !businessProfile ? (
+              <View
+                style={[
+                  styles.loadingCard,
+                  { backgroundColor: theme.surface, borderColor: theme.border },
+                ]}>
+                <ActivityIndicator color={theme.accent} />
+                <Text style={[styles.loadingTitle, { color: theme.text }]}>Loading settings</Text>
+                <Text style={[styles.loadingText, { color: theme.mutedText }]}>
+                  Pulling in the business profile details you can edit on mobile.
+                </Text>
+                {businessProfileError ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => void onRefreshBusinessProfile()}
+                    style={[styles.loadingButton, { backgroundColor: theme.accent }]}
+                    testID="mobile-more-settings-retry">
+                    <Text style={styles.loadingButtonText}>Try again</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : (
+              <MobileOnboardingScreen
+                context="settings"
+                error={businessProfileError}
+                isDeletingAccount={isDeletingAccount}
+                isSaving={isSavingBusinessProfile}
+                onBack={() => setSettingsView('home')}
+                onDeleteAccount={onDeleteAccount}
+                profile={businessProfile}
+                onSignOut={onSignOut}
+                onSubmit={onSaveBusinessProfile}
+              />
+            )
+          ) : (
+            <ScrollView
+              contentContainerStyle={[styles.menuContainer, { backgroundColor: theme.background }]}
+              style={{ backgroundColor: theme.background }}>
+              <View
+                style={[
+                  styles.accountCard,
+                  { backgroundColor: theme.surface, borderColor: theme.border },
+                ]}>
+                <Text style={[styles.accountEyebrow, { color: theme.accent }]}>Settings</Text>
+                <Text style={[styles.accountTitle, { color: theme.text }]}>
+                  Keep this phone dialed in
+                </Text>
+                <Text style={[styles.accountSubtitle, { color: theme.mutedText }]}>
+                  Group business profile edits, in-app preferences, and privacy controls in one place.
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.appearanceCard,
+                  { backgroundColor: theme.surface, borderColor: theme.border },
+                ]}>
+                <Text style={[styles.appearanceEyebrow, { color: theme.accent }]}>
+                  Profile settings
+                </Text>
+                <Text style={[styles.appearanceTitle, { color: theme.text }]}>
+                  Business profile
+                </Text>
+                <Text style={[styles.appearanceSubtitle, { color: theme.mutedText }]}>
+                  Update the business contact info, location, and account details owners manage most often.
+                </Text>
                 <Pressable
                   accessibilityRole="button"
-                  onPress={() => void onRefreshBusinessProfile()}
-                  style={[styles.loadingButton, { backgroundColor: theme.accent }]}
-                  testID="mobile-more-settings-retry">
-                  <Text style={styles.loadingButtonText}>Try again</Text>
+                  disabled={!businessProfile || isBusinessProfileLoading}
+                  onPress={() => setSettingsView('profile')}
+                  style={[
+                    styles.menuItem,
+                    {
+                      backgroundColor: theme.surfaceMuted,
+                      borderColor: theme.border,
+                      opacity: !businessProfile || isBusinessProfileLoading ? 0.65 : 1,
+                    },
+                  ]}
+                  testID="mobile-settings-open-profile">
+                  <View
+                    style={[
+                      styles.menuIconBadge,
+                      { backgroundColor: theme.accentSoft },
+                    ]}>
+                    <MobileNavIcon color={theme.accent} name="account" size={18} />
+                  </View>
+                  <View style={styles.menuCopy}>
+                    <Text style={[styles.menuTitle, { color: theme.text }]}>
+                      Open profile settings
+                    </Text>
+                    <Text style={[styles.menuHelper, { color: theme.mutedText }]}>
+                      {isBusinessProfileLoading
+                        ? 'Loading the latest business profile details for this account.'
+                        : businessProfileError
+                          ? 'Profile details need a refresh before editing.'
+                          : 'Edit business phones, email, address, and account-level details.'}
+                    </Text>
+                  </View>
+                  <MobileNavIcon color={theme.mutedText} name="more" size={18} />
                 </Pressable>
-              ) : null}
-            </View>
-          ) : (
-            <MobileOnboardingScreen
-              context="settings"
-              error={businessProfileError}
-              isDeletingAccount={isDeletingAccount}
-              isSaving={isSavingBusinessProfile}
-              onBack={() => onChangeSection('menu')}
-              onDeleteAccount={onDeleteAccount}
-              profile={businessProfile}
-              onSignOut={onSignOut}
-              onSubmit={onSaveBusinessProfile}
-            />
+                {businessProfileError ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => void onRefreshBusinessProfile()}
+                    style={[
+                      styles.inlineRefreshButton,
+                      { backgroundColor: theme.accentSoft, borderColor: theme.border },
+                    ]}
+                    testID="mobile-settings-refresh-profile">
+                    <Text style={[styles.inlineRefreshButtonText, { color: theme.accent }]}>
+                      Refresh profile
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+
+              <View
+                style={[
+                  styles.appearanceCard,
+                  { backgroundColor: theme.surface, borderColor: theme.border },
+                ]}>
+                <Text style={[styles.appearanceEyebrow, { color: theme.accent }]}>
+                  In-app settings
+                </Text>
+                <Text style={[styles.appearanceTitle, { color: theme.text }]}>
+                  Alerts and appearance
+                </Text>
+                <Text style={[styles.appearanceSubtitle, { color: theme.mutedText }]}>
+                  Control push notifications on this phone and match the theme to how you want the app to feel.
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => onChangeSection('notifications')}
+                  style={[
+                    styles.menuItem,
+                    {
+                      backgroundColor: theme.surfaceMuted,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                  testID="mobile-settings-open-notifications">
+                  <View
+                    style={[
+                      styles.menuIconBadge,
+                      { backgroundColor: theme.accentSoft },
+                    ]}>
+                    <MobileNavIcon color={theme.accent} name="notifications" size={18} />
+                  </View>
+                  <View style={styles.menuCopy}>
+                    <Text style={[styles.menuTitle, { color: theme.text }]}>
+                      Notifications & Alerts
+                    </Text>
+                    <Text style={[styles.menuHelper, { color: theme.mutedText }]}>
+                      {notificationsMenuCopy}
+                    </Text>
+                  </View>
+                  {notifications?.unreadCount ? (
+                    <View
+                      style={[
+                        styles.unreadPill,
+                        { backgroundColor: theme.accent, borderColor: theme.accent },
+                      ]}>
+                      <Text style={styles.unreadPillText}>
+                        {notifications.unreadCount > 9 ? '9+' : notifications.unreadCount}
+                      </Text>
+                    </View>
+                  ) : (
+                    <MobileNavIcon color={theme.mutedText} name="more" size={18} />
+                  )}
+                </Pressable>
+                <View style={styles.appearanceOptions}>
+                  {THEME_OPTIONS.map((option) => {
+                    const isSelected = themePreference === option.value;
+
+                    return (
+                      <Pressable
+                        key={option.value}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: isSelected }}
+                        onPress={() => void setThemePreference(option.value)}
+                        style={[
+                          styles.appearanceOption,
+                          {
+                            backgroundColor: isSelected ? theme.accentSoft : theme.surfaceMuted,
+                            borderColor: isSelected ? theme.accent : theme.border,
+                          },
+                        ]}
+                        testID={`mobile-theme-option-${option.value}`}>
+                        <View style={styles.appearanceOptionHeader}>
+                          <Text
+                            style={[
+                              styles.appearanceOptionLabel,
+                              { color: isSelected ? theme.accent : theme.text },
+                            ]}>
+                            {option.label}
+                          </Text>
+                          {isSelected ? (
+                            <View
+                              style={[
+                                styles.appearanceOptionBadge,
+                                { backgroundColor: theme.accent },
+                              ]}>
+                              <Text style={styles.appearanceOptionBadgeText}>Active</Text>
+                            </View>
+                          ) : null}
+                        </View>
+                        <Text
+                          style={[
+                            styles.appearanceOptionDescription,
+                            { color: theme.mutedText },
+                          ]}>
+                          {option.description}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <View
+                style={[
+                  styles.appearanceCard,
+                  { backgroundColor: theme.surface, borderColor: theme.border },
+                ]}>
+                <Text style={[styles.appearanceEyebrow, { color: theme.accent }]}>
+                  Privacy & policy
+                </Text>
+                <Text style={[styles.appearanceTitle, { color: theme.text }]}>
+                  Privacy and support
+                </Text>
+                <Text style={[styles.appearanceSubtitle, { color: theme.mutedText }]}>
+                  Review how Clientific handles data, read the current terms, and jump out to support when you need help.
+                </Text>
+                <View style={styles.sectionItems}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => void onOpenExternalUrl(APP_PRIVACY_URL)}
+                    style={[
+                      styles.menuItem,
+                      { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                    ]}
+                    testID="mobile-settings-open-privacy">
+                    <View
+                      style={[
+                        styles.menuIconBadge,
+                        { backgroundColor: theme.accentSoft },
+                      ]}>
+                      <MobileNavIcon color={theme.accent} name="legal" size={18} />
+                    </View>
+                    <View style={styles.menuCopy}>
+                      <Text style={[styles.menuTitle, { color: theme.text }]}>
+                        Privacy Policy
+                      </Text>
+                      <Text style={[styles.menuHelper, { color: theme.mutedText }]}>
+                        Review how Clientific handles business, customer, and phone data.
+                      </Text>
+                    </View>
+                    <MobileNavIcon color={theme.mutedText} name="more" size={18} />
+                  </Pressable>
+
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => void onOpenExternalUrl(APP_TERMS_URL)}
+                    style={[
+                      styles.menuItem,
+                      { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                    ]}
+                    testID="mobile-settings-open-terms">
+                    <View
+                      style={[
+                        styles.menuIconBadge,
+                        { backgroundColor: theme.accentSoft },
+                      ]}>
+                      <MobileNavIcon color={theme.accent} name="legal" size={18} />
+                    </View>
+                    <View style={styles.menuCopy}>
+                      <Text style={[styles.menuTitle, { color: theme.text }]}>
+                        Terms of Service
+                      </Text>
+                      <Text style={[styles.menuHelper, { color: theme.mutedText }]}>
+                        Read the current terms for the web platform and the iPhone app.
+                      </Text>
+                    </View>
+                    <MobileNavIcon color={theme.mutedText} name="more" size={18} />
+                  </Pressable>
+
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => void onOpenExternalUrl(APP_SUPPORT_URL)}
+                    style={[
+                      styles.menuItem,
+                      { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                    ]}
+                    testID="mobile-settings-open-support">
+                    <View
+                      style={[
+                        styles.menuIconBadge,
+                        { backgroundColor: theme.accentSoft },
+                      ]}>
+                      <MobileNavIcon color={theme.accent} name="support" size={18} />
+                    </View>
+                    <View style={styles.menuCopy}>
+                      <Text style={[styles.menuTitle, { color: theme.text }]}>Support</Text>
+                      <Text style={[styles.menuHelper, { color: theme.mutedText }]}>
+                        Open the support page or contact {APP_SUPPORT_EMAIL} if you need help.
+                      </Text>
+                    </View>
+                    <MobileNavIcon color={theme.mutedText} name="more" size={18} />
+                  </Pressable>
+                </View>
+              </View>
+            </ScrollView>
           )
         ) : null}
       </View>
@@ -1148,6 +1260,20 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 1,
+  },
+  inlineRefreshButton: {
+    alignSelf: 'flex-start',
+    minHeight: 40,
+    borderWidth: 1,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
+  inlineRefreshButtonText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '800',
   },
   accountEyebrow: {
     fontSize: 12,

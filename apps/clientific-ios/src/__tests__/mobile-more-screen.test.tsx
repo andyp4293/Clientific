@@ -441,11 +441,10 @@ describe('MobileMoreScreen', () => {
     expect(screen.getByText('Payouts')).toBeTruthy();
     expect(screen.getByText('Billing')).toBeTruthy();
     expect(screen.getByText('Settings')).toBeTruthy();
-    expect(screen.getByText('Legal & Support')).toBeTruthy();
-    expect(screen.getByText('Privacy Policy')).toBeTruthy();
-    expect(screen.getByText('Terms of Service')).toBeTruthy();
-    expect(screen.getByText('Support')).toBeTruthy();
     expect(screen.getByText('Open the rest of your business tools from one place.')).toBeTruthy();
+    expect(screen.queryByText('Notification settings')).toBeNull();
+    expect(screen.queryByText('Theme mode')).toBeNull();
+    expect(screen.queryByText('Legal & Support')).toBeNull();
     expect(screen.queryByText('Analytics')).toBeNull();
     expect(screen.queryByTestId('mobile-more-menu-analytics')).toBeNull();
     expect(screen.queryByText('App')).toBeNull();
@@ -464,40 +463,61 @@ describe('MobileMoreScreen', () => {
   it('surfaces unread appointment alerts from the mobile menu', () => {
     renderWithThemeProvider(<MobileMoreScreen {...createProps()} />);
 
-    expect(screen.getByText('Notifications & Alerts')).toBeTruthy();
+    expect(screen.getByText('Settings')).toBeTruthy();
+    expect(
+      screen.getByText('2 unread alerts plus your profile, theme, and privacy controls live here.'),
+    ).toBeTruthy();
     expect(screen.getAllByText('2').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('2 unread alerts are waiting on this phone.').length).toBeGreaterThan(0);
   });
 
-  it('surfaces a dedicated notification settings card near the top of More', () => {
+  it('opens notifications from inside the settings hub', () => {
     const onChangeSection = jest.fn();
 
-    renderWithThemeProvider(<MobileMoreScreen {...createProps({ onChangeSection })} />);
+    renderWithThemeProvider(
+      <MobileMoreScreen {...createProps({ activeSection: 'settings', onChangeSection })} />,
+    );
 
-    expect(screen.getByText('Notification settings')).toBeTruthy();
-    fireEvent.press(screen.getByTestId('mobile-more-notification-settings-card'));
+    expect(screen.getByText('Alerts and appearance')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('mobile-settings-open-notifications'));
 
     expect(onChangeSection).toHaveBeenCalledWith('notifications');
   });
 
-  it('opens privacy, terms, and support links from the menu', () => {
+  it('opens privacy, terms, and support links from the settings hub', () => {
     const onOpenExternalUrl = jest.fn().mockResolvedValue(undefined);
 
-    renderWithThemeProvider(<MobileMoreScreen {...createProps({ onOpenExternalUrl })} />);
+    renderWithThemeProvider(
+      <MobileMoreScreen
+        {...createProps({ activeSection: 'settings', onOpenExternalUrl })}
+      />,
+    );
 
-    fireEvent.press(screen.getByTestId('mobile-more-privacy-policy'));
-    fireEvent.press(screen.getByTestId('mobile-more-terms-of-service'));
-    fireEvent.press(screen.getByTestId('mobile-more-support'));
+    fireEvent.press(screen.getByTestId('mobile-settings-open-privacy'));
+    fireEvent.press(screen.getByTestId('mobile-settings-open-terms'));
+    fireEvent.press(screen.getByTestId('mobile-settings-open-support'));
 
     expect(onOpenExternalUrl).toHaveBeenNthCalledWith(1, 'https://www.clientific.app/privacy');
     expect(onOpenExternalUrl).toHaveBeenNthCalledWith(2, 'https://www.clientific.app/terms');
     expect(onOpenExternalUrl).toHaveBeenNthCalledWith(3, 'https://www.clientific.app/support');
   });
 
-  it('renders the settings editor when settings is selected', () => {
+  it('renders the settings hub when settings is selected', () => {
     renderWithThemeProvider(
       <MobileMoreScreen {...createProps({ activeSection: 'settings' })} />,
     );
+
+    expect(screen.getByText('Keep this phone dialed in')).toBeTruthy();
+    expect(screen.getByText('Business profile')).toBeTruthy();
+    expect(screen.getByText('Alerts and appearance')).toBeTruthy();
+    expect(screen.getByText('Privacy and support')).toBeTruthy();
+  });
+
+  it('opens the business settings editor from the settings hub', () => {
+    renderWithThemeProvider(
+      <MobileMoreScreen {...createProps({ activeSection: 'settings' })} />,
+    );
+
+    fireEvent.press(screen.getByTestId('mobile-settings-open-profile'));
 
     expect(screen.getByText('Business settings')).toBeTruthy();
     expect(screen.getByText('Save changes')).toBeTruthy();
@@ -566,7 +586,9 @@ describe('MobileMoreScreen', () => {
   });
 
   it('lets the user switch between system, light, and dark appearance modes', async () => {
-    renderWithThemeProvider(<MobileMoreScreen {...createProps()} />);
+    renderWithThemeProvider(
+      <MobileMoreScreen {...createProps({ activeSection: 'settings' })} />,
+    );
 
     await waitFor(() =>
       expect(
