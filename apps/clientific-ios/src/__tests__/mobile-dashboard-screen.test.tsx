@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { MobileAppShell } from '@/components/mobile-app-shell';
 import type { MobileCustomerFilters, MobileCustomersSummary } from '@/lib/clientific-api';
@@ -398,6 +398,23 @@ const customerView = {
   deals: [],
 };
 
+const notifications = {
+  business,
+  unreadCount: 3,
+  notifications: [
+    {
+      id: 'notif-1',
+      type: 'new_appointment',
+      title: 'New appointment booked',
+      message: 'Jordan booked a haircut for 11:30 AM.',
+      link: '/dashboard/appointments',
+      read: false,
+      createdAt: '2026-03-30T18:45:00.000Z',
+      createdAtLabel: 'Mar 30, 2:45 PM',
+    },
+  ],
+};
+
 function createShellProps(
   overrides: Partial<React.ComponentProps<typeof MobileAppShell>> = {},
 ): React.ComponentProps<typeof MobileAppShell> {
@@ -459,6 +476,9 @@ function createShellProps(
     isFundsLoading: false,
     isFundsRefreshing: false,
     isHomeRefreshing: false,
+    isNotificationsLoading: false,
+    isNotificationsMarkingRead: false,
+    isNotificationsRefreshing: false,
     isPurchasingSubscription: false,
     isReferralsLoading: false,
     isReferralsRefreshing: false,
@@ -470,6 +490,9 @@ function createShellProps(
     isServicesRefreshing: false,
     onChangeCustomerFilters: jest.fn(),
     moreSection: 'menu',
+    notifications,
+    notificationsError: null,
+    notificationsPermissionStatus: 'granted',
     onChangeCustomersSearchDraft: jest.fn(),
     onChangeMoreSection: jest.fn(),
     onChangeTab: jest.fn(),
@@ -515,6 +538,7 @@ function createShellProps(
     onGoToCustomersPage: jest.fn(),
     onJumpCheckInsToToday: jest.fn(),
     onJumpAppointmentsToToday: jest.fn(),
+    onSelectAppointmentsDate: jest.fn(),
     onLookupCheckIn: jest
       .fn()
       .mockResolvedValue({ status: 'new', normalizedPhone: '5551234567', displayPhone: '(555) 123-4567' }),
@@ -540,6 +564,8 @@ function createShellProps(
     onOpenDeals: jest.fn(),
     onOpenFunds: jest.fn(),
     onOpenReferrals: jest.fn(),
+    onEnablePushNotifications: jest.fn().mockResolvedValue(undefined),
+    onOpenNotification: jest.fn().mockResolvedValue(undefined),
     onPreviousCheckInsDate: jest.fn(),
     onPreviousAppointmentsDate: jest.fn(),
     onPreviousCustomersPage: jest.fn(),
@@ -567,6 +593,8 @@ function createShellProps(
     onRefreshDeals: jest.fn().mockResolvedValue(undefined),
     onRefreshFunds: jest.fn().mockResolvedValue(undefined),
     onRefreshHome: jest.fn().mockResolvedValue(undefined),
+    onRefreshNotifications: jest.fn().mockResolvedValue(undefined),
+    onMarkNotificationsRead: jest.fn().mockResolvedValue(undefined),
     onRefreshReferrals: jest.fn().mockResolvedValue(undefined),
     onRefreshReviews: jest.fn().mockResolvedValue(undefined),
     onRefreshServices: jest.fn().mockResolvedValue(undefined),
@@ -659,6 +687,12 @@ describe('MobileAppShell', () => {
     fireEvent.press(screen.getByTestId('mobile-tab-more'));
     expect(onChangeMoreSection).toHaveBeenCalledWith('menu');
     expect(onChangeTab).toHaveBeenCalledWith('more');
+  });
+
+  it('shows an unread badge on the more tab when owner alerts are waiting', () => {
+    render(<MobileAppShell {...createShellProps()} />);
+
+    expect(within(screen.getByTestId('mobile-tab-badge-more')).getByText('3')).toBeTruthy();
   });
 
   it('uses a more compact bottom tab bar footprint', () => {

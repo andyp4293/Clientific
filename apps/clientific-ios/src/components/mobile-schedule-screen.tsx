@@ -26,6 +26,10 @@ import type {
 } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import {
+  buildAppointmentStartOptions,
+  formatScheduleTimeLabel,
+} from '@/lib/staff-schedule';
 
 type MobileScheduleScreenProps = {
   composerCustomers: MobileCustomerRecord[];
@@ -42,6 +46,7 @@ type MobileScheduleScreenProps = {
   onJumpToToday: () => void;
   onLoadComposerResources: () => Promise<void>;
   onNextDate: () => void;
+  onSelectDate: (date: string) => void;
   onPreviousDate: () => void;
   onRefresh: () => Promise<void>;
   onUpdateAppointment: (
@@ -80,6 +85,85 @@ function getTomorrowKey() {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   return formatDateKey(tomorrow);
+}
+
+function parseDateKey(dateKey: string) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  return new Date(year, month - 1, day, 12);
+}
+
+function addDaysToDateKey(dateKey: string, days: number) {
+  const base = parseDateKey(dateKey) ?? new Date();
+  base.setDate(base.getDate() + days);
+  return formatDateKey(base);
+}
+
+function buildDateChoices(centerDateKey: string, radius = 3) {
+  return Array.from({ length: radius * 2 + 1 }, (_, index) => {
+    const dateKey = addDaysToDateKey(centerDateKey, index - radius);
+    const date = parseDateKey(dateKey) ?? new Date(`${dateKey}T12:00:00`);
+    return {
+      date,
+      dateKey,
+      dayLabel: date.toLocaleDateString('en-US', { weekday: 'short' }),
+      dayNumber: date.getDate(),
+      monthLabel: date.toLocaleDateString('en-US', { month: 'short' }),
+      fullLabel: date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      }),
+    };
+  });
+}
+
+function getDefaultTimeOptions(duration: number) {
+  return buildAppointmentStartOptions('09:00', '18:00', duration, 30);
+}
+
+function getSuggestedTimeOptions({
+  dateKey,
+  duration,
+  staffId,
+  staff,
+}: {
+  dateKey: string;
+  duration: number;
+  staffId: string;
+  staff: MobileStaffRecord[];
+}) {
+  const fallback = getDefaultTimeOptions(duration);
+  if (!staffId) {
+    return fallback;
+  }
+
+  const selectedStaff = staff.find((entry) => entry.id === staffId);
+  if (!selectedStaff) {
+    return fallback;
+  }
+
+  const dayOfWeek = (parseDateKey(dateKey) ?? new Date()).getDay();
+  const dayWindow = selectedStaff.workHours?.[dayOfWeek];
+  if (
+    !selectedStaff.workDays.includes(dayOfWeek) ||
+    !dayWindow?.startTime ||
+    !dayWindow?.endTime
+  ) {
+    return fallback;
+  }
+
+  const options = buildAppointmentStartOptions(
+    dayWindow.startTime,
+    dayWindow.endTime,
+    duration,
+    30,
+  );
+
+  return options.length ? options : fallback;
 }
 
 function formatIsoToDateKey(isoString: string) {
@@ -157,6 +241,92 @@ function OptionChip({
           selected
             ? styles.optionChipSelectedText
             : [styles.optionChipText, { color: theme.text }]
+        }>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function DateChoiceChip({
+  dayLabel,
+  dayNumber,
+  monthLabel,
+  onPress,
+  selected,
+  testID,
+}: {
+  dayLabel: string;
+  dayNumber: number;
+  monthLabel: string;
+  onPress: () => void;
+  selected: boolean;
+  testID?: string;
+}) {
+  const colorScheme = useColorScheme();
+  const theme = getClientificTheme(colorScheme);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={[
+        styles.dateChoiceChip,
+        selected
+          ? { backgroundColor: theme.accent, borderColor: theme.accent }
+          : { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+      ]}
+      testID={testID}>
+      <Text
+        style={
+          selected ? styles.dateChoiceEyebrowSelected : [styles.dateChoiceEyebrow, { color: theme.mutedText }]
+        }>
+        {dayLabel}
+      </Text>
+      <Text
+        style={
+          selected ? styles.dateChoiceDaySelected : [styles.dateChoiceDay, { color: theme.text }]
+        }>
+        {dayNumber}
+      </Text>
+      <Text
+        style={
+          selected ? styles.dateChoiceMonthSelected : [styles.dateChoiceMonth, { color: theme.mutedText }]
+        }>
+        {monthLabel}
+      </Text>
+    </Pressable>
+  );
+}
+
+function TimeSlotChip({
+  label,
+  onPress,
+  selected,
+  testID,
+}: {
+  label: string;
+  onPress: () => void;
+  selected: boolean;
+  testID?: string;
+}) {
+  const colorScheme = useColorScheme();
+  const theme = getClientificTheme(colorScheme);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={[
+        styles.timeSlotChip,
+        selected
+          ? { backgroundColor: theme.accent, borderColor: theme.accent }
+          : { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+      ]}
+      testID={testID}>
+      <Text
+        style={
+          selected ? styles.timeSlotChipSelectedText : [styles.timeSlotChipText, { color: theme.text }]
         }>
         {label}
       </Text>
@@ -250,6 +420,7 @@ export function MobileScheduleScreen({
   onJumpToToday,
   onLoadComposerResources,
   onNextDate,
+  onSelectDate,
   onPreviousDate,
   onRefresh,
   onUpdateAppointment,
@@ -305,6 +476,43 @@ export function MobileScheduleScreen({
       .slice(0, 16);
   }, [composerCustomers, customerSearch]);
 
+  const selectedScheduleDateKey = data?.selectedDate ?? formatDateKey(new Date());
+  const visibleScheduleDates = useMemo(
+    () => buildDateChoices(selectedScheduleDateKey),
+    [selectedScheduleDateKey],
+  );
+  const pendingAppointments = useMemo(
+    () => data?.appointments.filter((appointment) => appointment.canConfirm) ?? [],
+    [data?.appointments],
+  );
+  const createDateChoices = useMemo(() => buildDateChoices(createForm.date), [createForm.date]);
+  const editDateChoices = useMemo(
+    () => buildDateChoices(editForm.date || selectedScheduleDateKey),
+    [editForm.date, selectedScheduleDateKey],
+  );
+  const createSuggestedTimeOptions = useMemo(
+    () =>
+      getSuggestedTimeOptions({
+        dateKey: createForm.date,
+        duration: createForm.duration,
+        staffId: createForm.staffId,
+        staff: availableStaff,
+      }),
+    [availableStaff, createForm.date, createForm.duration, createForm.staffId],
+  );
+  const editSuggestedTimeOptions = useMemo(
+    () =>
+      editingAppointment
+        ? getSuggestedTimeOptions({
+            dateKey: editForm.date,
+            duration: editForm.duration,
+            staffId: editingAppointment.staffId ?? '',
+            staff: availableStaff,
+          })
+        : [],
+    [availableStaff, editForm.date, editForm.duration, editingAppointment],
+  );
+
   useEffect(() => {
     if (!isCreateSheetVisible) {
       return;
@@ -350,6 +558,36 @@ export function MobileScheduleScreen({
     selectedExistingCustomer?.smsConsent,
     selectedExistingCustomer?.smsOptedOut,
   ]);
+
+  useEffect(() => {
+    if (!isCreateSheetVisible || !createSuggestedTimeOptions.length) {
+      return;
+    }
+
+    if (createSuggestedTimeOptions.includes(createForm.time)) {
+      return;
+    }
+
+    setCreateForm((current) => ({
+      ...current,
+      time: createSuggestedTimeOptions[0] ?? '',
+    }));
+  }, [createForm.time, createSuggestedTimeOptions, isCreateSheetVisible]);
+
+  useEffect(() => {
+    if (!editingAppointment || !editSuggestedTimeOptions.length) {
+      return;
+    }
+
+    if (editSuggestedTimeOptions.includes(editForm.time)) {
+      return;
+    }
+
+    setEditForm((current) => ({
+      ...current,
+      time: editSuggestedTimeOptions[0] ?? '',
+    }));
+  }, [editForm.time, editSuggestedTimeOptions, editingAppointment]);
 
   const openCreateSheet = () => {
     setSheetError(null);
@@ -587,6 +825,20 @@ export function MobileScheduleScreen({
               <Text style={[styles.dateButtonText, { color: theme.text }]}>Next</Text>
             </Pressable>
           </View>
+
+          <View style={styles.scheduleDateStrip}>
+            {visibleScheduleDates.map((dateChoice) => (
+              <DateChoiceChip
+                key={dateChoice.dateKey}
+                dayLabel={dateChoice.dayLabel}
+                dayNumber={dateChoice.dayNumber}
+                monthLabel={dateChoice.monthLabel}
+                onPress={() => onSelectDate(dateChoice.dateKey)}
+                selected={selectedScheduleDateKey === dateChoice.dateKey}
+                testID={`mobile-schedule-date-chip-${dateChoice.dateKey}`}
+              />
+            ))}
+          </View>
         </View>
 
         {error ? <InlineErrorCard message={error} /> : null}
@@ -629,6 +881,23 @@ export function MobileScheduleScreen({
                 styles.sectionCard,
                 { backgroundColor: theme.surface, borderColor: theme.border },
               ]}>
+              {pendingAppointments.length ? (
+                <View
+                  style={[
+                    styles.pendingAttentionCard,
+                    { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                  ]}>
+                  <Text style={[styles.pendingAttentionTitle, { color: theme.text }]}>
+                    {pendingAppointments.length} appointment
+                    {pendingAppointments.length === 1 ? '' : 's'} waiting for confirmation
+                  </Text>
+                  <Text style={[styles.pendingAttentionText, { color: theme.mutedText }]}>
+                    Confirm pending bookings quickly so your customer and team are synced right from
+                    the iPhone.
+                  </Text>
+                </View>
+              ) : null}
+
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, { color: theme.text }]}>Appointments</Text>
                 <Text style={[styles.sectionSubtitle, { color: theme.mutedText }]}>
@@ -908,63 +1177,26 @@ export function MobileScheduleScreen({
             ]}>
             <SectionLabel label="When" />
             <View style={styles.quickDateRow}>
-              <OptionChip
-                label="Today"
-                onPress={() =>
-                  setCreateForm((current) => ({ ...current, date: formatDateKey(new Date()) }))
-                }
-                selected={createForm.date === formatDateKey(new Date())}
-              />
-              <OptionChip
-                label="Tomorrow"
-                onPress={() =>
-                  setCreateForm((current) => ({ ...current, date: getTomorrowKey() }))
-                }
-                selected={createForm.date === getTomorrowKey()}
-              />
+              <Text style={[styles.helperText, { color: theme.mutedText }]}>
+                Choose the day, then tap a time slot instead of typing it manually.
+              </Text>
             </View>
 
-            <View style={styles.twoColumnRow}>
-              <View style={styles.flexColumn}>
-                <SectionLabel label="Date" />
-                <TextInput
-                  onChangeText={(value) =>
-                    setCreateForm((current) => ({ ...current, date: value }))
+            <SectionLabel label="Date" />
+            <View style={styles.dateChoiceGrid}>
+              {createDateChoices.map((dateChoice) => (
+                <DateChoiceChip
+                  key={dateChoice.dateKey}
+                  dayLabel={dateChoice.dayLabel}
+                  dayNumber={dateChoice.dayNumber}
+                  monthLabel={dateChoice.monthLabel}
+                  onPress={() =>
+                    setCreateForm((current) => ({ ...current, date: dateChoice.dateKey }))
                   }
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={theme.mutedText}
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: theme.surfaceMuted,
-                      borderColor: theme.border,
-                      color: theme.text,
-                    },
-                  ]}
-                  testID="mobile-schedule-create-date"
-                  value={createForm.date}
+                  selected={createForm.date === dateChoice.dateKey}
+                  testID={`mobile-schedule-create-date-${dateChoice.dateKey}`}
                 />
-              </View>
-              <View style={styles.flexColumn}>
-                <SectionLabel label="Time" />
-                <TextInput
-                  onChangeText={(value) =>
-                    setCreateForm((current) => ({ ...current, time: value }))
-                  }
-                  placeholder="HH:MM"
-                  placeholderTextColor={theme.mutedText}
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: theme.surfaceMuted,
-                      borderColor: theme.border,
-                      color: theme.text,
-                    },
-                  ]}
-                  testID="mobile-schedule-create-time"
-                  value={createForm.time}
-                />
-              </View>
+              ))}
             </View>
 
             <Text style={[styles.helperText, { color: theme.mutedText }]}>
@@ -985,6 +1217,27 @@ export function MobileScheduleScreen({
                 />
               ))}
             </View>
+
+            <SectionLabel label="Start time" />
+            <View style={styles.timeSlotGrid}>
+              {createSuggestedTimeOptions.map((timeValue) => (
+                <TimeSlotChip
+                  key={timeValue}
+                  label={formatScheduleTimeLabel(timeValue)}
+                  onPress={() =>
+                    setCreateForm((current) => ({ ...current, time: timeValue }))
+                  }
+                  selected={createForm.time === timeValue}
+                  testID={`mobile-schedule-create-time-${timeValue}`}
+                />
+              ))}
+            </View>
+            {!createSuggestedTimeOptions.length ? (
+              <Text style={[styles.warningText, { color: '#c47f00' }]}>
+                No suggested times are available for this day yet. Pick another date or staff
+                member.
+              </Text>
+            ) : null}
           </View>
 
           <View
@@ -1009,7 +1262,11 @@ export function MobileScheduleScreen({
                   key={service.id}
                   label={service.name}
                   onPress={() =>
-                    setCreateForm((current) => ({ ...current, serviceId: service.id }))
+                    setCreateForm((current) => ({
+                      ...current,
+                      serviceId: service.id,
+                      duration: service.duration,
+                    }))
                   }
                   selected={createForm.serviceId === service.id}
                 />
@@ -1172,37 +1429,21 @@ export function MobileScheduleScreen({
                   { backgroundColor: theme.surface, borderColor: theme.border },
                 ]}>
                 <SectionLabel label="Date" />
-                <TextInput
-                  onChangeText={(value) => setEditForm((current) => ({ ...current, date: value }))}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={theme.mutedText}
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: theme.surfaceMuted,
-                      borderColor: theme.border,
-                      color: theme.text,
-                    },
-                  ]}
-                  testID="mobile-schedule-edit-date"
-                  value={editForm.date}
-                />
-                <SectionLabel label="Time" />
-                <TextInput
-                  onChangeText={(value) => setEditForm((current) => ({ ...current, time: value }))}
-                  placeholder="HH:MM"
-                  placeholderTextColor={theme.mutedText}
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: theme.surfaceMuted,
-                      borderColor: theme.border,
-                      color: theme.text,
-                    },
-                  ]}
-                  testID="mobile-schedule-edit-time"
-                  value={editForm.time}
-                />
+                <View style={styles.dateChoiceGrid}>
+                  {editDateChoices.map((dateChoice) => (
+                    <DateChoiceChip
+                      key={dateChoice.dateKey}
+                      dayLabel={dateChoice.dayLabel}
+                      dayNumber={dateChoice.dayNumber}
+                      monthLabel={dateChoice.monthLabel}
+                      onPress={() =>
+                        setEditForm((current) => ({ ...current, date: dateChoice.dateKey }))
+                      }
+                      selected={editForm.date === dateChoice.dateKey}
+                      testID={`mobile-schedule-edit-date-${dateChoice.dateKey}`}
+                    />
+                  ))}
+                </View>
                 <SectionLabel label="Duration" />
                 <View style={styles.segmentRow}>
                   {[30, 45, 60, 90, 120].map((duration) => (
@@ -1211,6 +1452,20 @@ export function MobileScheduleScreen({
                       label={duration >= 60 ? `${duration / 60} hr` : `${duration} min`}
                       onPress={() => setEditForm((current) => ({ ...current, duration }))}
                       selected={editForm.duration === duration}
+                    />
+                  ))}
+                </View>
+                <SectionLabel label="Start time" />
+                <View style={styles.timeSlotGrid}>
+                  {editSuggestedTimeOptions.map((timeValue) => (
+                    <TimeSlotChip
+                      key={timeValue}
+                      label={formatScheduleTimeLabel(timeValue)}
+                      onPress={() =>
+                        setEditForm((current) => ({ ...current, time: timeValue }))
+                      }
+                      selected={editForm.time === timeValue}
+                      testID={`mobile-schedule-edit-time-${timeValue}`}
                     />
                   ))}
                 </View>
@@ -1584,6 +1839,62 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     fontWeight: '700',
   },
+  scheduleDateStrip: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  dateChoiceGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  dateChoiceChip: {
+    minWidth: 84,
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  dateChoiceEyebrow: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  dateChoiceEyebrowSelected: {
+    color: '#f8fffc',
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  dateChoiceDay: {
+    fontSize: 24,
+    lineHeight: 28,
+    fontWeight: '800',
+  },
+  dateChoiceDaySelected: {
+    color: '#ffffff',
+    fontSize: 24,
+    lineHeight: 28,
+    fontWeight: '800',
+  },
+  dateChoiceMonth: {
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: '700',
+  },
+  dateChoiceMonthSelected: {
+    color: '#f8fffc',
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: '700',
+  },
   input: {
     borderWidth: 1,
     borderRadius: 16,
@@ -1656,6 +1967,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
+  timeSlotGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  timeSlotChip: {
+    minWidth: 108,
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timeSlotChipText: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
+  timeSlotChipSelectedText: {
+    color: '#ffffff',
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
   twoColumnRow: {
     flexDirection: 'row',
     gap: 12,
@@ -1667,6 +2003,23 @@ const styles = StyleSheet.create({
   helperText: {
     fontSize: 13,
     lineHeight: 19,
+    fontWeight: '600',
+  },
+  pendingAttentionCard: {
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 6,
+  },
+  pendingAttentionTitle: {
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: '800',
+  },
+  pendingAttentionText: {
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: '600',
   },
   consentCard: {

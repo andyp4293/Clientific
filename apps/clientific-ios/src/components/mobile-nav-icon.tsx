@@ -17,6 +17,7 @@ export type MobileNavIconName =
   | 'payouts'
   | 'customerView'
   | 'billing'
+  | 'notifications'
   | 'settings'
   | 'account'
   | 'legal'
@@ -44,6 +45,7 @@ const ICON_MAP: Record<MobileNavIconName, React.ComponentProps<typeof Feather>['
   payouts: 'dollar-sign',
   customerView: 'eye',
   billing: 'credit-card',
+  notifications: 'bell',
   settings: 'settings',
   account: 'user',
   legal: 'shield',

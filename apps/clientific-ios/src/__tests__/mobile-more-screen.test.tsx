@@ -247,6 +247,23 @@ const aiReceptionist = {
   unifiedNumber: '+18885550123',
 };
 
+const notifications = {
+  business,
+  unreadCount: 2,
+  notifications: [
+    {
+      id: 'notif-1',
+      type: 'new_appointment',
+      title: 'New appointment booked',
+      message: 'Jordan booked a haircut for 11:30 AM.',
+      link: '/dashboard/appointments',
+      read: false,
+      createdAt: '2026-03-30T18:45:00.000Z',
+      createdAtLabel: 'Mar 30, 2:45 PM',
+    },
+  ],
+};
+
 const customerView = {
   business,
   storeId: 'CF-123',
@@ -305,6 +322,9 @@ function createProps(
     isCustomerViewRefreshing: false,
     isFundsLoading: false,
     isFundsRefreshing: false,
+    isNotificationsLoading: false,
+    isNotificationsMarkingRead: false,
+    isNotificationsRefreshing: false,
     isPurchasingSubscription: false,
     isReferralsLoading: false,
     isReferralsRefreshing: false,
@@ -314,6 +334,9 @@ function createProps(
     isSavingBusinessProfile: false,
     isServicesLoading: false,
     isServicesRefreshing: false,
+    notifications,
+    notificationsError: null,
+    notificationsPermissionStatus: 'granted',
     subscriptionLocked: false,
     onChangeSection: jest.fn(),
     onCreateCheckIn: jest.fn().mockResolvedValue(undefined),
@@ -363,6 +386,10 @@ function createProps(
     onRefreshCheckIns: jest.fn().mockResolvedValue(undefined),
     onRefreshCustomerView: jest.fn().mockResolvedValue(undefined),
     onRefreshFunds: jest.fn().mockResolvedValue(undefined),
+    onEnablePushNotifications: jest.fn().mockResolvedValue(undefined),
+    onOpenNotification: jest.fn().mockResolvedValue(undefined),
+    onRefreshNotifications: jest.fn().mockResolvedValue(undefined),
+    onMarkNotificationsRead: jest.fn().mockResolvedValue(undefined),
     onRefreshReferrals: jest.fn().mockResolvedValue(undefined),
     onRefreshReviews: jest.fn().mockResolvedValue(undefined),
     onRefreshServices: jest.fn().mockResolvedValue(undefined),
@@ -434,6 +461,14 @@ describe('MobileMoreScreen', () => {
     expect(onChangeSection).toHaveBeenCalledWith('aiReceptionist');
   });
 
+  it('surfaces unread appointment alerts from the mobile menu', () => {
+    renderWithThemeProvider(<MobileMoreScreen {...createProps()} />);
+
+    expect(screen.getByText('Notifications')).toBeTruthy();
+    expect(screen.getByText('2')).toBeTruthy();
+    expect(screen.getByText('2 unread alerts waiting on this phone.')).toBeTruthy();
+  });
+
   it('opens privacy, terms, and support links from the menu', () => {
     const onOpenExternalUrl = jest.fn().mockResolvedValue(undefined);
 
@@ -497,6 +532,17 @@ describe('MobileMoreScreen', () => {
 
     expect(screen.getByText('Calls, SMS, and handoff settings')).toBeTruthy();
     expect(screen.getByTestId('mobile-ai-toggle')).toBeTruthy();
+  });
+
+  it('renders the notifications inbox when notifications is selected', () => {
+    renderWithThemeProvider(
+      <MobileMoreScreen {...createProps({ activeSection: 'notifications' })} />,
+    );
+
+    expect(screen.getByText('Owner alerts')).toBeTruthy();
+    expect(screen.getByText('Recent activity')).toBeTruthy();
+    expect(screen.getByTestId('mobile-notifications-row-notif-1')).toBeTruthy();
+    expect(screen.getByTestId('mobile-notifications-mark-read')).toBeTruthy();
   });
 
   it('renders native customer view tools when selected', () => {

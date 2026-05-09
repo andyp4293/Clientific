@@ -22,6 +22,7 @@ jest.mock('@/lib/clientific-api', () => {
     fetchMobileDeals: jest.fn(),
     fetchMobileReferrals: jest.fn(),
     fetchMobileFunds: jest.fn(),
+    fetchMobileNotifications: jest.fn(),
     fetchMobileServices: jest.fn(),
     fetchMobileBusinessHours: jest.fn(),
     fetchMobileReviews: jest.fn(),
@@ -55,6 +56,7 @@ jest.mock('@/lib/clientific-api', () => {
     deleteMobileAppointment: jest.fn(),
     deleteMobileCustomer: jest.fn(),
     deleteMobileCustomerGroup: jest.fn(),
+    markMobileNotificationsRead: jest.fn(),
     sendMobileReviewRequest: jest.fn(),
     sendMobileCustomerMessage: jest.fn(),
     registerMobilePushToken: jest.fn(),
@@ -108,6 +110,7 @@ jest.mock('@/lib/clientific-api', () => {
     fetchMobileDeals: mockClientificApi.fetchMobileDeals,
     fetchMobileFunds: mockClientificApi.fetchMobileFunds,
     fetchMobileHomeSummary: mockClientificApi.fetchMobileHomeSummary,
+    fetchMobileNotifications: mockClientificApi.fetchMobileNotifications,
     fetchMobileReferrals: mockClientificApi.fetchMobileReferrals,
     fetchMobileReviews: mockClientificApi.fetchMobileReviews,
     fetchMobileServices: mockClientificApi.fetchMobileServices,
@@ -135,6 +138,7 @@ jest.mock('@/lib/clientific-api', () => {
     MobileFundsSummary: {},
     MobileHomeSummary: {},
     MobileLoginResponse: {},
+    MobileNotificationsSummary: {},
     MobileOnboardingInput: {},
     MobileRedeemResult: {},
     MobileReferralsSummary: {},
@@ -144,6 +148,7 @@ jest.mock('@/lib/clientific-api', () => {
     MobileServicesSummary: {},
     MobileStaffInput: {},
     loginWithClientific: mockClientificApi.loginWithClientific,
+    markMobileNotificationsRead: mockClientificApi.markMobileNotificationsRead,
     redeemMobileCode: mockClientificApi.redeemMobileCode,
     registerMobilePushToken: mockClientificApi.registerMobilePushToken,
     registerWithClientific: mockClientificApi.registerWithClientific,
@@ -169,6 +174,7 @@ jest.mock('@/lib/clientific-api', () => {
 
 jest.mock('@/lib/mobile-push-notifications', () => ({
   addPushNotificationResponseListener: jest.fn(() => ({ remove: jest.fn() })),
+  getMobilePushPermissionStatus: jest.fn(async () => 'granted'),
   registerForPushNotificationsAsync: jest.fn(async () => null),
 }));
 
@@ -242,7 +248,7 @@ jest.mock('@/components/mobile-auth-screen', () => {
         <Text testID="mock-auth-mode">{mode}</Text>
         {notice ? <Text>{notice}</Text> : null}
         {error ? <Text>{error}</Text> : null}
-        <Pressable testID="mock-switch-register" onPress={() => onModeChange('sign-up')}>
+        <Pressable testID="mock-switch-register" onPress={() => onModeChange('register')}>
           <Text>switch register</Text>
         </Pressable>
         <Pressable
@@ -417,6 +423,23 @@ const appStoreBillingSummary = {
   invoices: [],
 };
 
+const notificationsSummary = {
+  business: activeHome.business,
+  unreadCount: 1,
+  notifications: [
+    {
+      id: 'notif-1',
+      type: 'new_appointment',
+      title: 'New appointment booked',
+      message: 'Jordan booked a haircut for 11:30 AM.',
+      link: '/dashboard/appointments',
+      read: false,
+      createdAt: '2026-03-30T18:45:00.000Z',
+      createdAtLabel: 'Mar 30, 2:45 PM',
+    },
+  ],
+};
+
 beforeEach(() => {
   secureStoreMock.__reset();
   mockExpoLinking.__reset();
@@ -427,6 +450,8 @@ beforeEach(() => {
     business: activeHome.business,
   });
   mockClientificApi.fetchMobileBilling.mockResolvedValue(appStoreBillingSummary);
+  mockClientificApi.fetchMobileNotifications.mockResolvedValue(notificationsSummary);
+  mockClientificApi.markMobileNotificationsRead.mockResolvedValue({ success: true, unreadCount: 0 });
   mockClientificApi.registerWithClientific.mockResolvedValue({
     success: true,
     verificationEmailSent: true,

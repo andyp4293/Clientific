@@ -32,6 +32,37 @@ describe('MobileAuthScreen', () => {
     expect(onLogin).toHaveBeenCalledWith('owner@clientific.app', 'secret123!');
   });
 
+  it('lets the user show and hide the sign-in password while typing', () => {
+    render(
+      <MobileAuthScreen
+        error={null}
+        isResendingCode={false}
+        isSubmitting={false}
+        mode="sign-in"
+        notice={null}
+        onOpenPrivacyPolicy={jest.fn().mockResolvedValue(undefined)}
+        onOpenTermsOfService={jest.fn().mockResolvedValue(undefined)}
+        verificationEmail=""
+        onBackToSignIn={jest.fn()}
+        onLogin={jest.fn().mockResolvedValue(undefined)}
+        onModeChange={jest.fn()}
+        onRegister={jest.fn().mockResolvedValue(undefined)}
+        onResendCode={jest.fn().mockResolvedValue(undefined)}
+        onVerify={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByTestId('mobile-login-password').props.secureTextEntry).toBe(true);
+
+    fireEvent.press(screen.getByTestId('mobile-login-password-visibility'));
+
+    expect(screen.getByTestId('mobile-login-password').props.secureTextEntry).toBe(false);
+
+    fireEvent.press(screen.getByTestId('mobile-login-password-visibility'));
+
+    expect(screen.getByTestId('mobile-login-password').props.secureTextEntry).toBe(true);
+  });
+
   it('switches to registration and submits the new account payload', () => {
     const onRegister = jest.fn().mockResolvedValue(undefined);
 
@@ -70,6 +101,40 @@ describe('MobileAuthScreen', () => {
         confirmPassword: 'secret123!',
         acceptTerms: true,
       }),
+    );
+  });
+
+  it('lets the user reveal both registration password fields', () => {
+    render(
+      <MobileAuthScreen
+        error={null}
+        isResendingCode={false}
+        isSubmitting={false}
+        mode="register"
+        notice={null}
+        onOpenPrivacyPolicy={jest.fn().mockResolvedValue(undefined)}
+        onOpenTermsOfService={jest.fn().mockResolvedValue(undefined)}
+        verificationEmail=""
+        onBackToSignIn={jest.fn()}
+        onLogin={jest.fn().mockResolvedValue(undefined)}
+        onModeChange={jest.fn()}
+        onRegister={jest.fn().mockResolvedValue(undefined)}
+        onResendCode={jest.fn().mockResolvedValue(undefined)}
+        onVerify={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByTestId('mobile-register-password').props.secureTextEntry).toBe(true);
+    expect(screen.getByTestId('mobile-register-confirm-password').props.secureTextEntry).toBe(
+      true,
+    );
+
+    fireEvent.press(screen.getByTestId('mobile-register-password-visibility'));
+    fireEvent.press(screen.getByTestId('mobile-register-confirm-password-visibility'));
+
+    expect(screen.getByTestId('mobile-register-password').props.secureTextEntry).toBe(false);
+    expect(screen.getByTestId('mobile-register-confirm-password').props.secureTextEntry).toBe(
+      false,
     );
   });
 

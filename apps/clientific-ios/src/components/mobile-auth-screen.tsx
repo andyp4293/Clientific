@@ -76,6 +76,9 @@ export function MobileAuthScreen({
   const theme = getClientificTheme(colorScheme);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [isLoginPasswordVisible, setIsLoginPasswordVisible] = useState(false);
+  const [isRegisterPasswordVisible, setIsRegisterPasswordVisible] = useState(false);
+  const [isRegisterConfirmPasswordVisible, setIsRegisterConfirmPasswordVisible] = useState(false);
   const [registerForm, setRegisterForm] = useState<MobileRegistrationForm>({
     businessName: '',
     businessType: 'Salon',
@@ -231,25 +234,40 @@ export function MobileAuthScreen({
                   />
 
                   <FieldLabel text="Password" color={theme.text} />
-                  <TextInput
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    placeholder="••••••••"
-                    placeholderTextColor={theme.mutedText}
-                    secureTextEntry
-                    style={[
-                      styles.input,
-                      {
-                        backgroundColor: theme.background,
-                        borderColor: theme.border,
-                        color: theme.text,
-                      },
-                    ]}
-                    testID="mobile-login-password"
-                    textContentType="password"
-                    value={loginPassword}
-                    onChangeText={setLoginPassword}
-                  />
+                  <View style={styles.passwordFieldWrap}>
+                    <TextInput
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      placeholder="••••••••"
+                      placeholderTextColor={theme.mutedText}
+                      secureTextEntry={!isLoginPasswordVisible}
+                      style={[
+                        styles.input,
+                        styles.passwordInput,
+                        {
+                          backgroundColor: theme.background,
+                          borderColor: theme.border,
+                          color: theme.text,
+                        },
+                      ]}
+                      testID="mobile-login-password"
+                      textContentType="password"
+                      value={loginPassword}
+                      onChangeText={setLoginPassword}
+                    />
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        isLoginPasswordVisible ? 'Hide password' : 'Show password'
+                      }
+                      onPress={() => setIsLoginPasswordVisible((current) => !current)}
+                      style={styles.passwordToggle}
+                      testID="mobile-login-password-visibility">
+                      <Text style={[styles.passwordToggleText, { color: theme.accent }]}>
+                        {isLoginPasswordVisible ? 'Hide' : 'Show'}
+                      </Text>
+                    </Pressable>
+                  </View>
 
                   <Pressable
                     accessibilityRole="button"
@@ -350,53 +368,85 @@ export function MobileAuthScreen({
                   />
 
                   <FieldLabel text="Password" color={theme.text} />
-                  <TextInput
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    placeholder="Create a password"
-                    placeholderTextColor={theme.mutedText}
-                    secureTextEntry
-                    style={[
-                      styles.input,
-                      {
-                        backgroundColor: theme.background,
-                        borderColor: theme.border,
-                        color: theme.text,
-                      },
-                    ]}
-                    testID="mobile-register-password"
-                    textContentType="newPassword"
-                    value={registerForm.password}
-                    onChangeText={(value) =>
-                      setRegisterForm((current) => ({ ...current, password: value }))
-                    }
-                  />
+                  <View style={styles.passwordFieldWrap}>
+                    <TextInput
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      placeholder="Create a password"
+                      placeholderTextColor={theme.mutedText}
+                      secureTextEntry={!isRegisterPasswordVisible}
+                      style={[
+                        styles.input,
+                        styles.passwordInput,
+                        {
+                          backgroundColor: theme.background,
+                          borderColor: theme.border,
+                          color: theme.text,
+                        },
+                      ]}
+                      testID="mobile-register-password"
+                      textContentType="newPassword"
+                      value={registerForm.password}
+                      onChangeText={(value) =>
+                        setRegisterForm((current) => ({ ...current, password: value }))
+                      }
+                    />
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        isRegisterPasswordVisible ? 'Hide password' : 'Show password'
+                      }
+                      onPress={() => setIsRegisterPasswordVisible((current) => !current)}
+                      style={styles.passwordToggle}
+                      testID="mobile-register-password-visibility">
+                      <Text style={[styles.passwordToggleText, { color: theme.accent }]}>
+                        {isRegisterPasswordVisible ? 'Hide' : 'Show'}
+                      </Text>
+                    </Pressable>
+                  </View>
 
                   <FieldLabel text="Confirm password" color={theme.text} />
-                  <TextInput
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    placeholder="Repeat your password"
-                    placeholderTextColor={theme.mutedText}
-                    secureTextEntry
-                    style={[
-                      styles.input,
-                      {
-                        backgroundColor: theme.background,
-                        borderColor: theme.border,
-                        color: theme.text,
-                      },
-                    ]}
-                    testID="mobile-register-confirm-password"
-                    textContentType="password"
-                    value={registerForm.confirmPassword}
-                    onChangeText={(value) =>
-                      setRegisterForm((current) => ({
-                        ...current,
-                        confirmPassword: value,
-                      }))
-                    }
-                  />
+                  <View style={styles.passwordFieldWrap}>
+                    <TextInput
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      placeholder="Repeat your password"
+                      placeholderTextColor={theme.mutedText}
+                      secureTextEntry={!isRegisterConfirmPasswordVisible}
+                      style={[
+                        styles.input,
+                        styles.passwordInput,
+                        {
+                          backgroundColor: theme.background,
+                          borderColor: theme.border,
+                          color: theme.text,
+                        },
+                      ]}
+                      testID="mobile-register-confirm-password"
+                      textContentType="password"
+                      value={registerForm.confirmPassword}
+                      onChangeText={(value) =>
+                        setRegisterForm((current) => ({
+                          ...current,
+                          confirmPassword: value,
+                        }))
+                      }
+                    />
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        isRegisterConfirmPasswordVisible ? 'Hide password' : 'Show password'
+                      }
+                      onPress={() =>
+                        setIsRegisterConfirmPasswordVisible((current) => !current)
+                      }
+                      style={styles.passwordToggle}
+                      testID="mobile-register-confirm-password-visibility">
+                      <Text style={[styles.passwordToggleText, { color: theme.accent }]}>
+                        {isRegisterConfirmPasswordVisible ? 'Hide' : 'Show'}
+                      </Text>
+                    </Pressable>
+                  </View>
 
                   <FieldLabel text="Referral link or code" color={theme.text} optional />
                   <TextInput
@@ -710,6 +760,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
+  },
+  passwordFieldWrap: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  passwordInput: {
+    paddingRight: 84,
+  },
+  passwordToggle: {
+    position: 'absolute',
+    right: 14,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  passwordToggleText: {
+    fontSize: 13,
+    lineHeight: 16,
+    fontWeight: '800',
   },
   chipGrid: {
     flexDirection: 'row',

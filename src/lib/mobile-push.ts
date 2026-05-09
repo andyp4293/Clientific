@@ -48,7 +48,11 @@ export function isExpoPushToken(value: string) {
 }
 
 function shouldSendPushForNotificationType(type: string) {
-  return type === 'new_appointment' || type === 'appointment_rescheduled';
+  return (
+    type === 'new_appointment' ||
+    type === 'appointment_rescheduled' ||
+    type === 'appointment_cancelled'
+  );
 }
 
 export async function registerMobilePushDevice(input: RegisterMobilePushDeviceInput) {

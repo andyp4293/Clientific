@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Linking as NativeLinking,
   Pressable,
   Share,
   StyleSheet,
@@ -41,6 +42,7 @@ import {
   fetchMobileDeals,
   fetchMobileFunds,
   fetchMobileHomeSummary,
+  fetchMobileNotifications,
   fetchMobileReferrals,
   fetchMobileReviews,
   fetchMobileServices,
@@ -68,6 +70,7 @@ import {
   MobileFundsSummary,
   MobileHomeSummary,
   MobileLoginResponse,
+  MobileNotificationsSummary,
   MobileOnboardingInput,
   MobileRedeemResult,
   MobileReferralsSummary,
@@ -77,6 +80,7 @@ import {
   MobileServicesSummary,
   MobileStaffInput,
   loginWithClientific,
+  markMobileNotificationsRead,
   redeemMobileCode,
   registerMobilePushToken,
   registerWithClientific,
@@ -107,6 +111,7 @@ import {
 } from '@/lib/app-store-sync';
 import {
   addPushNotificationResponseListener,
+  getMobilePushPermissionStatus,
   registerForPushNotificationsAsync,
 } from '@/lib/mobile-push-notifications';
 import {
@@ -249,6 +254,9 @@ export function ClientificNativeApp() {
   const [isRefreshingReferrals, setIsRefreshingReferrals] = useState(false);
   const [isLoadingFunds, setIsLoadingFunds] = useState(false);
   const [isRefreshingFunds, setIsRefreshingFunds] = useState(false);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+  const [isRefreshingNotifications, setIsRefreshingNotifications] = useState(false);
+  const [isMarkingNotificationsRead, setIsMarkingNotificationsRead] = useState(false);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
   const [isRefreshingServices, setIsRefreshingServices] = useState(false);
   const [isLoadingBusinessHours, setIsLoadingBusinessHours] = useState(false);
@@ -275,6 +283,7 @@ export function ClientificNativeApp() {
   const [homeError, setHomeError] = useState<string | null>(null);
   const [referralsError, setReferralsError] = useState<string | null>(null);
   const [fundsError, setFundsError] = useState<string | null>(null);
+  const [notificationsError, setNotificationsError] = useState<string | null>(null);
   const [servicesError, setServicesError] = useState<string | null>(null);
   const [businessHoursError, setBusinessHoursError] = useState<string | null>(null);
   const [reviewsError, setReviewsError] = useState<string | null>(null);
@@ -312,12 +321,16 @@ export function ClientificNativeApp() {
   const [home, setHome] = useState<MobileHomeSummary | null>(null);
   const [referrals, setReferrals] = useState<MobileReferralsSummary | null>(null);
   const [funds, setFunds] = useState<MobileFundsSummary | null>(null);
+  const [notifications, setNotifications] = useState<MobileNotificationsSummary | null>(null);
   const [services, setServices] = useState<MobileServicesSummary | null>(null);
   const [businessHours, setBusinessHours] = useState<MobileBusinessHoursSummary | null>(null);
   const [reviews, setReviews] = useState<MobileReviewsSummary | null>(null);
   const [billing, setBilling] = useState<MobileBillingSummary | null>(null);
   const [billingOffering, setBillingOffering] = useState<PurchasesOffering | null>(null);
   const [registeredPushToken, setRegisteredPushToken] = useState<string | null>(null);
+  const [pushPermissionStatus, setPushPermissionStatus] = useState<
+    Awaited<ReturnType<typeof getMobilePushPermissionStatus>>
+  >('undetermined');
   const hasAttemptedBillingOfferingLoadRef = useRef(false);
 
   const openBillingFromDeepLink = useCallback((url: string | null) => {
@@ -329,6 +342,84 @@ export function ClientificNativeApp() {
     setMoreSection('billing');
     return true;
   }, []);
+
+  async function routeNotificationLink(link: string | null) {
+    if (!link) {
+      return;
+    }
+
+    const normalizedLink = link.toLowerCase();
+
+    if (normalizedLink.includes('/dashboard/appointments')) {
+      setActiveTab('appointments');
+      if (session?.token) {
+        void loadAppointments(session.token, appointmentsDate, true);
+      }
+      return;
+    }
+
+    if (
+      resolveMobileBillingDeepLink(link) ||
+      normalizedLink.includes('/dashboard/settings/billing')
+    ) {
+      setActiveTab('more');
+      setMoreSection('billing');
+      if (session?.token) {
+        void loadBilling(session.token, true);
+      }
+      return;
+    }
+
+    if (normalizedLink.includes('/dashboard/reviews')) {
+      setActiveTab('more');
+      setMoreSection('reviews');
+      if (session?.token) {
+        void loadReviews(session.token, true);
+      }
+      return;
+    }
+
+    if (normalizedLink.includes('/dashboard/referrals')) {
+      setActiveTab('more');
+      setMoreSection('referrals');
+      if (session?.token) {
+        void loadReferrals(session.token, true);
+      }
+      return;
+    }
+
+    if (normalizedLink.includes('/dashboard/funds') || normalizedLink.includes('/dashboard/payout')) {
+      setActiveTab('more');
+      setMoreSection('payouts');
+      if (session?.token) {
+        void loadFunds(session.token, true);
+      }
+      return;
+    }
+
+    if (normalizedLink.includes('/dashboard/customers')) {
+      setActiveTab('customers');
+      if (session?.token) {
+        void loadCustomers(
+          session.token,
+          {
+            page: customersPage,
+            search: customersSearchQuery,
+            filters: customerFilters,
+          },
+          true,
+        );
+      }
+      return;
+    }
+
+    const destination = link.startsWith('http') ? link : `${getClientificWebUrl()}${link}`;
+    try {
+      await WebBrowser.openBrowserAsync(destination);
+    } catch (error) {
+      setHomeError(getReadableError(error, 'Unable to open that notification right now.'));
+    }
+  }
 
   const signOut = useCallback(async (message?: string) => {
     if (session?.token && registeredPushToken) {
@@ -351,11 +442,14 @@ export function ClientificNativeApp() {
     setHome(null);
     setReferrals(null);
     setFunds(null);
+    setNotifications(null);
     setServices(null);
     setBusinessHours(null);
     setReviews(null);
     setBilling(null);
     setBillingOffering(null);
+    setPushPermissionStatus('undetermined');
+    setRegisteredPushToken(null);
     hasAttemptedBillingOfferingLoadRef.current = false;
     setActiveTab('dashboard');
     setMoreSection('menu');
@@ -373,6 +467,7 @@ export function ClientificNativeApp() {
     setHomeError(null);
     setReferralsError(null);
     setFundsError(null);
+    setNotificationsError(null);
     setServicesError(null);
     setBusinessHoursError(null);
     setReviewsError(null);
@@ -745,6 +840,46 @@ export function ClientificNativeApp() {
     },
     [handleSessionError],
   );
+
+  const loadNotifications = useCallback(
+    async (token: string, isRefresh = false) => {
+      if (isRefresh) {
+        setIsRefreshingNotifications(true);
+      } else {
+        setIsLoadingNotifications(true);
+      }
+
+      try {
+        const nextNotifications = await fetchMobileNotifications(token);
+        setNotifications(nextNotifications);
+        setNotificationsError(null);
+      } catch (error) {
+        await handleSessionError(
+          error,
+          'Unable to load mobile notifications.',
+          setNotificationsError,
+        );
+      } finally {
+        if (isRefresh) {
+          setIsRefreshingNotifications(false);
+        } else {
+          setIsLoadingNotifications(false);
+        }
+      }
+    },
+    [handleSessionError],
+  );
+
+  const refreshPushPermissionStatus = useCallback(async () => {
+    try {
+      const nextStatus = await getMobilePushPermissionStatus();
+      setPushPermissionStatus(nextStatus);
+      return nextStatus;
+    } catch (error) {
+      console.warn('Unable to read push notification permission status:', error);
+      return 'undetermined' as const;
+    }
+  }, []);
 
   const loadServices = useCallback(
     async (token: string, isRefresh = false) => {
@@ -1432,6 +1567,10 @@ export function ClientificNativeApp() {
   }, [session?.business.id]);
 
   useEffect(() => {
+    void refreshPushPermissionStatus();
+  }, [refreshPushPermissionStatus]);
+
+  useEffect(() => {
     let isMounted = true;
 
     void Linking.getInitialURL().then((url) => {
@@ -1545,14 +1684,20 @@ export function ClientificNativeApp() {
 
     async function registerDeviceForPush() {
       try {
+        await refreshPushPermissionStatus();
         const registration = await registerForPushNotificationsAsync();
         if (!registration || !isActive) {
+          if (isActive) {
+            const nextStatus = await refreshPushPermissionStatus();
+            setPushPermissionStatus(nextStatus);
+          }
           return;
         }
 
         await registerMobilePushToken(sessionToken, registration);
         if (isActive) {
           setRegisteredPushToken(registration.token);
+          setPushPermissionStatus('granted');
         }
       } catch (error) {
         console.warn('Mobile push registration failed:', error);
@@ -1564,7 +1709,7 @@ export function ClientificNativeApp() {
     return () => {
       isActive = false;
     };
-  }, [session?.token]);
+  }, [refreshPushPermissionStatus, session?.token]);
 
   useEffect(() => {
     const subscription = addPushNotificationResponseListener((response) => {
@@ -1573,18 +1718,16 @@ export function ClientificNativeApp() {
         return;
       }
 
-      if (link.includes('/dashboard/appointments')) {
-        setActiveTab('appointments');
-        if (session?.token) {
-          void loadAppointments(session.token, appointmentsDate, true);
-        }
+      void routeNotificationLink(link);
+      if (session?.token) {
+        void loadNotifications(session.token, true);
       }
     });
 
     return () => {
       subscription.remove();
     };
-  }, [appointmentsDate, loadAppointments, session?.token]);
+  }, [loadNotifications, session?.token]);
 
   const establishSession = useCallback(
     async (email: string, password: string) => {
@@ -1942,6 +2085,86 @@ export function ClientificNativeApp() {
     await loadFunds(session.token, true);
   }, [loadFunds, session]);
 
+  const handleRefreshNotifications = useCallback(async () => {
+    if (!session) {
+      return;
+    }
+
+    await Promise.all([
+      loadNotifications(session.token, true),
+      refreshPushPermissionStatus(),
+    ]);
+  }, [loadNotifications, refreshPushPermissionStatus, session]);
+
+  const handleMarkNotificationsRead = useCallback(async () => {
+    if (!session) {
+      return;
+    }
+
+    setIsMarkingNotificationsRead(true);
+    try {
+      await markMobileNotificationsRead(session.token);
+      await loadNotifications(session.token, true);
+    } catch (error) {
+      await handleSessionError(
+        error,
+        'Unable to mark notifications as read.',
+        setNotificationsError,
+      );
+    } finally {
+      setIsMarkingNotificationsRead(false);
+    }
+  }, [handleSessionError, loadNotifications, session]);
+
+  const handleEnablePushNotifications = useCallback(async () => {
+    if (!session?.token) {
+      return;
+    }
+
+    try {
+      if (pushPermissionStatus === 'denied') {
+        await NativeLinking.openSettings();
+        await refreshPushPermissionStatus();
+        return;
+      }
+
+      const registration = await registerForPushNotificationsAsync();
+      if (!registration) {
+        await refreshPushPermissionStatus();
+        return;
+      }
+
+      await registerMobilePushToken(session.token, registration);
+      setRegisteredPushToken(registration.token);
+      setPushPermissionStatus('granted');
+      setNotificationsError(null);
+    } catch (error) {
+      setNotificationsError(
+        getReadableError(error, 'Unable to enable notifications on this phone right now.'),
+      );
+    }
+  }, [pushPermissionStatus, refreshPushPermissionStatus, session]);
+
+  const handleOpenNotification = useCallback(
+    async (notificationId: string) => {
+      if (!notifications) {
+        return;
+      }
+
+      const notification = notifications.notifications.find((entry) => entry.id === notificationId);
+      if (!notification) {
+        return;
+      }
+
+      await routeNotificationLink(notification.link);
+      if (!notification.read && session?.token) {
+        await markMobileNotificationsRead(session.token);
+        await loadNotifications(session.token, true);
+      }
+    },
+    [loadNotifications, notifications, session],
+  );
+
   const handleRefreshServices = useCallback(async () => {
     if (!session) {
       return;
@@ -2006,6 +2229,10 @@ export function ClientificNativeApp() {
 
   const jumpAppointmentsToToday = useCallback(() => {
     setAppointmentsDate(formatMobileDateKey(new Date()));
+  }, []);
+
+  const selectAppointmentsDate = useCallback((dateKey: string) => {
+    setAppointmentsDate(dateKey);
   }, []);
 
   const goToPreviousCheckInsDate = useCallback(() => {
@@ -2796,6 +3023,16 @@ export function ClientificNativeApp() {
       void loadFunds(session.token);
     }
 
+    if (
+      activeTab === 'more' &&
+      moreSection === 'notifications' &&
+      !notifications &&
+      !isLoadingNotifications
+    ) {
+      void loadNotifications(session.token);
+      void refreshPushPermissionStatus();
+    }
+
     if (activeTab === 'more' && moreSection === 'billing' && !billing && !isLoadingBilling) {
       void loadBilling(session.token);
     }
@@ -2838,6 +3075,7 @@ export function ClientificNativeApp() {
     isLoadingCustomers,
     isLoadingDeals,
     isLoadingFunds,
+    isLoadingNotifications,
     isLoadingReferrals,
     isLoadingReviews,
     isLoadingServices,
@@ -2852,10 +3090,13 @@ export function ClientificNativeApp() {
     loadCustomers,
     loadDeals,
     loadFunds,
+    loadNotifications,
     loadReferrals,
     loadReviews,
     loadServices,
     moreSection,
+    notifications,
+    refreshPushPermissionStatus,
     referrals,
     reviews,
     session,
@@ -3035,6 +3276,9 @@ export function ClientificNativeApp() {
       isFundsLoading={isLoadingFunds}
       isFundsRefreshing={isRefreshingFunds}
       isHomeRefreshing={isRefreshingHome}
+      isNotificationsLoading={isLoadingNotifications}
+      isNotificationsMarkingRead={isMarkingNotificationsRead}
+      isNotificationsRefreshing={isRefreshingNotifications}
       isPurchasingSubscription={isPurchasingSubscription}
       isReferralsLoading={isLoadingReferrals}
       isReferralsRefreshing={isRefreshingReferrals}
@@ -3046,6 +3290,9 @@ export function ClientificNativeApp() {
       isServicesRefreshing={isRefreshingServices}
       onChangeCustomerFilters={changeCustomerFilters}
       moreSection={moreSection}
+      notifications={notifications}
+      notificationsError={notificationsError}
+      notificationsPermissionStatus={pushPermissionStatus}
       onChangeCustomersSearchDraft={setCustomersSearchDraft}
       onChangeMoreSection={handleChangeMoreSection}
       onChangeTab={handleChangeTab}
@@ -3069,6 +3316,7 @@ export function ClientificNativeApp() {
       onGoToCustomersPage={goToCustomersPage}
       onJumpCheckInsToToday={jumpCheckInsToToday}
       onJumpAppointmentsToToday={jumpAppointmentsToToday}
+      onSelectAppointmentsDate={selectAppointmentsDate}
       onLookupCheckIn={handleLookupCheckIn}
       onLookupRedeemCode={handleLookupRedeemCode}
       onLoadAppointmentComposerResources={async () => {
@@ -3087,6 +3335,8 @@ export function ClientificNativeApp() {
       onOpenDeals={openDealsTab}
       onOpenFunds={openFundsTab}
       onOpenReferrals={openReferralsTab}
+      onEnablePushNotifications={handleEnablePushNotifications}
+      onOpenNotification={handleOpenNotification}
       onPreviousCheckInsDate={goToPreviousCheckInsDate}
       onPreviousAppointmentsDate={goToPreviousAppointmentsDate}
       onPreviousCustomersPage={goToPreviousCustomersPage}
@@ -3103,6 +3353,8 @@ export function ClientificNativeApp() {
       onRefreshDeals={handleRefreshDeals}
       onRefreshFunds={handleRefreshFunds}
       onRefreshHome={handleRefreshHome}
+      onRefreshNotifications={handleRefreshNotifications}
+      onMarkNotificationsRead={handleMarkNotificationsRead}
       onRefreshReferrals={handleRefreshReferrals}
       onRefreshReviews={handleRefreshReviews}
       onRefreshServices={handleRefreshServices}

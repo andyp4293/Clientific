@@ -1,6 +1,7 @@
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import {
+  getMobilePushPermissionStatus,
   getExpoProjectId,
   registerForPushNotificationsAsync,
 } from '@/lib/mobile-push-notifications';
@@ -53,5 +54,11 @@ describe('mobile push notifications', () => {
 
     expect(registration).toBeNull();
     expect(Notifications.getExpoPushTokenAsync).not.toHaveBeenCalled();
+  });
+
+  it('reports the current notification permission status', async () => {
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue({ status: 'undetermined' } as never);
+
+    await expect(getMobilePushPermissionStatus()).resolves.toBe('undetermined');
   });
 });

@@ -23,6 +23,7 @@ import type {
   MobileCustomerViewSummary,
   MobileFundsSummary,
   MobileHomeSummary,
+  MobileNotificationsSummary,
   MobileOnboardingInput,
   MobileRedeemLookupResponse,
   MobileRedeemResult,
@@ -33,12 +34,14 @@ import type {
   MobileServicesSummary,
   MobileStaffInput,
 } from '@/lib/clientific-api';
+import type { MobilePushPermissionStatus } from '@/lib/mobile-push-notifications';
 import { MobileAiReceptionistScreen } from '@/components/mobile-ai-receptionist-screen';
 import { MobileBillingScreen } from '@/components/mobile-billing-screen';
 import { MobileBusinessHoursScreen } from '@/components/mobile-business-hours-screen';
 import { MobileCheckinsScreen } from '@/components/mobile-checkins-screen';
 import { MobileCustomerViewScreen } from '@/components/mobile-customer-view-screen';
 import { MobileFundsScreen } from '@/components/mobile-funds-screen';
+import { MobileNotificationsScreen } from '@/components/mobile-notifications-screen';
 import { MobileNavIcon, type MobileNavIconName } from '@/components/mobile-nav-icon';
 import { MobileOnboardingScreen } from '@/components/mobile-onboarding-screen';
 import { MobileRedeemScreen } from '@/components/mobile-redeem-screen';
@@ -65,6 +68,7 @@ export type MobileMoreSection =
   | 'redeem'
   | 'hours'
   | 'aiReceptionist'
+  | 'notifications'
   | 'customerView'
   | 'reviews'
   | 'referrals'
@@ -120,6 +124,9 @@ type MobileMoreScreenProps = {
   isCustomerViewRefreshing: boolean;
   isFundsLoading: boolean;
   isFundsRefreshing: boolean;
+  isNotificationsLoading: boolean;
+  isNotificationsMarkingRead: boolean;
+  isNotificationsRefreshing: boolean;
   isPurchasingSubscription: boolean;
   isReferralsLoading: boolean;
   isReferralsRefreshing: boolean;
@@ -129,6 +136,9 @@ type MobileMoreScreenProps = {
   isSavingBusinessProfile: boolean;
   isServicesLoading: boolean;
   isServicesRefreshing: boolean;
+  notifications: MobileNotificationsSummary | null;
+  notificationsError: string | null;
+  notificationsPermissionStatus: MobilePushPermissionStatus;
   subscriptionLocked: boolean;
   billingNotice: string | null;
   billingPurchaseError: string | null;
@@ -162,6 +172,10 @@ type MobileMoreScreenProps = {
   onRefreshCheckIns: () => Promise<void>;
   onRefreshCustomerView: () => Promise<void>;
   onRefreshFunds: () => Promise<void>;
+  onEnablePushNotifications: () => Promise<void>;
+  onOpenNotification: (notificationId: string) => Promise<void>;
+  onRefreshNotifications: () => Promise<void>;
+  onMarkNotificationsRead: () => Promise<void>;
   onRefreshReferrals: () => Promise<void>;
   onRefreshReviews: () => Promise<void>;
   onRefreshServices: () => Promise<void>;
@@ -259,6 +273,14 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
     target: 'aiReceptionist',
   },
   {
+    key: 'notifications',
+    label: 'Notifications',
+    helper: 'Review owner alerts and confirm push is enabled on this phone.',
+    icon: 'notifications',
+    section: 'operations',
+    target: 'notifications',
+  },
+  {
     key: 'preview',
     label: 'Customer View',
     helper: 'Preview what guests see before you share links.',
@@ -345,6 +367,9 @@ export function MobileMoreScreen({
   isCustomerViewRefreshing,
   isFundsLoading,
   isFundsRefreshing,
+  isNotificationsLoading,
+  isNotificationsMarkingRead,
+  isNotificationsRefreshing,
   isPurchasingSubscription,
   isReferralsLoading,
   isReferralsRefreshing,
@@ -354,6 +379,9 @@ export function MobileMoreScreen({
   isSavingBusinessProfile,
   isServicesLoading,
   isServicesRefreshing,
+  notifications,
+  notificationsError,
+  notificationsPermissionStatus,
   subscriptionLocked,
   billingNotice,
   billingPurchaseError,
@@ -382,6 +410,10 @@ export function MobileMoreScreen({
   onRefreshCheckIns,
   onRefreshCustomerView,
   onRefreshFunds,
+  onEnablePushNotifications,
+  onOpenNotification,
+  onRefreshNotifications,
+  onMarkNotificationsRead,
   onRefreshReferrals,
   onRefreshReviews,
   onRefreshServices,
@@ -565,10 +597,24 @@ export function MobileMoreScreen({
                     <View style={styles.menuCopy}>
                       <Text style={[styles.menuTitle, { color: theme.text }]}>{item.label}</Text>
                       <Text style={[styles.menuHelper, { color: theme.mutedText }]}>
-                        {isLocked ? 'Unlock this in Billing first.' : item.helper}
+                        {item.target === 'notifications' && notifications?.unreadCount
+                          ? `${notifications.unreadCount} unread alerts waiting on this phone.`
+                          : isLocked
+                            ? 'Unlock this in Billing first.'
+                            : item.helper}
                       </Text>
                     </View>
-                    {isLocked ? (
+                    {item.target === 'notifications' && notifications?.unreadCount ? (
+                      <View
+                        style={[
+                          styles.unreadPill,
+                          { backgroundColor: theme.accent, borderColor: theme.accent },
+                        ]}>
+                        <Text style={styles.unreadPillText}>
+                          {notifications.unreadCount > 9 ? '9+' : notifications.unreadCount}
+                        </Text>
+                      </View>
+                    ) : isLocked ? (
                       <View
                         style={[
                           styles.lockedPill,
@@ -766,6 +812,23 @@ export function MobileMoreScreen({
           />
         ) : null}
 
+        {activeSection === 'notifications' ? (
+          <MobileNotificationsScreen
+            data={notifications}
+            error={notificationsError}
+            isLoading={isNotificationsLoading}
+            isMarkingRead={isNotificationsMarkingRead}
+            isRefreshing={isNotificationsRefreshing}
+            permissionStatus={notificationsPermissionStatus}
+            onEnablePush={onEnablePushNotifications}
+            onMarkAllRead={onMarkNotificationsRead}
+            onOpenNotification={async (notification) => {
+              await onOpenNotification(notification.id);
+            }}
+            onRefresh={onRefreshNotifications}
+          />
+        ) : null}
+
         {activeSection === 'customerView' ? (
           <MobileCustomerViewScreen
             data={customerView}
@@ -888,6 +951,8 @@ function getSubscreenTitle(section: Exclude<MobileMoreSection, 'menu'>) {
       return 'Business Hours';
     case 'aiReceptionist':
       return 'AI Receptionist';
+    case 'notifications':
+      return 'Notifications';
     case 'customerView':
       return 'Customer View';
     case 'reviews':
@@ -1078,6 +1143,23 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   lockedPillText: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  unreadPill: {
+    minWidth: 32,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unreadPillText: {
+    color: '#ffffff',
     fontSize: 11,
     lineHeight: 14,
     fontWeight: '800',

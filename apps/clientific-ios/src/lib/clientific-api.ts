@@ -578,6 +578,23 @@ export type MobileBillingSummary = {
   }>;
 };
 
+export type MobileNotificationRecord = {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  link: string | null;
+  read: boolean;
+  createdAt: string;
+  createdAtLabel: string;
+};
+
+export type MobileNotificationsSummary = {
+  business: MobileBusiness;
+  unreadCount: number;
+  notifications: MobileNotificationRecord[];
+};
+
 export type MobileAiReceptionistFaq = {
   question: string;
   answer: string;
@@ -1250,6 +1267,23 @@ export async function fetchMobileAnalytics(
 
 export async function fetchMobileBilling(token: string) {
   return requestJson<MobileBillingSummary>('/api/mobile/billing', {
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function fetchMobileNotifications(token: string) {
+  return requestJson<MobileNotificationsSummary>('/api/mobile/notifications', {
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function markMobileNotificationsRead(token: string) {
+  return requestJson<{ success: true }>('/api/mobile/notifications/read', {
+    method: 'PATCH',
     headers: {
       authorization: `Bearer ${token}`,
     },

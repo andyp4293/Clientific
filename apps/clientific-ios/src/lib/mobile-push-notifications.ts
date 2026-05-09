@@ -21,6 +21,8 @@ export type MobilePushRegistration =
     }
   | null;
 
+export type MobilePushPermissionStatus = 'granted' | 'denied' | 'undetermined';
+
 export function getExpoProjectId() {
   const extraProjectId =
     (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId;
@@ -59,6 +61,19 @@ export async function registerForPushNotificationsAsync(): Promise<MobilePushReg
     appIdentifier: Constants.expoConfig?.ios?.bundleIdentifier ?? null,
     deviceName: Device.modelName ?? null,
   };
+}
+
+export async function getMobilePushPermissionStatus(): Promise<MobilePushPermissionStatus> {
+  const permissions = await Notifications.getPermissionsAsync();
+  if (
+    permissions.status === 'granted' ||
+    permissions.status === 'denied' ||
+    permissions.status === 'undetermined'
+  ) {
+    return permissions.status;
+  }
+
+  return 'undetermined';
 }
 
 export function addPushNotificationResponseListener(

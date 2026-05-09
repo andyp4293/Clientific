@@ -165,4 +165,18 @@ describe('mobile push notifications', () => {
     });
     expect(fetch).toHaveBeenCalled();
   });
+
+  it('also sends push notifications for appointment cancellations', async () => {
+    mockFindMany.mockResolvedValue([{ token: 'ExponentPushToken[live-token]' }]);
+
+    await createBusinessNotification({
+      businessId: 'biz-1',
+      type: 'appointment_cancelled',
+      title: 'Appointment cancelled',
+      message: 'Jordan cancelled their haircut for Apr 4 at 2:00 PM',
+      link: '/dashboard/appointments',
+    });
+
+    expect(fetch).toHaveBeenCalled();
+  });
 });

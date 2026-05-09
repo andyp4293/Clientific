@@ -134,6 +134,7 @@ function renderScreen(
       onJumpToToday={jest.fn()}
       onLoadComposerResources={jest.fn().mockResolvedValue(undefined)}
       onNextDate={jest.fn()}
+      onSelectDate={jest.fn()}
       onPreviousDate={jest.fn()}
       onRefresh={jest.fn().mockResolvedValue(undefined)}
       onUpdateAppointment={jest.fn().mockResolvedValue(undefined)}
@@ -169,6 +170,7 @@ describe('MobileScheduleScreen', () => {
         onJumpToToday={jest.fn()}
         onLoadComposerResources={jest.fn().mockResolvedValue(undefined)}
         onNextDate={jest.fn()}
+        onSelectDate={jest.fn()}
         onPreviousDate={jest.fn()}
         onRefresh={jest.fn().mockResolvedValue(undefined)}
         onUpdateAppointment={jest.fn().mockResolvedValue(undefined)}
@@ -190,6 +192,16 @@ describe('MobileScheduleScreen', () => {
     expect(onJumpToToday).toHaveBeenCalledTimes(1);
   });
 
+  it('lets the user jump to another visible day from the date strip', () => {
+    const onSelectDate = jest.fn();
+
+    renderScreen({ onSelectDate });
+
+    fireEvent.press(screen.getByTestId('mobile-schedule-date-chip-2099-04-01'));
+
+    expect(onSelectDate).toHaveBeenCalledWith('2099-04-01');
+  });
+
   it('opens the create sheet, loads composer resources, and submits a new appointment', async () => {
     const onLoadComposerResources = jest.fn().mockResolvedValue(undefined);
     const onCreateAppointment = jest.fn().mockResolvedValue(undefined);
@@ -209,9 +221,9 @@ describe('MobileScheduleScreen', () => {
     });
 
     fireEvent.press(screen.getByTestId('mobile-existing-customer-cust-1'));
-    fireEvent.changeText(screen.getByTestId('mobile-schedule-create-time'), '10:30');
     fireEvent.press(screen.getByText('Haircut'));
     fireEvent.press(screen.getByText('Taylor'));
+    fireEvent.press(screen.getByTestId('mobile-schedule-create-time-10:30'));
     fireEvent.press(screen.getByTestId('mobile-schedule-create-submit'));
 
     await waitFor(() => {
@@ -220,7 +232,7 @@ describe('MobileScheduleScreen', () => {
           customerId: 'cust-1',
           serviceId: 'svc-1',
           staffId: 'staff-1',
-          duration: 60,
+          duration: 45,
           appointmentSmsConsent: true,
         }),
       );
@@ -245,11 +257,11 @@ describe('MobileScheduleScreen', () => {
     renderScreen({ onUpdateAppointment });
 
     fireEvent.press(screen.getByTestId('mobile-appointment-edit-appt-1'));
-    fireEvent.changeText(screen.getByTestId('mobile-schedule-edit-time'), '12:15');
+    fireEvent.press(screen.getByTestId('mobile-schedule-edit-time-12:00'));
     fireEvent.press(screen.getByText('1 hr'));
     fireEvent.press(screen.getByTestId('mobile-schedule-edit-submit'));
 
-    const expectedStartTime = new Date('2026-03-31T12:15').toISOString();
+    const expectedStartTime = new Date('2026-03-31T12:00').toISOString();
 
     await waitFor(() => {
       expect(onUpdateAppointment).toHaveBeenCalledWith(

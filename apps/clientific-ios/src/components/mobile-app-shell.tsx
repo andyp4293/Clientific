@@ -28,6 +28,7 @@ import type {
   MobileDealsSummary,
   MobileFundsSummary,
   MobileHomeSummary,
+  MobileNotificationsSummary,
   MobileOnboardingInput,
   MobileRedeemLookupResponse,
   MobileRedeemResult,
@@ -38,6 +39,7 @@ import type {
   MobileServicesSummary,
   MobileStaffInput,
 } from '@/lib/clientific-api';
+import type { MobilePushPermissionStatus } from '@/lib/mobile-push-notifications';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { MobileCustomersScreen } from '@/components/mobile-customers-screen';
@@ -105,6 +107,9 @@ type MobileAppShellProps = {
   isFundsLoading: boolean;
   isFundsRefreshing: boolean;
   isHomeRefreshing: boolean;
+  isNotificationsLoading: boolean;
+  isNotificationsMarkingRead: boolean;
+  isNotificationsRefreshing: boolean;
   isPurchasingSubscription: boolean;
   isReferralsLoading: boolean;
   isReferralsRefreshing: boolean;
@@ -116,6 +121,9 @@ type MobileAppShellProps = {
   isServicesRefreshing: boolean;
   onChangeCustomerFilters: (next: Partial<MobileCustomerFilters>) => void;
   moreSection: MobileMoreSection;
+  notifications: MobileNotificationsSummary | null;
+  notificationsError: string | null;
+  notificationsPermissionStatus: MobilePushPermissionStatus;
   onChangeCustomersSearchDraft: (value: string) => void;
   onChangeMoreSection: (section: MobileMoreSection) => void;
   onChangeTab: (tab: MobileAppTab) => void;
@@ -141,6 +149,7 @@ type MobileAppShellProps = {
   onGoToCustomersPage: (page: number) => void;
   onJumpCheckInsToToday: () => void;
   onJumpAppointmentsToToday: () => void;
+  onSelectAppointmentsDate: (dateKey: string) => void;
   onLookupCheckIn: (phone: string) => Promise<MobileCheckInLookupResponse>;
   onLookupRedeemCode: (code: string) => Promise<MobileRedeemLookupResponse>;
   onNextCheckInsDate: () => void;
@@ -153,6 +162,8 @@ type MobileAppShellProps = {
   onOpenDeals: () => void;
   onOpenFunds: () => void;
   onOpenReferrals: () => void;
+  onEnablePushNotifications: () => Promise<void>;
+  onOpenNotification: (notificationId: string) => Promise<void>;
   onPreviousCheckInsDate: () => void;
   onPreviousAppointmentsDate: () => void;
   onPreviousCustomersPage: () => void;
@@ -169,6 +180,8 @@ type MobileAppShellProps = {
   onRefreshDeals: () => Promise<void>;
   onRefreshFunds: () => Promise<void>;
   onRefreshHome: () => Promise<void>;
+  onRefreshNotifications: () => Promise<void>;
+  onMarkNotificationsRead: () => Promise<void>;
   onRefreshReferrals: () => Promise<void>;
   onRefreshReviews: () => Promise<void>;
   onRefreshServices: () => Promise<void>;
@@ -278,6 +291,9 @@ export function MobileAppShell({
   isFundsLoading,
   isFundsRefreshing,
   isHomeRefreshing,
+  isNotificationsLoading,
+  isNotificationsMarkingRead,
+  isNotificationsRefreshing,
   isPurchasingSubscription,
   isReferralsLoading,
   isReferralsRefreshing,
@@ -289,6 +305,9 @@ export function MobileAppShell({
   isServicesRefreshing,
   onChangeCustomerFilters,
   moreSection,
+  notifications,
+  notificationsError,
+  notificationsPermissionStatus,
   onChangeCustomersSearchDraft,
   onChangeMoreSection,
   onChangeTab,
@@ -312,6 +331,7 @@ export function MobileAppShell({
   onGoToCustomersPage,
   onJumpCheckInsToToday,
   onJumpAppointmentsToToday,
+  onSelectAppointmentsDate,
   onLookupCheckIn,
   onLookupRedeemCode,
   onNextCheckInsDate,
@@ -324,6 +344,8 @@ export function MobileAppShell({
   onOpenDeals,
   onOpenFunds,
   onOpenReferrals,
+  onEnablePushNotifications,
+  onOpenNotification,
   onPreviousCheckInsDate,
   onPreviousAppointmentsDate,
   onPreviousCustomersPage,
@@ -340,6 +362,8 @@ export function MobileAppShell({
   onRefreshDeals,
   onRefreshFunds,
   onRefreshHome,
+  onRefreshNotifications,
+  onMarkNotificationsRead,
   onRefreshReferrals,
   onRefreshReviews,
   onRefreshServices,
@@ -419,6 +443,7 @@ export function MobileAppShell({
               onLoadComposerResources={onLoadAppointmentComposerResources}
               onNextDate={onNextAppointmentsDate}
               onPreviousDate={onPreviousAppointmentsDate}
+              onSelectDate={onSelectAppointmentsDate}
               onRefresh={onRefreshAppointments}
               onUpdateAppointment={onUpdateAppointment}
             />
@@ -512,6 +537,9 @@ export function MobileAppShell({
               isCustomerViewRefreshing={isCustomerViewRefreshing}
               isFundsLoading={isFundsLoading}
               isFundsRefreshing={isFundsRefreshing}
+              isNotificationsLoading={isNotificationsLoading}
+              isNotificationsMarkingRead={isNotificationsMarkingRead}
+              isNotificationsRefreshing={isNotificationsRefreshing}
               isPurchasingSubscription={isPurchasingSubscription}
               isReferralsLoading={isReferralsLoading}
               isReferralsRefreshing={isReferralsRefreshing}
@@ -521,6 +549,9 @@ export function MobileAppShell({
               isSavingBusinessProfile={isSavingBusinessProfile}
               isServicesLoading={isServicesLoading}
               isServicesRefreshing={isServicesRefreshing}
+              notifications={notifications}
+              notificationsError={notificationsError}
+              notificationsPermissionStatus={notificationsPermissionStatus}
               subscriptionLocked={subscriptionLocked}
               onChangeSection={onChangeMoreSection}
               onCreateCheckIn={onCreateCheckIn}
@@ -547,6 +578,10 @@ export function MobileAppShell({
               onRefreshCheckIns={onRefreshCheckIns}
               onRefreshCustomerView={onRefreshCustomerView}
               onRefreshFunds={onRefreshFunds}
+              onEnablePushNotifications={onEnablePushNotifications}
+              onOpenNotification={onOpenNotification}
+              onRefreshNotifications={onRefreshNotifications}
+              onMarkNotificationsRead={onMarkNotificationsRead}
               onRefreshReferrals={onRefreshReferrals}
               onRefreshReviews={onRefreshReviews}
               onRefreshServices={onRefreshServices}
@@ -585,6 +620,7 @@ export function MobileAppShell({
             testID="mobile-tab-bar">
             {TAB_LABELS.map((tab) => {
               const isActive = activeTab === tab.key;
+              const tabUnreadCount = tab.key === 'more' ? notifications?.unreadCount ?? 0 : 0;
 
               return (
                 <Pressable
@@ -630,6 +666,18 @@ export function MobileAppShell({
                       name={tab.icon}
                       size={20}
                     />
+                    {tabUnreadCount > 0 ? (
+                      <View
+                        style={[
+                          styles.tabNotificationBadge,
+                          { backgroundColor: theme.accent },
+                        ]}
+                        testID={`mobile-tab-badge-${tab.key}`}>
+                        <Text style={styles.tabNotificationBadgeText}>
+                          {tabUnreadCount > 9 ? '9+' : tabUnreadCount}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
                   <Text
                     adjustsFontSizeToFit
@@ -696,6 +744,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  tabNotificationBadge: {
+    position: 'absolute',
+    top: -7,
+    right: -10,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  tabNotificationBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    lineHeight: 12,
+    fontWeight: '800',
   },
   tabLabel: {
     fontSize: 10,
