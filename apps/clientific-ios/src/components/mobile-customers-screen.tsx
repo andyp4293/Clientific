@@ -446,6 +446,18 @@ export function MobileCustomersScreen({
     setIsGroupSheetVisible(true);
   };
 
+  const focusGroupMembers = (group: MobileCustomerGroupRecord) => {
+    setActiveTab('customers');
+    setSheetNotice(`Showing customers in ${group.name}.`);
+    onChangeSearchDraft('');
+    onChangeFilter({
+      group: group.id,
+      sms: '',
+      contact: '',
+      visit: '',
+    });
+  };
+
   const handleOpenDetail = async (customerId: string) => {
     setSheetError(null);
     setSelectedCustomer(null);
@@ -1253,10 +1265,8 @@ export function MobileCustomersScreen({
           <View style={styles.stack}>
             {data?.groups.length ? (
               data.groups.map((group) => (
-                <Pressable
+                <View
                   key={group.id}
-                  accessibilityRole="button"
-                  onPress={() => openEditGroup(group)}
                   style={[
                     styles.groupCard,
                     { backgroundColor: theme.surface, borderColor: theme.border },
@@ -1288,9 +1298,25 @@ export function MobileCustomersScreen({
                     </View>
                   </View>
                   <Text style={[styles.groupManageText, { color: theme.mutedText }]}>
-                    Tap to rename the group or change promotion SMS behavior.
+                    Open the filtered customer list to see every member, or edit the group settings here.
                   </Text>
-                </Pressable>
+                  <View style={styles.actionRow}>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => focusGroupMembers(group)}
+                      style={[styles.primaryActionButton, { backgroundColor: theme.accent, borderColor: theme.border }]}
+                      testID={`mobile-group-view-members-${group.id}`}>
+                      <Text style={styles.primaryActionButtonText}>View members</Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => openEditGroup(group)}
+                      style={[styles.actionButton, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}
+                      testID={`mobile-group-edit-${group.id}`}>
+                      <Text style={[styles.actionButtonText, { color: theme.text }]}>Edit group</Text>
+                    </Pressable>
+                  </View>
+                </View>
               ))
             ) : (
               <View

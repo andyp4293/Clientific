@@ -18,6 +18,7 @@ interface CustomerGroupModalProps {
   group?: CustomerGroup | null;
   onSaved?: (group: CustomerGroup) => void;
   onDeleted?: (groupId: string) => void;
+  onViewMembers?: (groupId: string) => void;
 }
 
 export default function CustomerGroupModal({
@@ -26,6 +27,7 @@ export default function CustomerGroupModal({
   group,
   onSaved,
   onDeleted,
+  onViewMembers,
 }: CustomerGroupModalProps) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -112,6 +114,15 @@ export default function CustomerGroupModal({
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleViewMembers() {
+    if (!group) {
+      return;
+    }
+
+    onViewMembers?.(group.id);
+    onClose();
   }
 
   if (!isOpen) return null;
@@ -237,6 +248,16 @@ export default function CustomerGroupModal({
                   {group._count?.memberships ?? 0} customer
                   {(group._count?.memberships ?? 0) === 1 ? "" : "s"}
                 </p>
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                  Open the filtered customer list to see the actual members in this group.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleViewMembers}
+                  className="mt-4 inline-flex items-center justify-center rounded-2xl border border-primary/20 bg-primary/[0.08] px-4 py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/[0.14] dark:border-primary/25 dark:bg-primary/[0.14]"
+                >
+                  View members
+                </button>
               </div>
             ) : null}
           </div>

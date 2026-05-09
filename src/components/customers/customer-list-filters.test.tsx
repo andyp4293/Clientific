@@ -153,7 +153,22 @@ describe("CustomerList filters", () => {
     expect(screen.getByText("Customer groups")).toBeInTheDocument();
     expect(screen.getByText("VIP Regulars")).toBeInTheDocument();
     expect(screen.getByText("Promotion SMS on")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /view members/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /groups/i })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("opens the filtered customer list for a group from the groups tab", () => {
+    render(
+      <CustomerList
+        customers={[baseCustomer]}
+        groups={customerGroups}
+        initialTab="groups"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /view members/i }));
+
+    expect(mockPush).toHaveBeenCalledWith("/dashboard/customers?group=group-vip");
   });
 
   it("renders the add group action as a full-width mobile button with the new label", () => {

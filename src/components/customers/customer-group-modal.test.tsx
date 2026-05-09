@@ -122,4 +122,28 @@ describe("CustomerGroupModal", () => {
       screen.getByText(/choose a name and decide whether this group should receive deals sms messages/i),
     ).toBeInTheDocument();
   });
+
+  it("lets owners jump from the group modal to the filtered customer list", () => {
+    const onViewMembers = vi.fn();
+    const onClose = vi.fn();
+
+    render(
+      <CustomerGroupModal
+        isOpen
+        onClose={onClose}
+        onViewMembers={onViewMembers}
+        group={{
+          id: "group-1",
+          name: "VIP",
+          promotionSmsEnabled: true,
+          _count: { memberships: 3 },
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /view members/i }));
+
+    expect(onViewMembers).toHaveBeenCalledWith("group-1");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

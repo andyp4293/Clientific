@@ -485,6 +485,14 @@ export default function CustomerList({
     router.push(buildCustomersHref(params));
   };
 
+  const handleViewGroupMembers = (groupId: string) => {
+    const params = new URLSearchParams();
+    params.set("group", groupId);
+    startTransition(() => {
+      router.push(buildCustomersHref(params));
+    });
+  };
+
   const openCreateGroupModal = () => {
     setEditingGroup(null);
     setIsGroupModalOpen(true);
@@ -1266,10 +1274,8 @@ export default function CustomerList({
               ) : (
                 <div className="grid gap-3 xl:grid-cols-3">
                   {groupRecords.map((group) => (
-                    <button
+                    <div
                       key={group.id}
-                      type="button"
-                      onClick={() => openEditGroupModal(group)}
                       className="group rounded-2xl border border-gray-200 bg-white/90 p-4 text-left transition-colors hover:border-primary/30 hover:bg-primary/[0.04] dark:border-gray-700 dark:bg-gray-900/70 dark:hover:border-primary/40 dark:hover:bg-primary/[0.08]"
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -1301,11 +1307,30 @@ export default function CustomerList({
                         >
                           {group.promotionSmsEnabled ? "Promotion SMS on" : "Promotion SMS off"}
                         </span>
-                        <span className="text-xs font-semibold text-gray-400 transition-colors group-hover:text-primary dark:text-gray-500">
-                          Edit
+                        <span className="text-xs font-semibold text-gray-400 dark:text-gray-500">
+                          Manage audience
                         </span>
                       </div>
-                    </button>
+                      <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+                        Jump straight into the filtered customer list to see everyone in this group.
+                      </p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleViewGroupMembers(group.id)}
+                          className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
+                        >
+                          View members
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openEditGroupModal(group)}
+                          className="inline-flex items-center justify-center rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:border-primary/30 hover:text-primary dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                        >
+                          Edit group
+                        </button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
@@ -1338,6 +1363,7 @@ export default function CustomerList({
         group={editingGroup}
         onSaved={handleGroupSaved}
         onDeleted={handleGroupDeleted}
+        onViewMembers={handleViewGroupMembers}
       />
 
       {messagingCustomer && (
