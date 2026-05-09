@@ -465,7 +465,9 @@ describe('MobileMoreScreen', () => {
 
     expect(screen.getByText('Settings')).toBeTruthy();
     expect(
-      screen.getByText('2 unread alerts plus your profile, theme, and privacy controls live here.'),
+      screen.getByText(
+        '2 unread alerts plus profile, notification settings, theme, and privacy controls live here.',
+      ),
     ).toBeTruthy();
     expect(screen.getAllByText('2').length).toBeGreaterThan(0);
   });
@@ -477,7 +479,7 @@ describe('MobileMoreScreen', () => {
       <MobileMoreScreen {...createProps({ activeSection: 'settings', onChangeSection })} />,
     );
 
-    expect(screen.getByText('Alerts and appearance')).toBeTruthy();
+    expect(screen.getByText('Notification settings and theme')).toBeTruthy();
     fireEvent.press(screen.getByTestId('mobile-settings-open-notifications'));
 
     expect(onChangeSection).toHaveBeenCalledWith('notifications');
@@ -508,7 +510,8 @@ describe('MobileMoreScreen', () => {
 
     expect(screen.getByText('Keep this phone dialed in')).toBeTruthy();
     expect(screen.getByText('Business profile')).toBeTruthy();
-    expect(screen.getByText('Alerts and appearance')).toBeTruthy();
+    expect(screen.getByText('Notification settings and theme')).toBeTruthy();
+    expect(screen.getByText('Notification settings')).toBeTruthy();
     expect(screen.getByText('Privacy and support')).toBeTruthy();
   });
 

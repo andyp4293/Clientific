@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import Feather from '@expo/vector-icons/Feather';
 import {
   ActivityIndicator,
   Alert,
@@ -263,6 +264,11 @@ function buildResultsSummary(data: MobileCustomersSummary | null) {
   return `${start}-${end} of ${data.totalCustomers} shown`;
 }
 
+function buildPageCountSummary(data: MobileCustomersSummary | null) {
+  const totalPages = data?.totalPages ?? 1;
+  return totalPages === 1 ? '1 page' : `${totalPages} pages`;
+}
+
 function buildActiveFilterLabels(
   data: MobileCustomersSummary | null,
   filters: MobileCustomerFilters,
@@ -413,6 +419,7 @@ export function MobileCustomersScreen({
   const hasActiveFilters = Boolean(
     searchDraft.trim() || filters.group || filters.sms || filters.contact || filters.visit,
   );
+  const shouldShowPaginationControls = (data?.totalPages ?? 1) > 1;
 
   const openCreateCustomer = () => {
     setEditingCustomer(null);
@@ -944,80 +951,89 @@ export function MobileCustomersScreen({
                       { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
                     ]}>
                     <Text style={[styles.paginationPagePillText, { color: theme.text }]}>
-                      Page {data?.currentPage ?? 1} of {data?.totalPages ?? 1}
+                      {buildPageCountSummary(data)}
                     </Text>
                   </View>
                 </View>
               </View>
 
-              <View
-                style={[
-                  styles.paginationButtons,
-                  { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
-                ]}
-                testID="mobile-customers-pagination-buttons">
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={!data || data.currentPage <= 1}
-                  onPress={onPreviousPage}
+              {shouldShowPaginationControls ? (
+                <View
                   style={[
-                    styles.pageButton,
-                    {
-                      backgroundColor: theme.surface,
-                      borderColor: theme.border,
-                      opacity: !data || data.currentPage <= 1 ? 0.45 : 1,
-                    },
+                    styles.paginationButtons,
+                    { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
                   ]}
-                  testID="mobile-customers-previous">
-                  <Text style={[styles.pageButtonText, { color: theme.text }]}>←</Text>
-                </Pressable>
-                <View style={styles.paginationNumbers}>
-                  {paginationItems.map((item) =>
-                    item.type === 'page' ? (
-                      <Pressable
-                        key={item.page}
-                        accessibilityRole="button"
-                        onPress={() => onGoToPage(item.page)}
-                        style={[
-                          styles.pageNumberButton,
-                          data?.currentPage === item.page
-                            ? { backgroundColor: theme.accent, borderColor: theme.accent }
-                            : { backgroundColor: theme.surface, borderColor: theme.border },
-                        ]}>
-                        <Text
-                          style={
-                            data?.currentPage === item.page
-                              ? styles.pageNumberButtonSelectedText
-                              : [styles.pageNumberButtonText, { color: theme.text }]
-                          }>
-                          {item.page}
-                        </Text>
-                      </Pressable>
-                    ) : (
-                      <View key={item.key} style={styles.paginationEllipsisWrap}>
-                        <Text style={[styles.paginationEllipsisText, { color: theme.mutedText }]}>
-                          …
-                        </Text>
-                      </View>
-                    ),
-                  )}
+                  testID="mobile-customers-pagination-buttons">
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={!data || data.currentPage <= 1}
+                    onPress={onPreviousPage}
+                    style={[
+                      styles.pageButton,
+                      {
+                        backgroundColor: theme.surface,
+                        borderColor: theme.border,
+                        opacity: !data || data.currentPage <= 1 ? 0.45 : 1,
+                      },
+                    ]}
+                    testID="mobile-customers-previous">
+                    <Feather color={theme.text} name="chevron-left" size={18} />
+                  </Pressable>
+                  <View style={styles.paginationCenterColumn}>
+                    <Text
+                      style={[styles.paginationCurrentPageLabel, { color: theme.mutedText }]}
+                      testID="mobile-customers-pagination-label">
+                      Page {data?.currentPage ?? 1} of {data?.totalPages ?? 1}
+                    </Text>
+                    <View style={styles.paginationNumbers}>
+                      {paginationItems.map((item) =>
+                        item.type === 'page' ? (
+                          <Pressable
+                            key={item.page}
+                            accessibilityRole="button"
+                            onPress={() => onGoToPage(item.page)}
+                            style={[
+                              styles.pageNumberButton,
+                              data?.currentPage === item.page
+                                ? { backgroundColor: theme.accent, borderColor: theme.accent }
+                                : { backgroundColor: theme.surface, borderColor: theme.border },
+                            ]}>
+                            <Text
+                              style={
+                                data?.currentPage === item.page
+                                  ? styles.pageNumberButtonSelectedText
+                                  : [styles.pageNumberButtonText, { color: theme.text }]
+                              }>
+                              {item.page}
+                            </Text>
+                          </Pressable>
+                        ) : (
+                          <View key={item.key} style={styles.paginationEllipsisWrap}>
+                            <Text style={[styles.paginationEllipsisText, { color: theme.mutedText }]}>
+                              …
+                            </Text>
+                          </View>
+                        ),
+                      )}
+                    </View>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={!data || data.currentPage >= data.totalPages}
+                    onPress={onNextPage}
+                    style={[
+                      styles.pageButton,
+                      {
+                        backgroundColor: theme.surface,
+                        borderColor: theme.border,
+                        opacity: !data || data.currentPage >= data.totalPages ? 0.45 : 1,
+                      },
+                    ]}
+                    testID="mobile-customers-next">
+                    <Feather color={theme.text} name="chevron-right" size={18} />
+                  </Pressable>
                 </View>
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={!data || data.currentPage >= data.totalPages}
-                  onPress={onNextPage}
-                  style={[
-                    styles.pageButton,
-                    {
-                      backgroundColor: theme.surface,
-                      borderColor: theme.border,
-                      opacity: !data || data.currentPage >= data.totalPages ? 0.45 : 1,
-                    },
-                  ]}
-                  testID="mobile-customers-next">
-                  <Text style={[styles.pageButtonText, { color: theme.text }]}>→</Text>
-                </Pressable>
-              </View>
+              ) : null}
             </View>
 
             <View style={styles.stack}>
@@ -2257,7 +2273,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     paddingHorizontal: 18,
     paddingVertical: 16,
-    gap: 14,
+    gap: 12,
     shadowColor: '#09131f',
     shadowOpacity: 0.04,
     shadowRadius: 10,
@@ -2288,37 +2304,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderRadius: 18,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: 22,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
     width: '100%',
+    gap: 12,
   },
-  paginationNumbers: {
+  paginationCenterColumn: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingHorizontal: 8,
-    minHeight: 42,
+  },
+  paginationCurrentPageLabel: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  paginationNumbers: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 4,
+    minHeight: 38,
+    flexWrap: 'wrap',
   },
   paginationPagePill: {
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 5,
   },
   paginationPagePillText: {
     fontSize: 12,
     lineHeight: 16,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   pageButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 16,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2329,22 +2357,22 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   pageNumberButton: {
-    minWidth: 42,
-    height: 42,
-    borderRadius: 14,
+    minWidth: 36,
+    height: 36,
+    borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
   },
   paginationEllipsisWrap: {
-    minWidth: 24,
+    minWidth: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   paginationEllipsisText: {
-    fontSize: 20,
-    lineHeight: 22,
+    fontSize: 18,
+    lineHeight: 20,
     fontWeight: '700',
   },
   pageNumberButtonText: {

@@ -106,10 +106,10 @@ function getNotificationsMenuCopy(
 
 function getSettingsMenuCopy(unreadCount: number) {
   if (unreadCount > 0) {
-    return `${unreadCount} unread alerts plus your profile, theme, and privacy controls live here.`;
+    return `${unreadCount} unread alerts plus profile, notification settings, theme, and privacy controls live here.`;
   }
 
-  return 'Manage profile, alerts, theme, and privacy from one place.';
+  return 'Manage profile, notification settings, theme, and privacy from one place.';
 }
 
 type MobileMoreScreenProps = {
@@ -921,7 +921,7 @@ export function MobileMoreScreen({
                   In-app settings
                 </Text>
                 <Text style={[styles.appearanceTitle, { color: theme.text }]}>
-                  Alerts and appearance
+                  Notification settings and theme
                 </Text>
                 <Text style={[styles.appearanceSubtitle, { color: theme.mutedText }]}>
                   Control push notifications on this phone and match the theme to how you want the app to feel.
@@ -929,9 +929,9 @@ export function MobileMoreScreen({
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => onChangeSection('notifications')}
-                  style={[
-                    styles.menuItem,
-                    {
+                    style={[
+                      styles.menuItem,
+                      {
                       backgroundColor: theme.surfaceMuted,
                       borderColor: theme.border,
                     },
@@ -946,7 +946,7 @@ export function MobileMoreScreen({
                   </View>
                   <View style={styles.menuCopy}>
                     <Text style={[styles.menuTitle, { color: theme.text }]}>
-                      Notifications & Alerts
+                      Notification settings
                     </Text>
                     <Text style={[styles.menuHelper, { color: theme.mutedText }]}>
                       {notificationsMenuCopy}

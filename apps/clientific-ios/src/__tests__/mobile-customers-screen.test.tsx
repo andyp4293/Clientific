@@ -168,13 +168,53 @@ describe('MobileCustomersScreen', () => {
     expect(onNextPage).toHaveBeenCalled();
     expect(screen.getByText('Filter customers')).toBeTruthy();
     expect(screen.getByText('1-20 of 55 shown')).toBeTruthy();
-    expect(screen.getByText('Page 1 of 3')).toBeTruthy();
+    expect(screen.getByText('3 pages')).toBeTruthy();
+    expect(screen.getByTestId('mobile-customers-pagination-label')).toBeTruthy();
     expect(
       StyleSheet.flatten(screen.getByTestId('mobile-customers-pagination-buttons').props.style),
     ).toMatchObject({
       width: '100%',
-      justifyContent: 'space-between',
+      borderRadius: 22,
     });
+  });
+
+  it('hides the pager tray when all customers fit on one page', () => {
+    render(
+      <MobileCustomersScreen
+        data={{
+          ...data,
+          totalPages: 1,
+          totalCustomers: 8,
+          pageSize: 20,
+        }}
+        error={null}
+        filters={filters}
+        isLoading={false}
+        isRefreshing={false}
+        searchDraft=""
+        onChangeFilter={jest.fn()}
+        onChangeSearchDraft={jest.fn()}
+        onClearFilters={jest.fn()}
+        onCreateCustomer={jest.fn().mockResolvedValue(undefined)}
+        onCreateGroup={jest.fn().mockResolvedValue(undefined)}
+        onDeleteCustomer={jest.fn().mockResolvedValue(undefined)}
+        onDeleteGroup={jest.fn().mockResolvedValue(undefined)}
+        onFetchCustomerDetail={jest.fn().mockResolvedValue(null)}
+        onFetchCustomerMessages={jest.fn().mockResolvedValue({ logs: [], quota: null })}
+        onGoToPage={jest.fn()}
+        onNextPage={jest.fn()}
+        onPreviousPage={jest.fn()}
+        onRefresh={jest.fn().mockResolvedValue(undefined)}
+        onSendReviewRequest={jest.fn().mockResolvedValue(undefined)}
+        onSendCustomerMessage={jest.fn().mockResolvedValue(undefined)}
+        onUpdateCustomer={jest.fn().mockResolvedValue(null)}
+        onUpdateGroup={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByText('1 page')).toBeTruthy();
+    expect(screen.queryByTestId('mobile-customers-pagination-buttons')).toBeNull();
+    expect(screen.queryByTestId('mobile-customers-pagination-label')).toBeNull();
   });
 
   it('switches to the groups tab and shows customer groups', async () => {
