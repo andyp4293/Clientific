@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import Feather from '@expo/vector-icons/Feather';
 import {
   ActivityIndicator,
   Alert,
@@ -329,7 +330,14 @@ function CalendarDateButton({
           })}
         </Text>
       </View>
-      <Text style={[styles.calendarDateButtonAction, { color: theme.accent }]}>Calendar</Text>
+      <View
+        style={[
+          styles.calendarDateButtonIconWrap,
+          { backgroundColor: theme.accentSoft, borderColor: theme.border },
+        ]}>
+        <Feather color={theme.accent} name="calendar" size={18} />
+        <Feather color={theme.accent} name="chevron-right" size={16} />
+      </View>
     </Pressable>
   );
 }
@@ -357,6 +365,13 @@ function CalendarPickerModal({
     () => buildCalendarMonth(monthAnchor),
     [monthAnchor],
   );
+  const calendarRows = useMemo(() => {
+    const rows: typeof cells[] = [];
+    for (let index = 0; index < cells.length; index += 7) {
+      rows.push(cells.slice(index, index + 7));
+    }
+    return rows;
+  }, [cells]);
 
   return (
     <Modal animationType="fade" transparent visible={visible}>
@@ -379,8 +394,9 @@ function CalendarPickerModal({
               style={[
                 styles.calendarCloseButton,
                 { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
-              ]}>
-              <Text style={[styles.calendarCloseButtonText, { color: theme.text }]}>Close</Text>
+              ]}
+              testID="mobile-calendar-close">
+              <Feather color={theme.text} name="x" size={18} />
             </Pressable>
           </View>
 
@@ -388,14 +404,29 @@ function CalendarPickerModal({
             <Pressable
               accessibilityRole="button"
               onPress={onPreviousMonth}
-              style={[styles.calendarMonthButton, { borderColor: theme.border }]}>
-              <Text style={[styles.calendarMonthButtonText, { color: theme.text }]}>Prev month</Text>
+              style={[
+                styles.calendarMonthButton,
+                { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+              ]}
+              testID="mobile-calendar-previous-month">
+              <Feather color={theme.text} name="chevron-left" size={18} />
             </Pressable>
+            <View
+              style={[
+                styles.calendarMonthLabelWrap,
+                { backgroundColor: theme.accentSoft, borderColor: theme.border },
+              ]}>
+              <Text style={[styles.calendarMonthLabel, { color: theme.accent }]}>{monthLabel}</Text>
+            </View>
             <Pressable
               accessibilityRole="button"
               onPress={onNextMonth}
-              style={[styles.calendarMonthButton, { borderColor: theme.border }]}>
-              <Text style={[styles.calendarMonthButtonText, { color: theme.text }]}>Next month</Text>
+              style={[
+                styles.calendarMonthButton,
+                { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+              ]}
+              testID="mobile-calendar-next-month">
+              <Feather color={theme.text} name="chevron-right" size={18} />
             </Pressable>
           </View>
 
@@ -410,47 +441,51 @@ function CalendarPickerModal({
           </View>
 
           <View style={styles.calendarGrid}>
-            {cells.map((cell) => {
-              const isSelected = cell.dateKey === selectedDateKey;
-              return (
-                <Pressable
-                  key={cell.dateKey}
-                  accessibilityRole="button"
-                  onPress={() => onSelectDate(cell.dateKey)}
-                  style={[
-                    styles.calendarDayCell,
-                    {
-                      backgroundColor: isSelected
-                        ? theme.accent
-                        : cell.isToday
-                          ? theme.accentSoft
-                          : theme.surfaceMuted,
-                      borderColor: isSelected
-                        ? theme.accent
-                        : cell.isToday
-                          ? theme.accent
-                          : theme.border,
-                    },
-                  ]}
-                  testID={`mobile-calendar-day-${cell.dateKey}`}>
-                  <Text
-                    style={[
-                      isSelected
-                        ? styles.calendarDayTextSelected
-                        : styles.calendarDayText,
-                      {
-                        color: isSelected
-                          ? '#ffffff'
-                          : cell.inCurrentMonth
-                            ? theme.text
-                            : theme.mutedText,
-                      },
-                    ]}>
-                    {cell.dayNumber}
-                  </Text>
-                </Pressable>
-              );
-            })}
+            {calendarRows.map((row, rowIndex) => (
+              <View key={`calendar-row-${rowIndex}`} style={styles.calendarGridRow}>
+                {row.map((cell) => {
+                  const isSelected = cell.dateKey === selectedDateKey;
+                  return (
+                    <Pressable
+                      key={cell.dateKey}
+                      accessibilityRole="button"
+                      onPress={() => onSelectDate(cell.dateKey)}
+                      style={[
+                        styles.calendarDayCell,
+                        {
+                          backgroundColor: isSelected
+                            ? theme.accent
+                            : cell.isToday
+                              ? theme.accentSoft
+                              : theme.surfaceMuted,
+                          borderColor: isSelected
+                            ? theme.accent
+                            : cell.isToday
+                              ? theme.accent
+                              : theme.border,
+                        },
+                      ]}
+                      testID={`mobile-calendar-day-${cell.dateKey}`}>
+                      <Text
+                        style={[
+                          isSelected
+                            ? styles.calendarDayTextSelected
+                            : styles.calendarDayText,
+                          {
+                            color: isSelected
+                              ? '#ffffff'
+                              : cell.inCurrentMonth
+                                ? theme.text
+                                : theme.mutedText,
+                          },
+                        ]}>
+                        {cell.dayNumber}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ))}
           </View>
         </View>
       </View>
@@ -1850,6 +1885,17 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '800',
   },
+  calendarDateButtonIconWrap: {
+    minWidth: 56,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
   dateButton: {
     flex: 1,
     borderRadius: 18,
@@ -2385,30 +2431,39 @@ const styles = StyleSheet.create({
   },
   calendarCloseButton: {
     borderWidth: 1,
+    width: 42,
+    height: 42,
     borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  calendarCloseButtonText: {
-    fontSize: 14,
-    lineHeight: 18,
-    fontWeight: '700',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   calendarMonthActions: {
     flexDirection: 'row',
     gap: 10,
+    alignItems: 'center',
   },
   calendarMonthButton: {
+    borderWidth: 1,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarMonthLabelWrap: {
     flex: 1,
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: 18,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     alignItems: 'center',
   },
-  calendarMonthButtonText: {
+  calendarMonthLabel: {
     fontSize: 13,
     lineHeight: 17,
-    fontWeight: '700',
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   calendarWeekdayRow: {
     flexDirection: 'row',
@@ -2424,12 +2479,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   calendarGrid: {
+    gap: 8,
+  },
+  calendarGridRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 8,
   },
   calendarDayCell: {
-    width: '13.6%',
+    flex: 1,
     aspectRatio: 1,
     borderWidth: 1,
     borderRadius: 18,
@@ -2438,13 +2495,15 @@ const styles = StyleSheet.create({
   },
   calendarDayText: {
     fontSize: 16,
-    lineHeight: 20,
+    lineHeight: 16,
     fontWeight: '700',
+    textAlign: 'center',
   },
   calendarDayTextSelected: {
     fontSize: 16,
-    lineHeight: 20,
+    lineHeight: 16,
     fontWeight: '800',
+    textAlign: 'center',
   },
   detailHeadline: {
     fontSize: 18,

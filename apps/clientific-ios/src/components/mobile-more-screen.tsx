@@ -87,6 +87,23 @@ type MobileMoreMenuItem = {
   target: MobileMoreSection;
 };
 
+function getNotificationsMenuCopy(
+  status: MobilePushPermissionStatus,
+  unreadCount: number,
+) {
+  if (status === 'granted') {
+    return unreadCount
+      ? `${unreadCount} unread alerts are waiting on this phone.`
+      : 'Push alerts are on for this phone and ready for new appointments.';
+  }
+
+  if (status === 'denied') {
+    return 'Push alerts are off on this phone. Open notification settings to turn them back on.';
+  }
+
+  return 'Finish notification setup so owners get a pop-up when someone books.';
+}
+
 type MobileMoreScreenProps = {
   activeSection: MobileMoreSection;
   appStoreOffering: PurchasesOffering | null;
@@ -274,10 +291,10 @@ const MENU_ITEMS: MobileMoreMenuItem[] = [
   },
   {
     key: 'notifications',
-    label: 'Notifications',
-    helper: 'Review owner alerts and confirm push is enabled on this phone.',
+    label: 'Notifications & Alerts',
+    helper: 'Review owner alerts and manage push notifications on this phone.',
     icon: 'notifications',
-    section: 'operations',
+    section: 'account',
     target: 'notifications',
   },
   {
@@ -440,6 +457,10 @@ export function MobileMoreScreen({
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
   const { themePreference, setThemePreference } = useClientificThemePreference();
+  const notificationsMenuCopy = getNotificationsMenuCopy(
+    notificationsPermissionStatus,
+    notifications?.unreadCount ?? 0,
+  );
   const lockedTargets = new Set<MobileMoreSection>([
     'services',
     'checkins',
@@ -506,6 +527,49 @@ export function MobileMoreScreen({
             </Text>
           </View>
         ) : null}
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => onChangeSection('notifications')}
+          style={[
+            styles.notificationsCard,
+            { backgroundColor: theme.surface, borderColor: theme.border },
+          ]}
+          testID="mobile-more-notification-settings-card">
+          <View style={styles.notificationsCardHeader}>
+            <View
+              style={[
+                styles.notificationsIconBadge,
+                { backgroundColor: theme.accentSoft, borderColor: theme.border },
+              ]}>
+              <MobileNavIcon color={theme.accent} name="notifications" size={18} />
+            </View>
+            <View style={styles.notificationsCardCopy}>
+              <Text style={[styles.notificationsCardEyebrow, { color: theme.accent }]}>
+                Alerts
+              </Text>
+              <Text style={[styles.notificationsCardTitle, { color: theme.text }]}>
+                Notification settings
+              </Text>
+              <Text style={[styles.notificationsCardText, { color: theme.mutedText }]}>
+                {notificationsMenuCopy}
+              </Text>
+            </View>
+            {notifications?.unreadCount ? (
+              <View
+                style={[
+                  styles.unreadPill,
+                  { backgroundColor: theme.accent, borderColor: theme.accent },
+                ]}>
+                <Text style={styles.unreadPillText}>
+                  {notifications.unreadCount > 9 ? '9+' : notifications.unreadCount}
+                </Text>
+              </View>
+            ) : (
+              <MobileNavIcon color={theme.mutedText} name="more" size={18} />
+            )}
+          </View>
+        </Pressable>
 
         <View
           style={[
@@ -597,8 +661,8 @@ export function MobileMoreScreen({
                     <View style={styles.menuCopy}>
                       <Text style={[styles.menuTitle, { color: theme.text }]}>{item.label}</Text>
                       <Text style={[styles.menuHelper, { color: theme.mutedText }]}>
-                        {item.target === 'notifications' && notifications?.unreadCount
-                          ? `${notifications.unreadCount} unread alerts waiting on this phone.`
+                        {item.target === 'notifications'
+                          ? notificationsMenuCopy
                           : isLocked
                             ? 'Unlock this in Billing first.'
                             : item.helper}
@@ -952,7 +1016,7 @@ function getSubscreenTitle(section: Exclude<MobileMoreSection, 'menu'>) {
     case 'aiReceptionist':
       return 'AI Receptionist';
     case 'notifications':
-      return 'Notifications';
+      return 'Notifications & Alerts';
     case 'customerView':
       return 'Customer View';
     case 'reviews':
@@ -990,6 +1054,46 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 20,
     gap: 12,
+  },
+  notificationsCard: {
+    borderWidth: 1,
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    gap: 12,
+  },
+  notificationsCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  notificationsIconBadge: {
+    width: 48,
+    height: 48,
+    borderWidth: 1,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationsCardCopy: {
+    flex: 1,
+    gap: 3,
+  },
+  notificationsCardEyebrow: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '800',
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+  },
+  notificationsCardTitle: {
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: '800',
+  },
+  notificationsCardText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   appearanceEyebrow: {
     fontSize: 12,

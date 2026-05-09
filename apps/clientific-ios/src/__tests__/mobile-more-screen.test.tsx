@@ -464,9 +464,20 @@ describe('MobileMoreScreen', () => {
   it('surfaces unread appointment alerts from the mobile menu', () => {
     renderWithThemeProvider(<MobileMoreScreen {...createProps()} />);
 
-    expect(screen.getByText('Notifications')).toBeTruthy();
-    expect(screen.getByText('2')).toBeTruthy();
-    expect(screen.getByText('2 unread alerts waiting on this phone.')).toBeTruthy();
+    expect(screen.getByText('Notifications & Alerts')).toBeTruthy();
+    expect(screen.getAllByText('2').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('2 unread alerts are waiting on this phone.').length).toBeGreaterThan(0);
+  });
+
+  it('surfaces a dedicated notification settings card near the top of More', () => {
+    const onChangeSection = jest.fn();
+
+    renderWithThemeProvider(<MobileMoreScreen {...createProps({ onChangeSection })} />);
+
+    expect(screen.getByText('Notification settings')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('mobile-more-notification-settings-card'));
+
+    expect(onChangeSection).toHaveBeenCalledWith('notifications');
   });
 
   it('opens privacy, terms, and support links from the menu', () => {

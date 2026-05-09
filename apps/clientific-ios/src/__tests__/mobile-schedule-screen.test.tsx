@@ -192,12 +192,15 @@ describe('MobileScheduleScreen', () => {
     expect(onJumpToToday).toHaveBeenCalledTimes(1);
   });
 
-  it('opens the schedule calendar and lets the user pick another day', () => {
+  it('opens the schedule calendar, supports month navigation, and lets the user pick another day', () => {
     const onSelectDate = jest.fn();
 
     renderScreen({ onSelectDate });
 
     fireEvent.press(screen.getByTestId('mobile-schedule-open-calendar'));
+    expect(screen.getByTestId('mobile-calendar-next-month')).toBeTruthy();
+    expect(screen.getByTestId('mobile-calendar-previous-month')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('mobile-calendar-next-month'));
     fireEvent.press(screen.getByTestId('mobile-calendar-day-2099-04-01'));
 
     expect(onSelectDate).toHaveBeenCalledWith('2099-04-01');
