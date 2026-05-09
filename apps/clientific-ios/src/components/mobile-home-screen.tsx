@@ -9,12 +9,15 @@ import {
 } from 'react-native';
 import type { MobileHomeSummary } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
+import type { MobilePushPermissionStatus } from '@/lib/mobile-push-notifications';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type MobileHomeScreenProps = {
   error: string | null;
   isRefreshing: boolean;
+  notificationsPermissionStatus: MobilePushPermissionStatus;
   summary: MobileHomeSummary;
+  onEnablePushNotifications: () => Promise<void>;
   onOpenDeals: () => void;
   onOpenCheckIns: () => void;
   onOpenCustomers: () => void;
@@ -25,10 +28,30 @@ type MobileHomeScreenProps = {
   onRefresh: () => Promise<void>;
 };
 
+function getNotificationSetupCopy(status: MobilePushPermissionStatus) {
+  if (status === 'denied') {
+    return {
+      title: 'Turn owner alerts back on',
+      body:
+        'Notifications are off on this phone. Open Settings so Clientific can show booking and schedule alerts again.',
+      actionLabel: 'Open settings',
+    };
+  }
+
+  return {
+    title: 'Enable owner alerts',
+    body:
+      'Allow notifications on this phone so the owner sees a pop-up the moment someone books or reschedules.',
+    actionLabel: 'Enable notifications',
+  };
+}
+
 export function MobileHomeScreen({
   error,
   isRefreshing,
+  notificationsPermissionStatus,
   summary,
+  onEnablePushNotifications,
   onOpenDeals,
   onOpenCheckIns,
   onOpenCustomers,
@@ -41,6 +64,8 @@ export function MobileHomeScreen({
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
   const isReferralOnly = summary.business.businessType === 'Referral Partner';
+  const shouldShowNotificationsPrompt = notificationsPermissionStatus !== 'granted';
+  const notificationSetupCopy = getNotificationSetupCopy(notificationsPermissionStatus);
 
   return (
     <ScrollView
@@ -97,6 +122,29 @@ export function MobileHomeScreen({
             style={[styles.inlineButton, { backgroundColor: theme.accent }]}
             testID="mobile-home-open-billing">
             <Text style={styles.inlineButtonText}>Open billing</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {shouldShowNotificationsPrompt ? (
+        <View
+          style={[
+            styles.noticeCard,
+            { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+          ]}
+          testID="mobile-home-notifications-card">
+          <Text style={[styles.noticeTitle, { color: theme.text }]}>
+            {notificationSetupCopy.title}
+          </Text>
+          <Text style={[styles.noticeText, { color: theme.mutedText }]}>
+            {notificationSetupCopy.body}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void onEnablePushNotifications()}
+            style={[styles.inlineButton, { backgroundColor: theme.accent }]}
+            testID="mobile-home-enable-notifications">
+            <Text style={styles.inlineButtonText}>{notificationSetupCopy.actionLabel}</Text>
           </Pressable>
         </View>
       ) : null}

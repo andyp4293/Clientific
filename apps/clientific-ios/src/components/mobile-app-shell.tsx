@@ -408,7 +408,9 @@ export function MobileAppShell({
             <MobileHomeScreen
               error={homeError}
               isRefreshing={isHomeRefreshing}
+              notificationsPermissionStatus={notificationsPermissionStatus}
               summary={home}
+              onEnablePushNotifications={onEnablePushNotifications}
               onOpenAppointments={onOpenAppointments}
               onOpenCheckIns={() => {
                 onChangeTab('more');

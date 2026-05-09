@@ -1,4 +1,5 @@
 import React from 'react';
+import * as Device from 'expo-device';
 import * as ExpoLinking from 'expo-linking';
 import * as SecureStore from 'expo-secure-store';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
@@ -307,6 +308,8 @@ jest.mock('@/components/mobile-app-shell', () => {
       home,
       onChangeMoreSection,
       onChangeTab,
+      notificationsError,
+      onEnablePushNotifications,
       onOpenCustomers,
       onRefreshBilling,
     }: any) => (
@@ -320,8 +323,16 @@ jest.mock('@/components/mobile-app-shell', () => {
         {billingPurchaseError ? (
           <Text testID="mock-shell-billing-error">{billingPurchaseError}</Text>
         ) : null}
+        {notificationsError ? (
+          <Text testID="mock-shell-notifications-error">{notificationsError}</Text>
+        ) : null}
         <Pressable testID="mock-shell-open-customers" onPress={onOpenCustomers}>
           <Text>customers</Text>
+        </Pressable>
+        <Pressable
+          testID="mock-shell-enable-push"
+          onPress={onEnablePushNotifications}>
+          <Text>enable push</Text>
         </Pressable>
         <Pressable
           testID="mock-shell-open-billing"
@@ -443,6 +454,7 @@ const notificationsSummary = {
 beforeEach(() => {
   secureStoreMock.__reset();
   mockExpoLinking.__reset();
+  (Device as typeof Device & { __setIsDevice: (value: boolean) => void }).__setIsDevice(true);
   Object.values(mockClientificApi).forEach((mockFn) => mockFn.mockReset());
   mockClientificApi.fetchMobileHomeSummary.mockResolvedValue(activeHome);
   mockClientificApi.loginWithClientific.mockResolvedValue({
@@ -604,6 +616,25 @@ describe('ClientificNativeApp', () => {
     await waitFor(() => {
       expect(screen.getByTestId('mock-shell-tab').props.children).toBe('more');
       expect(screen.getByTestId('mock-shell-more-section').props.children).toBe('billing');
+    });
+  });
+
+  it('explains that simulator builds cannot finish push setup', async () => {
+    secureStoreMock.__setItem('clientific.mobile.session.token', 'existing-token');
+    (Device as typeof Device & { __setIsDevice: (value: boolean) => void }).__setIsDevice(false);
+
+    render(<ClientificNativeApp />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-shell-tab').props.children).toBe('dashboard');
+    });
+
+    fireEvent.press(screen.getByTestId('mock-shell-enable-push'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-shell-notifications-error').props.children).toBe(
+        'Push notifications need a physical iPhone or iPad. The iOS simulator can open the setup flow, but it cannot receive permission prompts or live push alerts.',
+      );
     });
   });
 });

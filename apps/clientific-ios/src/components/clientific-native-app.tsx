@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import * as Device from 'expo-device';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import * as SecureStore from 'expo-secure-store';
@@ -2122,8 +2123,18 @@ export function ClientificNativeApp() {
     }
 
     try {
+      setNotificationsError(null);
+
       if (pushPermissionStatus === 'denied') {
         await NativeLinking.openSettings();
+        await refreshPushPermissionStatus();
+        return;
+      }
+
+      if (!Device.isDevice) {
+        setNotificationsError(
+          'Push notifications need a physical iPhone or iPad. The iOS simulator can open the setup flow, but it cannot receive permission prompts or live push alerts.',
+        );
         await refreshPushPermissionStatus();
         return;
       }

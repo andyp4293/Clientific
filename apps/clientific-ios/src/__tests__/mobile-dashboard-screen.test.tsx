@@ -661,6 +661,38 @@ describe('MobileAppShell', () => {
     expect(screen.getByTestId('mobile-home-open-deals')).toBeTruthy();
   });
 
+  it('prompts owners to enable notifications from the home tab when permissions are not granted', () => {
+    const onEnablePushNotifications = jest.fn().mockResolvedValue(undefined);
+
+    render(
+      <MobileAppShell
+        {...createShellProps({
+          notificationsPermissionStatus: 'undetermined',
+          onEnablePushNotifications,
+        })}
+      />,
+    );
+
+    expect(screen.getByTestId('mobile-home-notifications-card')).toBeTruthy();
+    expect(screen.getByText('Enable owner alerts')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('mobile-home-enable-notifications'));
+
+    expect(onEnablePushNotifications).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides the home notification prompt after push permissions are already granted', () => {
+    render(
+      <MobileAppShell
+        {...createShellProps({
+          notificationsPermissionStatus: 'granted',
+        })}
+      />,
+    );
+
+    expect(screen.queryByTestId('mobile-home-notifications-card')).toBeNull();
+  });
+
   it('wires the new tab bar', () => {
     const onChangeTab = jest.fn();
 
