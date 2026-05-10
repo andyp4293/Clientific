@@ -11,6 +11,7 @@ export type MobileBusiness = {
   id: string;
   email: string;
   name: string;
+  publicId?: string | null;
   businessType?: string | null;
   onboardingComplete: boolean;
 };

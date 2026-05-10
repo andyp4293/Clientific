@@ -153,6 +153,7 @@ type MobileAppShellProps = {
   onLookupCheckIn: (phone: string) => Promise<MobileCheckInLookupResponse>;
   onLookupRedeemCode: (code: string) => Promise<MobileRedeemLookupResponse>;
   onNextCheckInsDate: () => void;
+  onSelectCheckInsDate: (dateKey: string) => void;
   onNextAppointmentsDate: () => void;
   onNextCustomersPage: () => void;
   onManageSubscription: () => Promise<void>;
@@ -335,6 +336,7 @@ export function MobileAppShell({
   onLookupCheckIn,
   onLookupRedeemCode,
   onNextCheckInsDate,
+  onSelectCheckInsDate,
   onNextAppointmentsDate,
   onNextCustomersPage,
   onManageSubscription,
@@ -568,6 +570,7 @@ export function MobileAppShell({
               onLookupCheckIn={onLookupCheckIn}
               onLookupRedeemCode={onLookupRedeemCode}
               onNextCheckInsDate={onNextCheckInsDate}
+              onSelectCheckInsDate={onSelectCheckInsDate}
               onManageSubscription={onManageSubscription}
               onOpenExternalUrl={onOpenExternalUrl}
               onPreviousCheckInsDate={onPreviousCheckInsDate}

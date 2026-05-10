@@ -97,6 +97,27 @@ describe('MobileAiReceptionistScreen', () => {
     expect(screen.getByText('On')).toBeTruthy();
   });
 
+  it('explains what each call handling field controls', () => {
+    render(
+      <MobileAiReceptionistScreen
+        data={data}
+        error={null}
+        isLoading={false}
+        isRefreshing={false}
+        isSaving={false}
+        onRefresh={jest.fn().mockResolvedValue(undefined)}
+        onSave={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByText('Live transfer number')).toBeTruthy();
+    expect(screen.getByText(/forwards the live call to this number/i)).toBeTruthy();
+    expect(screen.getByText('Phone greeting callers hear')).toBeTruthy();
+    expect(screen.getByText(/first sentence the ai says/i)).toBeTruthy();
+    expect(screen.getByText('Text greeting customers receive')).toBeTruthy();
+    expect(screen.getByText(/first SMS the assistant sends/i)).toBeTruthy();
+  });
+
   it('shows a dialer-safe forwarding shortcut without the plus sign', () => {
     render(
       <MobileAiReceptionistScreen

@@ -2258,6 +2258,10 @@ export function ClientificNativeApp() {
     setCheckInsDate(formatMobileDateKey(new Date()));
   }, []);
 
+  const selectCheckInsDate = useCallback((dateKey: string) => {
+    setCheckInsDate(dateKey);
+  }, []);
+
   const goToPreviousCustomersPage = useCallback(() => {
     setCustomersPage((currentPage) => Math.max(1, currentPage - 1));
   }, []);
@@ -3328,6 +3332,7 @@ export function ClientificNativeApp() {
       onJumpCheckInsToToday={jumpCheckInsToToday}
       onJumpAppointmentsToToday={jumpAppointmentsToToday}
       onSelectAppointmentsDate={selectAppointmentsDate}
+      onSelectCheckInsDate={selectCheckInsDate}
       onLookupCheckIn={handleLookupCheckIn}
       onLookupRedeemCode={handleLookupRedeemCode}
       onLoadAppointmentComposerResources={async () => {

@@ -363,6 +363,7 @@ function createProps(
       alreadyUsed: false,
     }),
     onNextCheckInsDate: jest.fn(),
+    onSelectCheckInsDate: jest.fn(),
     onManageSubscription: jest.fn().mockResolvedValue(undefined),
     onOpenExternalUrl: jest.fn().mockResolvedValue(undefined),
     onPreviousCheckInsDate: jest.fn(),

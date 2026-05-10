@@ -182,6 +182,7 @@ type MobileMoreScreenProps = {
   onLookupCheckIn: (phone: string) => Promise<MobileCheckInLookupResponse>;
   onLookupRedeemCode: (code: string) => Promise<MobileRedeemLookupResponse>;
   onNextCheckInsDate: () => void;
+  onSelectCheckInsDate: (dateKey: string) => void;
   onOpenExternalUrl: (url: string) => Promise<void>;
   onManageSubscription: () => Promise<void>;
   onPreviousCheckInsDate: () => void;
@@ -415,6 +416,7 @@ export function MobileMoreScreen({
   onLookupCheckIn,
   onLookupRedeemCode,
   onNextCheckInsDate,
+  onSelectCheckInsDate,
   onOpenExternalUrl,
   onManageSubscription,
   onPreviousCheckInsDate,
@@ -674,8 +676,10 @@ export function MobileMoreScreen({
             onJumpToToday={onJumpCheckInsToToday}
             onLookup={onLookupCheckIn}
             onNextDate={onNextCheckInsDate}
+            onOpenUrl={onOpenExternalUrl}
             onPreviousDate={onPreviousCheckInsDate}
             onRefresh={onRefreshCheckIns}
+            onSelectDate={onSelectCheckInsDate}
             onSubmit={onCreateCheckIn}
           />
         ) : null}

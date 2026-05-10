@@ -55,6 +55,7 @@ beforeEach(() => {
     id: 'biz-1',
     email: 'owner@clientific.app',
     name: 'ABC Nails',
+    publicId: 'CF-8QXLBD',
     businessType: 'Salon',
     phone: '+15551234567',
     street: '1 Main St',
@@ -115,6 +116,7 @@ describe('mobile checkins route', () => {
     const body = await response.json();
 
     expect(body.count).toBe(1);
+    expect(body.business.publicId).toBe('CF-8QXLBD');
     expect(body.checkIns[0]).toEqual(
       expect.objectContaining({
         customerName: 'Jordan Lee',

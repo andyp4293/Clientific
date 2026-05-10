@@ -539,6 +539,7 @@ function createShellProps(
     onJumpCheckInsToToday: jest.fn(),
     onJumpAppointmentsToToday: jest.fn(),
     onSelectAppointmentsDate: jest.fn(),
+    onSelectCheckInsDate: jest.fn(),
     onLookupCheckIn: jest
       .fn()
       .mockResolvedValue({ status: 'new', normalizedPhone: '5551234567', displayPhone: '(555) 123-4567' }),

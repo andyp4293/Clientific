@@ -318,7 +318,7 @@ export function MobileAiReceptionistScreen({
               ]}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>Call handling</Text>
               <Text style={[styles.sectionText, { color: theme.mutedText }]}>
-                When callers ask for a real person, the AI transfers the call to this number.
+                These settings control where live handoffs go, what callers hear first, and what customers see when they start a booking by text.
               </Text>
               <Pressable
                 accessibilityRole="checkbox"
@@ -365,59 +365,78 @@ export function MobileAiReceptionistScreen({
                   </Text>
                 </View>
               </Pressable>
-              <TextInput
-                onChangeText={(value) =>
-                  setDraft((current) => (current ? { ...current, aiReceptionistPhone: value } : current))
-                }
-                placeholder="(555) 123-4567"
-                placeholderTextColor={theme.mutedText}
-                style={[
-                  styles.textInput,
-                  {
-                    backgroundColor: theme.surfaceMuted,
-                    borderColor: theme.border,
-                    color: theme.text,
-                  },
-                ]}
-                testID="mobile-ai-forwarding-phone"
-                value={draft.aiReceptionistPhone}
-              />
-              <TextInput
-                multiline
-                onChangeText={(value) =>
-                  setDraft((current) => (current ? { ...current, aiReceptionistGreeting: value } : current))
-                }
-                placeholder={`Hi, thank you for calling ${data.business.name}. How can I help today?`}
-                placeholderTextColor={theme.mutedText}
-                style={[
-                  styles.textArea,
-                  {
-                    backgroundColor: theme.surfaceMuted,
-                    borderColor: theme.border,
-                    color: theme.text,
-                  },
-                ]}
-                testID="mobile-ai-greeting"
-                value={draft.aiReceptionistGreeting}
-              />
-              <TextInput
-                multiline
-                onChangeText={(value) =>
-                  setDraft((current) => (current ? { ...current, smsAiGreeting: value } : current))
-                }
-                placeholder={`Hi from ${data.business.name}. I can help you book by text.`}
-                placeholderTextColor={theme.mutedText}
-                style={[
-                  styles.textArea,
-                  {
-                    backgroundColor: theme.surfaceMuted,
-                    borderColor: theme.border,
-                    color: theme.text,
-                  },
-                ]}
-                testID="mobile-ai-sms-greeting"
-                value={draft.smsAiGreeting}
-              />
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: theme.text }]}>Live transfer number</Text>
+                <Text style={[styles.fieldHelper, { color: theme.mutedText }]}>
+                  When the caller asks for a person, the AI forwards the live call to this number.
+                </Text>
+                <TextInput
+                  keyboardType="phone-pad"
+                  onChangeText={(value) =>
+                    setDraft((current) => (current ? { ...current, aiReceptionistPhone: value } : current))
+                  }
+                  placeholder="Front desk or owner phone number"
+                  placeholderTextColor={theme.mutedText}
+                  style={[
+                    styles.textInput,
+                    {
+                      backgroundColor: theme.surfaceMuted,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    },
+                  ]}
+                  testID="mobile-ai-forwarding-phone"
+                  value={draft.aiReceptionistPhone}
+                />
+              </View>
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: theme.text }]}>Phone greeting callers hear</Text>
+                <Text style={[styles.fieldHelper, { color: theme.mutedText }]}>
+                  This is the first sentence the AI says when someone calls your business number.
+                </Text>
+                <TextInput
+                  multiline
+                  onChangeText={(value) =>
+                    setDraft((current) => (current ? { ...current, aiReceptionistGreeting: value } : current))
+                  }
+                  placeholder={`Example: Hi, thank you for calling ${data.business.name}. How can I help today?`}
+                  placeholderTextColor={theme.mutedText}
+                  style={[
+                    styles.textArea,
+                    {
+                      backgroundColor: theme.surfaceMuted,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    },
+                  ]}
+                  testID="mobile-ai-greeting"
+                  value={draft.aiReceptionistGreeting}
+                />
+              </View>
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: theme.text }]}>Text greeting customers receive</Text>
+                <Text style={[styles.fieldHelper, { color: theme.mutedText }]}>
+                  This is the first SMS the assistant sends when someone starts booking or asking for help by text.
+                </Text>
+                <TextInput
+                  multiline
+                  onChangeText={(value) =>
+                    setDraft((current) => (current ? { ...current, smsAiGreeting: value } : current))
+                  }
+                  placeholder={`Example: Hi from ${data.business.name}. I can help you book or answer questions by text.`}
+                  placeholderTextColor={theme.mutedText}
+                  style={[
+                    styles.textArea,
+                    {
+                      backgroundColor: theme.surfaceMuted,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    },
+                  ]}
+                  testID="mobile-ai-sms-greeting"
+                  value={draft.smsAiGreeting}
+                />
+              </View>
             </View>
 
             <View
@@ -734,6 +753,19 @@ const styles = StyleSheet.create({
   languageToggleTitle: {
     fontSize: 15,
     fontWeight: '700',
+  },
+  fieldGroup: {
+    gap: 8,
+    marginBottom: 14,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
+  fieldHelper: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   textInput: {
     minHeight: 48,

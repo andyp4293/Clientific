@@ -1,16 +1,22 @@
 import React from 'react';
+import * as Clipboard from 'expo-clipboard';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { MobileCheckinsScreen } from '@/components/mobile-checkins-screen';
+
+jest.mock('expo-clipboard', () => ({
+  setStringAsync: jest.fn(() => Promise.resolve()),
+}));
 
 const data = {
   business: {
     id: 'biz-1',
     email: 'owner@clientific.app',
     name: 'Clientific Studio',
+    publicId: 'CF-8QXLBD',
     businessType: 'Salon',
     onboardingComplete: true,
   },
-  selectedDate: '2026-03-30',
+  selectedDate: '2099-03-30',
   dateLabel: 'Monday, March 30',
   timezone: 'America/New_York',
   count: 1,
@@ -18,7 +24,65 @@ const data = {
   checkIns: [],
 };
 
+function renderScreen(
+  overrides: Partial<React.ComponentProps<typeof MobileCheckinsScreen>> = {},
+) {
+  return render(
+    <MobileCheckinsScreen
+      data={data}
+      error={null}
+      isLoading={false}
+      isRefreshing={false}
+      onJumpToToday={jest.fn()}
+      onLookup={jest.fn()}
+      onNextDate={jest.fn()}
+      onOpenUrl={jest.fn().mockResolvedValue(undefined)}
+      onPreviousDate={jest.fn()}
+      onRefresh={jest.fn().mockResolvedValue(undefined)}
+      onSelectDate={jest.fn()}
+      onSubmit={jest.fn()}
+      {...overrides}
+    />,
+  );
+}
+
 describe('MobileCheckinsScreen', () => {
+  it('shows in-store check-in tools that mirror the web dashboard flow', async () => {
+    const onOpenUrl = jest.fn().mockResolvedValue(undefined);
+
+    renderScreen({ onOpenUrl });
+
+    expect(screen.getByText('In-store check-in')).toBeTruthy();
+    expect(screen.getByText('Device link')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('mobile-checkins-copy-link'));
+    await waitFor(() => {
+      expect(Clipboard.setStringAsync).toHaveBeenCalledWith(
+        'https://www.clientific.app/check-in/CF-8QXLBD',
+      );
+    });
+
+    fireEvent.press(screen.getByTestId('mobile-checkins-open-link'));
+    await waitFor(() => {
+      expect(onOpenUrl).toHaveBeenCalledWith('https://www.clientific.app/check-in/CF-8QXLBD');
+    });
+  });
+
+  it('opens the calendar picker and lets the operator choose another day', () => {
+    const onSelectDate = jest.fn();
+
+    renderScreen({ onSelectDate });
+
+    fireEvent.press(screen.getByTestId('mobile-checkins-open-calendar'));
+    expect(screen.getByTestId('mobile-checkins-calendar-next-month')).toBeTruthy();
+    expect(screen.getByTestId('mobile-checkins-calendar-previous-month')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('mobile-checkins-calendar-next-month'));
+    fireEvent.press(screen.getByTestId('mobile-checkins-calendar-day-2099-04-01'));
+
+    expect(onSelectDate).toHaveBeenCalledWith('2099-04-01');
+  });
+
   it('looks up a customer and submits a quick check-in', async () => {
     const onLookup = jest.fn().mockResolvedValue({
       status: 'existing',
@@ -45,20 +109,10 @@ describe('MobileCheckinsScreen', () => {
       },
     });
 
-    render(
-      <MobileCheckinsScreen
-        data={data}
-        error={null}
-        isLoading={false}
-        isRefreshing={false}
-        onJumpToToday={jest.fn()}
-        onLookup={onLookup}
-        onNextDate={jest.fn()}
-        onPreviousDate={jest.fn()}
-        onRefresh={jest.fn().mockResolvedValue(undefined)}
-        onSubmit={onSubmit}
-      />,
-    );
+    renderScreen({
+      onLookup,
+      onSubmit,
+    });
 
     fireEvent.changeText(screen.getByTestId('mobile-checkins-phone-input'), '5551234567');
     fireEvent.press(screen.getByTestId('mobile-checkins-lookup'));
