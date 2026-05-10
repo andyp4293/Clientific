@@ -374,7 +374,11 @@ function CalendarPickerModal({
   }, [cells]);
 
   return (
-    <Modal animationType="fade" transparent visible={visible}>
+    <Modal
+      animationType="fade"
+      presentationStyle="overFullScreen"
+      transparent
+      visible={visible}>
       <View style={styles.calendarOverlay}>
         <View
           style={[
@@ -1567,7 +1571,8 @@ export function MobileScheduleScreen({
             ]}>
             <SectionLabel label="Appointment texts" />
             <Pressable
-              accessibilityRole="button"
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: createForm.appointmentSmsConsent }}
               onPress={() =>
                 setCreateForm((current) => ({
                   ...current,
@@ -1594,23 +1599,20 @@ export function MobileScheduleScreen({
               </View>
               <View
                 style={[
-                  styles.consentToggle,
+                  styles.consentCheckmark,
                   {
                     backgroundColor: createForm.appointmentSmsConsent
                       ? theme.accent
-                      : theme.surface,
-                    borderColor: theme.border,
+                      : 'transparent',
+                    borderColor: createForm.appointmentSmsConsent
+                      ? theme.accent
+                      : theme.border,
                   },
-                ]}>
-                <Text
-                  style={[
-                    styles.consentToggleText,
-                    {
-                      color: createForm.appointmentSmsConsent ? '#ffffff' : theme.text,
-                    },
-                  ]}>
-                  {createForm.appointmentSmsConsent ? 'On' : 'Off'}
-                </Text>
+                ]}
+                testID="mobile-schedule-appointment-sms-indicator">
+                {createForm.appointmentSmsConsent ? (
+                  <Feather color="#ffffff" name="check" size={18} />
+                ) : null}
               </View>
             </Pressable>
             {createForm.appointmentSmsConsent && !manualConsentPhone ? (
@@ -2325,18 +2327,13 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     fontWeight: '600',
   },
-  consentToggle: {
-    minWidth: 56,
+  consentCheckmark: {
+    width: 34,
+    height: 34,
     borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    borderRadius: 12,
     alignItems: 'center',
-  },
-  consentToggleText: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '800',
+    justifyContent: 'center',
   },
   warningText: {
     fontSize: 12,

@@ -225,6 +225,11 @@ describe('MobileScheduleScreen', () => {
     });
 
     fireEvent.press(screen.getByTestId('mobile-existing-customer-cust-1'));
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('mobile-schedule-appointment-sms-toggle').props.accessibilityState,
+      ).toMatchObject({ checked: true });
+    });
     fireEvent.press(screen.getByText('Haircut'));
     fireEvent.press(screen.getByText('Taylor'));
     fireEvent.press(screen.getByTestId('mobile-schedule-create-time-10:30'));
@@ -241,6 +246,49 @@ describe('MobileScheduleScreen', () => {
         }),
       );
     });
+  });
+
+  it('opens the create overlay calendar and applies the selected date', async () => {
+    renderScreen();
+
+    fireEvent.press(screen.getByTestId('mobile-schedule-add'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mobile-schedule-create-open-calendar')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('mobile-schedule-create-open-calendar'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mobile-calendar-close')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('mobile-calendar-next-month'));
+    fireEvent.press(screen.getByTestId('mobile-calendar-day-2099-04-01'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Wednesday, April 1')).toBeTruthy();
+    });
+  });
+
+  it('uses a real checkbox state for appointment text consent in the create sheet', async () => {
+    renderScreen();
+
+    fireEvent.press(screen.getByTestId('mobile-schedule-add'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mobile-schedule-appointment-sms-toggle')).toBeTruthy();
+    });
+
+    expect(
+      screen.getByTestId('mobile-schedule-appointment-sms-toggle').props.accessibilityState,
+    ).toMatchObject({ checked: false });
+
+    fireEvent.press(screen.getByTestId('mobile-schedule-appointment-sms-toggle'));
+
+    expect(
+      screen.getByTestId('mobile-schedule-appointment-sms-toggle').props.accessibilityState,
+    ).toMatchObject({ checked: true });
   });
 
   it('confirms a pending appointment from the list', async () => {
