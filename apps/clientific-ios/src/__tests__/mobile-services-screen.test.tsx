@@ -143,6 +143,22 @@ describe('MobileServicesScreen', () => {
     });
   });
 
+  it('closes the full-screen group sheet from the header close button', async () => {
+    renderScreen();
+
+    fireEvent.press(screen.getByTestId('mobile-open-group-sheet'));
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Manicures')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('mobile-services-sheet-close'));
+
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText('Manicures')).toBeNull();
+    });
+  });
+
   it('renames a service group from the native form', async () => {
     const onUpdateServiceGroup = jest.fn().mockResolvedValue(undefined);
     renderScreen({ onUpdateServiceGroup });

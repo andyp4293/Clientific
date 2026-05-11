@@ -60,6 +60,27 @@ jest.mock('expo-notifications', () => ({
   })),
 }));
 
+jest.mock('react-native-safe-area-context', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+
+  const insets = { top: 59, right: 0, bottom: 34, left: 0 };
+  const frame = { x: 0, y: 0, width: 430, height: 932 };
+
+  return {
+    SafeAreaProvider: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
+    SafeAreaView: ({ children, ...props }: { children: React.ReactNode }) =>
+      React.createElement(View, props, children),
+    initialWindowMetrics: {
+      insets,
+      frame,
+    },
+    useSafeAreaInsets: () => insets,
+    useSafeAreaFrame: () => frame,
+  };
+});
+
 let mockSecureStoreState: Record<string, string> = {};
 
 jest.mock('expo-secure-store', () => ({

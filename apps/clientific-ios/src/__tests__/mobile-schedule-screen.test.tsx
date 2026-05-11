@@ -271,6 +271,22 @@ describe('MobileScheduleScreen', () => {
     });
   });
 
+  it('closes the create appointment sheet from the header close button', async () => {
+    renderScreen();
+
+    fireEvent.press(screen.getByTestId('mobile-schedule-add'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mobile-schedule-create-submit')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('mobile-schedule-sheet-close'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('mobile-schedule-create-submit')).toBeNull();
+    });
+  });
+
   it('uses a real checkbox state for appointment text consent in the create sheet', async () => {
     renderScreen();
 

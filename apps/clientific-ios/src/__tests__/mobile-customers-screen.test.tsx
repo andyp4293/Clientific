@@ -401,4 +401,21 @@ describe('MobileCustomersScreen', () => {
       expect(screen.getByText('Review request sent to Jordan Lee.')).toBeTruthy();
     });
   });
+
+  it('closes the customer detail sheet from the header close button', async () => {
+    renderScreen();
+
+    fireEvent.press(screen.getByText('View'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Request review')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('mobile-customers-sheet-close'));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Request review')).toBeNull();
+      expect(screen.queryByText('Review the customer profile, recent history, and direct message activity.')).toBeNull();
+    });
+  });
 });

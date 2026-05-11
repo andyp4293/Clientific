@@ -14,6 +14,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type {
   MobileAppointmentEntry,
   MobileAppointmentInput,
@@ -512,12 +513,22 @@ function AppointmentSheet({
 }) {
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
+  const insets = useSafeAreaInsets();
+  const safeTop = insets.top || initialWindowMetrics?.insets.top || 0;
+  const safeBottom = insets.bottom || initialWindowMetrics?.insets.bottom || 0;
 
   return (
-    <Modal animationType="slide" presentationStyle="fullScreen" visible={visible}>
+    <Modal
+      animationType="slide"
+      onRequestClose={onClose}
+      presentationStyle="fullScreen"
+      visible={visible}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={[styles.sheetScreen, { backgroundColor: theme.background }]}>
+        style={[
+          styles.sheetScreen,
+          { backgroundColor: theme.background, paddingTop: safeTop, paddingBottom: safeBottom },
+        ]}>
         <View
           style={[
             styles.sheetHeader,
@@ -535,7 +546,8 @@ function AppointmentSheet({
             style={[
               styles.sheetCloseButton,
               { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
-            ]}>
+            ]}
+            testID="mobile-schedule-sheet-close">
             <Text style={[styles.sheetCloseButtonText, { color: theme.text }]}>Close</Text>
           </Pressable>
         </View>
