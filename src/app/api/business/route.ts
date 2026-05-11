@@ -7,6 +7,7 @@ import { getConfiguredAppBaseUrl, getConfiguredWebhookBaseUrl } from '@/lib/app-
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
 import { canAccessAiReceptionist } from '@/lib/plan-access';
+import { sanitizeExternalHttpUrl, validateOptionalExternalHttpUrl } from '@/lib/safe-url';
 import {
   getBusinessCacheTag,
   SHARED_REFERENCE_DATA_REVALIDATE_SECONDS,
@@ -26,6 +27,23 @@ type TwilioProvisionedNumber = {
 
 const VAPI_TWILIO_INBOUND_CALL_URL = 'https://api.vapi.ai/twilio/inbound_call';
 const VAPI_TWILIO_STATUS_CALLBACK_URL = 'https://api.vapi.ai/twilio/status';
+
+function sanitizeBusinessExternalUrls<T extends {
+  logoUrl?: string | null;
+  googleReviewUrl?: string | null;
+  facebookPageUrl?: string | null;
+  yelpUrl?: string | null;
+  instagramUrl?: string | null;
+}>(business: T): T {
+  return {
+    ...business,
+    logoUrl: sanitizeExternalHttpUrl(business.logoUrl),
+    googleReviewUrl: sanitizeExternalHttpUrl(business.googleReviewUrl),
+    facebookPageUrl: sanitizeExternalHttpUrl(business.facebookPageUrl),
+    yelpUrl: sanitizeExternalHttpUrl(business.yelpUrl),
+    instagramUrl: sanitizeExternalHttpUrl(business.instagramUrl),
+  };
+}
 
 function getTrimmedEnv(name: string): string | null {
   const value = process.env[name]?.trim();
@@ -305,7 +323,7 @@ export async function GET(req: NextRequest) {
       console.error('[twilio] Failed to verify shared platform SMS webhook during business fetch:', error);
     });
 
-    return NextResponse.json({ business });
+    return NextResponse.json({ business: sanitizeBusinessExternalUrls(business) });
   } catch (error: any) {
     console.error('Fetch business error:', error);
     return NextResponse.json(
@@ -364,6 +382,17 @@ export async function PATCH(req: NextRequest) {
       smsAiGreeting,
       notifyNewBookingEmail,
     } = body;
+
+    const externalUrls = {
+      googleReviewUrl: validateOptionalExternalHttpUrl(googleReviewUrl, 'Google Review URL'),
+      facebookPageUrl: validateOptionalExternalHttpUrl(facebookPageUrl, 'Facebook Page URL'),
+      yelpUrl: validateOptionalExternalHttpUrl(yelpUrl, 'Yelp URL'),
+      instagramUrl: validateOptionalExternalHttpUrl(instagramUrl, 'Instagram URL'),
+    };
+    const unsafeExternalUrl = Object.values(externalUrls).find((result) => result.error);
+    if (unsafeExternalUrl?.error) {
+      return NextResponse.json({ error: unsafeExternalUrl.error }, { status: 400 });
+    }
 
     const blockedField = getBlockedFieldLabel([
       { label: 'Business name', value: name },
@@ -845,10 +874,10 @@ export async function PATCH(req: NextRequest) {
         ...(publicProfileShowTeam !== undefined && { publicProfileShowTeam }),
         ...(publicProfileShowSocialLinks !== undefined && { publicProfileShowSocialLinks }),
         ...(enableOnlineBooking !== undefined && { enableOnlineBooking }),
-        ...(googleReviewUrl !== undefined && { googleReviewUrl }),
-        ...(facebookPageUrl !== undefined && { facebookPageUrl }),
-        ...(yelpUrl !== undefined && { yelpUrl }),
-        ...(instagramUrl !== undefined && { instagramUrl }),
+        ...(googleReviewUrl !== undefined && { googleReviewUrl: externalUrls.googleReviewUrl.value }),
+        ...(facebookPageUrl !== undefined && { facebookPageUrl: externalUrls.facebookPageUrl.value }),
+        ...(yelpUrl !== undefined && { yelpUrl: externalUrls.yelpUrl.value }),
+        ...(instagramUrl !== undefined && { instagramUrl: externalUrls.instagramUrl.value }),
         ...(aiReceptionistEnabled !== undefined && { aiReceptionistEnabled }),
         ...(aiReceptionistSpanishEnabled !== undefined && { aiReceptionistSpanishEnabled }),
         ...(normalizedAiReceptionistPhone !== undefined && {

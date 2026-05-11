@@ -7,8 +7,9 @@ type Props = Omit<ComponentProps<typeof Link>, 'href'> & { href: Href & string }
 export function ExternalLink({ href, ...rest }: Props) {
   return (
     <Link
-      target="_blank"
       {...rest}
+      target="_blank"
+      rel="noopener noreferrer"
       href={href}
       onPress={async (event) => {
         if (process.env.EXPO_OS !== 'web') {

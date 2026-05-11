@@ -78,4 +78,36 @@ describe('GET /api/mobile/reviews', () => {
       statusLabel: 'Delivered',
     });
   });
+
+  it('filters unsafe public review destinations from mobile responses', async () => {
+    mockFindBusiness.mockResolvedValue({
+      id: 'biz-1',
+      email: 'owner@clientific.app',
+      name: 'Clientific Studio',
+      businessType: 'Salon',
+      phone: '+15551234567',
+      street: '123 Main St',
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      country: 'US',
+      slug: 'clientific-studio',
+      publicId: 'CF-123',
+      googleReviewUrl: 'javascript:alert(1)',
+      yelpUrl: 'https://yelp.com/biz/clientific-studio',
+    });
+    mockFindLogs.mockResolvedValue([]);
+
+    const response = await GET(
+      new Request('https://www.clientific.app/api/mobile/reviews', {
+        headers: { authorization: 'Bearer token' },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.publicReviewDestinations).toEqual([
+      { label: 'Yelp', url: 'https://yelp.com/biz/clientific-studio' },
+    ]);
+  });
 });

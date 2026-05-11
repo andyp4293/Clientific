@@ -141,6 +141,22 @@ describe('GET /api/business', () => {
     expect(body.business.aiReceptionistSpanishEnabled).toBe(false);
   });
 
+  it('sanitizes stored external URLs before returning business data', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValue({
+      ...fakeBusiness,
+      googleReviewUrl: 'javascript:alert(1)',
+      yelpUrl: 'https://www.yelp.com/biz/abc-nails',
+    });
+
+    const res = await GET(new NextRequest('http://localhost/api/business'));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.business.googleReviewUrl).toBeNull();
+    expect(body.business.yelpUrl).toBe('https://www.yelp.com/biz/abc-nails');
+  });
+
   it('repairs the shared platform sms webhook when it is missing during business fetch', async () => {
     mockSession.mockResolvedValue(activeSession);
     mockBusiness.mockResolvedValue(fakeBusiness);
@@ -277,6 +293,45 @@ describe('PATCH /api/business', () => {
       );
     }
   );
+
+  it('rejects unsafe social and review URLs before saving', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
+
+    const res = await PATCH(
+      makePatchRequest({
+        googleReviewUrl: 'javascript:alert(1)',
+      })
+    );
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({
+      error: 'Google Review URL must be a valid http or https URL.',
+    });
+    expect(mockBusinessUpdate).not.toHaveBeenCalled();
+  });
+
+  it('stores blank optional social and review URLs as null', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({ ...fakeBusiness });
+    mockBusinessUpdate.mockResolvedValue({
+      ...fakeBusiness,
+      googleReviewUrl: null,
+    });
+
+    const res = await PATCH(makePatchRequest({ googleReviewUrl: '   ' }));
+
+    expect(res.status).toBe(200);
+    expect(mockBusinessUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          googleReviewUrl: null,
+        }),
+      })
+    );
+  });
 
   it('normalizes the transfer-to phone number before saving settings', async () => {
     mockSession.mockResolvedValue(activeSession);

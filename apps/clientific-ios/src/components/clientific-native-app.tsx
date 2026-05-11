@@ -220,6 +220,15 @@ function resolveMobileBillingDeepLink(url: string | null) {
   }
 }
 
+function isExternalHttpUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
 const SHOULD_OPEN_DEBUG_BILLING_ON_LAUNCH =
   __DEV__ && process.env.EXPO_PUBLIC_MOBILE_DEBUG_INITIAL_SECTION === 'billing';
 
@@ -2223,6 +2232,11 @@ export function ClientificNativeApp() {
   }, [loadBusinessProfile, session]);
 
   const handleOpenExternalUrl = useCallback(async (url: string) => {
+    if (!isExternalHttpUrl(url)) {
+      setHomeError('That link is not a valid web address.');
+      return;
+    }
+
     try {
       await WebBrowser.openBrowserAsync(url);
     } catch (error) {

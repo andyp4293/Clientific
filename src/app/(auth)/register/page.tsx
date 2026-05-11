@@ -535,11 +535,11 @@ function RegisterForm() {
                 />
                 <label htmlFor="acceptTerms" className="text-sm text-gray-600 dark:text-gray-400">
                   I accept the{' '}
-                  <Link href="/terms" target="_blank" className="text-primary dark:text-primary-300 hover:underline">
+                  <Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary dark:text-primary-300 hover:underline">
                     Terms of Service
                   </Link>{' '}
                   and{' '}
-                  <Link href="/privacy" target="_blank" className="text-primary dark:text-primary-300 hover:underline">
+                  <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary dark:text-primary-300 hover:underline">
                     Privacy Policy
                   </Link>
                 </label>

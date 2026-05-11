@@ -8,6 +8,7 @@ import {
   REVIEW_SURVEY_PRIVATE_NOTIFICATION_TYPE,
   REVIEW_SURVEY_TOP_RATING_NOTIFICATION_TYPE,
 } from '@/lib/review-requests';
+import { sanitizeExternalHttpUrl } from '@/lib/safe-url';
 
 function isPublicBusinessId(value: string): boolean {
   return /^[A-Z]{2}-[A-Z0-9]{6}$/.test(value);
@@ -72,16 +73,19 @@ export async function GET(
       businessId: business.id,
     });
     const customerName = customer?.name?.trim() || parsedToken?.n?.trim() || null;
+    const googleReviewUrl = sanitizeExternalHttpUrl(business.googleReviewUrl);
+    const yelpUrl = sanitizeExternalHttpUrl(business.yelpUrl);
+    const preferredReviewUrl = googleReviewUrl || yelpUrl;
 
     return NextResponse.json({
       business: {
         name: business.name,
         slug: business.slug,
-        logoUrl: business.logoUrl,
-        googleReviewUrl: business.googleReviewUrl,
-        yelpUrl: business.yelpUrl,
-        preferredReviewUrl: business.googleReviewUrl || business.yelpUrl,
-        preferredReviewLabel: business.googleReviewUrl ? 'Google' : business.yelpUrl ? 'Yelp' : null,
+        logoUrl: sanitizeExternalHttpUrl(business.logoUrl),
+        googleReviewUrl,
+        yelpUrl,
+        preferredReviewUrl,
+        preferredReviewLabel: googleReviewUrl ? 'Google' : yelpUrl ? 'Yelp' : null,
       },
       customer: customerName
         ? {
@@ -117,6 +121,9 @@ export async function POST(
     if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
+    const googleReviewUrl = sanitizeExternalHttpUrl(business.googleReviewUrl);
+    const yelpUrl = sanitizeExternalHttpUrl(business.yelpUrl);
+    const preferredReviewUrl = googleReviewUrl || yelpUrl;
     const parsedToken = getParsedToken(
       typeof body?.token === 'string' ? body.token : null,
       business.slug,
@@ -152,8 +159,8 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      preferredReviewUrl: business.googleReviewUrl || business.yelpUrl || null,
-      preferredReviewLabel: business.googleReviewUrl ? 'Google' : business.yelpUrl ? 'Yelp' : null,
+      preferredReviewUrl,
+      preferredReviewLabel: googleReviewUrl ? 'Google' : yelpUrl ? 'Yelp' : null,
     });
   } catch (error: any) {
     console.error('POST /api/public/review-survey/[slug] error:', error);

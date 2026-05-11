@@ -105,6 +105,29 @@ describe('GET /api/public/review-survey/[slug]', () => {
       })
     );
   });
+
+  it('does not return unsafe public review links', async () => {
+    mockBusinessFindUnique.mockResolvedValue({
+      id: 'biz-1',
+      name: 'Davi Nails',
+      slug: 'davi-nails',
+      publicId: 'CF-8QXLBD',
+      logoUrl: 'javascript:alert(1)',
+      googleReviewUrl: 'javascript:alert(1)',
+      yelpUrl: 'https://yelp.com/biz/davi-nails',
+    });
+    mockCustomerFindFirst.mockResolvedValue(null);
+
+    const req = new NextRequest('http://localhost/api/public/review-survey/davi-nails');
+    const res = await GET(req, { params: Promise.resolve({ slug: 'davi-nails' }) });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.business.logoUrl).toBeNull();
+    expect(body.business.googleReviewUrl).toBeNull();
+    expect(body.business.preferredReviewUrl).toBe('https://yelp.com/biz/davi-nails');
+    expect(body.business.preferredReviewLabel).toBe('Yelp');
+  });
 });
 
 describe('POST /api/public/review-survey/[slug]', () => {
@@ -143,6 +166,32 @@ describe('POST /api/public/review-survey/[slug]', () => {
     const body = await res.json();
     expect(body.preferredReviewUrl).toBe('https://google.com/review');
     expect(body.preferredReviewLabel).toBe('Google');
+  });
+
+  it('returns no public review destination when stored review URLs are unsafe', async () => {
+    mockBusinessFindUnique.mockResolvedValue({
+      id: 'biz-1',
+      name: 'Davi Nails',
+      slug: 'davi-nails',
+      publicId: 'CF-8QXLBD',
+      logoUrl: null,
+      googleReviewUrl: 'javascript:alert(1)',
+      yelpUrl: 'data:text/html,<script>alert(1)</script>',
+    });
+    mockCustomerFindFirst.mockResolvedValue(null);
+    mockNotificationCreate.mockResolvedValue({ id: 'notif-1' });
+
+    const req = new NextRequest('http://localhost/api/public/review-survey/davi-nails', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating: 5 }),
+    });
+    const res = await POST(req, { params: Promise.resolve({ slug: 'davi-nails' }) });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.preferredReviewUrl).toBeNull();
+    expect(body.preferredReviewLabel).toBeNull();
   });
 
   it('stores private feedback for lower ratings', async () => {

@@ -4,6 +4,7 @@ import { isBusinessOnboardingComplete } from '@/lib/onboarding';
 import { formatPhoneForDisplay } from '@/lib/phone';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { requireMobileSession } from '@/lib/mobile-route';
+import { sanitizeExternalHttpUrl } from '@/lib/safe-url';
 
 function formatSmsStatus(status: string | null) {
   if (!status) {
@@ -73,11 +74,13 @@ export async function GET(request: Request) {
         : null;
     const appUrl = getConfiguredAppBaseUrl();
     const surveyUrl = surveyPath ? `${appUrl}${surveyPath}` : null;
+    const googleReviewUrl = sanitizeExternalHttpUrl(business.googleReviewUrl);
+    const yelpUrl = sanitizeExternalHttpUrl(business.yelpUrl);
     const publicReviewDestinations = [
-      business.googleReviewUrl
-        ? { label: 'Google Reviews', url: business.googleReviewUrl }
+      googleReviewUrl
+        ? { label: 'Google Reviews', url: googleReviewUrl }
         : null,
-      business.yelpUrl ? { label: 'Yelp', url: business.yelpUrl } : null,
+      yelpUrl ? { label: 'Yelp', url: yelpUrl } : null,
     ].filter((destination): destination is { label: string; url: string } => Boolean(destination));
 
     return NextResponse.json({
