@@ -245,19 +245,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const {
-      customerId,
-      serviceId,
-      staffId,
-      startTime,
-      duration,
-      notes,
-      appointmentSmsConsent,
-    } = await request.json();
+    const { customerId, serviceId, staffId, startTime, notes, appointmentSmsConsent } =
+      await request.json();
 
-    if (!customerId || !startTime || !duration) {
+    if (!customerId || !serviceId || !startTime) {
       return NextResponse.json(
-        { error: 'Customer, start time, and duration are required' },
+        { error: 'Customer, service, and start time are required' },
         { status: 400 },
       );
     }
@@ -267,8 +260,50 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
     }
 
+    const [service, appointmentCustomer] = await Promise.all([
+      prisma.service.findFirst({
+        where: {
+          id: String(serviceId).trim(),
+          businessId: business.id,
+          active: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          duration: true,
+        },
+      }),
+      prisma.customer.findFirst({
+        where: {
+          id: String(customerId).trim(),
+          businessId: business.id,
+        },
+        select: {
+          id: true,
+          phone: true,
+          smsConsent: true,
+          smsOptedOut: true,
+        },
+      }),
+    ]);
+
+    if (!service) {
+      return NextResponse.json(
+        { error: 'Select an active service before creating the appointment.' },
+        { status: 400 },
+      );
+    }
+
+    if (!appointmentCustomer) {
+      return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
+    }
+
     const start = new Date(startTime);
-    const appointmentDuration = Number(duration);
+    if (Number.isNaN(start.getTime())) {
+      return NextResponse.json({ error: 'Select a valid start time.' }, { status: 400 });
+    }
+
+    const appointmentDuration = service.duration;
     const end = new Date(start.getTime() + appointmentDuration * 60000);
 
     const businessHoursError = validateBusinessHoursForAppointment({
@@ -290,7 +325,7 @@ export async function POST(request: Request) {
       const staffError = await validateBookableStaffSelection({
         staffId,
         businessId: business.id,
-        serviceIds: serviceId ? [serviceId] : [],
+        serviceIds: [service.id],
         businessHours: business.businessHours?.hours,
         timezone: business.timezone,
         startTime: start,
@@ -330,22 +365,7 @@ export async function POST(request: Request) {
     }
 
     if (appointmentSmsConsent === true) {
-      const manualConsentCustomer = await prisma.customer.findFirst({
-        where: {
-          id: customerId,
-          businessId: business.id,
-        },
-        select: {
-          id: true,
-          phone: true,
-        },
-      });
-
-      if (!manualConsentCustomer) {
-        return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
-      }
-
-      if (!manualConsentCustomer.phone) {
+      if (!appointmentCustomer.phone) {
         return NextResponse.json(
           { error: 'Customer needs a phone number before appointment texts can be enabled' },
           { status: 400 },
@@ -356,8 +376,9 @@ export async function POST(request: Request) {
     const appointment = await prisma.appointment.create({
       data: {
         businessId: business.id,
-        customerId,
-        serviceId: serviceId || null,
+        customerId: appointmentCustomer.id,
+        serviceId: service.id,
+        serviceIds: [service.id],
         staffId: staffId || null,
         startTime: start,
         endTime: end,

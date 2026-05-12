@@ -9,7 +9,7 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: { findUnique: vi.fn() },
     appointment: { findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
-    service: { findMany: vi.fn() },
+    service: { findMany: vi.fn(), findFirst: vi.fn() },
     customer: { findFirst: vi.fn(), update: vi.fn() },
     smsConsentEvent: { create: vi.fn() },
   },
@@ -75,6 +75,7 @@ const mockFindAppointments = vi.mocked(prisma.appointment.findMany);
 const mockCreateAppointment = vi.mocked(prisma.appointment.create);
 const mockUpdateAppointment = vi.mocked(prisma.appointment.update);
 const mockFindServices = vi.mocked(prisma.service.findMany);
+const mockFindService = vi.mocked(prisma.service.findFirst);
 const mockFindCustomer = vi.mocked(prisma.customer.findFirst);
 const mockUpdateCustomer = vi.mocked(prisma.customer.update);
 const mockCreateConsentEvent = vi.mocked(prisma.smsConsentEvent.create);
@@ -116,9 +117,16 @@ beforeEach(() => {
   });
   mockFindAppointments.mockResolvedValue([]);
   mockFindServices.mockResolvedValue([{ id: 'svc-1', name: 'Color' }]);
+  mockFindService.mockResolvedValue({
+    id: 'svc-1',
+    name: 'Haircut',
+    duration: 45,
+  } as never);
   mockFindCustomer.mockResolvedValue({
     id: 'cust-1',
     phone: '+15551234567',
+    smsConsent: false,
+    smsOptedOut: false,
   });
   mockUpdateCustomer.mockResolvedValue({
     id: 'cust-1',
@@ -222,7 +230,7 @@ describe('mobile appointments route', () => {
           serviceId: 'svc-1',
           staffId: 'staff-1',
           startTime: '2026-03-30T15:00:00.000Z',
-          duration: 60,
+          duration: 999,
           notes: 'Please text me',
           appointmentSmsConsent: true,
         }),
@@ -230,7 +238,29 @@ describe('mobile appointments route', () => {
     );
 
     expect(response.status).toBe(201);
-    expect(mockCreateAppointment).toHaveBeenCalled();
+    expect(mockFindService).toHaveBeenCalledWith({
+      where: {
+        id: 'svc-1',
+        businessId: 'biz-1',
+        active: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        duration: true,
+      },
+    });
+    expect(mockCreateAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          customerId: 'cust-1',
+          serviceId: 'svc-1',
+          serviceIds: ['svc-1'],
+          duration: 45,
+          endTime: new Date('2026-03-30T15:45:00.000Z'),
+        }),
+      }),
+    );
     expect(mockUpdateCustomer).toHaveBeenCalledWith({
       where: { id: 'cust-1' },
       data: {
@@ -274,6 +304,8 @@ describe('mobile appointments route', () => {
     mockFindCustomer.mockResolvedValueOnce({
       id: 'cust-1',
       phone: null,
+      smsConsent: false,
+      smsOptedOut: false,
     } as never);
 
     const response = await POST(
@@ -285,6 +317,7 @@ describe('mobile appointments route', () => {
         },
         body: JSON.stringify({
           customerId: 'cust-1',
+          serviceId: 'svc-1',
           startTime: '2026-03-30T15:00:00.000Z',
           duration: 60,
           appointmentSmsConsent: true,
@@ -298,5 +331,80 @@ describe('mobile appointments route', () => {
     });
     expect(mockCreateAppointment).not.toHaveBeenCalled();
     expect(mockSendAppointmentConfirmation).not.toHaveBeenCalled();
+  });
+
+  it('requires an active service for mobile appointment creation', async () => {
+    const response = await POST(
+      new Request('https://www.clientific.app/api/mobile/appointments', {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer token',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerId: 'cust-1',
+          startTime: '2026-03-30T15:00:00.000Z',
+          duration: 60,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Customer, service, and start time are required',
+    });
+    expect(mockCreateAppointment).not.toHaveBeenCalled();
+  });
+
+  it('rejects inactive or cross-business services before creating a mobile appointment', async () => {
+    mockFindService.mockResolvedValueOnce(null);
+
+    const response = await POST(
+      new Request('https://www.clientific.app/api/mobile/appointments', {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer token',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerId: 'cust-1',
+          serviceId: 'svc-other-business',
+          startTime: '2026-03-30T15:00:00.000Z',
+          duration: 60,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Select an active service before creating the appointment.',
+    });
+    expect(mockCreateAppointment).not.toHaveBeenCalled();
+  });
+
+  it('rejects customers outside the mobile business before creating an appointment', async () => {
+    mockFindCustomer.mockResolvedValueOnce(null);
+
+    const response = await POST(
+      new Request('https://www.clientific.app/api/mobile/appointments', {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer token',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerId: 'cust-other-business',
+          serviceId: 'svc-1',
+          startTime: '2026-03-30T15:00:00.000Z',
+          duration: 60,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Customer not found',
+    });
+    expect(mockCreateAppointment).not.toHaveBeenCalled();
   });
 });

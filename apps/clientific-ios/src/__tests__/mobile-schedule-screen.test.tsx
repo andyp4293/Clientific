@@ -224,7 +224,11 @@ describe('MobileScheduleScreen', () => {
       expect(screen.getByTestId('mobile-schedule-create-submit')).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByTestId('mobile-existing-customer-cust-1'));
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('mobile-existing-customer-cust-1').props.accessibilityState,
+      ).toMatchObject({ selected: true });
+    });
     await waitFor(() => {
       expect(
         screen.getByTestId('mobile-schedule-appointment-sms-toggle').props.accessibilityState,
@@ -343,13 +347,13 @@ describe('MobileScheduleScreen', () => {
 
     expect(
       screen.getByTestId('mobile-schedule-appointment-sms-toggle').props.accessibilityState,
-    ).toMatchObject({ checked: false });
+    ).toMatchObject({ checked: true });
 
     fireEvent.press(screen.getByTestId('mobile-schedule-appointment-sms-toggle'));
 
     expect(
       screen.getByTestId('mobile-schedule-appointment-sms-toggle').props.accessibilityState,
-    ).toMatchObject({ checked: true });
+    ).toMatchObject({ checked: false });
   });
 
   it('confirms a pending appointment from the list', async () => {

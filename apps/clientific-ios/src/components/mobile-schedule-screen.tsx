@@ -763,6 +763,53 @@ export function MobileScheduleScreen({
       return;
     }
 
+    const selectedCustomerStillAvailable = composerCustomers.some(
+      (customer) => customer.id === createForm.customerId,
+    );
+
+    if (selectedCustomerStillAvailable) {
+      return;
+    }
+
+    if (customerSearch.trim()) {
+      if (createForm.customerId) {
+        setCreateForm((current) => ({ ...current, customerId: '' }));
+      }
+      return;
+    }
+
+    const [defaultCustomer] = composerCustomers;
+    if (!defaultCustomer) {
+      if (createForm.customerId) {
+        setCreateForm((current) => ({ ...current, customerId: '' }));
+      }
+      return;
+    }
+
+    setCreateForm((current) => ({
+      ...current,
+      customerId: defaultCustomer.id,
+    }));
+    setSheetError((current) =>
+      current === 'Choose an existing customer first.' ? null : current,
+    );
+  }, [
+    composerCustomers,
+    createForm.customerId,
+    customerMode,
+    customerSearch,
+    isCreateSheetVisible,
+  ]);
+
+  useEffect(() => {
+    if (!isCreateSheetVisible) {
+      return;
+    }
+
+    if (customerMode !== 'existing') {
+      return;
+    }
+
     const shouldEnableAppointmentSms = Boolean(
       selectedExistingCustomer?.smsConsent && !selectedExistingCustomer?.smsOptedOut,
     );
@@ -1352,7 +1399,10 @@ export function MobileScheduleScreen({
                 <OptionChip
                   key={mode}
                   label={mode === 'existing' ? 'Existing' : 'New'}
-                  onPress={() => setCustomerMode(mode)}
+                  onPress={() => {
+                    setCustomerMode(mode);
+                    setSheetError(null);
+                  }}
                   selected={customerMode === mode}
                 />
               ))}
@@ -1390,12 +1440,16 @@ export function MobileScheduleScreen({
                         <Pressable
                           key={customer.id}
                           accessibilityRole="button"
-                          onPress={() =>
+                          accessibilityState={{ selected: createForm.customerId === customer.id }}
+                          onPress={() => {
                             setCreateForm((current) => ({
                               ...current,
                               customerId: customer.id,
-                            }))
-                          }
+                            }));
+                            setSheetError((current) =>
+                              current === 'Choose an existing customer first.' ? null : current,
+                            );
+                          }}
                           style={[
                             styles.customerPickRow,
                             { borderColor: theme.border },
