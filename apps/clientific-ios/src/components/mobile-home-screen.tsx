@@ -15,6 +15,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 type MobileHomeScreenProps = {
   error: string | null;
   isRefreshing: boolean;
+  notificationsError: string | null;
   notificationsPermissionStatus: MobilePushPermissionStatus;
   summary: MobileHomeSummary;
   onEnablePushNotifications: () => Promise<void>;
@@ -49,6 +50,7 @@ function getNotificationSetupCopy(status: MobilePushPermissionStatus) {
 export function MobileHomeScreen({
   error,
   isRefreshing,
+  notificationsError,
   notificationsPermissionStatus,
   summary,
   onEnablePushNotifications,
@@ -139,6 +141,13 @@ export function MobileHomeScreen({
           <Text style={[styles.noticeText, { color: theme.mutedText }]}>
             {notificationSetupCopy.body}
           </Text>
+          {notificationsError ? (
+            <Text
+              style={[styles.noticeErrorText, { color: theme.danger }]}
+              testID="mobile-home-notifications-error">
+              {notificationsError}
+            </Text>
+          ) : null}
           <Pressable
             accessibilityRole="button"
             onPress={() => void onEnablePushNotifications()}
@@ -430,6 +439,11 @@ const styles = StyleSheet.create({
   noticeText: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  noticeErrorText: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '700',
   },
   inlineButton: {
     alignSelf: 'flex-start',

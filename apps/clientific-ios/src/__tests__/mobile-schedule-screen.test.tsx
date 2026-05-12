@@ -262,6 +262,7 @@ describe('MobileScheduleScreen', () => {
     await waitFor(() => {
       expect(screen.getByTestId('mobile-calendar-close')).toBeTruthy();
     });
+    expect(screen.getByTestId('mobile-schedule-create-submit')).toBeTruthy();
 
     fireEvent.press(screen.getByTestId('mobile-calendar-next-month'));
     fireEvent.press(screen.getByTestId('mobile-calendar-day-2099-04-01'));
@@ -326,6 +327,7 @@ describe('MobileScheduleScreen', () => {
 
     fireEvent.press(screen.getByTestId('mobile-appointment-edit-appt-1'));
     fireEvent.press(screen.getByTestId('mobile-schedule-edit-open-calendar'));
+    expect(screen.getByTestId('mobile-schedule-edit-submit')).toBeTruthy();
     fireEvent.press(screen.getByTestId('mobile-calendar-day-2026-04-01'));
     fireEvent.press(screen.getByTestId('mobile-schedule-edit-time-12:00'));
     fireEvent.press(screen.getByTestId('mobile-schedule-edit-submit'));

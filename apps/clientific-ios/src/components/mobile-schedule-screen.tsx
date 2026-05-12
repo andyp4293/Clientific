@@ -343,23 +343,23 @@ function CalendarDateButton({
   );
 }
 
-function CalendarPickerModal({
-  monthAnchor,
-  onClose,
-  onNextMonth,
-  onPreviousMonth,
-  onSelectDate,
-  selectedDateKey,
-  visible,
-}: {
+type CalendarPickerProps = {
   monthAnchor: Date;
   onClose: () => void;
   onNextMonth: () => void;
   onPreviousMonth: () => void;
   onSelectDate: (dateKey: string) => void;
   selectedDateKey: string;
-  visible: boolean;
-}) {
+};
+
+function CalendarPickerContent({
+  monthAnchor,
+  onClose,
+  onNextMonth,
+  onPreviousMonth,
+  onSelectDate,
+  selectedDateKey,
+}: CalendarPickerProps) {
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
   const { cells, monthLabel, weekdayLabels } = useMemo(
@@ -375,125 +375,147 @@ function CalendarPickerModal({
   }, [cells]);
 
   return (
+    <View style={styles.calendarOverlay}>
+      <View
+        style={[
+          styles.calendarModal,
+          { backgroundColor: theme.surface, borderColor: theme.border },
+        ]}>
+        <View style={styles.calendarHeader}>
+          <View style={styles.calendarHeaderCopy}>
+            <Text style={[styles.calendarHeaderEyebrow, { color: theme.accent }]}>
+              Calendar
+            </Text>
+            <Text style={[styles.calendarHeaderTitle, { color: theme.text }]}>{monthLabel}</Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onClose}
+            style={[
+              styles.calendarCloseButton,
+              { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+            ]}
+            testID="mobile-calendar-close">
+            <Feather color={theme.text} name="x" size={18} />
+          </Pressable>
+        </View>
+
+        <View style={styles.calendarMonthActions}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onPreviousMonth}
+            style={[
+              styles.calendarMonthButton,
+              { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+            ]}
+            testID="mobile-calendar-previous-month">
+            <Feather color={theme.text} name="chevron-left" size={18} />
+          </Pressable>
+          <View
+            style={[
+              styles.calendarMonthLabelWrap,
+              { backgroundColor: theme.accentSoft, borderColor: theme.border },
+            ]}>
+            <Text style={[styles.calendarMonthLabel, { color: theme.accent }]}>{monthLabel}</Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onNextMonth}
+            style={[
+              styles.calendarMonthButton,
+              { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+            ]}
+            testID="mobile-calendar-next-month">
+            <Feather color={theme.text} name="chevron-right" size={18} />
+          </Pressable>
+        </View>
+
+        <View style={styles.calendarWeekdayRow}>
+          {weekdayLabels.map((label) => (
+            <Text
+              key={label}
+              style={[styles.calendarWeekdayLabel, { color: theme.mutedText }]}>
+              {label}
+            </Text>
+          ))}
+        </View>
+
+        <View style={styles.calendarGrid}>
+          {calendarRows.map((row, rowIndex) => (
+            <View key={`calendar-row-${rowIndex}`} style={styles.calendarGridRow}>
+              {row.map((cell) => {
+                const isSelected = cell.dateKey === selectedDateKey;
+                return (
+                  <Pressable
+                    key={cell.dateKey}
+                    accessibilityRole="button"
+                    onPress={() => onSelectDate(cell.dateKey)}
+                    style={[
+                      styles.calendarDayCell,
+                      {
+                        backgroundColor: isSelected
+                          ? theme.accent
+                          : cell.isToday
+                            ? theme.accentSoft
+                            : theme.surfaceMuted,
+                        borderColor: isSelected
+                          ? theme.accent
+                          : cell.isToday
+                            ? theme.accent
+                            : theme.border,
+                      },
+                    ]}
+                    testID={`mobile-calendar-day-${cell.dateKey}`}>
+                    <Text
+                      style={[
+                        isSelected ? styles.calendarDayTextSelected : styles.calendarDayText,
+                        {
+                          color: isSelected
+                            ? '#ffffff'
+                            : cell.inCurrentMonth
+                              ? theme.text
+                              : theme.mutedText,
+                        },
+                      ]}>
+                      {cell.dayNumber}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function CalendarPickerInlineOverlay({
+  visible,
+  ...props
+}: CalendarPickerProps & { visible: boolean }) {
+  if (!visible) {
+    return null;
+  }
+
+  return (
+    <View style={styles.inlineCalendarOverlay}>
+      <CalendarPickerContent {...props} />
+    </View>
+  );
+}
+
+function CalendarPickerModal({
+  visible,
+  ...props
+}: CalendarPickerProps & { visible: boolean }) {
+  return (
     <Modal
       animationType="fade"
       presentationStyle="overFullScreen"
       transparent
       visible={visible}>
-      <View style={styles.calendarOverlay}>
-        <View
-          style={[
-            styles.calendarModal,
-            { backgroundColor: theme.surface, borderColor: theme.border },
-          ]}>
-          <View style={styles.calendarHeader}>
-            <View style={styles.calendarHeaderCopy}>
-              <Text style={[styles.calendarHeaderEyebrow, { color: theme.accent }]}>
-                Calendar
-              </Text>
-              <Text style={[styles.calendarHeaderTitle, { color: theme.text }]}>{monthLabel}</Text>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              onPress={onClose}
-              style={[
-                styles.calendarCloseButton,
-                { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
-              ]}
-              testID="mobile-calendar-close">
-              <Feather color={theme.text} name="x" size={18} />
-            </Pressable>
-          </View>
-
-          <View style={styles.calendarMonthActions}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={onPreviousMonth}
-              style={[
-                styles.calendarMonthButton,
-                { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
-              ]}
-              testID="mobile-calendar-previous-month">
-              <Feather color={theme.text} name="chevron-left" size={18} />
-            </Pressable>
-            <View
-              style={[
-                styles.calendarMonthLabelWrap,
-                { backgroundColor: theme.accentSoft, borderColor: theme.border },
-              ]}>
-              <Text style={[styles.calendarMonthLabel, { color: theme.accent }]}>{monthLabel}</Text>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              onPress={onNextMonth}
-              style={[
-                styles.calendarMonthButton,
-                { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
-              ]}
-              testID="mobile-calendar-next-month">
-              <Feather color={theme.text} name="chevron-right" size={18} />
-            </Pressable>
-          </View>
-
-          <View style={styles.calendarWeekdayRow}>
-            {weekdayLabels.map((label) => (
-              <Text
-                key={label}
-                style={[styles.calendarWeekdayLabel, { color: theme.mutedText }]}>
-                {label}
-              </Text>
-            ))}
-          </View>
-
-          <View style={styles.calendarGrid}>
-            {calendarRows.map((row, rowIndex) => (
-              <View key={`calendar-row-${rowIndex}`} style={styles.calendarGridRow}>
-                {row.map((cell) => {
-                  const isSelected = cell.dateKey === selectedDateKey;
-                  return (
-                    <Pressable
-                      key={cell.dateKey}
-                      accessibilityRole="button"
-                      onPress={() => onSelectDate(cell.dateKey)}
-                      style={[
-                        styles.calendarDayCell,
-                        {
-                          backgroundColor: isSelected
-                            ? theme.accent
-                            : cell.isToday
-                              ? theme.accentSoft
-                              : theme.surfaceMuted,
-                          borderColor: isSelected
-                            ? theme.accent
-                            : cell.isToday
-                              ? theme.accent
-                              : theme.border,
-                        },
-                      ]}
-                      testID={`mobile-calendar-day-${cell.dateKey}`}>
-                      <Text
-                        style={[
-                          isSelected
-                            ? styles.calendarDayTextSelected
-                            : styles.calendarDayText,
-                          {
-                            color: isSelected
-                              ? '#ffffff'
-                              : cell.inCurrentMonth
-                                ? theme.text
-                                : theme.mutedText,
-                          },
-                        ]}>
-                        {cell.dayNumber}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ))}
-          </View>
-        </View>
-      </View>
+      <CalendarPickerContent {...props} />
     </Modal>
   );
 }
@@ -1659,6 +1681,15 @@ export function MobileScheduleScreen({
             </Text>
           </Pressable>
         </View>
+        <CalendarPickerInlineOverlay
+          monthAnchor={calendarMonthAnchor}
+          onClose={closeCalendar}
+          onNextMonth={() => setCalendarMonthAnchor((current) => addMonths(current, 1))}
+          onPreviousMonth={() => setCalendarMonthAnchor((current) => addMonths(current, -1))}
+          onSelectDate={handleCalendarSelect}
+          selectedDateKey={activeCalendarDateKey}
+          visible={calendarTarget === 'create'}
+        />
       </AppointmentSheet>
 
       <AppointmentSheet
@@ -1796,6 +1827,15 @@ export function MobileScheduleScreen({
             </Text>
           </Pressable>
         </View>
+        <CalendarPickerInlineOverlay
+          monthAnchor={calendarMonthAnchor}
+          onClose={closeCalendar}
+          onNextMonth={() => setCalendarMonthAnchor((current) => addMonths(current, 1))}
+          onPreviousMonth={() => setCalendarMonthAnchor((current) => addMonths(current, -1))}
+          onSelectDate={handleCalendarSelect}
+          selectedDateKey={activeCalendarDateKey}
+          visible={calendarTarget === 'edit'}
+        />
       </AppointmentSheet>
 
       <CalendarPickerModal
@@ -1805,7 +1845,7 @@ export function MobileScheduleScreen({
         onPreviousMonth={() => setCalendarMonthAnchor((current) => addMonths(current, -1))}
         onSelectDate={handleCalendarSelect}
         selectedDateKey={activeCalendarDateKey}
-        visible={Boolean(calendarTarget)}
+        visible={calendarTarget === 'schedule'}
       />
     </>
   );
@@ -2093,6 +2133,7 @@ const styles = StyleSheet.create({
   },
   sheetScreen: {
     flex: 1,
+    position: 'relative',
   },
   sheetHeader: {
     borderBottomWidth: 1,
@@ -2407,6 +2448,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(3, 7, 18, 0.52)',
     paddingHorizontal: 20,
     justifyContent: 'center',
+  },
+  inlineCalendarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 50,
   },
   calendarModal: {
     borderWidth: 1,

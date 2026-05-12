@@ -29,9 +29,9 @@ test.describe('customers mobile layout', () => {
     expect(secondCard).not.toBeNull();
     expect((secondCard?.y ?? 0) - (firstCard?.y ?? 0)).toBeGreaterThan(140);
 
-    await expect(mobileList.getByText('Customer type').first()).toBeVisible();
     await expect(mobileList.getByText('SMS status').first()).toBeVisible();
     await expect(mobileList.getByText('Total spent').first()).toBeVisible();
+    await expect(mobileList.getByText('Last visit').first()).toBeVisible();
     await expect(mobileList.getByRole('link', { name: 'View' }).first()).toBeVisible();
 
     const hasOverflow = await page.evaluate(() => {

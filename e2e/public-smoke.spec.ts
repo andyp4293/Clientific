@@ -24,8 +24,8 @@ test.describe('public click-through smoke', () => {
     await assertHealthyPage(page, tracker);
 
     await gotoAndAssert(page, '/pricing', tracker);
-    await page.getByRole('button', { name: /^Start Free Trial$/ }).click();
-    await expect(page).toHaveURL(/\/register\?plan=base$/);
+    await page.getByRole('button', { name: /^Start Starter trial$/i }).click();
+    await expect(page).toHaveURL(/\/register\?plan=starter$/);
     await assertHealthyPage(page, tracker);
 
     tracker.dispose();

@@ -27,11 +27,11 @@ test.describe('dashboard click-through smoke', () => {
 
     await gotoAndAssert(page, '/dashboard/customers', tracker);
     await page.getByRole('button', { name: /Add Customer/i }).first().click();
-    await expect(page.getByRole('heading', { name: 'Add New Customer' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /^Add customer$/i })).toBeVisible();
     await page.getByLabel('Close add customer modal').click();
     await assertHealthyPage(page, tracker);
 
-    await gotoAndAssert(page, '/dashboard/campaigns', tracker);
+    await gotoAndAssert(page, '/dashboard/deals', tracker);
     await page.getByRole('button', { name: 'New Deal' }).click();
     await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeVisible();
     await assertHealthyPage(page, tracker);
@@ -96,9 +96,7 @@ test.describe('dashboard click-through smoke', () => {
       });
     });
 
-    const checkoutButton = page
-      .getByRole('button', { name: /Start 14-day free trial|Continue with \$49\/month/i })
-      .first();
+    const checkoutButton = page.getByRole('button', { name: /^Select Starter$/i }).first();
     await checkoutButton.click();
     await page.waitForURL(/mock_checkout=1/);
     await assertHealthyPage(page, tracker);
@@ -119,7 +117,9 @@ test.describe('dashboard click-through smoke', () => {
     await expect(
       page.getByRole('heading', { name: /your free trial has ended|subscription required|payment failed|your subscription was canceled/i })
     ).toBeVisible();
-    await expect(page.getByRole('button', { name: /continue with \$49\/month/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Select Starter$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Select Pro$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Select Premium$/i })).toBeVisible();
     await assertHealthyPage(page, tracker);
 
     tracker.dispose();

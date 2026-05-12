@@ -28,7 +28,9 @@ test.describe('public mobile layout smoke', () => {
 
     await gotoAndAssert(page, '/pricing', tracker);
     await expect(page.getByTestId('pricing-plan-card').first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /start free trial/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /start starter trial/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /start pro trial/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /start premium trial/i })).toBeVisible();
 
     const pricingHasOverflow = await page.evaluate(() => {
       return document.documentElement.scrollWidth > window.innerWidth + 2;

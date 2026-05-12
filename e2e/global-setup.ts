@@ -97,7 +97,6 @@ async function seedCustomersForBusiness(
     segment: string;
     smsConsent: boolean;
     smsOptedOut: boolean;
-    points: number;
     totalSpent: number;
     lastVisit: Date | null;
   }>
@@ -114,7 +113,6 @@ async function seedCustomersForBusiness(
       smsConsent: customer.smsConsent,
       smsMarketingConsent: customer.smsConsent,
       smsOptedOut: customer.smsOptedOut,
-      points: customer.points,
       totalSpent: customer.totalSpent,
       lastVisit: customer.lastVisit,
     })),
@@ -151,7 +149,6 @@ export default async function globalSetup(_config: FullConfig) {
       segment: 'VIP',
       smsConsent: true,
       smsOptedOut: false,
-      points: 320,
       totalSpent: 1485,
       lastVisit: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
     },
@@ -165,7 +162,6 @@ export default async function globalSetup(_config: FullConfig) {
       segment: 'AT_RISK',
       smsConsent: true,
       smsOptedOut: true,
-      points: 40,
       totalSpent: 95,
       lastVisit: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
     },
@@ -179,7 +175,6 @@ export default async function globalSetup(_config: FullConfig) {
       segment: 'NEW',
       smsConsent: true,
       smsOptedOut: false,
-      points: 15,
       totalSpent: 85,
       lastVisit: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
     },
@@ -190,7 +185,6 @@ export default async function globalSetup(_config: FullConfig) {
       segment: 'VIP',
       smsConsent: true,
       smsOptedOut: false,
-      points: 220,
       totalSpent: 1240,
       lastVisit: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
     },

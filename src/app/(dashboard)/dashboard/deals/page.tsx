@@ -80,10 +80,6 @@ export default function DealsPage() {
     return purchases.filter((purchase) => [purchase.customerName, purchase.customerPhone, purchase.customerEmail ?? '', purchase.redemptionCode ?? '', purchase.dealTitle].join(' ').toLowerCase().includes(q));
   }, [purchases, lookupQuery]);
 
-  if (isLoading) {
-    return <DashboardPageLoading />;
-  }
-
   const createMutation = useMutation({
     mutationFn: async (payload: typeof form) => {
       const res = await fetch('/api/deals', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: payload.title, description: payload.description, deliveryType: 'purchase_link', serviceScope: payload.serviceScope, eligibleServiceIds: payload.serviceScope === 'selected_services' ? payload.eligibleServiceIds : [], discountType: payload.discountType, discountValue: payload.discountType === 'free_service' ? 0 : Number(payload.discountValue), newCustomersOnly: payload.newCustomersOnly, startsAt: payload.startsAt, expiresAt: payload.expiresAt, maxRedemptions: payload.maxRedemptions ? Number(payload.maxRedemptions) : null }) });
@@ -138,6 +134,10 @@ export default function DealsPage() {
 
   const minimumEndDate = addDays(fromDateOnlyValue(form.startsAt) ?? new Date(), 1);
   const eligibleSelectionRequired = form.serviceScope === 'selected_services';
+
+  if (isLoading) {
+    return <DashboardPageLoading />;
+  }
 
   function copyDealLink(dealId: string) {
     const url = `${window.location.origin}/d/${dealId}`;

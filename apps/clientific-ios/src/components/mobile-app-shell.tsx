@@ -410,6 +410,7 @@ export function MobileAppShell({
             <MobileHomeScreen
               error={homeError}
               isRefreshing={isHomeRefreshing}
+              notificationsError={notificationsError}
               notificationsPermissionStatus={notificationsPermissionStatus}
               summary={home}
               onEnablePushNotifications={onEnablePushNotifications}

@@ -682,6 +682,23 @@ describe('MobileAppShell', () => {
     expect(onEnablePushNotifications).toHaveBeenCalledTimes(1);
   });
 
+  it('shows push setup errors inside the home notification card', () => {
+    render(
+      <MobileAppShell
+        {...createShellProps({
+          notificationsPermissionStatus: 'undetermined',
+          notificationsError:
+            'Push notifications need a physical iPhone or iPad. The iOS simulator can open the setup flow, but it cannot receive permission prompts or live push alerts.',
+        })}
+      />,
+    );
+
+    expect(screen.getByTestId('mobile-home-notifications-card')).toBeTruthy();
+    expect(screen.getByTestId('mobile-home-notifications-error').props.children).toBe(
+      'Push notifications need a physical iPhone or iPad. The iOS simulator can open the setup flow, but it cannot receive permission prompts or live push alerts.',
+    );
+  });
+
   it('hides the home notification prompt after push permissions are already granted', () => {
     render(
       <MobileAppShell
