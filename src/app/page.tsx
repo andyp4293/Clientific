@@ -24,7 +24,7 @@ const faqs = [
   },
   {
     q: `What types of businesses is ${APP_NAME} for?`,
-    a: 'Clientific is built for service businesses that manage appointments, customer relationships, and repeat visits.',
+    a: 'Clientific is built for appointment-based local businesses like nail salons, spas, barbers, beauty studios, wellness providers, and repair services that need bookings, reminders, customer records, and repeat-visit follow-up in one place.',
   },
   {
     q: 'How do reminders and notifications work?',
@@ -47,53 +47,53 @@ const faqs = [
 const platformFacts = [
   {
     eyebrow: 'Trial',
-    title: '14-day free trial',
-    body: 'Start without entering a card, then decide if the workflow fits your business.',
+    title: '14-day trial',
+    body: 'Set up your services, booking page, reminders, and customer workflow before you decide.',
   },
   {
-    eyebrow: 'Pricing',
-    title: 'Three launch prices',
-    body: 'Starter covers the core workflow, while Pro and Premium add AI receptionist coverage.',
+    eyebrow: 'Missed calls',
+    title: 'AI receptionist on Pro',
+    body: 'Let the phone get answered when your team is with a customer, on lunch, or closed for the night.',
   },
   {
     eyebrow: 'Booking',
-    title: 'No customer account required',
-    body: 'Customers can book from a public page, and AI phone coverage can handle calls when enabled.',
+    title: 'No customer app required',
+    body: 'Customers book from a public page, get reminders, and stay connected without creating an account.',
   },
   {
-    eyebrow: 'Payouts',
-    title: 'Secure Stripe money movement',
-    body: 'Paid deals and referral earnings route through Stripe-backed payout setup before going live.',
+    eyebrow: 'Retention',
+    title: 'Customer notes and follow-up',
+    body: 'Remember preferences, track visits, and keep repeat customers from slipping through the cracks.',
   },
 ];
 
 const heroHighlights = [
+  'AI receptionist for missed calls',
   'Public booking page',
-  'Optional AI receptionist setup',
-  'Customer records and notes',
-  'Deals, referrals, and payouts',
+  'SMS confirmations and reminders',
+  'Customer notes and visit history',
 ];
 
 const platformAreas = [
   {
     tag: 'Booking',
-    title: 'Appointments and availability',
+    title: 'Booking that stays open',
     points: ['Public booking page', 'Services, staff, and hours', 'Confirmations and reminders'],
   },
   {
+    tag: 'Phone',
+    title: 'Coverage when you are busy',
+    points: ['AI receptionist line', 'Common questions answered', 'Bookings tied to availability'],
+  },
+  {
     tag: 'Customers',
-    title: 'Relationship history',
+    title: 'Repeat visits remembered',
     points: ['Profiles and visit history', 'Customer notes', 'Segments and follow-up'],
   },
   {
     tag: 'Growth',
-    title: 'Deals, reviews, and referrals',
+    title: 'Reviews, deals, and referrals',
     points: ['Paid deals and claims', 'Review requests', 'Recurring referral program'],
-  },
-  {
-    tag: 'Payouts',
-    title: 'Secure money movement',
-    points: ['Stripe payout setup', 'Paid deal payouts', 'Referral earnings in payouts'],
   },
 ];
 
@@ -262,10 +262,10 @@ export default function HomePage() {
             <div>
               <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-gray-200/80 bg-white/72 px-4 py-1.5 text-xs font-semibold tracking-wide text-primary-700 shadow-sm dark:border-white/10 dark:bg-white/[0.06] dark:text-primary-300">
                 <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                AI-powered platform for service businesses
+                AI receptionist and booking for local service businesses
               </div>
               <h1 className="mb-7 text-5xl font-bold leading-[1.05] tracking-tight text-gray-950 dark:text-white sm:text-6xl lg:text-7xl">
-                Your business,
+                Never miss
                 <br />
                 <span
                   className="bg-clip-text text-transparent"
@@ -274,33 +274,33 @@ export default function HomePage() {
                       'linear-gradient(135deg, rgb(var(--color-primary-500)) 0%, rgb(var(--color-primary-700)) 45%, rgb(var(--color-primary-400)) 100%)',
                   }}
                 >
-                  on autopilot
+                  another booking
                 </span>
               </h1>
               <p className="mb-10 max-w-xl text-lg font-light leading-relaxed text-gray-700 dark:text-gray-300 sm:text-xl">
-                {APP_NAME} helps service businesses manage appointments, customer records,
-                AI phone coverage, paid deals, recurring referrals, and secure payouts from a
-                single dashboard.
+                {APP_NAME} helps nail salons, spas, barbers, and local service businesses
+                answer missed calls, take online bookings, send SMS reminders, remember customer
+                notes, and follow up from one dashboard.
               </p>
 
               <div className="mb-8 rounded-[28px] border border-gray-200/80 bg-white/72 p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">
-                  Choose your path
+                  Start with the workflow you need
                 </p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <Link
                     href={isAuthenticated ? '/dashboard' : '/register'}
-                    aria-label="I run a business"
+                    aria-label="Set up my business"
                     className="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary-700 transition-colors hover:bg-primary/15 dark:border-primary/30 dark:bg-primary/15 dark:text-primary-100 dark:hover:bg-primary/25"
                   >
-                    I run a business
+                    Set up my business
                   </Link>
                   <Link
                     href="/explore"
-                    aria-label="I'm looking to book"
+                    aria-label="See customer booking"
                     className="rounded-2xl border border-gray-200 bg-white/72 px-4 py-3 text-sm font-semibold text-gray-800 transition-colors hover:bg-white dark:border-white/15 dark:bg-white/[0.03] dark:text-gray-100 dark:hover:bg-white/[0.08]"
                   >
-                    I&apos;m looking to book
+                    See customer booking
                   </Link>
                 </div>
               </div>
@@ -378,7 +378,7 @@ export default function HomePage() {
                           Inside Clientific
                         </p>
                         <h2 className="mt-2 text-xl font-semibold text-gray-950 dark:text-white/95">
-                          The workflow stays connected
+                          Calls, bookings, and customers stay connected
                         </h2>
                       </div>
                       <div className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-primary-700 dark:text-primary-200">
@@ -472,8 +472,8 @@ export default function HomePage() {
               What Clientific actually covers
             </h2>
             <p className="mx-auto max-w-3xl text-lg text-gray-700 dark:text-gray-300">
-              The product is designed around real service-business workflows: booking,
-              customer records, deals, reviews, referral earnings, and secure payouts.
+              The product is designed around the work that loses local businesses money:
+              missed calls, slow booking, no-shows, scattered customer notes, and weak follow-up.
             </p>
           </div>
 
@@ -626,11 +626,12 @@ export default function HomePage() {
                       </div>
                       <div className="mt-4 rounded-2xl border border-gray-200/80 bg-gray-50/80 px-4 py-3 text-sm text-gray-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300">
                         <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                          Same Feature Access Right Now
+                          {key === 'STARTER' ? 'Core booking workflow' : 'AI receptionist included'}
                         </p>
                         <p className="mt-2">
-                          Choose based on launch pricing and AI receptionist access. Core workflow
-                          tools stay included across all three plans.
+                          {key === 'STARTER'
+                            ? 'Start with booking, reminders, CRM, deals, referrals, and payouts.'
+                            : 'Add AI phone coverage on top of booking, reminders, CRM, deals, referrals, and payouts.'}
                         </p>
                       </div>
                     </div>
@@ -733,11 +734,11 @@ export default function HomePage() {
         <div className="pointer-events-none absolute left-1/2 top-1/2 h-[400px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[100px]" />
         <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
           <h2 className="mb-4 text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">
-            Run the business from one place
+            Start capturing missed bookings today
           </h2>
           <p className="mx-auto mb-9 max-w-2xl text-lg text-gray-700 dark:text-gray-300">
-            Start with the booking flow, then layer in customer records, deals, review
-            requests, referrals, and secure payouts as you need them.
+            Launch your booking page, reminders, customer records, and follow-up workflow.
+            Choose Pro when you want AI receptionist coverage for the calls your team cannot answer.
           </p>
           {isAuthenticated ? (
             <Link
