@@ -240,6 +240,7 @@ function OptionChip({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ selected }}
       onPress={onPress}
       style={[
         styles.optionChip,
@@ -697,14 +698,25 @@ export function MobileScheduleScreen({
     [data?.appointments],
   );
   const createSuggestedTimeOptions = useMemo(
-    () =>
-      getSuggestedTimeOptions({
+    () => {
+      if (!selectedCreateService) {
+        return [];
+      }
+
+      return getSuggestedTimeOptions({
         dateKey: createForm.date,
         duration: createEffectiveDuration,
         staffId: createForm.staffId,
         staff: createEligibleStaff,
-      }),
-    [createEffectiveDuration, createEligibleStaff, createForm.date, createForm.staffId],
+      });
+    },
+    [
+      createEffectiveDuration,
+      createEligibleStaff,
+      createForm.date,
+      createForm.staffId,
+      selectedCreateService,
+    ],
   );
   const editSuggestedTimeOptions = useMemo(
     () =>
@@ -787,6 +799,32 @@ export function MobileScheduleScreen({
   }, [createForm.time, createSuggestedTimeOptions, isCreateSheetVisible]);
 
   useEffect(() => {
+    if (!isCreateSheetVisible || !availableServices.length) {
+      return;
+    }
+
+    const selectedServiceStillActive = availableServices.some(
+      (service) => service.id === createForm.serviceId,
+    );
+
+    if (selectedServiceStillActive) {
+      return;
+    }
+
+    const [defaultService] = availableServices;
+    if (!defaultService) {
+      return;
+    }
+
+    setCreateForm((current) => ({
+      ...current,
+      serviceId: defaultService.id,
+      duration: defaultService.duration,
+      time: '',
+    }));
+  }, [availableServices, createForm.serviceId, isCreateSheetVisible]);
+
+  useEffect(() => {
     if (!selectedCreateService || !createForm.staffId) {
       return;
     }
@@ -821,7 +859,17 @@ export function MobileScheduleScreen({
     setSheetError(null);
     setCustomerMode('existing');
     setCustomerSearch('');
-    setCreateForm(createInitialAppointmentForm(data?.selectedDate ?? formatDateKey(new Date())));
+    const initialForm = createInitialAppointmentForm(data?.selectedDate ?? formatDateKey(new Date()));
+    const [defaultService] = availableServices;
+    setCreateForm(
+      defaultService
+        ? {
+            ...initialForm,
+            serviceId: defaultService.id,
+            duration: defaultService.duration,
+          }
+        : initialForm,
+    );
     setIsCreateSheetVisible(true);
     void onLoadComposerResources();
   };
@@ -876,6 +924,11 @@ export function MobileScheduleScreen({
   };
 
   const handleSubmitCreate = async () => {
+    if (!selectedCreateService) {
+      setSheetError('Add and select an active service before creating the appointment.');
+      return;
+    }
+
     if (!createForm.time.trim()) {
       setSheetError('Select a start time for the appointment.');
       return;
@@ -1261,7 +1314,7 @@ export function MobileScheduleScreen({
                     Nothing is booked yet
                   </Text>
                   <Text style={[styles.emptyStateText, { color: theme.mutedText }]}>
-                    Create a manual appointment here instead of jumping back to the web dashboard.
+                    Create a service-based appointment here instead of jumping back to the web dashboard.
                   </Text>
                   <Pressable
                     accessibilityRole="button"
@@ -1423,74 +1476,59 @@ export function MobileScheduleScreen({
             ]}>
             <SectionLabel label="Service & staff" />
             <Text style={[styles.helperText, { color: theme.mutedText }]}>
-              Pick the service first so Clientific can suggest the right appointment length and
-              availability.
+              Pick the service first. Clientific uses that service's duration to suggest the right
+              appointment length and available start times.
             </Text>
 
             <SectionLabel label="Service" />
-            <View style={styles.segmentRow}>
-              <OptionChip
-                label="Manual booking"
-                onPress={() =>
-                  setCreateForm((current) => ({
-                    ...current,
-                    serviceId: '',
-                    time: '',
-                  }))
-                }
-                selected={!createForm.serviceId}
-              />
-              {availableServices.map((service) => (
-                <OptionChip
-                  key={service.id}
-                  label={service.name}
-                  onPress={() =>
-                    setCreateForm((current) => ({
-                      ...current,
-                      serviceId: service.id,
-                      duration: service.duration,
-                      time: '',
-                    }))
-                  }
-                  selected={createForm.serviceId === service.id}
-                />
-              ))}
-            </View>
-
-            {selectedCreateService ? (
-              <View
-                style={[
-                  styles.summaryCard,
-                  { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
-                ]}>
-                <Text style={[styles.summaryCardTitle, { color: theme.text }]}>
-                  {selectedCreateService.name}
-                </Text>
-                <Text style={[styles.summaryCardText, { color: theme.mutedText }]}>
-                  {selectedCreateService.durationLabel} appointment
-                  {selectedCreateService.priceLabel ? ` · ${selectedCreateService.priceLabel}` : ''}
-                </Text>
-              </View>
-            ) : (
+            {availableServices.length ? (
               <>
-                <Text style={[styles.warningText, { color: '#c47f00' }]}>
-                  Select a service for the cleanest booking flow, or keep it manual for an off-menu
-                  appointment.
-                </Text>
-                <SectionLabel label="Manual duration" />
                 <View style={styles.segmentRow}>
-                  {[30, 45, 60, 90, 120].map((duration) => (
+                  {availableServices.map((service) => (
                     <OptionChip
-                      key={duration}
-                      label={duration >= 60 ? `${duration / 60} hr` : `${duration} min`}
+                      key={service.id}
+                      label={service.name}
                       onPress={() =>
-                        setCreateForm((current) => ({ ...current, duration, time: '' }))
+                        setCreateForm((current) => ({
+                          ...current,
+                          serviceId: service.id,
+                          duration: service.duration,
+                          staffId:
+                            current.staffId && service.id !== current.serviceId
+                              ? ''
+                              : current.staffId,
+                          time: '',
+                        }))
                       }
-                      selected={createForm.duration === duration}
+                      selected={createForm.serviceId === service.id}
+                      testID={`mobile-schedule-create-service-${service.id}`}
                     />
                   ))}
                 </View>
+
+                {selectedCreateService ? (
+                  <View
+                    style={[
+                      styles.summaryCard,
+                      { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                    ]}>
+                    <Text style={[styles.summaryCardTitle, { color: theme.text }]}>
+                      {selectedCreateService.name}
+                    </Text>
+                    <Text style={[styles.summaryCardText, { color: theme.mutedText }]}>
+                      {selectedCreateService.durationLabel} appointment
+                      {selectedCreateService.priceLabel
+                        ? ` · ${selectedCreateService.priceLabel}`
+                        : ''}
+                    </Text>
+                  </View>
+                ) : null}
               </>
+            ) : (
+              <Text style={[styles.warningText, { color: '#c47f00' }]}>
+                No active services are set up yet. Add services in Services & Staff so mobile
+                bookings can use the same service-based flow as the web dashboard.
+              </Text>
             )}
 
             <SectionLabel label="Staff" />
@@ -1567,7 +1605,7 @@ export function MobileScheduleScreen({
             <Text style={[styles.helperText, { color: theme.mutedText }]}>
               {selectedCreateService
                 ? `Available slots are based on ${selectedCreateService.name} (${selectedCreateService.durationLabel}).`
-                : `Manual slots are using a ${createForm.duration}-minute appointment length.`}
+                : 'Add an active service before choosing an appointment time.'}
             </Text>
 
             <SectionLabel label="Available start times" />
@@ -1586,8 +1624,9 @@ export function MobileScheduleScreen({
             </View>
             {!createSuggestedTimeOptions.length ? (
               <Text style={[styles.warningText, { color: '#c47f00' }]}>
-                No suggested times are available for this day yet. Pick another date or staff
-                member.
+                {selectedCreateService
+                  ? 'No suggested times are available for this day yet. Pick another date or staff member.'
+                  : 'Start times will appear after you add an active service.'}
               </Text>
             ) : null}
 
@@ -1672,12 +1711,25 @@ export function MobileScheduleScreen({
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            disabled={isSubmittingCreate}
+            accessibilityState={{
+              disabled: isSubmittingCreate || !selectedCreateService,
+            }}
+            disabled={isSubmittingCreate || !selectedCreateService}
             onPress={() => void handleSubmitCreate()}
-            style={[styles.footerPrimaryButton, { backgroundColor: theme.accent }]}
+            style={[
+              styles.footerPrimaryButton,
+              {
+                backgroundColor: theme.accent,
+                opacity: isSubmittingCreate || !selectedCreateService ? 0.55 : 1,
+              },
+            ]}
             testID="mobile-schedule-create-submit">
             <Text style={styles.footerPrimaryButtonText}>
-              {isSubmittingCreate ? 'Creating...' : 'Create appointment'}
+              {isSubmittingCreate
+                ? 'Creating...'
+                : selectedCreateService
+                  ? 'Create appointment'
+                  : 'Add a service first'}
             </Text>
           </Pressable>
         </View>

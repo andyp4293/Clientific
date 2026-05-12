@@ -230,7 +230,7 @@ describe('MobileScheduleScreen', () => {
         screen.getByTestId('mobile-schedule-appointment-sms-toggle').props.accessibilityState,
       ).toMatchObject({ checked: true });
     });
-    fireEvent.press(screen.getByText('Haircut'));
+    fireEvent.press(screen.getByTestId('mobile-schedule-create-service-svc-1'));
     fireEvent.press(screen.getByText('Taylor'));
     fireEvent.press(screen.getByTestId('mobile-schedule-create-time-10:30'));
     fireEvent.press(screen.getByTestId('mobile-schedule-create-submit'));
@@ -246,6 +246,50 @@ describe('MobileScheduleScreen', () => {
         }),
       );
     });
+  });
+
+  it('uses service-first appointment creation instead of manual duration when services exist', async () => {
+    renderScreen();
+
+    fireEvent.press(screen.getByTestId('mobile-schedule-add'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mobile-schedule-create-service-svc-1')).toBeTruthy();
+    });
+
+    expect(screen.queryByText('Manual booking')).toBeNull();
+    expect(screen.queryByText('Manual duration')).toBeNull();
+    expect(
+      screen.getByTestId('mobile-schedule-create-service-svc-1').props.accessibilityState,
+    ).toMatchObject({ selected: true });
+    expect(screen.getByText('Available slots are based on Haircut (45 min).')).toBeTruthy();
+  });
+
+  it('does not expose manual duration when no active services are configured', async () => {
+    renderScreen({
+      servicesSummary: {
+        ...servicesSummary,
+        counts: {
+          ...servicesSummary.counts,
+          services: 0,
+          activeServices: 0,
+        },
+        services: [],
+      },
+    });
+
+    fireEvent.press(screen.getByTestId('mobile-schedule-add'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Add a service first')).toBeTruthy();
+    });
+
+    expect(screen.queryByText('Manual booking')).toBeNull();
+    expect(screen.queryByText('Manual duration')).toBeNull();
+    expect(screen.queryByText('Temporary duration')).toBeNull();
+    expect(
+      screen.getByTestId('mobile-schedule-create-submit').props.accessibilityState,
+    ).toMatchObject({ disabled: true });
   });
 
   it('opens the create overlay calendar and applies the selected date', async () => {
