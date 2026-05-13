@@ -14,6 +14,7 @@ import { createBusinessNotification } from '@/lib/mobile-push';
 import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
 import { weekdayIndexInTimeZone } from '@/lib/timezone';
 import { buildPublicBookingConsentMetadata } from '@/lib/public-booking-sms-consent';
+import { buildAppointmentBookedNotificationMessage } from '@/lib/appointment-notification-copy';
 
 // POST - Create public booking (no auth required)
 export async function POST(
@@ -357,7 +358,13 @@ export async function POST(
       businessId: business.id,
       type: 'new_appointment',
       title: 'New Booking Request',
-      message: `${customer.name} booked ${serviceName} for ${new Date(appointment.startTime).toLocaleString('en-US', { timeZone: business.timezone ?? undefined })}`,
+      message: buildAppointmentBookedNotificationMessage({
+        customerName: customer.name,
+        serviceName,
+        staffName: appointment.staff?.fullName ?? null,
+        startTime: appointment.startTime,
+        timezone: business.timezone,
+      }),
       link: '/dashboard/appointments',
       sendPush: business.notifyNewBookingEmail !== false,
     });

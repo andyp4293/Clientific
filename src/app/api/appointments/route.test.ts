@@ -50,6 +50,7 @@ import { prisma } from '@/lib/prisma';
 import { sendAppointmentConfirmation } from '@/lib/twilio';
 import { scheduleAppointmentReminder } from '@/lib/appointment-reminders';
 import { ensureAppointmentShortId } from '@/lib/appointment-short-id';
+import { createBusinessNotification } from '@/lib/mobile-push';
 import { GET, POST } from './route';
 
 const mockSession = getServerSession as ReturnType<typeof vi.fn>;
@@ -65,6 +66,7 @@ const mockNotificationCreate = prisma.notification.create as ReturnType<typeof v
 const mockSmsConsentEventCreate = prisma.smsConsentEvent.create as ReturnType<typeof vi.fn>;
 const mockScheduleAppointmentReminder = scheduleAppointmentReminder as ReturnType<typeof vi.fn>;
 const mockEnsureAppointmentShortId = ensureAppointmentShortId as ReturnType<typeof vi.fn>;
+const mockCreateBusinessNotification = createBusinessNotification as ReturnType<typeof vi.fn>;
 
 // Appointments use session.user.email for business lookup, session.user.businessId for subscription
 const activeSession = { user: { businessId: 'biz-1', email: 'owner@test.com' } };
@@ -298,16 +300,21 @@ describe('POST /api/appointments', () => {
       businessId: 'biz-1',
       startTime: new Date(validApptBody.startTime),
       duration: 60,
-      customer: { id: 'cust-1', name: 'Test', phone: null, email: null, smsConsent: false },
-      service: null,
-      staff: null,
+      customer: { id: 'cust-1', name: 'Khang Nguyen', phone: null, email: null, smsConsent: false },
+      service: { name: 'Gel Manicure' },
+      staff: { fullName: 'Andy' },
       business: { name: 'Test Salon' },
     };
     mockAppointmentCreate.mockResolvedValue(fakeAppt);
-    const res = await POST(makeRequest({ ...validApptBody, staffId: 'staff-1' }));
+    const res = await POST(makeRequest({ ...validApptBody, serviceId: 'svc-1', staffId: 'staff-1' }));
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.appointment.id).toBe('appt-1');
+    expect(mockCreateBusinessNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Khang Nguyen was scheduled for Gel Manicure with Andy at Tue, Mar 10, 10:00 AM.',
+      }),
+    );
   });
 
   it('creates appointment without staffId (no conflict check)', async () => {

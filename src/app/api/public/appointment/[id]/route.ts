@@ -15,6 +15,7 @@ import {
 import { cancelScheduledAppointmentReminder } from '@/lib/appointment-reminders';
 import { resolveAppointmentServiceDisplayName } from '@/lib/appointment-services';
 import { createBusinessNotification } from '@/lib/mobile-push';
+import { buildAppointmentRescheduledNotificationMessage } from '@/lib/appointment-notification-copy';
 
 async function resolveServiceName(
   serviceIds: string[],
@@ -276,10 +277,13 @@ export async function PATCH(
       businessId: existing.businessId,
       type: 'appointment_rescheduled',
       title: 'Appointment Reschedule Request',
-      message: `${existing.customer.name} requested to move ${serviceName} to ${newStart.toLocaleString(
-        'en-US',
-        { timeZone: existing.business.timezone ?? undefined }
-      )}`,
+      message: buildAppointmentRescheduledNotificationMessage({
+        customerName: existing.customer.name,
+        serviceName,
+        staffName: existing.staff?.fullName ?? null,
+        startTime: newStart,
+        timezone: existing.business.timezone,
+      }),
       link: '/dashboard/appointments',
       sendPush: existing.business.notifyNewBookingEmail !== false,
     });

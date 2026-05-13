@@ -18,6 +18,7 @@ import {
 import { scheduleAppointmentReminder } from '@/lib/appointment-reminders';
 import { ensureAppointmentShortId } from '@/lib/appointment-short-id';
 import { createBusinessNotification } from '@/lib/mobile-push';
+import { buildAppointmentScheduledNotificationMessage } from '@/lib/appointment-notification-copy';
 
 const businessMidnightUTC = businessDayStart;
 
@@ -368,7 +369,13 @@ export async function POST(req: NextRequest) {
       businessId: business.id,
       type: 'new_appointment',
       title: 'New Appointment',
-      message: `New appointment scheduled with ${appointment.customer.name} for ${new Date(appointment.startTime).toLocaleString()}`,
+      message: buildAppointmentScheduledNotificationMessage({
+        customerName: appointment.customer.name,
+        serviceName: appointment.service?.name ?? 'Appointment',
+        staffName: appointment.staff?.fullName ?? null,
+        startTime: appointment.startTime,
+        timezone: business.timezone,
+      }),
       link: '/dashboard/appointments',
       sendPush: business.notifyNewBookingEmail !== false,
     });

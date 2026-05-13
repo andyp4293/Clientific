@@ -7,6 +7,7 @@ import {
   normalizeOptionalStoredPhoneNumber,
 } from '@/lib/phone';
 import { createBusinessNotification } from '@/lib/mobile-push';
+import { buildAppointmentBookedNotificationMessage } from '@/lib/appointment-notification-copy';
 import { localToUTC } from '@/lib/timezone';
 
 const ACTIVE_APPOINTMENT_STATUSES = ['pending', 'scheduled', 'confirmed'] as const;
@@ -530,11 +531,24 @@ async function createBookingFromSession(
     },
   });
 
+  const assignedStaff = session.staffId
+    ? await prisma.staff.findFirst({
+        where: { id: session.staffId, businessId: business.id },
+        select: { fullName: true },
+      })
+    : null;
+
   await createBusinessNotification({
     businessId: business.id,
     type: 'new_appointment',
     title: 'New Booking via SMS AI',
-    message: `${customer.name} booked ${service.name} for ${formatDateTimeForBusiness(start, business.timezone)}`,
+    message: buildAppointmentBookedNotificationMessage({
+      customerName: customer.name,
+      serviceName: service.name,
+      staffName: assignedStaff?.fullName ?? null,
+      startTime: start,
+      timezone: business.timezone,
+    }),
     link: '/dashboard/appointments',
     sendPush: business.notifyNewBookingEmail !== false,
   });
