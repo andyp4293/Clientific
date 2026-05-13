@@ -19,12 +19,12 @@ describe('Homepage audience intent', () => {
     mockUseSession.mockReturnValue({ status: 'unauthenticated', data: null });
     render(<HomePage />);
 
-    expect(await screen.findByText('Choose your path')).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'I run a business' })).toHaveAttribute(
+    expect(await screen.findByText('Start with the workflow you need')).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Set up my business' })).toHaveAttribute(
       'href',
       '/register'
     );
-    expect(await screen.findByRole('link', { name: "I'm looking to book" })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: 'See customer booking' })).toHaveAttribute(
       'href',
       '/explore'
     );
@@ -36,7 +36,7 @@ describe('Homepage audience intent', () => {
     mockUseSession.mockReturnValue({ status: 'authenticated', data: { user: { id: 'biz-1' } } });
     render(<HomePage />);
 
-    expect(await screen.findByRole('link', { name: 'I run a business' })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: 'Set up my business' })).toHaveAttribute(
       'href',
       '/dashboard'
     );
@@ -65,8 +65,8 @@ describe('Homepage audience intent', () => {
 
     expect(statsSection).toBeInTheDocument();
     expect(statCards).toHaveLength(4);
-    expect(within(statsSection).getByText('14-day free trial')).toBeInTheDocument();
-    expect(within(statsSection).getByText('No customer account required')).toBeInTheDocument();
+    expect(within(statsSection).getByText('14-day trial')).toBeInTheDocument();
+    expect(within(statsSection).getByText('No customer app required')).toBeInTheDocument();
     expect(screen.queryByText('99.9%')).not.toBeInTheDocument();
     expect(screen.queryByText('< 3 min')).not.toBeInTheDocument();
   });
