@@ -7,6 +7,9 @@ node_modules
 /coverage
 /playwright-report
 /test-results
+.tmp/
+app-store-preview-assets/
+apps/clientific-ios/build-artifacts/
 
 # Next.js
 /.next/
