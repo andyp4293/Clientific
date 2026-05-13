@@ -19,7 +19,7 @@ test.describe('public click-through smoke', () => {
     const tracker = trackAppFailures(page);
 
     await gotoAndAssert(page, '/', tracker);
-    await page.getByRole('link', { name: 'I run a business' }).click();
+    await page.getByRole('link', { name: 'Set up my business' }).click();
     await expect(page).toHaveURL(/\/register$/);
     await assertHealthyPage(page, tracker);
 
