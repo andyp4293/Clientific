@@ -3,14 +3,25 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-Notifications.setNotificationHandler({
+const PUSH_PERMISSION_REQUEST = {
+  ios: {
+    allowAlert: true,
+    allowBadge: true,
+    allowSound: true,
+    provideAppNotificationSettings: true,
+  },
+};
+
+export const mobileNotificationHandler = {
   handleNotification: async () => ({
     shouldShowBanner: true,
     shouldShowList: true,
     shouldPlaySound: true,
-    shouldSetBadge: false,
+    shouldSetBadge: true,
   }),
-});
+};
+
+Notifications.setNotificationHandler(mobileNotificationHandler);
 
 export type MobilePushRegistration =
   | {
@@ -31,20 +42,28 @@ export function getExpoProjectId() {
   return extraProjectId ?? easProjectId ?? null;
 }
 
+function hasGrantedPushPermissions(
+  permissions: Awaited<ReturnType<typeof Notifications.getPermissionsAsync>>,
+) {
+  return permissions.granted === true || permissions.status === 'granted';
+}
+
 export async function registerForPushNotificationsAsync(): Promise<MobilePushRegistration> {
   if (!Device.isDevice) {
     return null;
   }
 
   const permissions = await Notifications.getPermissionsAsync();
-  let finalStatus = permissions.status;
+  let isGranted = hasGrantedPushPermissions(permissions);
 
-  if (finalStatus !== 'granted') {
-    const requestedPermissions = await Notifications.requestPermissionsAsync();
-    finalStatus = requestedPermissions.status;
+  if (!isGranted) {
+    const requestedPermissions = await Notifications.requestPermissionsAsync(
+      PUSH_PERMISSION_REQUEST,
+    );
+    isGranted = hasGrantedPushPermissions(requestedPermissions);
   }
 
-  if (finalStatus !== 'granted') {
+  if (!isGranted) {
     return null;
   }
 
@@ -65,6 +84,10 @@ export async function registerForPushNotificationsAsync(): Promise<MobilePushReg
 
 export async function getMobilePushPermissionStatus(): Promise<MobilePushPermissionStatus> {
   const permissions = await Notifications.getPermissionsAsync();
+  if (permissions.granted === true) {
+    return 'granted';
+  }
+
   if (
     permissions.status === 'granted' ||
     permissions.status === 'denied' ||
@@ -74,6 +97,23 @@ export async function getMobilePushPermissionStatus(): Promise<MobilePushPermiss
   }
 
   return 'undetermined';
+}
+
+export function normalizeMobileAppBadgeCount(unreadCount: number) {
+  if (!Number.isFinite(unreadCount)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.floor(unreadCount));
+}
+
+export async function syncMobileAppBadgeCount(unreadCount: number) {
+  try {
+    return await Notifications.setBadgeCountAsync(normalizeMobileAppBadgeCount(unreadCount));
+  } catch (error) {
+    console.warn('Unable to sync Clientific app badge count:', error);
+    return false;
+  }
 }
 
 export function addPushNotificationResponseListener(

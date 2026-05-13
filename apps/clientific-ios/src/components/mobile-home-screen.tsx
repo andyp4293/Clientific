@@ -39,6 +39,15 @@ function getNotificationSetupCopy(status: MobilePushPermissionStatus) {
     };
   }
 
+  if (status === 'granted') {
+    return {
+      title: 'Finish owner alert setup',
+      body:
+        'Notifications are allowed on this phone, but Clientific needs to retry registering the device for live booking alerts.',
+      actionLabel: 'Retry setup',
+    };
+  }
+
   return {
     title: 'Enable owner alerts',
     body:
@@ -66,7 +75,8 @@ export function MobileHomeScreen({
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
   const isReferralOnly = summary.business.businessType === 'Referral Partner';
-  const shouldShowNotificationsPrompt = notificationsPermissionStatus !== 'granted';
+  const shouldShowNotificationsPrompt =
+    notificationsPermissionStatus !== 'granted' || Boolean(notificationsError);
   const notificationSetupCopy = getNotificationSetupCopy(notificationsPermissionStatus);
 
   return (

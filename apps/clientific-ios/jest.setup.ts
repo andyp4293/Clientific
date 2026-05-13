@@ -55,6 +55,8 @@ jest.mock('expo-notifications', () => ({
   getPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
   requestPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
   getExpoPushTokenAsync: jest.fn(async () => ({ data: 'ExponentPushToken[test-token]' })),
+  getBadgeCountAsync: jest.fn(async () => 0),
+  setBadgeCountAsync: jest.fn(async () => true),
   addNotificationResponseReceivedListener: jest.fn(() => ({
     remove: jest.fn(),
   })),

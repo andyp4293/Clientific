@@ -4,6 +4,7 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     notification: {
       create: vi.fn(),
+      count: vi.fn(),
     },
     mobilePushDevice: {
       findMany: vi.fn(),
@@ -24,6 +25,7 @@ import {
 } from '@/lib/mobile-push';
 
 const mockNotificationCreate = prisma.notification.create as ReturnType<typeof vi.fn>;
+const mockNotificationCount = prisma.notification.count as ReturnType<typeof vi.fn>;
 const mockFindMany = prisma.mobilePushDevice.findMany as ReturnType<typeof vi.fn>;
 const mockUpdateMany = prisma.mobilePushDevice.updateMany as ReturnType<typeof vi.fn>;
 const mockUpsert = prisma.mobilePushDevice.upsert as ReturnType<typeof vi.fn>;
@@ -33,6 +35,7 @@ describe('mobile push notifications', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockNotificationCreate.mockResolvedValue({ id: 'notif-1' });
+    mockNotificationCount.mockResolvedValue(1);
     mockFindMany.mockResolvedValue([]);
     mockUpdateMany.mockResolvedValue({ count: 0 });
     mockUpsert.mockResolvedValue({});
@@ -116,6 +119,7 @@ describe('mobile push notifications', () => {
     );
 
     const result = await sendBusinessPushNotification({
+      badgeCount: 4,
       businessId: 'biz-1',
       title: 'New Booking Request',
       body: 'Jordan booked a manicure for Apr 4 at 2:00 PM',
@@ -125,6 +129,19 @@ describe('mobile push notifications', () => {
     });
 
     expect(result).toEqual({ delivered: 1, disabled: 1 });
+    const pushPayload = JSON.parse(String(vi.mocked(fetch).mock.calls[0][1]?.body));
+    expect(pushPayload).toEqual([
+      expect.objectContaining({
+        to: 'ExponentPushToken[live-token]',
+        badge: 4,
+        sound: 'default',
+      }),
+      expect.objectContaining({
+        to: 'ExponentPushToken[dead-token]',
+        badge: 4,
+        sound: 'default',
+      }),
+    ]);
     expect(fetch).toHaveBeenCalledWith(
       'https://exp.host/--/api/v2/push/send',
       expect.objectContaining({
@@ -145,6 +162,7 @@ describe('mobile push notifications', () => {
 
   it('stores the notification and sends push for appointment request types', async () => {
     mockFindMany.mockResolvedValue([{ token: 'ExponentPushToken[live-token]' }]);
+    mockNotificationCount.mockResolvedValue(7);
 
     await createBusinessNotification({
       businessId: 'biz-1',
@@ -164,6 +182,15 @@ describe('mobile push notifications', () => {
       },
     });
     expect(fetch).toHaveBeenCalled();
+    const pushPayload = JSON.parse(String(vi.mocked(fetch).mock.calls[0][1]?.body));
+    expect(pushPayload[0]).toMatchObject({
+      badge: 7,
+      data: {
+        link: '/dashboard/appointments',
+        type: 'new_appointment',
+        notificationId: 'notif-1',
+      },
+    });
   });
 
   it('also sends push notifications for appointment cancellations', async () => {

@@ -55,6 +55,14 @@ function shouldSendPushForNotificationType(type: string) {
   );
 }
 
+function normalizePushBadgeCount(badgeCount: number | undefined) {
+  if (typeof badgeCount !== 'number' || !Number.isFinite(badgeCount)) {
+    return undefined;
+  }
+
+  return Math.max(0, Math.floor(badgeCount));
+}
+
 export async function registerMobilePushDevice(input: RegisterMobilePushDeviceInput) {
   const mobilePushDevice = getMobilePushDeviceModel();
   if (!mobilePushDevice?.upsert) {
@@ -104,6 +112,7 @@ export async function unregisterMobilePushDevice(input: {
 }
 
 export async function sendBusinessPushNotification(input: {
+  badgeCount?: number;
   businessId: string;
   body: string;
   data?: Record<string, unknown>;
@@ -136,6 +145,8 @@ export async function sendBusinessPushNotification(input: {
     return { delivered: 0, disabled: 0 };
   }
 
+  const badge = normalizePushBadgeCount(input.badgeCount);
+
   const response = await fetch(EXPO_PUSH_ENDPOINT, {
     method: 'POST',
     headers: {
@@ -149,6 +160,7 @@ export async function sendBusinessPushNotification(input: {
         title: input.title,
         body: input.body,
         sound: 'default',
+        ...(badge === undefined ? {} : { badge }),
         data: input.data ?? {},
       })),
     ),
@@ -191,6 +203,20 @@ export async function sendBusinessPushNotification(input: {
   };
 }
 
+async function getUnreadNotificationCount(businessId: string) {
+  try {
+    return await prisma.notification.count({
+      where: {
+        businessId,
+        read: false,
+      },
+    });
+  } catch (error) {
+    console.warn('Unable to count unread notifications for mobile push badge:', error);
+    return undefined;
+  }
+}
+
 export async function createBusinessNotification(input: CreateBusinessNotificationInput) {
   const notification = await prisma.notification.create({
     data: {
@@ -204,7 +230,10 @@ export async function createBusinessNotification(input: CreateBusinessNotificati
 
   if (input.sendPush !== false && shouldSendPushForNotificationType(input.type)) {
     try {
+      const unreadCount = await getUnreadNotificationCount(input.businessId);
+
       await sendBusinessPushNotification({
+        badgeCount: unreadCount,
         businessId: input.businessId,
         title: input.title,
         body: input.message,

@@ -114,6 +114,7 @@ import {
   addPushNotificationResponseListener,
   getMobilePushPermissionStatus,
   registerForPushNotificationsAsync,
+  syncMobileAppBadgeCount,
 } from '@/lib/mobile-push-notifications';
 import {
   buildMobileRevenueCatAppUserId,
@@ -438,6 +439,7 @@ export function ClientificNativeApp() {
       });
     }
 
+    void syncMobileAppBadgeCount(0);
     await clearRevenueCatUser();
     await SecureStore.deleteItemAsync(MOBILE_SESSION_TOKEN_KEY);
     setSession(null);
@@ -862,6 +864,7 @@ export function ClientificNativeApp() {
       try {
         const nextNotifications = await fetchMobileNotifications(token);
         setNotifications(nextNotifications);
+        void syncMobileAppBadgeCount(nextNotifications.unreadCount);
         setNotificationsError(null);
       } catch (error) {
         await handleSessionError(
@@ -1581,6 +1584,14 @@ export function ClientificNativeApp() {
   }, [refreshPushPermissionStatus]);
 
   useEffect(() => {
+    if (!session?.token || notifications || isLoadingNotifications) {
+      return;
+    }
+
+    void loadNotifications(session.token);
+  }, [isLoadingNotifications, loadNotifications, notifications, session?.token]);
+
+  useEffect(() => {
     let isMounted = true;
 
     void Linking.getInitialURL().then((url) => {
@@ -1708,9 +1719,15 @@ export function ClientificNativeApp() {
         if (isActive) {
           setRegisteredPushToken(registration.token);
           setPushPermissionStatus('granted');
+          setNotificationsError(null);
         }
       } catch (error) {
         console.warn('Mobile push registration failed:', error);
+        if (isActive) {
+          setNotificationsError(
+            getReadableError(error, 'Unable to register this phone for appointment alerts.'),
+          );
+        }
       }
     }
 
@@ -2114,6 +2131,7 @@ export function ClientificNativeApp() {
     setIsMarkingNotificationsRead(true);
     try {
       await markMobileNotificationsRead(session.token);
+      void syncMobileAppBadgeCount(0);
       await loadNotifications(session.token, true);
     } catch (error) {
       await handleSessionError(
@@ -2179,6 +2197,7 @@ export function ClientificNativeApp() {
       await routeNotificationLink(notification.link);
       if (!notification.read && session?.token) {
         await markMobileNotificationsRead(session.token);
+        void syncMobileAppBadgeCount(0);
         await loadNotifications(session.token, true);
       }
     },

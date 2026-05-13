@@ -177,6 +177,7 @@ jest.mock('@/lib/mobile-push-notifications', () => ({
   addPushNotificationResponseListener: jest.fn(() => ({ remove: jest.fn() })),
   getMobilePushPermissionStatus: jest.fn(async () => 'granted'),
   registerForPushNotificationsAsync: jest.fn(async () => null),
+  syncMobileAppBadgeCount: jest.fn(async () => true),
 }));
 
 jest.mock('@/lib/mobile-subscriptions', () => ({
@@ -306,10 +307,12 @@ jest.mock('@/components/mobile-app-shell', () => {
       billingNotice,
       billingPurchaseError,
       home,
+      notifications,
       onChangeMoreSection,
       onChangeTab,
       notificationsError,
       onEnablePushNotifications,
+      onMarkNotificationsRead,
       onOpenCustomers,
       onRefreshBilling,
     }: any) => (
@@ -319,6 +322,7 @@ jest.mock('@/components/mobile-app-shell', () => {
         <Text testID="mock-shell-requires-purchase">
           {String(home.subscription.requiresPurchase)}
         </Text>
+        <Text testID="mock-shell-unread-count">{notifications?.unreadCount ?? 0}</Text>
         {billingNotice ? <Text testID="mock-shell-billing-notice">{billingNotice}</Text> : null}
         {billingPurchaseError ? (
           <Text testID="mock-shell-billing-error">{billingPurchaseError}</Text>
@@ -333,6 +337,11 @@ jest.mock('@/components/mobile-app-shell', () => {
           testID="mock-shell-enable-push"
           onPress={onEnablePushNotifications}>
           <Text>enable push</Text>
+        </Pressable>
+        <Pressable
+          testID="mock-shell-mark-notifications-read"
+          onPress={onMarkNotificationsRead}>
+          <Text>mark read</Text>
         </Pressable>
         <Pressable
           testID="mock-shell-open-billing"
@@ -359,6 +368,13 @@ const { __mockClientificApi: mockClientificApi } = jest.requireMock('@/lib/clien
 const mockMobileSubscriptions = jest.requireMock('@/lib/mobile-subscriptions') as {
   getSafeAppStoreBillingErrorMessage: jest.Mock;
   getCurrentRevenueCatOffering: jest.Mock;
+};
+
+const mockMobilePushNotifications = jest.requireMock('@/lib/mobile-push-notifications') as {
+  addPushNotificationResponseListener: jest.Mock;
+  getMobilePushPermissionStatus: jest.Mock;
+  registerForPushNotificationsAsync: jest.Mock;
+  syncMobileAppBadgeCount: jest.Mock;
 };
 
 const mockExpoLinking = ExpoLinking as typeof ExpoLinking & {
@@ -456,6 +472,10 @@ beforeEach(() => {
   mockExpoLinking.__reset();
   (Device as typeof Device & { __setIsDevice: (value: boolean) => void }).__setIsDevice(true);
   Object.values(mockClientificApi).forEach((mockFn) => mockFn.mockReset());
+  Object.values(mockMobilePushNotifications).forEach((mockFn) => mockFn.mockReset());
+  mockMobilePushNotifications.addPushNotificationResponseListener.mockReturnValue({
+    remove: jest.fn(),
+  });
   mockClientificApi.fetchMobileHomeSummary.mockResolvedValue(activeHome);
   mockClientificApi.loginWithClientific.mockResolvedValue({
     token: 'mobile-token',
@@ -469,6 +489,9 @@ beforeEach(() => {
     verificationEmailSent: true,
   });
   mockClientificApi.confirmVerificationCode.mockResolvedValue({ success: true });
+  mockMobilePushNotifications.getMobilePushPermissionStatus.mockResolvedValue('granted');
+  mockMobilePushNotifications.registerForPushNotificationsAsync.mockResolvedValue(null);
+  mockMobilePushNotifications.syncMobileAppBadgeCount.mockResolvedValue(true);
 });
 
 describe('ClientificNativeApp', () => {
@@ -616,6 +639,69 @@ describe('ClientificNativeApp', () => {
     await waitFor(() => {
       expect(screen.getByTestId('mock-shell-tab').props.children).toBe('more');
       expect(screen.getByTestId('mock-shell-more-section').props.children).toBe('billing');
+    });
+  });
+
+  it('loads mobile notifications on session restore and syncs the iOS app badge count', async () => {
+    secureStoreMock.__setItem('clientific.mobile.session.token', 'existing-token');
+
+    render(<ClientificNativeApp />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-shell-tab').props.children).toBe('dashboard');
+    });
+
+    await waitFor(() => {
+      expect(mockClientificApi.fetchMobileNotifications).toHaveBeenCalledWith('existing-token');
+      expect(mockMobilePushNotifications.syncMobileAppBadgeCount).toHaveBeenCalledWith(1);
+    });
+
+    expect(screen.getByTestId('mock-shell-unread-count').props.children).toBe(1);
+  });
+
+  it('registers a physical iPhone push token when the owner enables notifications', async () => {
+    secureStoreMock.__setItem('clientific.mobile.session.token', 'existing-token');
+    mockMobilePushNotifications.registerForPushNotificationsAsync.mockResolvedValue({
+      token: 'ExponentPushToken[live-owner-phone]',
+      platform: 'ios',
+      appIdentifier: 'app.clientific.mobile',
+      deviceName: 'iPhone 17 Pro',
+    });
+
+    render(<ClientificNativeApp />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-shell-tab').props.children).toBe('dashboard');
+    });
+
+    fireEvent.press(screen.getByTestId('mock-shell-enable-push'));
+
+    await waitFor(() => {
+      expect(mockClientificApi.registerMobilePushToken).toHaveBeenCalledWith('existing-token', {
+        token: 'ExponentPushToken[live-owner-phone]',
+        platform: 'ios',
+        appIdentifier: 'app.clientific.mobile',
+        deviceName: 'iPhone 17 Pro',
+      });
+    });
+
+    expect(screen.queryByTestId('mock-shell-notifications-error')).toBeNull();
+  });
+
+  it('clears the iOS app badge when the owner marks notifications read', async () => {
+    secureStoreMock.__setItem('clientific.mobile.session.token', 'existing-token');
+
+    render(<ClientificNativeApp />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-shell-unread-count').props.children).toBe(1);
+    });
+
+    fireEvent.press(screen.getByTestId('mock-shell-mark-notifications-read'));
+
+    await waitFor(() => {
+      expect(mockClientificApi.markMobileNotificationsRead).toHaveBeenCalledWith('existing-token');
+      expect(mockMobilePushNotifications.syncMobileAppBadgeCount).toHaveBeenCalledWith(0);
     });
   });
 
