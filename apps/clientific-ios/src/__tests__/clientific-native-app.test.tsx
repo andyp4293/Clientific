@@ -705,7 +705,7 @@ describe('ClientificNativeApp', () => {
     });
   });
 
-  it('explains that simulator builds cannot finish push setup', async () => {
+  it('lets simulator builds request notification permission while explaining live push needs a device', async () => {
     secureStoreMock.__setItem('clientific.mobile.session.token', 'existing-token');
     (Device as typeof Device & { __setIsDevice: (value: boolean) => void }).__setIsDevice(false);
 
@@ -718,8 +718,9 @@ describe('ClientificNativeApp', () => {
     fireEvent.press(screen.getByTestId('mock-shell-enable-push'));
 
     await waitFor(() => {
+      expect(mockMobilePushNotifications.registerForPushNotificationsAsync).toHaveBeenCalled();
       expect(screen.getByTestId('mock-shell-notifications-error').props.children).toBe(
-        'Push notifications need a physical iPhone or iPad. The iOS simulator can open the setup flow, but it cannot receive permission prompts or live push alerts.',
+        'Simulator notification permission is ready for local QA. Live push-token registration still requires a physical iPhone or iPad.',
       );
     });
   });

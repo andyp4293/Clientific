@@ -2158,17 +2158,14 @@ export function ClientificNativeApp() {
         return;
       }
 
-      if (!Device.isDevice) {
-        setNotificationsError(
-          'Push notifications need a physical iPhone or iPad. The iOS simulator can open the setup flow, but it cannot receive permission prompts or live push alerts.',
-        );
-        await refreshPushPermissionStatus();
-        return;
-      }
-
       const registration = await registerForPushNotificationsAsync();
       if (!registration) {
         await refreshPushPermissionStatus();
+        if (!Device.isDevice) {
+          setNotificationsError(
+            'Simulator notification permission is ready for local QA. Live push-token registration still requires a physical iPhone or iPad.',
+          );
+        }
         return;
       }
 

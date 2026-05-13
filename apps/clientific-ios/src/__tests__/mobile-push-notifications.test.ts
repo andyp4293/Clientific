@@ -75,12 +75,24 @@ describe('mobile push notifications', () => {
     });
   });
 
-  it('skips registration on simulators', async () => {
+  it('requests notification permission on simulators but skips Expo push token registration', async () => {
     (Device as typeof Device & { __setIsDevice: (value: boolean) => void }).__setIsDevice(false);
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue({
+      granted: false,
+      status: 'undetermined',
+    } as never);
 
     const registration = await registerForPushNotificationsAsync();
 
     expect(registration).toBeNull();
+    expect(Notifications.requestPermissionsAsync).toHaveBeenCalledWith({
+      ios: {
+        allowAlert: true,
+        allowBadge: true,
+        allowSound: true,
+        provideAppNotificationSettings: true,
+      },
+    });
     expect(Notifications.getExpoPushTokenAsync).not.toHaveBeenCalled();
   });
 

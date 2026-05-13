@@ -688,14 +688,14 @@ describe('MobileAppShell', () => {
         {...createShellProps({
           notificationsPermissionStatus: 'undetermined',
           notificationsError:
-            'Push notifications need a physical iPhone or iPad. The iOS simulator can open the setup flow, but it cannot receive permission prompts or live push alerts.',
+            'Simulator notification permission is ready for local QA. Live push-token registration still requires a physical iPhone or iPad.',
         })}
       />,
     );
 
     expect(screen.getByTestId('mobile-home-notifications-card')).toBeTruthy();
     expect(screen.getByTestId('mobile-home-notifications-error').props.children).toBe(
-      'Push notifications need a physical iPhone or iPad. The iOS simulator can open the setup flow, but it cannot receive permission prompts or live push alerts.',
+      'Simulator notification permission is ready for local QA. Live push-token registration still requires a physical iPhone or iPad.',
     );
   });
 

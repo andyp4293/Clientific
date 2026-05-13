@@ -49,10 +49,6 @@ function hasGrantedPushPermissions(
 }
 
 export async function registerForPushNotificationsAsync(): Promise<MobilePushRegistration> {
-  if (!Device.isDevice) {
-    return null;
-  }
-
   const permissions = await Notifications.getPermissionsAsync();
   let isGranted = hasGrantedPushPermissions(permissions);
 
@@ -64,6 +60,10 @@ export async function registerForPushNotificationsAsync(): Promise<MobilePushReg
   }
 
   if (!isGranted) {
+    return null;
+  }
+
+  if (!Device.isDevice) {
     return null;
   }
 
