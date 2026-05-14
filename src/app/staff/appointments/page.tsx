@@ -137,7 +137,43 @@ export default async function StaffAppointmentsPage({
     orderBy: { startTime: 'asc' },
   });
 
-  const serviceIds = collectAppointmentServiceIds(appointments);
+  const upcomingStart = new Date();
+  const upcomingEnd = new Date(upcomingStart.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const upcomingAppointments = await prisma.appointment.findMany({
+    where: {
+      businessId: staff.business.id,
+      staffId: staff.id,
+      startTime: {
+        gte: upcomingStart,
+        lt: upcomingEnd,
+      },
+      status: { in: ['pending', 'scheduled', 'confirmed'] },
+    },
+    include: {
+      customer: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      service: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      staff: {
+        select: {
+          id: true,
+          fullName: true,
+        },
+      },
+    },
+    orderBy: { startTime: 'asc' },
+    take: 12,
+  });
+
+  const serviceIds = collectAppointmentServiceIds([...appointments, ...upcomingAppointments]);
   const services = serviceIds.length
     ? await prisma.service.findMany({
         where: { id: { in: serviceIds }, businessId: staff.business.id },
@@ -145,6 +181,10 @@ export default async function StaffAppointmentsPage({
       })
     : [];
   const appointmentsWithServices = withAppointmentServiceDisplay(appointments, services);
+  const upcomingAppointmentsWithServices = withAppointmentServiceDisplay(
+    upcomingAppointments,
+    services,
+  );
   const previousDate = new Date(startOfDay);
   previousDate.setDate(previousDate.getDate() - 1);
   const nextDate = new Date(startOfDay);
@@ -280,6 +320,64 @@ export default async function StaffAppointmentsPage({
               </div>
             )}
           </div>
+        </section>
+
+        <section className="rounded-[2rem] border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-950 sm:p-6">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.28em] text-primary">
+                Upcoming
+              </p>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-gray-950 dark:text-white">
+                Next assigned appointments
+              </h2>
+            </div>
+            <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-bold text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+              {upcomingAppointmentsWithServices.length} in 14 days
+            </span>
+          </div>
+
+          {upcomingAppointmentsWithServices.length ? (
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              {upcomingAppointmentsWithServices.map((appointment) => (
+                <article
+                  key={appointment.id}
+                  className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/70"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+                        {appointment.startTime.toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                          timeZone: timezone,
+                        })}
+                      </p>
+                      <p className="mt-1 text-lg font-black text-gray-950 dark:text-white">
+                        {formatTimeLabel(appointment.startTime, timezone)}
+                      </p>
+                    </div>
+                    <span
+                      className={`rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.18em] ${statusClasses(appointment.status)}`}
+                    >
+                      {formatStatus(appointment.status)}
+                    </span>
+                  </div>
+                  <h3 className="mt-3 text-xl font-black tracking-tight text-gray-950 dark:text-white">
+                    {appointment.customer.name}
+                  </h3>
+                  <p className="mt-1 text-sm font-semibold text-gray-600 dark:text-gray-300">
+                    {appointment.serviceDisplayName || appointment.service?.name || 'Service'}
+                  </p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-5 rounded-3xl border border-dashed border-gray-300 bg-gray-50 px-5 py-8 text-center text-sm font-semibold text-gray-600 dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-400">
+              No upcoming assigned appointments in the next 14 days.
+            </p>
+          )}
         </section>
       </div>
     </main>

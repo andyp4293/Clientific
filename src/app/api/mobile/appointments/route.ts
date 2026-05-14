@@ -15,6 +15,8 @@ import {
 } from '@/lib/appointment-services';
 import { scheduleAppointmentReminder } from '@/lib/appointment-reminders';
 import { ensureAppointmentShortId } from '@/lib/appointment-short-id';
+import { buildAppointmentScheduledNotificationMessage } from '@/lib/appointment-notification-copy';
+import { createBusinessNotification } from '@/lib/mobile-push';
 
 function formatLocalDate(date: Date, timezone: string) {
   return new Intl.DateTimeFormat('en-CA', {
@@ -508,6 +510,21 @@ export async function POST(request: Request) {
         }
       }
     }
+
+    await createBusinessNotification({
+      businessId: business.id,
+      staffId: appointment.staff?.id ?? null,
+      type: 'new_appointment',
+      title: 'New Appointment',
+      message: buildAppointmentScheduledNotificationMessage({
+        customerName: appointment.customer.name,
+        serviceName: appointment.service?.name ?? 'Appointment',
+        staffName: appointment.staff?.fullName ?? null,
+        startTime: appointment.startTime,
+        timezone: business.timezone,
+      }),
+      link: '/dashboard/appointments',
+    });
 
     return NextResponse.json(
       {

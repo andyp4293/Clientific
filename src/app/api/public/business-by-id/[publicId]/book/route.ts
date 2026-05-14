@@ -355,6 +355,7 @@ export async function POST(
     // Create in-app notification for business
     await createBusinessNotification({
       businessId: business.id,
+      staffId: appointment.staff?.id ?? null,
       type: 'new_appointment',
       title: 'New Booking Request',
       message: buildAppointmentBookedNotificationMessage({

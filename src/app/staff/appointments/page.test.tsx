@@ -13,5 +13,7 @@ describe('staff appointments page', () => {
     expect(source).not.toContain('phone: true');
     expect(source).toContain('Customer phone numbers and CRM details stay private');
     expect(source).toContain('Phone numbers hidden');
+    expect(source).toContain('Next assigned appointments');
+    expect(source).toContain('upcomingAppointments');
   });
 });

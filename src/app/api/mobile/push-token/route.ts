@@ -4,9 +4,34 @@ import {
   registerMobilePushDevice,
   unregisterMobilePushDevice,
 } from '@/lib/mobile-push';
+import { prisma } from '@/lib/prisma';
 
 function parsePlatform(value: unknown) {
   return typeof value === 'string' && value.trim() ? value.trim() : 'ios';
+}
+
+async function getAuthorizedStaffId(
+  session: Awaited<ReturnType<typeof verifyMobileSessionToken>>,
+) {
+  if (session.accountType !== 'staff') {
+    return null;
+  }
+
+  if (!session.staffId) {
+    return false;
+  }
+
+  const staff = await prisma.staff.findFirst({
+    where: {
+      id: session.staffId,
+      businessId: session.businessId,
+      active: true,
+      portalAccessEnabled: true,
+    },
+    select: { id: true },
+  });
+
+  return staff?.id ?? false;
 }
 
 export async function POST(request: Request) {
@@ -21,11 +46,10 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  if (session.accountType === 'staff') {
-    return NextResponse.json(
-      { error: 'Employee accounts can only access assigned appointments.' },
-      { status: 403 },
-    );
+
+  const staffId = await getAuthorizedStaffId(session);
+  if (staffId === false) {
+    return NextResponse.json({ error: 'Employee app access is disabled.' }, { status: 403 });
   }
 
   let body: {
@@ -48,6 +72,7 @@ export async function POST(request: Request) {
   try {
     await registerMobilePushDevice({
       businessId: session.businessId,
+      staffId,
       token: body.token,
       platform: parsePlatform(body.platform),
       appIdentifier:
@@ -74,11 +99,10 @@ export async function DELETE(request: Request) {
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  if (session.accountType === 'staff') {
-    return NextResponse.json(
-      { error: 'Employee accounts can only access assigned appointments.' },
-      { status: 403 },
-    );
+
+  const staffId = await getAuthorizedStaffId(session);
+  if (staffId === false) {
+    return NextResponse.json({ error: 'Employee app access is disabled.' }, { status: 403 });
   }
 
   const url = new URL(request.url);
@@ -90,6 +114,7 @@ export async function DELETE(request: Request) {
   try {
     await unregisterMobilePushDevice({
       businessId: session.businessId,
+      staffId,
       token: pushToken,
     });
 

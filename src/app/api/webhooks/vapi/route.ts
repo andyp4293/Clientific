@@ -1633,6 +1633,7 @@ async function handleCreateBooking(
   // Create in-app notification for business
   await createBusinessNotification({
     businessId: business.id,
+    staffId,
     type: 'new_appointment',
     title: 'New Booking via AI Receptionist',
     message: `${customerName} booked ${serviceSelection.spokenLabel}${withWhom} for ${formattedTime}`,
@@ -1891,6 +1892,7 @@ async function handleUpdateAppointment(business: BusinessData, args: any, caller
 
     await createBusinessNotification({
       businessId: business.id,
+      staffId: appointments.length === 1 ? appointments[0].staffId ?? null : null,
       type: 'appointment_rescheduled',
       title: 'Appointments Rescheduled via AI Receptionist',
       message: `${appointments[0].customer.name} moved ${appointments.length} appointment${appointments.length === 1 ? '' : 's'} to start ${targetTime}.`,
@@ -1975,14 +1977,13 @@ async function handleCancelAppointment(business: BusinessData, args: any, caller
   const time = formatSpokenDateTime(new Date(appointment.startTime), business.timezone);
 
   // Create in-app notification for business
-  await prisma.notification.create({
-    data: {
-      businessId: business.id,
-      type: 'appointment_cancelled',
-      title: 'Appointment Cancelled via AI Receptionist',
-      message: `${appointment.service?.name ?? 'Appointment'} on ${time} was cancelled by caller`,
-      link: `/dashboard/appointments`,
-    },
+  await createBusinessNotification({
+    businessId: business.id,
+    staffId: appointment.staffId,
+    type: 'appointment_cancelled',
+    title: 'Appointment Cancelled via AI Receptionist',
+    message: `${appointment.service?.name ?? 'Appointment'} on ${time} was cancelled by caller`,
+    link: `/dashboard/appointments`,
   });
 
   return `Done — your ${appointment.service?.name ?? 'appointment'} on ${time} has been cancelled.`;

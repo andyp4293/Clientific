@@ -418,6 +418,8 @@ export function MobileAppShell({
               isComposerLoading={isAppointmentComposerLoading}
               isLoading={isAppointmentsLoading}
               isRefreshing={isAppointmentsRefreshing}
+              notificationsError={notificationsError}
+              notificationsPermissionStatus={notificationsPermissionStatus}
               servicesSummary={null}
               staffViewerName={staffViewer?.staffName}
               onCreateAppointment={onCreateAppointment}
@@ -426,6 +428,7 @@ export function MobileAppShell({
               onJumpToToday={onJumpAppointmentsToToday}
               onLoadComposerResources={async () => undefined}
               onNextDate={onNextAppointmentsDate}
+              onEnablePushNotifications={onEnablePushNotifications}
               onPreviousDate={onPreviousAppointmentsDate}
               onSelectDate={onSelectAppointmentsDate}
               onRefresh={onRefreshAppointments}

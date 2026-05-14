@@ -367,6 +367,7 @@ export async function POST(req: NextRequest) {
     // Create notification
     await createBusinessNotification({
       businessId: business.id,
+      staffId: appointment.staff?.id ?? null,
       type: 'new_appointment',
       title: 'New Appointment',
       message: buildAppointmentScheduledNotificationMessage({

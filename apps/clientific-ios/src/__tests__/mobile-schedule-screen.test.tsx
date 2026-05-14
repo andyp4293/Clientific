@@ -218,6 +218,33 @@ describe('MobileScheduleScreen', () => {
     expect(screen.getByText(/Phone numbers and customer records are hidden/i)).toBeTruthy();
   });
 
+  it('prompts staff users to enable appointment push alerts from their schedule', () => {
+    const onEnablePushNotifications = jest.fn().mockResolvedValue(undefined);
+
+    renderScreen({
+      accessMode: 'staff',
+      staffViewerName: 'Taylor',
+      notificationsPermissionStatus: 'undetermined',
+      onEnablePushNotifications,
+      data: {
+        ...buildSchedule('2099-03-31', 'Thursday, March 31'),
+        viewer: {
+          role: 'staff',
+          staffId: 'staff-1',
+          staffName: 'Taylor',
+          privacy: 'customer_phone_hidden',
+        },
+      },
+    });
+
+    expect(screen.getByTestId('mobile-staff-notifications-card')).toBeTruthy();
+    expect(screen.getByText(/Appointment alerts need setup/i)).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('mobile-staff-enable-notifications'));
+
+    expect(onEnablePushNotifications).toHaveBeenCalledTimes(1);
+  });
+
   it('still lets the user jump back to today', () => {
     const onJumpToToday = jest.fn();
 

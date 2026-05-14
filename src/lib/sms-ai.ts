@@ -540,6 +540,7 @@ async function createBookingFromSession(
 
   await createBusinessNotification({
     businessId: business.id,
+    staffId: session.staffId || null,
     type: 'new_appointment',
     title: 'New Booking via SMS AI',
     message: buildAppointmentBookedNotificationMessage({
@@ -621,17 +622,16 @@ async function cancelAppointmentByChoice(
     data: { status: 'cancelled' },
   });
 
-  await prisma.notification.create({
-    data: {
-      businessId: business.id,
-      type: 'appointment_cancelled',
-      title: 'Appointment Cancelled via SMS AI',
-      message: `${appointment.service?.name ?? 'Appointment'} on ${formatDateTimeForBusiness(
-        new Date(appointment.startTime),
-        business.timezone
-      )} was cancelled by customer`,
-      link: '/dashboard/appointments',
-    },
+  await createBusinessNotification({
+    businessId: business.id,
+    staffId: appointment.staffId,
+    type: 'appointment_cancelled',
+    title: 'Appointment Cancelled via SMS AI',
+    message: `${appointment.service?.name ?? 'Appointment'} on ${formatDateTimeForBusiness(
+      new Date(appointment.startTime),
+      business.timezone
+    )} was cancelled by customer`,
+    link: '/dashboard/appointments',
   });
 
   return {

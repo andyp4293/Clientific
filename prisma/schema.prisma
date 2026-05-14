@@ -307,24 +307,25 @@ model ServiceGroup {
 }
 
 model Staff {
-  id                  String         @id @default(cuid())
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  id                  String             @id @default(cuid())
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
   businessId          String
   fullName            String
   email               String?
   phone               String?
-  role                String         @default("staff")
+  role                String             @default("staff")
   bio                 String?
-  active              Boolean        @default(true)
-  portalAccessEnabled Boolean        @default(false)
+  active              Boolean            @default(true)
+  portalAccessEnabled Boolean            @default(false)
   portalPasswordHash  String?
   portalPasswordSetAt DateTime?
-  workDays            Int[]          @default([0, 1, 2, 3, 4, 5, 6])
+  workDays            Int[]              @default([0, 1, 2, 3, 4, 5, 6])
   workHours           Json?
   appointments        Appointment[]
   checkIns            CheckIn[]
-  business            Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  mobilePushDevices   MobilePushDevice[]
+  business            Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
   serviceAssignments  StaffService[]
 
   @@index([email])
@@ -439,6 +440,7 @@ model MobilePushDevice {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   businessId    String
+  staffId       String?
   token         String    @unique
   platform      String
   appIdentifier String?
@@ -446,8 +448,10 @@ model MobilePushDevice {
   lastSeenAt    DateTime  @default(now())
   disabledAt    DateTime?
   business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  staff         Staff?    @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   @@index([businessId, disabledAt, updatedAt])
+  @@index([businessId, staffId, disabledAt, updatedAt])
 }
 
 model Payment {

@@ -71,11 +71,36 @@ describe('mobile push notifications', () => {
         where: { token: 'ExponentPushToken[token-1]' },
         create: expect.objectContaining({
           businessId: 'biz-1',
+          staffId: null,
           token: 'ExponentPushToken[token-1]',
         }),
         update: expect.objectContaining({
           businessId: 'biz-1',
+          staffId: null,
           disabledAt: null,
+        }),
+      }),
+    );
+  });
+
+  it('registers a mobile push device for a specific employee', async () => {
+    await registerMobilePushDevice({
+      businessId: 'biz-1',
+      staffId: 'staff-1',
+      token: 'ExponentPushToken[staff-phone]',
+      platform: 'ios',
+    });
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { token: 'ExponentPushToken[staff-phone]' },
+        create: expect.objectContaining({
+          businessId: 'biz-1',
+          staffId: 'staff-1',
+        }),
+        update: expect.objectContaining({
+          businessId: 'biz-1',
+          staffId: 'staff-1',
         }),
       }),
     );
@@ -90,6 +115,7 @@ describe('mobile push notifications', () => {
     expect(mockDeleteMany).toHaveBeenCalledWith({
       where: {
         businessId: 'biz-1',
+        staffId: null,
         token: 'ExponentPushToken[token-1]',
       },
     });
@@ -148,6 +174,14 @@ describe('mobile push notifications', () => {
         method: 'POST',
       }),
     );
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          businessId: 'biz-1',
+          staffId: null,
+        }),
+      }),
+    );
     expect(mockUpdateMany).toHaveBeenCalledWith({
       where: {
         token: {
@@ -190,6 +224,58 @@ describe('mobile push notifications', () => {
         type: 'new_appointment',
         notificationId: 'notif-1',
       },
+    });
+  });
+
+  it('sends assigned appointment pushes to owner devices and that employee only', async () => {
+    mockFindMany
+      .mockResolvedValueOnce([{ token: 'ExponentPushToken[owner-phone]' }])
+      .mockResolvedValueOnce([{ token: 'ExponentPushToken[staff-phone]' }]);
+    mockNotificationCount.mockResolvedValue(3);
+
+    await createBusinessNotification({
+      businessId: 'biz-1',
+      staffId: 'staff-1',
+      type: 'new_appointment',
+      title: 'New Booking Request',
+      message: 'Mina booked Gel Manicure with Taylor for Thu, May 14, 2:00 PM.',
+      link: '/dashboard/appointments',
+    });
+
+    expect(mockFindMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          businessId: 'biz-1',
+          staffId: null,
+        }),
+      }),
+    );
+    expect(mockFindMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          businessId: 'biz-1',
+          staffId: 'staff-1',
+        }),
+      }),
+    );
+
+    const ownerPayload = JSON.parse(String(vi.mocked(fetch).mock.calls[0][1]?.body));
+    const staffPayload = JSON.parse(String(vi.mocked(fetch).mock.calls[1][1]?.body));
+    expect(ownerPayload[0]).toMatchObject({
+      to: 'ExponentPushToken[owner-phone]',
+      badge: 3,
+      body: 'Mina booked Gel Manicure with Taylor for Thu, May 14, 2:00 PM.',
+    });
+    expect(staffPayload[0]).toMatchObject({
+      to: 'ExponentPushToken[staff-phone]',
+      badge: 1,
+      body: 'Mina booked Gel Manicure with Taylor for Thu, May 14, 2:00 PM.',
+      data: expect.objectContaining({
+        staffId: 'staff-1',
+        link: '/dashboard/appointments',
+      }),
     });
   });
 

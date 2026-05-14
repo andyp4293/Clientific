@@ -27,6 +27,7 @@ export type RegisterMobilePushDeviceInput = {
   businessId: string;
   deviceName?: string | null;
   platform: string;
+  staffId?: string | null;
   token: string;
 };
 
@@ -37,6 +38,7 @@ export type CreateBusinessNotificationInput = {
   message: string;
   link?: string | null;
   sendPush?: boolean;
+  staffId?: string | null;
 };
 
 function getMobilePushDeviceModel() {
@@ -77,6 +79,7 @@ export async function registerMobilePushDevice(input: RegisterMobilePushDeviceIn
     where: { token: input.token },
     update: {
       businessId: input.businessId,
+      staffId: input.staffId ?? null,
       platform: input.platform,
       appIdentifier: input.appIdentifier ?? null,
       deviceName: input.deviceName ?? null,
@@ -85,6 +88,7 @@ export async function registerMobilePushDevice(input: RegisterMobilePushDeviceIn
     },
     create: {
       businessId: input.businessId,
+      staffId: input.staffId ?? null,
       token: input.token,
       platform: input.platform,
       appIdentifier: input.appIdentifier ?? null,
@@ -96,6 +100,7 @@ export async function registerMobilePushDevice(input: RegisterMobilePushDeviceIn
 
 export async function unregisterMobilePushDevice(input: {
   businessId: string;
+  staffId?: string | null;
   token: string;
 }) {
   const mobilePushDevice = getMobilePushDeviceModel();
@@ -106,6 +111,7 @@ export async function unregisterMobilePushDevice(input: {
   await mobilePushDevice.deleteMany({
     where: {
       businessId: input.businessId,
+      staffId: input.staffId ?? null,
       token: input.token,
     },
   });
@@ -116,6 +122,7 @@ export async function sendBusinessPushNotification(input: {
   businessId: string;
   body: string;
   data?: Record<string, unknown>;
+  staffId?: string | null;
   title: string;
 }) {
   const mobilePushDevice = getMobilePushDeviceModel();
@@ -126,6 +133,7 @@ export async function sendBusinessPushNotification(input: {
   const devices = await mobilePushDevice.findMany({
     where: {
       businessId: input.businessId,
+      staffId: input.staffId ?? null,
       disabledAt: null,
     },
     select: {
@@ -243,6 +251,22 @@ export async function createBusinessNotification(input: CreateBusinessNotificati
           notificationId: notification.id,
         },
       });
+
+      if (input.staffId) {
+        await sendBusinessPushNotification({
+          badgeCount: 1,
+          businessId: input.businessId,
+          staffId: input.staffId,
+          title: input.title,
+          body: input.message,
+          data: {
+            link: input.link ?? '/dashboard/appointments',
+            type: input.type,
+            notificationId: notification.id,
+            staffId: input.staffId,
+          },
+        });
+      }
     } catch (error) {
       console.warn('Failed to send mobile push notification:', error);
     }

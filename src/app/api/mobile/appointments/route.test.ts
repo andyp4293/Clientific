@@ -58,6 +58,10 @@ vi.mock('@/lib/appointment-short-id', () => ({
   ensureAppointmentShortId: vi.fn().mockResolvedValue('ABC1234'),
 }));
 
+vi.mock('@/lib/mobile-push', () => ({
+  createBusinessNotification: vi.fn().mockResolvedValue({ id: 'notif-1' }),
+}));
+
 import { getBearerToken, verifyMobileSessionToken } from '@/lib/mobile-session';
 import { prisma } from '@/lib/prisma';
 import { sendAppointmentConfirmation } from '@/lib/twilio';
@@ -67,6 +71,7 @@ import { getBlockedFieldLabel } from '@/lib/moderation';
 import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
 import { scheduleAppointmentReminder } from '@/lib/appointment-reminders';
 import { ensureAppointmentShortId } from '@/lib/appointment-short-id';
+import { createBusinessNotification } from '@/lib/mobile-push';
 import { GET, POST } from './route';
 
 const mockGetBearerToken = vi.mocked(getBearerToken);
@@ -88,6 +93,7 @@ const mockValidateBookableStaffSelection = vi.mocked(validateBookableStaffSelect
 const mockSendAppointmentConfirmation = vi.mocked(sendAppointmentConfirmation);
 const mockScheduleAppointmentReminder = vi.mocked(scheduleAppointmentReminder);
 const mockEnsureAppointmentShortId = vi.mocked(ensureAppointmentShortId);
+const mockCreateBusinessNotification = vi.mocked(createBusinessNotification);
 
 const business = {
   id: 'biz-1',
@@ -374,6 +380,16 @@ describe('mobile appointments route', () => {
       where: { id: 'appt-2' },
       data: { reminderSent: true },
     });
+    expect(mockCreateBusinessNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        businessId: 'biz-1',
+        staffId: 'staff-1',
+        type: 'new_appointment',
+        title: 'New Appointment',
+        message: 'Jordan Lee was scheduled for Haircut with Taylor at Mon, Mar 30, 11:00 AM.',
+        link: '/dashboard/appointments',
+      }),
+    );
   });
 
   it('blocks appointment SMS consent when the customer has no phone number', async () => {

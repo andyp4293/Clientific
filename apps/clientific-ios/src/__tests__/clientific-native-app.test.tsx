@@ -427,6 +427,25 @@ const lockedHome = {
   },
 };
 
+const staffHome = {
+  ...activeHome,
+  viewer: {
+    role: 'staff' as const,
+    staffId: 'staff-1',
+    staffName: 'Taylor',
+    privacy: 'customer_phone_hidden',
+  },
+  todayAppointments: [
+    {
+      id: 'appt-1',
+      customerName: 'Jordan Lee',
+      serviceName: 'Gel Manicure',
+      status: 'scheduled',
+      startTimeLabel: '2:30 PM',
+    },
+  ],
+};
+
 const appStoreBillingSummary = {
   business: activeHome.business,
   currentPlanName: 'Trial',
@@ -686,6 +705,35 @@ describe('ClientificNativeApp', () => {
     });
 
     expect(screen.queryByTestId('mock-shell-notifications-error')).toBeNull();
+  });
+
+  it('registers an employee phone for assigned-appointment push alerts without loading owner notifications', async () => {
+    secureStoreMock.__setItem('clientific.mobile.session.token', 'existing-token');
+    mockClientificApi.fetchMobileHomeSummary.mockResolvedValue(staffHome);
+    mockMobilePushNotifications.registerForPushNotificationsAsync.mockResolvedValue({
+      token: 'ExponentPushToken[live-staff-phone]',
+      platform: 'ios',
+      appIdentifier: 'app.clientific.mobile',
+      deviceName: 'Taylor iPhone',
+    });
+
+    render(<ClientificNativeApp />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-shell-tab').props.children).toBe('appointments');
+    });
+
+    await waitFor(() => {
+      expect(mockClientificApi.registerMobilePushToken).toHaveBeenCalledWith('existing-token', {
+        token: 'ExponentPushToken[live-staff-phone]',
+        platform: 'ios',
+        appIdentifier: 'app.clientific.mobile',
+        deviceName: 'Taylor iPhone',
+      });
+    });
+
+    expect(mockClientificApi.fetchMobileNotifications).not.toHaveBeenCalled();
+    expect(mockMobilePushNotifications.syncMobileAppBadgeCount).toHaveBeenCalledWith(0);
   });
 
   it('clears the iOS app badge when the owner marks notifications read', async () => {

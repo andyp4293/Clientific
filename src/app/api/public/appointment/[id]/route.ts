@@ -275,6 +275,7 @@ export async function PATCH(
 
     await createBusinessNotification({
       businessId: existing.businessId,
+      staffId: existing.staffId,
       type: 'appointment_rescheduled',
       title: 'Appointment Reschedule Request',
       message: buildAppointmentRescheduledNotificationMessage({

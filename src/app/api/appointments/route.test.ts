@@ -302,7 +302,7 @@ describe('POST /api/appointments', () => {
       duration: 60,
       customer: { id: 'cust-1', name: 'Khang Nguyen', phone: null, email: null, smsConsent: false },
       service: { name: 'Gel Manicure' },
-      staff: { fullName: 'Andy' },
+      staff: { id: 'staff-1', fullName: 'Andy' },
       business: { name: 'Test Salon' },
     };
     mockAppointmentCreate.mockResolvedValue(fakeAppt);
@@ -312,6 +312,7 @@ describe('POST /api/appointments', () => {
     expect(body.appointment.id).toBe('appt-1');
     expect(mockCreateBusinessNotification).toHaveBeenCalledWith(
       expect.objectContaining({
+        staffId: 'staff-1',
         message: 'Khang Nguyen was scheduled for Gel Manicure with Andy at Tue, Mar 10, 10:00 AM.',
       }),
     );

@@ -32,6 +32,7 @@ import {
   buildAppointmentStartOptions,
   formatScheduleTimeLabel,
 } from '@/lib/staff-schedule';
+import type { MobilePushPermissionStatus } from '@/lib/mobile-push-notifications';
 
 type MobileScheduleScreenProps = {
   accessMode?: 'owner' | 'staff';
@@ -42,6 +43,8 @@ type MobileScheduleScreenProps = {
   isComposerLoading: boolean;
   isLoading: boolean;
   isRefreshing: boolean;
+  notificationsError?: string | null;
+  notificationsPermissionStatus?: MobilePushPermissionStatus;
   servicesSummary: MobileServicesSummary | null;
   staffViewerName?: string | null;
   onCreateAppointment: (input: MobileAppointmentInput) => Promise<void>;
@@ -50,6 +53,7 @@ type MobileScheduleScreenProps = {
   onJumpToToday: () => void;
   onLoadComposerResources: () => Promise<void>;
   onNextDate: () => void;
+  onEnablePushNotifications?: () => Promise<void>;
   onSelectDate: (date: string) => void;
   onPreviousDate: () => void;
   onRefresh: () => Promise<void>;
@@ -678,6 +682,8 @@ export function MobileScheduleScreen({
   isComposerLoading,
   isLoading,
   isRefreshing,
+  notificationsError,
+  notificationsPermissionStatus = 'undetermined',
   servicesSummary,
   staffViewerName,
   onCreateAppointment,
@@ -686,6 +692,7 @@ export function MobileScheduleScreen({
   onJumpToToday,
   onLoadComposerResources,
   onNextDate,
+  onEnablePushNotifications,
   onSelectDate,
   onPreviousDate,
   onRefresh,
@@ -1293,6 +1300,49 @@ export function MobileScheduleScreen({
                 You can see customer names, services, times, and notes for your assigned
                 appointments. Phone numbers and customer records are hidden.
               </Text>
+            </View>
+          </View>
+        ) : null}
+
+        {isStaffMode ? (
+          <View
+            style={[
+              styles.privacyCard,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
+            testID="mobile-staff-notifications-card">
+            <Feather
+              name={notificationsPermissionStatus === 'granted' ? 'bell' : 'bell-off'}
+              size={18}
+              color={theme.accent}
+            />
+            <View style={styles.privacyCopy}>
+              <Text style={[styles.privacyTitle, { color: theme.text }]}>
+                Appointment alerts{' '}
+                {notificationsPermissionStatus === 'granted' ? 'are on' : 'need setup'}
+              </Text>
+              <Text style={[styles.privacyText, { color: theme.mutedText }]}>
+                {notificationsPermissionStatus === 'granted'
+                  ? 'This phone is ready to receive push alerts when a booking is assigned to you.'
+                  : 'Turn on notifications so assigned appointments can pop up on this phone.'}
+              </Text>
+              {notificationsError ? (
+                <Text style={[styles.privacyText, { color: theme.danger }]}>
+                  {notificationsError}
+                </Text>
+              ) : null}
+              {notificationsPermissionStatus !== 'granted' && onEnablePushNotifications ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => void onEnablePushNotifications()}
+                  style={[styles.notificationSetupButton, { borderColor: theme.accent }]}
+                  testID="mobile-staff-enable-notifications">
+                  <Feather name="check-circle" size={16} color={theme.accent} />
+                  <Text style={[styles.notificationSetupButtonText, { color: theme.accent }]}>
+                    Enable alerts
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
           </View>
         ) : null}
@@ -2353,6 +2403,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '600',
+  },
+  notificationSetupButton: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  notificationSetupButtonText: {
+    fontSize: 13,
+    lineHeight: 16,
+    fontWeight: '900',
   },
   primaryActionButton: {
     minWidth: 112,

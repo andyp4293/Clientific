@@ -546,6 +546,7 @@ export function ClientificNativeApp() {
           setActiveTab('appointments');
           setMoreSection('menu');
           setBillingNotice(null);
+          void syncMobileAppBadgeCount(0);
         }
         if (nextHome.business.onboardingComplete) {
           setBusinessProfile(null);
@@ -1562,6 +1563,7 @@ export function ClientificNativeApp() {
         if (nextHome.viewer?.role === 'staff') {
           setActiveTab('appointments');
           setMoreSection('menu');
+          void syncMobileAppBadgeCount(0);
         }
         setAuthMode('sign-in');
         setAuthNotice(null);
@@ -1709,7 +1711,7 @@ export function ClientificNativeApp() {
   }, [activeTab, home?.subscription.requiresPurchase, moreSection, openBillingPaywall]);
 
   useEffect(() => {
-    if (!session?.token || session.viewer?.role === 'staff') {
+    if (!session?.token) {
       return;
     }
 
@@ -1749,7 +1751,7 @@ export function ClientificNativeApp() {
     return () => {
       isActive = false;
     };
-  }, [refreshPushPermissionStatus, session?.token, session?.viewer?.role]);
+  }, [refreshPushPermissionStatus, session?.token]);
 
   useEffect(() => {
     const subscription = addPushNotificationResponseListener((response) => {
@@ -1759,15 +1761,17 @@ export function ClientificNativeApp() {
       }
 
       void routeNotificationLink(link);
-      if (session?.token) {
+      if (session?.token && session.viewer?.role !== 'staff') {
         void loadNotifications(session.token, true);
+      } else if (session?.viewer?.role === 'staff') {
+        void syncMobileAppBadgeCount(0);
       }
     });
 
     return () => {
       subscription.remove();
     };
-  }, [loadNotifications, session?.token]);
+  }, [loadNotifications, session?.token, session?.viewer?.role]);
 
   const establishSession = useCallback(
     async (email: string, password: string) => {
