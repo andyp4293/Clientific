@@ -1614,9 +1614,10 @@ export default function ServicesPage() {
 
                         <div className="sm:col-span-2">
                           <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Bio
+                            Brief bio <span className="font-normal text-gray-500 dark:text-gray-400">(optional)</span>
                           </label>
                           <textarea
+                            maxLength={500}
                             value={staffFormData.bio}
                             onChange={(e) =>
                               setStaffFormData({
@@ -1626,8 +1627,11 @@ export default function ServicesPage() {
                             }
                             className="input w-full"
                             rows={4}
-                            placeholder="Brief description about this staff member..."
+                            placeholder="Example: Senior stylist specializing in gel manicures and natural nail care."
                           />
+                          <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                            Shown on booking and public profile pages so customers know who they are choosing.
+                          </p>
                         </div>
                       </div>
                     </section>

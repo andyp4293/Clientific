@@ -178,6 +178,10 @@ function getSuggestedTimeOptions({
   return options.length ? options : fallback;
 }
 
+function staffCanPerformService(staff: MobileStaffRecord, serviceId: string) {
+  return staff.serviceIds.length === 0 || staff.serviceIds.includes(serviceId);
+}
+
 function formatIsoToDateKey(isoString: string) {
   const date = new Date(isoString);
   return date.toLocaleDateString('en-CA');
@@ -256,6 +260,65 @@ function OptionChip({
             : [styles.optionChipText, { color: theme.text }]
         }>
         {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function StaffChoiceCard({
+  member,
+  onPress,
+  selected,
+}: {
+  member: MobileStaffRecord;
+  onPress: () => void;
+  selected: boolean;
+}) {
+  const colorScheme = useColorScheme();
+  const theme = getClientificTheme(colorScheme);
+  const coverageLabel = member.serviceNames.length ? member.serviceNames.join(', ') : 'All services';
+  const accessibilityLabel = [
+    member.fullName,
+    member.role ?? 'Team member',
+    member.bio,
+    `${member.workDaysLabel} · ${coverageLabel}`,
+    selected ? 'Selected' : null,
+  ]
+    .filter(Boolean)
+    .join(', ');
+
+  return (
+    <Pressable
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={[
+        styles.staffChoiceCard,
+        {
+          backgroundColor: selected ? theme.accentSoft : theme.surfaceMuted,
+          borderColor: selected ? theme.accent : theme.border,
+        },
+      ]}
+      testID={`mobile-schedule-create-staff-${member.id}`}>
+      <View style={styles.staffChoiceHeader}>
+        <View style={styles.staffChoiceCopy}>
+          <Text style={[styles.staffChoiceTitle, { color: theme.text }]}>{member.fullName}</Text>
+          <Text style={[styles.staffChoiceRole, { color: theme.mutedText }]}>
+            {member.role ?? 'Team member'}
+          </Text>
+        </View>
+        {selected ? (
+          <View style={[styles.staffSelectedBadge, { backgroundColor: theme.accent }]}>
+            <Text style={styles.staffSelectedBadgeText}>Selected</Text>
+          </View>
+        ) : null}
+      </View>
+      {member.bio ? (
+        <Text style={[styles.staffChoiceBio, { color: theme.mutedText }]}>{member.bio}</Text>
+      ) : null}
+      <Text style={[styles.staffChoiceMeta, { color: theme.mutedText }]}>
+        {member.workDaysLabel} · {coverageLabel}
       </Text>
     </Pressable>
   );
@@ -662,10 +725,10 @@ export function MobileScheduleScreen({
   const createEffectiveDuration = selectedCreateService?.duration ?? createForm.duration;
   const editEffectiveDuration = selectedEditService?.duration ?? editForm.duration;
   const createEligibleStaff = selectedCreateService
-    ? availableStaff.filter((staff) => staff.serviceIds.includes(selectedCreateService.id))
+    ? availableStaff.filter((staff) => staffCanPerformService(staff, selectedCreateService.id))
     : availableStaff;
   const editEligibleStaff = selectedEditService
-    ? availableStaff.filter((staff) => staff.serviceIds.includes(selectedEditService.id))
+    ? availableStaff.filter((staff) => staffCanPerformService(staff, selectedEditService.id))
     : availableStaff;
   const selectedExistingCustomer =
     customerMode === 'existing'
@@ -1586,16 +1649,39 @@ export function MobileScheduleScreen({
             )}
 
             <SectionLabel label="Staff" />
-            <View style={styles.segmentRow}>
-              <OptionChip
-                label="Any"
+            <View style={styles.staffChoiceStack}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: !createForm.staffId }}
                 onPress={() => setCreateForm((current) => ({ ...current, staffId: '' }))}
-                selected={!createForm.staffId}
-              />
+                style={[
+                  styles.staffChoiceCard,
+                  {
+                    backgroundColor: !createForm.staffId ? theme.accentSoft : theme.surfaceMuted,
+                    borderColor: !createForm.staffId ? theme.accent : theme.border,
+                  },
+                ]}
+                testID="mobile-schedule-create-staff-any">
+                <View style={styles.staffChoiceHeader}>
+                  <View style={styles.staffChoiceCopy}>
+                    <Text style={[styles.staffChoiceTitle, { color: theme.text }]}>
+                      Any available team member
+                    </Text>
+                    <Text style={[styles.staffChoiceRole, { color: theme.mutedText }]}>
+                      Uses the first open employee who can perform the selected service.
+                    </Text>
+                  </View>
+                  {!createForm.staffId ? (
+                    <View style={[styles.staffSelectedBadge, { backgroundColor: theme.accent }]}>
+                      <Text style={styles.staffSelectedBadgeText}>Selected</Text>
+                    </View>
+                  ) : null}
+                </View>
+              </Pressable>
               {createEligibleStaff.map((staff) => (
-                <OptionChip
+                <StaffChoiceCard
                   key={staff.id}
-                  label={staff.fullName}
+                  member={staff}
                   onPress={() =>
                     setCreateForm((current) => ({ ...current, staffId: staff.id, time: '' }))
                   }
@@ -2300,6 +2386,59 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+  },
+  staffChoiceStack: {
+    gap: 10,
+  },
+  staffChoiceCard: {
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 7,
+  },
+  staffChoiceHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  staffChoiceCopy: {
+    flex: 1,
+    gap: 3,
+  },
+  staffChoiceTitle: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '800',
+  },
+  staffChoiceRole: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  staffChoiceBio: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '600',
+  },
+  staffChoiceMeta: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '700',
+  },
+  staffSelectedBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  staffSelectedBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    lineHeight: 12,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   summaryCard: {
     borderWidth: 1,

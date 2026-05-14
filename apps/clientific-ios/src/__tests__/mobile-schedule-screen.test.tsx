@@ -42,6 +42,7 @@ const servicesSummary = {
       phone: '+15551234567',
       phoneDisplay: '(555) 123-4567',
       role: 'Stylist',
+      bio: 'Gentle with first-time clients and excellent at clean gel sets.',
       isActive: true,
       workDays: [1, 2, 3],
       workHours: {
@@ -51,9 +52,9 @@ const servicesSummary = {
       },
       workDaysLabel: 'Mon, Tue, Wed',
       workHoursLabel: 'Mon 09:00-17:00',
-      serviceCount: 1,
-      serviceIds: ['svc-1'],
-      serviceNames: ['Haircut'],
+      serviceCount: 0,
+      serviceIds: [],
+      serviceNames: [],
     },
   ],
 };
@@ -235,7 +236,9 @@ describe('MobileScheduleScreen', () => {
       ).toMatchObject({ checked: true });
     });
     fireEvent.press(screen.getByTestId('mobile-schedule-create-service-svc-1'));
-    fireEvent.press(screen.getByText('Taylor'));
+    expect(screen.getByText('Gentle with first-time clients and excellent at clean gel sets.')).toBeTruthy();
+    expect(screen.getByText('Mon, Tue, Wed · All services')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('mobile-schedule-create-staff-staff-1'));
     fireEvent.press(screen.getByTestId('mobile-schedule-create-time-10:30'));
     fireEvent.press(screen.getByTestId('mobile-schedule-create-submit'));
 

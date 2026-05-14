@@ -160,16 +160,18 @@ describe('POST /api/staff', () => {
       email: null,
       phone: null,
       role: null,
+      bio: 'Calm nail specialist with 10 years of experience.',
       active: true,
       workDays: [0, 1, 2, 3, 4, 5, 6],
       createdAt: new Date(),
       updatedAt: new Date(),
       serviceAssignments: [],
     };
+    const createMock = vi.fn().mockResolvedValue(fakeStaff);
     mockTransaction.mockImplementationOnce(async (fn: any) => {
       const tx = {
         staff: {
-          create: vi.fn().mockResolvedValue(fakeStaff),
+          create: createMock,
           update: vi.fn(),
           findUniqueOrThrow: vi.fn().mockResolvedValue(fakeStaff),
         },
@@ -177,10 +179,23 @@ describe('POST /api/staff', () => {
       };
       return fn(tx);
     });
-    const res = await POST(makeRequest({ fullName: 'John Doe' }));
+    const res = await POST(
+      makeRequest({
+        fullName: 'John Doe',
+        bio: '  Calm nail specialist with 10 years of experience.  ',
+      }),
+    );
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.staff.id).toBe('staff-1');
+    expect(body.staff.bio).toBe('Calm nail specialist with 10 years of experience.');
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          bio: 'Calm nail specialist with 10 years of experience.',
+        }),
+      }),
+    );
     expect(revalidateTag).toHaveBeenCalledWith('staff-biz-1', 'max');
   });
 

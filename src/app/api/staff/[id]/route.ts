@@ -7,6 +7,7 @@ import { requireActiveSubscription } from '@/lib/subscription';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { normalizeStaffWorkHours, sanitizeStaffWorkHoursForSave } from '@/lib/staff-schedule';
 import { normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
+import { getStaffBioValidationError, normalizeStaffBio } from '@/lib/staff-bio';
 import { getStaffCacheTag } from '@/lib/cache-tags';
 import { revalidateTag } from 'next/cache';
 
@@ -19,6 +20,7 @@ const STAFF_SELECT = {
   email: true,
   phone: true,
   role: true,
+  bio: true,
   active: true,
   workDays: true,
   workHours: true,
@@ -43,6 +45,7 @@ export async function PATCH(
     const { id } = await params;
     const body = await req.json();
     const { fullName, email, phone, role, bio, isActive, workDays, workHours, serviceIds } = body;
+    const normalizedBio = bio === undefined ? undefined : normalizeStaffBio(bio);
     const normalizedPhone =
       typeof phone === 'string' && phone.trim().length > 0
         ? normalizeOptionalStoredPhoneNumber(phone)
@@ -50,10 +53,15 @@ export async function PATCH(
           ? null
           : phone;
 
+    const bioValidationError = getStaffBioValidationError(bio);
+    if (bioValidationError) {
+      return NextResponse.json({ error: bioValidationError }, { status: 400 });
+    }
+
     const blockedField = getBlockedFieldLabel([
       { label: 'Staff name', value: fullName },
       { label: 'Role', value: role },
-      { label: 'Bio', value: bio },
+      { label: 'Bio', value: normalizedBio },
     ]);
     if (blockedField) {
       return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
@@ -87,6 +95,7 @@ export async function PATCH(
           email,
           phone: normalizedPhone,
           role,
+          ...(bio !== undefined && { bio: normalizedBio }),
           active: isActive,
           ...(Array.isArray(workDays) && { workDays: normalizedWorkDays }),
           ...(sanitizedWorkHours !== undefined && {

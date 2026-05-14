@@ -9,6 +9,7 @@ import {
   sanitizeStaffWorkHoursForSave,
 } from '@/lib/staff-schedule';
 import { normalizeOptionalStoredPhoneNumber, formatPhoneForDisplay } from '@/lib/phone';
+import { getStaffBioValidationError, normalizeStaffBio } from '@/lib/staff-bio';
 import { getStaffCacheTag } from '@/lib/cache-tags';
 import { revalidateTag } from 'next/cache';
 
@@ -58,6 +59,7 @@ async function formatStaffResponse(businessId: string, staff: {
   email: string | null;
   phone: string | null;
   role: string | null;
+  bio: string | null;
   active: boolean;
   workDays: number[];
   workHours: unknown;
@@ -82,6 +84,7 @@ async function formatStaffResponse(businessId: string, staff: {
     phone: staff.phone,
     phoneDisplay: formatPhoneForDisplay(staff.phone),
     role: staff.role,
+    bio: staff.bio,
     isActive: staff.active,
     workDays: staff.workDays,
     workHours: normalizeStaffWorkHours(staff.workHours),
@@ -131,6 +134,7 @@ export async function PATCH(
         : typeof body.role === 'string' && body.role.trim().length > 0
           ? body.role.trim()
           : null;
+    const bio = body?.bio === undefined ? undefined : normalizeStaffBio(body.bio);
     const isActive = typeof body?.isActive === 'boolean' ? body.isActive : undefined;
     const workDays = Array.isArray(body?.workDays)
       ? body.workDays.filter(isDayNumber)
@@ -139,9 +143,15 @@ export async function PATCH(
       ? body.serviceIds.filter((value: unknown): value is string => typeof value === 'string')
       : undefined;
 
+    const bioValidationError = getStaffBioValidationError(body?.bio);
+    if (bioValidationError) {
+      return NextResponse.json({ error: bioValidationError }, { status: 400 });
+    }
+
     const blockedField = getBlockedFieldLabel([
       { label: 'Staff name', value: fullName },
       { label: 'Role', value: role },
+      { label: 'Bio', value: bio },
     ]);
     if (blockedField) {
       return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
@@ -181,6 +191,7 @@ export async function PATCH(
           ...(email !== undefined ? { email } : {}),
           ...(phone !== undefined ? { phone } : {}),
           ...(role !== undefined ? { role } : {}),
+          ...(bio !== undefined ? { bio } : {}),
           ...(isActive !== undefined ? { active: isActive } : {}),
           ...(workDays !== undefined ? { workDays: nextWorkDays } : {}),
           ...(sanitizedWorkHours !== undefined

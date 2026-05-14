@@ -127,17 +127,19 @@ describe('PATCH /api/staff/[id]', () => {
       email: null,
       phone: null,
       role: 'staff',
+      bio: 'Known for clean gel work and warm service.',
       active: true,
       workDays: [0, 1, 2, 3, 4, 5, 6],
       createdAt: new Date(),
       updatedAt: new Date(),
       serviceAssignments: [],
     };
+    const updateMock = vi.fn().mockResolvedValue({ id: 'staff-1' });
 
     mockTransaction.mockImplementationOnce(async (fn: any) => {
       const tx = {
         staff: {
-          update: vi.fn().mockResolvedValue({ id: 'staff-1' }),
+          update: updateMock,
           findUniqueOrThrow: vi.fn().mockResolvedValue(updatedStaff),
         },
         staffService: { deleteMany: vi.fn(), createMany: vi.fn() },
@@ -145,11 +147,25 @@ describe('PATCH /api/staff/[id]', () => {
       return fn(tx);
     });
 
-    const res = await PATCH(makePatchRequest({ fullName: 'Jane Updated' }), routeParams);
+    const res = await PATCH(
+      makePatchRequest({
+        fullName: 'Jane Updated',
+        bio: '  Known for clean gel work and warm service.  ',
+      }),
+      routeParams,
+    );
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.staff.fullName).toBe('Jane Updated');
+    expect(body.staff.bio).toBe('Known for clean gel work and warm service.');
     expect(body.staff.serviceIds).toEqual([]);
+    expect(updateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          bio: 'Known for clean gel work and warm service.',
+        }),
+      }),
+    );
     expect(revalidateTag).toHaveBeenCalledWith('staff-biz-1', 'max');
   });
 

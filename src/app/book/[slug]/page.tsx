@@ -53,6 +53,7 @@ interface Staff {
   id: string;
   fullName: string;
   role?: string | null;
+  bio?: string | null;
 }
 
 interface Deal {
@@ -570,6 +571,9 @@ export default function PublicBookingPage() {
                     <h3 className="font-semibold text-gray-900 dark:text-gray-100">{member.fullName}</h3>
                     {member.role && (
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{member.role}</p>
+                    )}
+                    {member.bio && (
+                      <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">{member.bio}</p>
                     )}
                   </button>
                 ))}

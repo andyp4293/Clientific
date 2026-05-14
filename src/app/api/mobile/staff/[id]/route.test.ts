@@ -72,6 +72,7 @@ describe('PATCH /api/mobile/staff/[id]', () => {
             email: 'taylor@example.com',
             phone: '+15557654321',
             role: 'Lead Stylist',
+            bio: 'Gentle with first-time clients and detailed nail art.',
             active: true,
             workDays: [1, 2],
             workHours: {
@@ -96,6 +97,7 @@ describe('PATCH /api/mobile/staff/[id]', () => {
         body: JSON.stringify({
           fullName: 'Taylor Updated',
           role: 'Lead Stylist',
+          bio: '  Gentle with first-time clients and detailed nail art.  ',
           serviceIds: ['svc-1'],
           workDays: [1, 2],
           workHours: {
@@ -112,6 +114,7 @@ describe('PATCH /api/mobile/staff/[id]', () => {
     expect(body.staff).toMatchObject({
       id: 'staff-1',
       fullName: 'Taylor Updated',
+      bio: 'Gentle with first-time clients and detailed nail art.',
       serviceNames: ['Haircut'],
     });
   });

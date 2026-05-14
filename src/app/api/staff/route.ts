@@ -6,6 +6,7 @@ import { requireActiveSubscription, checkPlanLimit } from '@/lib/subscription';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { normalizeStaffWorkHours, sanitizeStaffWorkHoursForSave } from '@/lib/staff-schedule';
 import { normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
+import { getStaffBioValidationError, normalizeStaffBio } from '@/lib/staff-bio';
 import { getStaffCacheTag, SHARED_REFERENCE_DATA_REVALIDATE_SECONDS } from '@/lib/cache-tags';
 import { revalidateTag, unstable_cache } from 'next/cache';
 
@@ -18,6 +19,7 @@ const STAFF_SELECT = {
   email: true,
   phone: true,
   role: true,
+  bio: true,
   active: true,
   workDays: true,
   workHours: true,
@@ -33,6 +35,7 @@ function mapStaff(member: {
   email: string | null;
   phone: string | null;
   role: string;
+  bio: string | null;
   active: boolean;
   workDays: number[];
   workHours: unknown;
@@ -112,6 +115,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { fullName, email, phone, role, bio, workDays, workHours, serviceIds } = body;
+    const normalizedBio = normalizeStaffBio(bio);
     const normalizedPhone =
       typeof phone === 'string' && phone.trim().length > 0
         ? normalizeOptionalStoredPhoneNumber(phone)
@@ -121,10 +125,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Full name is required' }, { status: 400 });
     }
 
+    const bioValidationError = getStaffBioValidationError(bio);
+    if (bioValidationError) {
+      return NextResponse.json({ error: bioValidationError }, { status: 400 });
+    }
+
     const blockedField = getBlockedFieldLabel([
       { label: 'Staff name', value: fullName },
       { label: 'Role', value: role },
-      { label: 'Bio', value: bio },
+      { label: 'Bio', value: normalizedBio },
     ]);
     if (blockedField) {
       return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
@@ -150,6 +159,7 @@ export async function POST(req: NextRequest) {
           email: email || null,
           phone: normalizedPhone,
           role: role || undefined,
+          bio: normalizedBio,
           active: true,
           workDays: normalizedWorkDays,
           workHours: Object.keys(sanitizedWorkHours).length > 0 ? sanitizedWorkHours : undefined,

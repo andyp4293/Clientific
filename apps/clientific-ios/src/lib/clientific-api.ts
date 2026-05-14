@@ -419,6 +419,7 @@ export type MobileStaffRecord = {
   phone: string | null;
   phoneDisplay: string;
   role: string | null;
+  bio: string | null;
   isActive: boolean;
   workDays: number[];
   workHours: MobileStaffWorkHours;
@@ -447,6 +448,7 @@ export type MobileStaffInput = {
   email?: string | null;
   phone?: string | null;
   role?: string | null;
+  bio?: string | null;
   isActive?: boolean;
   workDays?: number[];
   workHours?: MobileStaffWorkHours;

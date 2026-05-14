@@ -23,6 +23,7 @@ export async function getPublicStaff({
       id: true,
       fullName: true,
       role: true,
+      bio: true,
       serviceAssignments: { select: { serviceId: true } },
     },
     orderBy: { fullName: 'asc' },

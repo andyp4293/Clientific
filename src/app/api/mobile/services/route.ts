@@ -167,6 +167,7 @@ export async function GET(request: Request) {
           phone: member.phone,
           phoneDisplay: formatPhoneForDisplay(member.phone),
           role: member.role,
+          bio: member.bio,
           isActive: member.active,
           workDays: member.workDays,
           workHours: normalizeStaffWorkHours(member.workHours),

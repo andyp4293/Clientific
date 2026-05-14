@@ -89,6 +89,7 @@ describe('GET /api/mobile/services', () => {
         email: 'taylor@example.com',
         phone: '+15557654321',
         role: 'Stylist',
+        bio: 'Fast, friendly, and precise with natural nail care.',
         active: true,
         workDays: [1, 2, 3],
         workHours: {
@@ -129,6 +130,7 @@ describe('GET /api/mobile/services', () => {
     expect(body.staff[0]).toMatchObject({
       id: 'staff-1',
       fullName: 'Taylor',
+      bio: 'Fast, friendly, and precise with natural nail care.',
       phone: '+15557654321',
       phoneDisplay: '(555) 765-4321',
       workDays: [1, 2, 3],

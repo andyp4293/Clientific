@@ -54,6 +54,7 @@ describe('POST /api/mobile/staff', () => {
             email: 'taylor@example.com',
             phone: '+15557654321',
             role: 'Stylist',
+            bio: 'Gel specialist who keeps appointments calm and efficient.',
             active: true,
             workDays: [1],
             workHours: { 1: { startTime: '09:00', endTime: '17:00' } },
@@ -76,6 +77,7 @@ describe('POST /api/mobile/staff', () => {
           email: 'taylor@example.com',
           phone: '(555) 765-4321',
           role: 'Stylist',
+          bio: '  Gel specialist who keeps appointments calm and efficient.  ',
           serviceIds: ['svc-1'],
           workDays: [1],
           workHours: { 1: { startTime: '09:00', endTime: '17:00' } },
@@ -89,6 +91,7 @@ describe('POST /api/mobile/staff', () => {
       id: 'staff-1',
       fullName: 'Taylor',
       phoneDisplay: '(555) 765-4321',
+      bio: 'Gel specialist who keeps appointments calm and efficient.',
       serviceNames: ['Haircut'],
     });
   });

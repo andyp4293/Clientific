@@ -270,6 +270,7 @@ const services = {
       phone: '+15551234567',
       phoneDisplay: '(555) 123-4567',
       role: 'Stylist',
+      bio: null,
       isActive: true,
       workDays: [1, 2, 3],
       workHours: {

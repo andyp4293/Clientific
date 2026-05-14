@@ -8,6 +8,7 @@ import {
   sanitizeStaffWorkHoursForSave,
 } from '@/lib/staff-schedule';
 import { formatPhoneForDisplay, normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
+import { getStaffBioValidationError, normalizeStaffBio } from '@/lib/staff-bio';
 import { getStaffCacheTag } from '@/lib/cache-tags';
 import { revalidateTag } from 'next/cache';
 
@@ -88,6 +89,7 @@ export async function POST(request: Request) {
       typeof body?.role === 'string' && body.role.trim().length > 0
         ? body.role.trim()
         : null;
+    const bio = normalizeStaffBio(body?.bio);
     const isActive = body?.isActive !== false;
     const workDays = Array.isArray(body?.workDays)
       ? body.workDays.filter(isDayNumber)
@@ -100,9 +102,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Full name is required' }, { status: 400 });
     }
 
+    const bioValidationError = getStaffBioValidationError(body?.bio);
+    if (bioValidationError) {
+      return NextResponse.json({ error: bioValidationError }, { status: 400 });
+    }
+
     const blockedField = getBlockedFieldLabel([
       { label: 'Staff name', value: fullName },
       { label: 'Role', value: role },
+      { label: 'Bio', value: bio },
     ]);
     if (blockedField) {
       return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
@@ -126,6 +134,7 @@ export async function POST(request: Request) {
           email,
           phone,
           role,
+          bio,
           active: isActive,
           workDays,
           workHours: Object.keys(sanitizedWorkHours).length > 0 ? sanitizedWorkHours : undefined,
@@ -174,6 +183,7 @@ export async function POST(request: Request) {
           phone: staff.phone,
           phoneDisplay: formatPhoneForDisplay(staff.phone),
           role: staff.role,
+          bio: staff.bio,
           isActive: staff.active,
           workDays: staff.workDays,
           workHours: normalizeStaffWorkHours(staff.workHours),

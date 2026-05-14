@@ -34,4 +34,11 @@ describe('public booking page source', () => {
     expect(source).toContain('smsConsent: true');
     expect(source).not.toContain('This is optional — you can still book without SMS.');
   });
+
+  it('shows staff bios during staff selection', () => {
+    const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('member.bio');
+    expect(source).toContain('Choose Staff Member');
+  });
 });

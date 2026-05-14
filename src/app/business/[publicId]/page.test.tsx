@@ -46,4 +46,11 @@ describe('public business profile page source', () => {
     expect(source).toContain('const viewerCanManage = businessData?.viewerCanManage === true;');
     expect(source).not.toContain('useSession');
   });
+
+  it('surfaces staff bios on the public team profile', () => {
+    const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('bio: string | null');
+    expect(source).toContain('member.bio');
+  });
 });

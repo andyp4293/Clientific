@@ -48,6 +48,7 @@ const data: MobileServicesSummary = {
       phone: '+15557654321',
       phoneDisplay: '(555) 765-4321',
       role: 'Stylist',
+      bio: 'Known for detailed gel manicures and calm consultations.',
       isActive: true,
       workDays: [1, 2],
       workHours: {
@@ -115,9 +116,14 @@ describe('MobileServicesScreen', () => {
     renderScreen({ onCreateStaff });
 
     fireEvent.press(screen.getByTestId('mobile-services-tab-staff'));
+    expect(screen.getByText('Known for detailed gel manicures and calm consultations.')).toBeTruthy();
     fireEvent.press(screen.getByTestId('mobile-add-staff'));
     fireEvent.changeText(screen.getByPlaceholderText('Taylor Smith'), 'Morgan');
     fireEvent.changeText(screen.getByPlaceholderText('Stylist'), 'Lead stylist');
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Example: Senior stylist specializing in gel manicures and natural nail care.'),
+      'Friendly specialist for natural nails.',
+    );
     fireEvent.press(screen.getByTestId('mobile-save-staff'));
 
     await waitFor(() => {
@@ -125,6 +131,7 @@ describe('MobileServicesScreen', () => {
         expect.objectContaining({
           fullName: 'Morgan',
           role: 'Lead stylist',
+          bio: 'Friendly specialist for natural nails.',
         }),
       );
     });

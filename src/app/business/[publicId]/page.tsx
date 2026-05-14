@@ -68,6 +68,7 @@ interface StaffMember {
   id: string;
   fullName: string;
   role: string | null;
+  bio: string | null;
 }
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -310,6 +311,9 @@ export default function BusinessInfoPage() {
                     {member.role && (
                       <p className="text-sm text-gray-500 dark:text-gray-400">{member.role}</p>
                     )}
+                    {member.bio && (
+                      <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">{member.bio}</p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -427,5 +431,4 @@ function formatBusinessType(type: string): string {
     .replace(/\s+/g, ' ')
     .trim();
 }
-
 

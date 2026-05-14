@@ -67,6 +67,7 @@ type StaffFormState = {
   email: string;
   phone: string;
   role: string;
+  bio: string;
   isActive: boolean;
   workDays: number[];
   workHours: MobileStaffWorkHours;
@@ -118,6 +119,7 @@ function createStaffForm(member?: MobileStaffRecord | null): StaffFormState {
     email: member?.email ?? '',
     phone: member?.phone ?? '',
     role: member?.role ?? '',
+    bio: member?.bio ?? '',
     isActive: member?.isActive ?? true,
     workDays,
     workHours: ensureWorkHoursForDays(workDays, member?.workHours),
@@ -589,6 +591,7 @@ export function MobileServicesScreen({
         email: staffForm.email.trim() || null,
         phone: staffForm.phone.trim() || null,
         role: staffForm.role.trim() || null,
+        bio: staffForm.bio.trim() || null,
         isActive: staffForm.isActive,
         workDays: staffForm.workDays,
         workHours,
@@ -1155,6 +1158,11 @@ export function MobileServicesScreen({
                       <Text style={[styles.itemDescription, { color: theme.mutedText }]}>
                         {member.phoneDisplay || member.email || 'No contact details'}
                       </Text>
+                      {member.bio ? (
+                        <Text style={[styles.itemDescription, { color: theme.mutedText }]}>
+                          {member.bio}
+                        </Text>
+                      ) : null}
                       <Text style={[styles.metaText, { color: theme.mutedText }]}>
                         {member.workDaysLabel}
                       </Text>
@@ -1441,6 +1449,25 @@ export function MobileServicesScreen({
             style={[styles.formInput, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
             value={staffForm.phone}
           />
+
+          <FieldLabel label="Brief bio (optional)" themeText={theme.text} />
+          <TextInput
+            maxLength={500}
+            multiline
+            onChangeText={(value) => setStaffForm((current) => ({ ...current, bio: value }))}
+            placeholder="Example: Senior stylist specializing in gel manicures and natural nail care."
+            placeholderTextColor={theme.mutedText}
+            style={[
+              styles.formInput,
+              styles.multilineInput,
+              { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text },
+            ]}
+            textAlignVertical="top"
+            value={staffForm.bio}
+          />
+          <Text style={[styles.helperText, { color: theme.mutedText }]}>
+            This appears on booking pages when customers choose a team member.
+          </Text>
 
           <View style={[styles.toggleCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={styles.toggleCopy}>
