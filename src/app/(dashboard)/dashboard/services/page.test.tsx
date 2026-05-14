@@ -90,4 +90,17 @@ describe("services page cache sync contract", () => {
       'className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:w-[20rem] lg:flex-none"',
     );
   });
+
+  it("includes owner-managed employee app access with privacy copy", () => {
+    const source = readFileSync(new URL("./page.tsx", import.meta.url), "utf8");
+
+    expect(source).toContain("Employee app access");
+    expect(source).toContain("Appointment-only login");
+    expect(source).toContain("portalAccessEnabled");
+    expect(source).toContain("portalPassword");
+    expect(source).toContain("Customer phones stay hidden");
+    expect(source).toMatch(/CRM,\s+deals,\s+billing,\s+and settings stay hidden/);
+    expect(source).toContain("Employee app enabled");
+    expect(source).toContain("Employee app off");
+  });
 });

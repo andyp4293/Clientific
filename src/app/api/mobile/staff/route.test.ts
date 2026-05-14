@@ -22,6 +22,9 @@ vi.mock('@/lib/prisma', () => ({
     $transaction: vi.fn(),
   },
 }));
+vi.mock('@/lib/utils', () => ({
+  hashPassword: vi.fn(async (password: string) => `hashed:${password}`),
+}));
 
 import { requireMobileSession } from '@/lib/mobile-route';
 import { prisma } from '@/lib/prisma';
@@ -39,6 +42,22 @@ beforeEach(() => {
 
 describe('POST /api/mobile/staff', () => {
   it('creates staff and returns the formatted mobile record', async () => {
+    const staffCreate = vi.fn().mockResolvedValue({ id: 'staff-1' });
+    const staffFindUniqueOrThrow = vi.fn().mockResolvedValue({
+      id: 'staff-1',
+      fullName: 'Taylor',
+      email: 'taylor@example.com',
+      phone: '+15557654321',
+      role: 'Stylist',
+      bio: 'Gel specialist who keeps appointments calm and efficient.',
+      active: true,
+      portalAccessEnabled: true,
+      portalPasswordHash: 'hashed:temporary123',
+      workDays: [1],
+      workHours: { 1: { startTime: '09:00', endTime: '17:00' } },
+      serviceAssignments: [{ serviceId: 'svc-1' }],
+    });
+
     mockFindBusinessHours.mockResolvedValue({
       hours: {
         1: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
@@ -47,19 +66,8 @@ describe('POST /api/mobile/staff', () => {
     mockTransaction.mockImplementation(async (callback) =>
       callback({
         staff: {
-          create: vi.fn().mockResolvedValue({ id: 'staff-1' }),
-          findUniqueOrThrow: vi.fn().mockResolvedValue({
-            id: 'staff-1',
-            fullName: 'Taylor',
-            email: 'taylor@example.com',
-            phone: '+15557654321',
-            role: 'Stylist',
-            bio: 'Gel specialist who keeps appointments calm and efficient.',
-            active: true,
-            workDays: [1],
-            workHours: { 1: { startTime: '09:00', endTime: '17:00' } },
-            serviceAssignments: [{ serviceId: 'svc-1' }],
-          }),
+          create: staffCreate,
+          findUniqueOrThrow: staffFindUniqueOrThrow,
         },
         staffService: {
           createMany: vi.fn().mockResolvedValue(undefined),
@@ -78,6 +86,8 @@ describe('POST /api/mobile/staff', () => {
           phone: '(555) 765-4321',
           role: 'Stylist',
           bio: '  Gel specialist who keeps appointments calm and efficient.  ',
+          portalAccessEnabled: true,
+          portalPassword: 'temporary123',
           serviceIds: ['svc-1'],
           workDays: [1],
           workHours: { 1: { startTime: '09:00', endTime: '17:00' } },
@@ -86,12 +96,22 @@ describe('POST /api/mobile/staff', () => {
     );
 
     expect(response.status).toBe(201);
+    expect(staffCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        email: 'taylor@example.com',
+        portalAccessEnabled: true,
+        portalPasswordHash: 'hashed:temporary123',
+        portalPasswordSetAt: expect.any(Date),
+      }),
+    });
     const body = await response.json();
     expect(body.staff).toMatchObject({
       id: 'staff-1',
       fullName: 'Taylor',
       phoneDisplay: '(555) 765-4321',
       bio: 'Gel specialist who keeps appointments calm and efficient.',
+      portalAccessEnabled: true,
+      hasPortalPassword: true,
       serviceNames: ['Haircut'],
     });
   });

@@ -8,6 +8,11 @@ import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { normalizeStaffWorkHours, sanitizeStaffWorkHoursForSave } from '@/lib/staff-schedule';
 import { normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
 import { getStaffBioValidationError, normalizeStaffBio } from '@/lib/staff-bio';
+import {
+  hasStaffPortalPassword,
+  normalizeStaffEmail,
+  resolveStaffPortalAccessData,
+} from '@/lib/staff-portal-access';
 import { getStaffCacheTag } from '@/lib/cache-tags';
 import { revalidateTag } from 'next/cache';
 
@@ -22,6 +27,8 @@ const STAFF_SELECT = {
   role: true,
   bio: true,
   active: true,
+  portalAccessEnabled: true,
+  portalPasswordHash: true,
   workDays: true,
   workHours: true,
   serviceAssignments: { select: { serviceId: true } },
@@ -35,7 +42,7 @@ export async function PATCH(
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.id) {
+    if (!session?.user?.id || session.user.accountType === 'staff') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -44,7 +51,20 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { fullName, email, phone, role, bio, isActive, workDays, workHours, serviceIds } = body;
+    const {
+      fullName,
+      email,
+      phone,
+      role,
+      bio,
+      isActive,
+      workDays,
+      workHours,
+      serviceIds,
+      portalAccessEnabled,
+      portalPassword,
+    } = body;
+    const normalizedEmail = email === undefined ? undefined : normalizeStaffEmail(email);
     const normalizedBio = bio === undefined ? undefined : normalizeStaffBio(bio);
     const normalizedPhone =
       typeof phone === 'string' && phone.trim().length > 0
@@ -73,6 +93,20 @@ export async function PATCH(
       return NextResponse.json({ error: 'Staff member not found' }, { status: 404 });
     }
 
+    const portalAccess = await resolveStaffPortalAccessData({
+      email: normalizedEmail ?? existingStaff.email,
+      existing: {
+        email: existingStaff.email,
+        portalAccessEnabled: existingStaff.portalAccessEnabled,
+        portalPasswordHash: existingStaff.portalPasswordHash,
+      },
+      portalAccessEnabled,
+      portalPassword,
+    });
+    if ('error' in portalAccess) {
+      return NextResponse.json({ error: portalAccess.error }, { status: 400 });
+    }
+
     const normalizedWorkDays = Array.isArray(workDays) ? workDays : existingStaff.workDays;
     const businessHours = await prisma.businessHours.findUnique({
       where: { businessId: session.user.id },
@@ -92,11 +126,12 @@ export async function PATCH(
         where: { id },
         data: {
           fullName,
-          email,
+          email: normalizedEmail,
           phone: normalizedPhone,
           role,
           ...(bio !== undefined && { bio: normalizedBio }),
           active: isActive,
+          ...portalAccess.data,
           ...(Array.isArray(workDays) && { workDays: normalizedWorkDays }),
           ...(sanitizedWorkHours !== undefined && {
             workHours:
@@ -125,7 +160,13 @@ export async function PATCH(
       });
     });
 
-    const { serviceAssignments, active, workHours: nextWorkHours, ...rest } = staff;
+    const {
+      serviceAssignments,
+      active,
+      workHours: nextWorkHours,
+      portalPasswordHash,
+      ...rest
+    } = staff;
     revalidateTag(getStaffCacheTag(session.user.id), 'max');
 
     return NextResponse.json({
@@ -133,6 +174,7 @@ export async function PATCH(
         ...rest,
         active,
         isActive: active,
+        hasPortalPassword: hasStaffPortalPassword({ portalPasswordHash }),
         workHours: normalizeStaffWorkHours(nextWorkHours),
         serviceIds: serviceAssignments.map((a) => a.serviceId),
       },
@@ -151,7 +193,7 @@ export async function DELETE(
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.id) {
+    if (!session?.user?.id || session.user.accountType === 'staff') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

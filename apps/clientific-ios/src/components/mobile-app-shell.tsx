@@ -401,6 +401,42 @@ export function MobileAppShell({
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
   const subscriptionLocked = home.subscription.requiresPurchase;
+  const staffViewer = home.viewer?.role === 'staff' ? home.viewer : null;
+  const isStaffMode = Boolean(staffViewer);
+
+  if (isStaffMode) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
+          <View style={styles.content}>
+            <MobileScheduleScreen
+              accessMode="staff"
+              composerCustomers={appointmentComposerCustomers}
+              composerError={appointmentComposerError}
+              data={appointments}
+              error={appointmentsError}
+              isComposerLoading={isAppointmentComposerLoading}
+              isLoading={isAppointmentsLoading}
+              isRefreshing={isAppointmentsRefreshing}
+              servicesSummary={null}
+              staffViewerName={staffViewer?.staffName}
+              onCreateAppointment={onCreateAppointment}
+              onCreateAppointmentCustomer={onCreateAppointmentCustomer}
+              onDeleteAppointment={onDeleteAppointment}
+              onJumpToToday={onJumpAppointmentsToToday}
+              onLoadComposerResources={async () => undefined}
+              onNextDate={onNextAppointmentsDate}
+              onPreviousDate={onPreviousAppointmentsDate}
+              onSelectDate={onSelectAppointmentsDate}
+              onRefresh={onRefreshAppointments}
+              onSignOut={onSignOut}
+              onUpdateAppointment={onUpdateAppointment}
+            />
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>

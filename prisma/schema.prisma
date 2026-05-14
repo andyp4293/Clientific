@@ -9,18 +9,18 @@ datasource db {
 }
 
 model Business {
-  id                            String                 @id @default(cuid())
-  createdAt                     DateTime               @default(now())
-  updatedAt                     DateTime               @updatedAt
-  email                         String                 @unique
+  id                            String                   @id @default(cuid())
+  createdAt                     DateTime                 @default(now())
+  updatedAt                     DateTime                 @updatedAt
+  email                         String                   @unique
   emailVerifiedAt               DateTime?
   emailVerificationTokenHash    String?
   emailVerificationTokenExpiry  DateTime?
   verificationSentAt            DateTime?
   passwordHash                  String
   name                          String
-  slug                          String                 @unique
-  publicId                      String?                @unique
+  slug                          String                   @unique
+  publicId                      String?                  @unique
   businessType                  String
   ownerPhone                    String?
   phone                         String
@@ -30,64 +30,64 @@ model Business {
   state                         String?
   zipCode                       String?
   country                       String?
-  timezone                      String                 @default("America/New_York")
+  timezone                      String                   @default("America/New_York")
   logoUrl                       String?
   publicProfileHeadline         String?
   publicProfileAbout            String?
-  publicProfileShowPhone        Boolean                @default(true)
-  publicProfileShowEmail        Boolean                @default(true)
-  publicProfileShowAddress      Boolean                @default(true)
-  publicProfileShowHours        Boolean                @default(true)
-  publicProfileShowServices     Boolean                @default(true)
-  publicProfileShowTeam         Boolean                @default(false)
-  publicProfileShowSocialLinks  Boolean                @default(true)
+  publicProfileShowPhone        Boolean                  @default(true)
+  publicProfileShowEmail        Boolean                  @default(true)
+  publicProfileShowAddress      Boolean                  @default(true)
+  publicProfileShowHours        Boolean                  @default(true)
+  publicProfileShowServices     Boolean                  @default(true)
+  publicProfileShowTeam         Boolean                  @default(false)
+  publicProfileShowSocialLinks  Boolean                  @default(true)
   googleReviewUrl               String?
   facebookPageUrl               String?
   yelpUrl                       String?
   instagramUrl                  String?
-  subscriptionPlan              String                 @default("trial")
-  subscriptionStatus            String                 @default("trialing")
-  billingProvider               String                 @default("stripe")
+  subscriptionPlan              String                   @default("trial")
+  subscriptionStatus            String                   @default("trialing")
+  billingProvider               String                   @default("stripe")
   trialEndsAt                   DateTime?
   subscriptionCurrentPeriodEnd  DateTime?
   subscriptionConflictFlaggedAt DateTime?
   subscriptionConflictSummary   String?
-  stripeCustomerId              String?                @unique
-  stripeSubscriptionId          String?                @unique
+  stripeCustomerId              String?                  @unique
+  stripeSubscriptionId          String?                  @unique
   stripePriceId                 String?
   stripeCurrentPeriodEnd        DateTime?
-  appStoreOriginalTransactionId String?                @unique
+  appStoreOriginalTransactionId String?                  @unique
   appStoreProductId             String?
   appStoreEnvironment           String?
   appStoreLastVerifiedAt        DateTime?
-  stripeConnectAccountId        String?                @unique
-  stripeConnectChargesEnabled   Boolean                @default(false)
-  stripeConnectPayoutsEnabled   Boolean                @default(false)
-  stripeConnectDetailsSubmitted Boolean                @default(false)
+  stripeConnectAccountId        String?                  @unique
+  stripeConnectChargesEnabled   Boolean                  @default(false)
+  stripeConnectPayoutsEnabled   Boolean                  @default(false)
+  stripeConnectDetailsSubmitted Boolean                  @default(false)
   stripeConnectOnboardedAt      DateTime?
   stripeConnectLastSyncedAt     DateTime?
   resetToken                    String?
   resetTokenExpiry              DateTime?
-  enableOnlineBooking           Boolean                @default(true)
-  aiReceptionistEnabled         Boolean                @default(false)
-  aiReceptionistSpanishEnabled  Boolean                @default(false)
+  enableOnlineBooking           Boolean                  @default(true)
+  aiReceptionistEnabled         Boolean                  @default(false)
+  aiReceptionistSpanishEnabled  Boolean                  @default(false)
   aiReceptionistPhone           String?
   aiReceptionistGreeting        String?
   aiReceptionistFaq             Json?
-  smsAiEnabled                  Boolean                @default(false)
+  smsAiEnabled                  Boolean                  @default(false)
   smsAiPhoneNumber              String?
   smsAiGreeting                 String?
   vapiPhoneNumberId             String?
   vapiPhoneNumber               String?
-  notifyNewBookingEmail         Boolean                @default(true)
-  referralCode                  String?                @unique
+  notifyNewBookingEmail         Boolean                  @default(true)
+  referralCode                  String?                  @unique
   referredById                  String?
-  referralCredits               Float                  @default(0)
+  referralCredits               Float                    @default(0)
   affiliateCodeUsed             String?
-  referredBy                    Business?              @relation("BizReferrals", fields: [referredById], references: [id], onDelete: SetNull)
-  referrals                     Business[]             @relation("BizReferrals")
-  referralsMade                 Referral[]             @relation("ReferrerOf")
-  referralReceived              Referral?              @relation("RefereeOf")
+  referredBy                    Business?                @relation("BizReferrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals                     Business[]               @relation("BizReferrals")
+  referralsMade                 Referral[]               @relation("ReferrerOf")
+  referralReceived              Referral?                @relation("RefereeOf")
   affiliateSignup               AffiliateSignup?
   appointments                  Appointment[]
   businessHours                 BusinessHours?
@@ -104,10 +104,10 @@ model Business {
   payments                      Payment[]
   serviceGroups                 ServiceGroup[]
   services                      Service[]
-  smsLogs                       SmsLog[]               @relation("SmsLogs")
-  smsAiSessions                 SmsAiSession[]         @relation("BusinessSmsAiSessions")
-  aiCallSessions                AiCallSession[]        @relation("BusinessAiCallSessions")
-  smsConsentEvents              SmsConsentEvent[]      @relation("BusinessSmsConsentEvents")
+  smsLogs                       SmsLog[]                 @relation("SmsLogs")
+  smsAiSessions                 SmsAiSession[]           @relation("BusinessSmsAiSessions")
+  aiCallSessions                AiCallSession[]          @relation("BusinessAiCallSessions")
+  smsConsentEvents              SmsConsentEvent[]        @relation("BusinessSmsConsentEvents")
   staff                         Staff[]
   bankAccount                   BusinessBankAccount?
   revenueCatWebhookEvents       RevenueCatWebhookEvent[]
@@ -127,9 +127,9 @@ model BusinessBankAccount {
 }
 
 model RevenueCatWebhookEvent {
-  id         String   @id @default(cuid())
-  createdAt  DateTime @default(now())
-  eventId    String   @unique
+  id         String    @id @default(cuid())
+  createdAt  DateTime  @default(now())
+  eventId    String    @unique
   appUserId  String?
   eventType  String?
   businessId String?
@@ -307,22 +307,28 @@ model ServiceGroup {
 }
 
 model Staff {
-  id                 String         @id @default(cuid())
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
-  businessId         String
-  fullName           String
-  email              String?
-  phone              String?
-  role               String         @default("staff")
-  bio                String?
-  active             Boolean        @default(true)
-  workDays           Int[]          @default([0, 1, 2, 3, 4, 5, 6])
-  workHours          Json?
-  appointments       Appointment[]
-  checkIns           CheckIn[]
-  business           Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  serviceAssignments StaffService[]
+  id                  String         @id @default(cuid())
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  businessId          String
+  fullName            String
+  email               String?
+  phone               String?
+  role                String         @default("staff")
+  bio                 String?
+  active              Boolean        @default(true)
+  portalAccessEnabled Boolean        @default(false)
+  portalPasswordHash  String?
+  portalPasswordSetAt DateTime?
+  workDays            Int[]          @default([0, 1, 2, 3, 4, 5, 6])
+  workHours           Json?
+  appointments        Appointment[]
+  checkIns            CheckIn[]
+  business            Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  serviceAssignments  StaffService[]
+
+  @@index([email])
+  @@index([businessId, portalAccessEnabled])
 }
 
 model StaffService {

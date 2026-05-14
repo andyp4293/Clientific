@@ -34,6 +34,7 @@ import {
 } from '@/lib/staff-schedule';
 
 type MobileScheduleScreenProps = {
+  accessMode?: 'owner' | 'staff';
   composerCustomers: MobileCustomerRecord[];
   composerError: string | null;
   data: MobileAppointmentsSummary | null;
@@ -42,6 +43,7 @@ type MobileScheduleScreenProps = {
   isLoading: boolean;
   isRefreshing: boolean;
   servicesSummary: MobileServicesSummary | null;
+  staffViewerName?: string | null;
   onCreateAppointment: (input: MobileAppointmentInput) => Promise<void>;
   onCreateAppointmentCustomer: (input: MobileCustomerInput) => Promise<MobileCustomerRecord>;
   onDeleteAppointment: (appointmentId: string) => Promise<void>;
@@ -51,6 +53,7 @@ type MobileScheduleScreenProps = {
   onSelectDate: (date: string) => void;
   onPreviousDate: () => void;
   onRefresh: () => Promise<void>;
+  onSignOut?: () => Promise<void>;
   onUpdateAppointment: (
     appointmentId: string,
     input: MobileAppointmentUpdateInput,
@@ -667,6 +670,7 @@ function InlineErrorCard({ message }: { message: string }) {
 }
 
 export function MobileScheduleScreen({
+  accessMode = 'owner',
   composerCustomers,
   composerError,
   data,
@@ -675,6 +679,7 @@ export function MobileScheduleScreen({
   isLoading,
   isRefreshing,
   servicesSummary,
+  staffViewerName,
   onCreateAppointment,
   onCreateAppointmentCustomer,
   onDeleteAppointment,
@@ -684,11 +689,13 @@ export function MobileScheduleScreen({
   onSelectDate,
   onPreviousDate,
   onRefresh,
+  onSignOut,
   onUpdateAppointment,
 }: MobileScheduleScreenProps) {
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
   const isViewingToday = data?.selectedDate === formatDateKey(new Date());
+  const isStaffMode = accessMode === 'staff';
   const [isCreateSheetVisible, setIsCreateSheetVisible] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<MobileAppointmentEntry | null>(null);
   const [customerMode, setCustomerMode] = useState<CustomerMode>('existing');
@@ -966,6 +973,10 @@ export function MobileScheduleScreen({
   }, [editForm.time, editSuggestedTimeOptions, editingAppointment]);
 
   const openCreateSheet = () => {
+    if (isStaffMode) {
+      return;
+    }
+
     setSheetError(null);
     setCustomerMode('existing');
     setCustomerSearch('');
@@ -1188,21 +1199,35 @@ export function MobileScheduleScreen({
           ]}>
           <View style={styles.heroHeader}>
             <View style={styles.heroCopy}>
-              <Text style={[styles.eyebrow, { color: theme.accent }]}>Appointments</Text>
+              <Text style={[styles.eyebrow, { color: theme.accent }]}>
+                {isStaffMode ? 'Employee schedule' : 'Appointments'}
+              </Text>
               <Text style={[styles.heroTitle, { color: theme.text }]}>
                 {data?.dateLabel ?? 'Daily appointments'}
               </Text>
               <Text style={[styles.heroSubtitle, { color: theme.mutedText }]}>
-                Review, confirm, edit, and create bookings from the same native flow.
+                {isStaffMode
+                  ? `${staffViewerName ?? 'Staff'} can view assigned appointments only. Customer phone numbers stay hidden.`
+                  : 'Review, confirm, edit, and create bookings from the same native flow.'}
               </Text>
             </View>
-            <Pressable
-              accessibilityRole="button"
-              onPress={openCreateSheet}
-              style={[styles.addButton, { backgroundColor: theme.accent }]}
-              testID="mobile-schedule-add">
-              <Text style={styles.addButtonText}>New</Text>
-            </Pressable>
+            {isStaffMode ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => void onSignOut?.()}
+                style={[styles.staffSignOutButton, { borderColor: theme.border }]}
+                testID="mobile-staff-signout">
+                <Text style={[styles.staffSignOutButtonText, { color: theme.text }]}>Sign out</Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                onPress={openCreateSheet}
+                style={[styles.addButton, { backgroundColor: theme.accent }]}
+                testID="mobile-schedule-add">
+                <Text style={styles.addButtonText}>New</Text>
+              </Pressable>
+            )}
           </View>
 
           <CalendarDateButton
@@ -1252,6 +1277,25 @@ export function MobileScheduleScreen({
 
         {error ? <InlineErrorCard message={error} /> : null}
         {sheetError ? <InlineErrorCard message={sheetError} /> : null}
+        {isStaffMode ? (
+          <View
+            style={[
+              styles.privacyCard,
+              { backgroundColor: theme.accentSoft, borderColor: theme.border },
+            ]}
+            testID="mobile-staff-privacy-card">
+            <Feather name="lock" size={18} color={theme.accent} />
+            <View style={styles.privacyCopy}>
+              <Text style={[styles.privacyTitle, { color: theme.text }]}>
+                Customer privacy is on
+              </Text>
+              <Text style={[styles.privacyText, { color: theme.mutedText }]}>
+                You can see customer names, services, times, and notes for your assigned
+                appointments. Phone numbers and customer records are hidden.
+              </Text>
+            </View>
+          </View>
+        ) : null}
 
         {isLoading && !data ? (
           <View
@@ -1290,7 +1334,7 @@ export function MobileScheduleScreen({
                 styles.sectionCard,
                 { backgroundColor: theme.surface, borderColor: theme.border },
               ]}>
-              {pendingAppointments.length ? (
+              {!isStaffMode && pendingAppointments.length ? (
                 <View
                   style={[
                     styles.pendingAttentionCard,
@@ -1372,49 +1416,51 @@ export function MobileScheduleScreen({
                         </Text>
                       ) : null}
 
-                      <View style={styles.actionRow}>
-                        {appointment.canConfirm ? (
-                          <Pressable
-                            accessibilityRole="button"
-                            onPress={() => void handleConfirmAppointment(appointment.id)}
-                            style={[styles.primaryActionButton, { backgroundColor: theme.accent }]}
-                            disabled={isConfirming}
-                            testID={`mobile-appointment-confirm-${appointment.id}`}>
-                            <Text style={styles.primaryActionButtonText}>
-                              {isConfirming ? 'Confirming...' : 'Confirm'}
-                            </Text>
-                          </Pressable>
-                        ) : null}
-                        {appointment.canModify ? (
-                          <>
+                      {!isStaffMode ? (
+                        <View style={styles.actionRow}>
+                          {appointment.canConfirm ? (
                             <Pressable
                               accessibilityRole="button"
-                              onPress={() => openEditSheet(appointment)}
-                              style={[
-                                styles.secondaryActionButton,
-                                { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
-                              ]}
-                              testID={`mobile-appointment-edit-${appointment.id}`}>
-                              <Text style={[styles.secondaryActionButtonText, { color: theme.text }]}>
-                                Edit
+                              onPress={() => void handleConfirmAppointment(appointment.id)}
+                              style={[styles.primaryActionButton, { backgroundColor: theme.accent }]}
+                              disabled={isConfirming}
+                              testID={`mobile-appointment-confirm-${appointment.id}`}>
+                              <Text style={styles.primaryActionButtonText}>
+                                {isConfirming ? 'Confirming...' : 'Confirm'}
                               </Text>
                             </Pressable>
-                            <Pressable
-                              accessibilityRole="button"
-                              onPress={() => handleCancelAppointment(appointment)}
-                              style={[
-                                styles.secondaryActionButton,
-                                { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
-                              ]}
-                              disabled={isCancelling}
-                              testID={`mobile-appointment-cancel-${appointment.id}`}>
-                              <Text style={[styles.secondaryActionButtonText, { color: theme.text }]}>
-                                {isCancelling ? 'Cancelling...' : 'Cancel'}
-                              </Text>
-                            </Pressable>
-                          </>
-                        ) : null}
-                      </View>
+                          ) : null}
+                          {appointment.canModify ? (
+                            <>
+                              <Pressable
+                                accessibilityRole="button"
+                                onPress={() => openEditSheet(appointment)}
+                                style={[
+                                  styles.secondaryActionButton,
+                                  { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                                ]}
+                                testID={`mobile-appointment-edit-${appointment.id}`}>
+                                <Text style={[styles.secondaryActionButtonText, { color: theme.text }]}>
+                                  Edit
+                                </Text>
+                              </Pressable>
+                              <Pressable
+                                accessibilityRole="button"
+                                onPress={() => handleCancelAppointment(appointment)}
+                                style={[
+                                  styles.secondaryActionButton,
+                                  { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                                ]}
+                                disabled={isCancelling}
+                                testID={`mobile-appointment-cancel-${appointment.id}`}>
+                                <Text style={[styles.secondaryActionButtonText, { color: theme.text }]}>
+                                  {isCancelling ? 'Cancelling...' : 'Cancel'}
+                                </Text>
+                              </Pressable>
+                            </>
+                          ) : null}
+                        </View>
+                      ) : null}
                     </View>
                   );
                 })
@@ -1424,15 +1470,19 @@ export function MobileScheduleScreen({
                     Nothing is booked yet
                   </Text>
                   <Text style={[styles.emptyStateText, { color: theme.mutedText }]}>
-                    Create a service-based appointment here instead of jumping back to the web dashboard.
+                    {isStaffMode
+                      ? 'Assigned bookings will appear here without exposing customer phone numbers.'
+                      : 'Create a service-based appointment here instead of jumping back to the web dashboard.'}
                   </Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={openCreateSheet}
-                    style={[styles.emptyStateButton, { backgroundColor: theme.accent }]}
-                    testID="mobile-schedule-empty-create">
-                    <Text style={styles.emptyStateButtonText}>Create appointment</Text>
-                  </Pressable>
+                  {!isStaffMode ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={openCreateSheet}
+                      style={[styles.emptyStateButton, { backgroundColor: theme.accent }]}
+                      testID="mobile-schedule-empty-create">
+                      <Text style={styles.emptyStateButtonText}>Create appointment</Text>
+                    </Pressable>
+                  ) : null}
                 </View>
               )}
             </View>
@@ -2096,6 +2146,19 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '800',
   },
+  staffSignOutButton: {
+    minWidth: 86,
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    alignItems: 'center',
+  },
+  staffSignOutButtonText: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
   dateRow: {
     flexDirection: 'row',
     gap: 10,
@@ -2267,6 +2330,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+  },
+  privacyCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  privacyCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  privacyTitle: {
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: '800',
+  },
+  privacyText: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '600',
   },
   primaryActionButton: {
     minWidth: 112,

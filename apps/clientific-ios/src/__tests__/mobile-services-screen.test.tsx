@@ -50,6 +50,8 @@ const data: MobileServicesSummary = {
       role: 'Stylist',
       bio: 'Known for detailed gel manicures and calm consultations.',
       isActive: true,
+      portalAccessEnabled: true,
+      hasPortalPassword: true,
       workDays: [1, 2],
       workHours: {
         1: { startTime: '09:00', endTime: '17:00' },
@@ -132,6 +134,31 @@ describe('MobileServicesScreen', () => {
           fullName: 'Morgan',
           role: 'Lead stylist',
           bio: 'Friendly specialist for natural nails.',
+        }),
+      );
+    });
+  });
+
+  it('saves employee app access with a temporary password', async () => {
+    const onCreateStaff = jest.fn().mockResolvedValue(undefined);
+    renderScreen({ onCreateStaff });
+
+    fireEvent.press(screen.getByTestId('mobile-services-tab-staff'));
+    expect(screen.getByText('Employee app enabled')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('mobile-add-staff'));
+    fireEvent.changeText(screen.getByPlaceholderText('Taylor Smith'), 'Morgan');
+    fireEvent.changeText(screen.getByPlaceholderText('taylor@example.com'), 'morgan@example.com');
+    fireEvent(screen.getByTestId('mobile-staff-portal-toggle'), 'valueChange', true);
+    fireEvent.changeText(screen.getByPlaceholderText('At least 8 characters'), 'temporary123');
+    fireEvent.press(screen.getByTestId('mobile-save-staff'));
+
+    await waitFor(() => {
+      expect(onCreateStaff).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fullName: 'Morgan',
+          email: 'morgan@example.com',
+          portalAccessEnabled: true,
+          portalPassword: 'temporary123',
         }),
       );
     });

@@ -107,6 +107,30 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    let staffViewer: { id: string; fullName: string } | null = null;
+    if (session.accountType === 'staff') {
+      if (!session.staffId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+
+      staffViewer = await prisma.staff.findFirst({
+        where: {
+          id: session.staffId,
+          businessId: business.id,
+          active: true,
+          portalAccessEnabled: true,
+        },
+        select: {
+          id: true,
+          fullName: true,
+        },
+      });
+
+      if (!staffViewer) {
+        return NextResponse.json({ error: 'Employee app access is disabled.' }, { status: 403 });
+      }
+    }
+
     const searchParams = new URL(request.url).searchParams;
     const selectedDate = searchParams.get('date') || formatLocalDate(new Date(), business.timezone);
     const startOfDay = businessDayStart(selectedDate, business.timezone);
@@ -115,6 +139,7 @@ export async function GET(request: Request) {
     const appointments = await prisma.appointment.findMany({
       where: {
         businessId: business.id,
+        ...(staffViewer ? { staffId: staffViewer.id } : {}),
         startTime: {
           gte: startOfDay,
           lt: endOfDay,
@@ -167,6 +192,14 @@ export async function GET(request: Request) {
       selectedDate,
       dateLabel: formatDateLabel(selectedDate, business.timezone),
       timezone: business.timezone,
+      viewer: staffViewer
+        ? {
+            role: 'staff',
+            staffId: staffViewer.id,
+            staffName: staffViewer.fullName,
+            privacy: 'customer_phone_hidden',
+          }
+        : { role: 'owner' },
       counts: {
         total: appointmentsWithServices.length,
         pending: appointmentsWithServices.filter((appointment) => appointment.status === 'pending')
@@ -195,8 +228,8 @@ export async function GET(request: Request) {
         source: appointment.source,
         sourceLabel: formatSourceLabel(appointment.source),
         notes: appointment.notes,
-        canConfirm: appointment.status === 'pending',
-        canModify: ['pending', 'scheduled', 'confirmed'].includes(appointment.status),
+        canConfirm: !staffViewer && appointment.status === 'pending',
+        canModify: !staffViewer && ['pending', 'scheduled', 'confirmed'].includes(appointment.status),
       })),
     });
   } catch (error) {
@@ -217,6 +250,13 @@ export async function POST(request: Request) {
       session = await verifyMobileSessionToken(token);
     } catch {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (session.accountType === 'staff') {
+      return NextResponse.json(
+        { error: 'Employee accounts can only view assigned appointments.' },
+        { status: 403 },
+      );
     }
 
     const subscriptionError = await requireActiveSubscription(session.businessId);

@@ -97,6 +97,12 @@ export async function GET(request: Request) {
     } catch {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    if (session.accountType === 'staff') {
+      return NextResponse.json(
+        { error: 'Employee accounts can only access assigned appointments.' },
+        { status: 403 },
+      );
+    }
 
     const business = await prisma.business.findUnique({
       where: { id: session.businessId },

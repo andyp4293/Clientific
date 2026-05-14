@@ -8,6 +8,7 @@ vi.mock('@/lib/mobile-session', () => ({
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: { findUnique: vi.fn() },
+    staff: { findFirst: vi.fn() },
     appointment: { findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
     service: { findMany: vi.fn(), findFirst: vi.fn() },
     customer: { findFirst: vi.fn(), update: vi.fn() },
@@ -71,6 +72,7 @@ import { GET, POST } from './route';
 const mockGetBearerToken = vi.mocked(getBearerToken);
 const mockVerifyMobileSessionToken = vi.mocked(verifyMobileSessionToken);
 const mockFindBusiness = vi.mocked(prisma.business.findUnique);
+const mockFindStaff = vi.mocked(prisma.staff.findFirst);
 const mockFindAppointments = vi.mocked(prisma.appointment.findMany);
 const mockCreateAppointment = vi.mocked(prisma.appointment.create);
 const mockUpdateAppointment = vi.mocked(prisma.appointment.update);
@@ -104,7 +106,15 @@ const business = {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetBearerToken.mockReturnValue('token');
-  mockVerifyMobileSessionToken.mockResolvedValue({ businessId: 'biz-1' });
+  mockVerifyMobileSessionToken.mockResolvedValue({
+    businessId: 'biz-1',
+    email: 'owner@clientific.app',
+    name: 'Clientific Studio',
+    onboardingComplete: true,
+    accountType: 'owner',
+    staffId: null,
+    staffName: null,
+  });
   mockRequireActiveSubscription.mockResolvedValue(null);
   mockValidateBusinessHours.mockReturnValue(null);
   mockGetBlockedFieldLabel.mockReturnValue(null);
@@ -114,9 +124,10 @@ beforeEach(() => {
     vapiPhoneNumber: '+18885550123',
     businessHours: { hours: {} },
     closureDates: [],
-  });
+  } as never);
+  mockFindStaff.mockResolvedValue({ id: 'staff-1', fullName: 'Taylor' } as never);
   mockFindAppointments.mockResolvedValue([]);
-  mockFindServices.mockResolvedValue([{ id: 'svc-1', name: 'Color' }]);
+  mockFindServices.mockResolvedValue([{ id: 'svc-1', name: 'Color' }] as never);
   mockFindService.mockResolvedValue({
     id: 'svc-1',
     name: 'Haircut',
@@ -127,7 +138,7 @@ beforeEach(() => {
     phone: '+15551234567',
     smsConsent: false,
     smsOptedOut: false,
-  });
+  } as never);
   mockUpdateCustomer.mockResolvedValue({
     id: 'cust-1',
     smsConsent: true,
@@ -213,6 +224,71 @@ describe('mobile appointments route', () => {
         sourceLabel: 'Manual',
         canConfirm: false,
         canModify: true,
+      }),
+    );
+  });
+
+  it('limits staff sessions to assigned appointments and hides owner actions', async () => {
+    mockVerifyMobileSessionToken.mockResolvedValueOnce({
+      businessId: 'biz-1',
+      accountType: 'staff',
+      staffId: 'staff-1',
+      staffName: 'Taylor',
+      email: 'taylor@example.com',
+      name: 'Taylor',
+      onboardingComplete: true,
+    });
+    mockFindBusiness.mockResolvedValueOnce(business as never);
+    mockFindAppointments.mockResolvedValueOnce([
+      {
+        id: 'appt-1',
+        startTime: new Date('2026-03-30T14:00:00.000Z'),
+        endTime: new Date('2026-03-30T15:00:00.000Z'),
+        duration: 60,
+        status: 'pending',
+        source: 'dashboard',
+        notes: 'No phone is selected in this response',
+        customer: {
+          id: 'cust-1',
+          name: 'Jordan Lee',
+        },
+        service: {
+          id: 'svc-1',
+          name: 'Color',
+        },
+        staff: {
+          id: 'staff-1',
+          fullName: 'Taylor',
+        },
+      },
+    ] as never);
+
+    const response = await GET(
+      new Request('https://www.clientific.app/api/mobile/appointments?date=2026-03-30', {
+        headers: { authorization: 'Bearer token' },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockFindAppointments).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ businessId: 'biz-1', staffId: 'staff-1' }),
+      }),
+    );
+
+    const body = await response.json();
+    expect(JSON.stringify(body)).not.toContain('+15551234567');
+    expect(body.viewer).toEqual(
+      expect.objectContaining({
+        role: 'staff',
+        staffId: 'staff-1',
+        privacy: 'customer_phone_hidden',
+      }),
+    );
+    expect(body.appointments[0]).toEqual(
+      expect.objectContaining({
+        canConfirm: false,
+        canModify: false,
       }),
     );
   });

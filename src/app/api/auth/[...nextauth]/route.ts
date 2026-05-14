@@ -3,7 +3,14 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import { prisma } from '@/lib/prisma';
 import { isBusinessOnboardingComplete } from '@/lib/onboarding';
-import { authenticateBusinessCredentials } from '@/lib/business-auth';
+import {
+  authenticateBusinessCredentials,
+  BusinessAuthError,
+} from '@/lib/business-auth';
+import {
+  authenticateStaffCredentials,
+  StaffAuthError,
+} from '@/lib/staff-auth';
 
 const ONBOARDING_SELECT = {
   id: true,
@@ -23,10 +30,38 @@ const providers: NextAuthOptions['providers'] = [
       password: { label: 'Password', type: 'password' },
     },
     async authorize(credentials) {
-      return authenticateBusinessCredentials({
+      const input = {
         email: credentials?.email,
         password: credentials?.password,
-      });
+      };
+
+      try {
+        const business = await authenticateBusinessCredentials(input);
+        return {
+          ...business,
+          accountType: 'owner' as const,
+        };
+      } catch (businessError) {
+        if (
+          businessError instanceof BusinessAuthError &&
+          !['INVALID_CREDENTIALS', 'MISSING_CREDENTIALS'].includes(businessError.code)
+        ) {
+          throw businessError;
+        }
+
+        try {
+          return await authenticateStaffCredentials(input);
+        } catch (staffError) {
+          if (
+            staffError instanceof StaffAuthError &&
+            staffError.code === 'SERVICE_UNAVAILABLE'
+          ) {
+            throw staffError;
+          }
+
+          throw businessError;
+        }
+      }
     },
   }),
 ];
@@ -85,12 +120,22 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         const businessId = (user as { businessId?: string }).businessId;
         const onboardingComplete = (user as { onboardingComplete?: boolean }).onboardingComplete;
+        const accountType = (user as { accountType?: 'owner' | 'staff' }).accountType ?? 'owner';
+        const staffId = (user as { staffId?: string }).staffId;
+        const staffName = (user as { staffName?: string }).staffName;
         if (businessId) {
           token.businessId = businessId;
         }
         if (typeof onboardingComplete === 'boolean') {
           token.onboardingComplete = onboardingComplete;
         }
+        token.accountType = accountType;
+        token.staffId = staffId;
+        token.staffName = staffName;
+      }
+
+      if (token.accountType === 'staff') {
+        return token;
       }
 
       if (!token.businessId || !token.id || typeof token.onboardingComplete !== 'boolean') {
@@ -124,6 +169,10 @@ export const authOptions: NextAuthOptions = {
           session.user.businessId = token.businessId as string;
         }
         session.user.onboardingComplete = Boolean(token.onboardingComplete);
+        session.user.accountType = token.accountType === 'staff' ? 'staff' : 'owner';
+        session.user.staffId = typeof token.staffId === 'string' ? token.staffId : undefined;
+        session.user.staffName =
+          typeof token.staffName === 'string' ? token.staffName : undefined;
       }
       return session;
     },

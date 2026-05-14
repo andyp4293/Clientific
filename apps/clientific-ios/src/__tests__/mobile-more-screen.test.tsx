@@ -130,6 +130,8 @@ const services = {
       role: 'Stylist',
       bio: null,
       isActive: true,
+      portalAccessEnabled: false,
+      hasPortalPassword: false,
       workDays: [1, 2, 3],
       workHours: {
         1: { startTime: '09:00', endTime: '17:00' },

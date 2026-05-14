@@ -44,6 +44,8 @@ const servicesSummary = {
       role: 'Stylist',
       bio: 'Gentle with first-time clients and excellent at clean gel sets.',
       isActive: true,
+      portalAccessEnabled: true,
+      hasPortalPassword: true,
       workDays: [1, 2, 3],
       workHours: {
         1: { startTime: '09:00', endTime: '17:00' },
@@ -138,6 +140,7 @@ function renderScreen(
       onSelectDate={jest.fn()}
       onPreviousDate={jest.fn()}
       onRefresh={jest.fn().mockResolvedValue(undefined)}
+      onSignOut={jest.fn().mockResolvedValue(undefined)}
       onUpdateAppointment={jest.fn().mockResolvedValue(undefined)}
       {...overrides}
     />,
@@ -174,6 +177,7 @@ describe('MobileScheduleScreen', () => {
         onSelectDate={jest.fn()}
         onPreviousDate={jest.fn()}
         onRefresh={jest.fn().mockResolvedValue(undefined)}
+        onSignOut={jest.fn().mockResolvedValue(undefined)}
         onUpdateAppointment={jest.fn().mockResolvedValue(undefined)}
       />,
     );
@@ -181,6 +185,37 @@ describe('MobileScheduleScreen', () => {
     expect(screen.getByTestId('mobile-schedule-today').props.accessibilityState).toMatchObject({
       selected: false,
     });
+  });
+
+  it('renders staff mode as appointment-only and hides owner actions', () => {
+    renderScreen({
+      accessMode: 'staff',
+      staffViewerName: 'Taylor',
+      data: {
+        ...buildSchedule('2099-03-31', 'Thursday, March 31'),
+        viewer: {
+          role: 'staff',
+          staffId: 'staff-1',
+          staffName: 'Taylor',
+          privacy: 'customer_phone_hidden',
+        },
+        appointments: [
+          {
+            ...buildSchedule('2099-03-31').appointments[0],
+            canConfirm: false,
+            canModify: false,
+          },
+        ],
+      },
+    });
+
+    expect(screen.getByText('Employee schedule')).toBeTruthy();
+    expect(screen.getByTestId('mobile-staff-privacy-card')).toBeTruthy();
+    expect(screen.queryByTestId('mobile-schedule-add')).toBeNull();
+    expect(screen.queryByTestId('mobile-appointment-confirm-appt-1')).toBeNull();
+    expect(screen.queryByTestId('mobile-appointment-edit-appt-1')).toBeNull();
+    expect(screen.queryByTestId('mobile-appointment-cancel-appt-1')).toBeNull();
+    expect(screen.getByText(/Phone numbers and customer records are hidden/i)).toBeTruthy();
   });
 
   it('still lets the user jump back to today', () => {

@@ -4,14 +4,36 @@ import { getToken } from 'next-auth/jwt';
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
 
   // Redirect authenticated users from landing page straight to dashboard
   if (pathname === '/') {
-    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
     if (token) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+      return NextResponse.redirect(
+        new URL(token.accountType === 'staff' ? '/staff/appointments' : '/dashboard', request.url),
+      );
     }
   }
+
+  if (pathname.startsWith('/dashboard') && token?.accountType === 'staff') {
+    return NextResponse.redirect(new URL('/staff/appointments', request.url));
+  }
+
+  if (pathname.startsWith('/api/')) {
+    if (
+      token?.accountType === 'staff' &&
+      !pathname.startsWith('/api/auth') &&
+      !pathname.startsWith('/api/public')
+    ) {
+      return NextResponse.json(
+        { error: 'Employee accounts can only access assigned appointments.' },
+        { status: 403 },
+      );
+    }
+
+    return NextResponse.next();
+  }
+
   const hostname = request.headers.get('host') || '';
 
   // Check if it's the booking subdomain
@@ -38,11 +60,10 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };

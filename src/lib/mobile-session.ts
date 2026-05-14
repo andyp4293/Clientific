@@ -9,6 +9,9 @@ export type MobileSessionPayload = {
   email: string;
   name: string;
   onboardingComplete: boolean;
+  accountType?: 'owner' | 'staff';
+  staffId?: string | null;
+  staffName?: string | null;
 };
 
 function getMobileSessionSecret() {
@@ -28,10 +31,13 @@ export async function createMobileSessionToken(
     email: payload.email,
     name: payload.name,
     onboardingComplete: payload.onboardingComplete,
+    accountType: payload.accountType ?? 'owner',
+    staffId: payload.staffId ?? null,
+    staffName: payload.staffName ?? null,
     type: MOBILE_SESSION_TYPE,
   })
     .setProtectedHeader({ alg: 'HS256' })
-    .setSubject(payload.businessId)
+    .setSubject(payload.accountType === 'staff' && payload.staffId ? payload.staffId : payload.businessId)
     .setIssuer(MOBILE_SESSION_ISSUER)
     .setAudience(MOBILE_SESSION_AUDIENCE)
     .setIssuedAt()
@@ -54,6 +60,9 @@ export async function verifyMobileSessionToken(token: string) {
     email: typeof payload.email === 'string' ? payload.email : '',
     name: typeof payload.name === 'string' ? payload.name : '',
     onboardingComplete: Boolean(payload.onboardingComplete),
+    accountType: payload.accountType === 'staff' ? 'staff' : 'owner',
+    staffId: typeof payload.staffId === 'string' ? payload.staffId : null,
+    staffName: typeof payload.staffName === 'string' ? payload.staffName : null,
   };
 }
 

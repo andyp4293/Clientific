@@ -35,11 +35,11 @@ function LoginForm() {
   // Redirect if already logged in
   useEffect(() => {
     if (status === 'authenticated' && !pendingRedirect) {
-      const targetPath = '/dashboard';
+      const targetPath = session?.user?.accountType === 'staff' ? '/staff/appointments' : '/dashboard';
       setPendingRedirect(targetPath);
       window.location.replace(targetPath);
     }
-  }, [status, pendingRedirect]);
+  }, [session?.user?.accountType, status, pendingRedirect]);
 
   useEffect(() => {
     if (!oauthError) return;
@@ -77,7 +77,9 @@ function LoginForm() {
         setCanResendVerification(result.error.includes('EmailNotVerified'));
       } else {
         setNotice('Signing you in...');
-        const targetPath = '/dashboard';
+        const nextSession = await fetch('/api/auth/session').then((res) => res.json()).catch(() => null);
+        const targetPath =
+          nextSession?.user?.accountType === 'staff' ? '/staff/appointments' : '/dashboard';
         setPendingRedirect(targetPath);
         window.location.assign(targetPath);
       }
@@ -287,4 +289,3 @@ export default function LoginPage() {
     </Suspense>
   );
 }
-

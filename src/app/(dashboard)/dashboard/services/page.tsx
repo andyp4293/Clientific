@@ -55,6 +55,8 @@ interface Staff {
   role: string | null;
   bio: string | null;
   isActive: boolean;
+  portalAccessEnabled: boolean;
+  hasPortalPassword: boolean;
   workDays: number[];
   workHours?: StaffWorkHoursRecord;
   /** Empty = no restrictions (can perform all services). Non-empty = restricted to these service IDs. */
@@ -554,6 +556,44 @@ function StaffTab({
             </p>
           )}
 
+          <div
+            className={`mb-4 rounded-2xl border px-3 py-2 text-xs ${
+              member.portalAccessEnabled
+                ? "border-primary/25 bg-primary/10 text-primary dark:border-primary/35 dark:bg-primary/15 dark:text-primary-200"
+                : "border-gray-200 bg-gray-50 text-gray-500 dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-400"
+            }`}
+          >
+            <div className="flex items-start gap-2">
+              <svg
+                className="mt-0.5 h-4 w-4 flex-shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m5 2a8 8 0 11-16 0 8 8 0 0116 0z"
+                />
+              </svg>
+              <div>
+                <p className="font-semibold">
+                  {member.portalAccessEnabled
+                    ? member.hasPortalPassword
+                      ? "Employee app enabled"
+                      : "Employee app needs password"
+                    : "Employee app off"}
+                </p>
+                <p className="mt-0.5 leading-5">
+                  {member.portalAccessEnabled
+                    ? "Can view assigned appointments only. Customer phones stay hidden."
+                    : "Enable when this staff member needs their own appointment-only login."}
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-1.5 mb-4 text-sm">
             {member.email && (
               <div className="flex items-center text-gray-600 dark:text-gray-400">
@@ -710,6 +750,8 @@ export default function ServicesPage() {
     role: "",
     bio: "",
     isActive: true,
+    portalAccessEnabled: false,
+    portalPassword: "",
     workDays: ALL_DAYS,
     workHours: {} as StaffWorkHoursRecord,
     serviceIds: [] as string[],
@@ -1040,6 +1082,8 @@ export default function ServicesPage() {
         role: staffMember.role || "",
         bio: staffMember.bio || "",
         isActive: staffMember.isActive,
+        portalAccessEnabled: staffMember.portalAccessEnabled,
+        portalPassword: "",
         workDays,
         workHours: deriveStaffWorkHoursForForm({
           workDays,
@@ -1061,6 +1105,8 @@ export default function ServicesPage() {
         role: "",
         bio: "",
         isActive: true,
+        portalAccessEnabled: false,
+        portalPassword: "",
         workDays: defaultWorkDays,
         workHours: deriveStaffWorkHoursForForm({
           workDays: defaultWorkDays,
@@ -1634,6 +1680,80 @@ export default function ServicesPage() {
                           </p>
                         </div>
                       </div>
+                    </section>
+
+                    <section className="rounded-xl border border-primary/15 bg-primary/5 p-5 dark:border-primary/25 dark:bg-primary/10">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="max-w-xl">
+                          <h3 className="text-lg font-semibold text-gray-950 dark:text-white">
+                            Employee app access
+                          </h3>
+                          <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                            Give this staff member their own login for the web and iOS app. They only
+                            see appointments assigned to them, and customer phone numbers, CRM,
+                            deals, billing, and settings stay hidden.
+                          </p>
+                        </div>
+                        <label className="inline-flex cursor-pointer items-center gap-3 rounded-full border border-primary/20 bg-white px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm dark:border-primary/30 dark:bg-gray-900 dark:text-gray-100">
+                          <input
+                            type="checkbox"
+                            checked={staffFormData.portalAccessEnabled}
+                            onChange={(e) =>
+                              setStaffFormData({
+                                ...staffFormData,
+                                portalAccessEnabled: e.target.checked,
+                              })
+                            }
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary dark:border-gray-600"
+                          />
+                          Appointment-only login
+                        </label>
+                      </div>
+
+                      {staffFormData.portalAccessEnabled && (
+                        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                          <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                              Login email
+                            </p>
+                            <p className="mt-2 text-sm leading-6 text-gray-700 dark:text-gray-300">
+                              Uses the email above. Add one before saving so the employee knows what
+                              to sign in with.
+                            </p>
+                          </div>
+                          <div>
+                            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                              {editingStaff?.hasPortalPassword
+                                ? "New temporary password"
+                                : "Temporary password"}
+                              {!editingStaff?.hasPortalPassword && (
+                                <span className="text-red-500 dark:text-red-400"> *</span>
+                              )}
+                            </label>
+                            <input
+                              type="password"
+                              minLength={8}
+                              value={staffFormData.portalPassword}
+                              onChange={(e) =>
+                                setStaffFormData({
+                                  ...staffFormData,
+                                  portalPassword: e.target.value,
+                                })
+                              }
+                              className="input w-full"
+                              placeholder={
+                                editingStaff?.hasPortalPassword
+                                  ? "Leave blank to keep current password"
+                                  : "At least 8 characters"
+                              }
+                            />
+                            <p className="mt-1.5 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                              Share this password directly with the employee. Owners can reset it here
+                              any time.
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </section>
                   </div>
 

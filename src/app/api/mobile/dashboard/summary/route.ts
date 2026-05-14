@@ -79,6 +79,111 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    if (session.accountType === 'staff') {
+      if (!session.staffId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+
+      const staff = await prisma.staff.findFirst({
+        where: {
+          id: session.staffId,
+          businessId: business.id,
+          active: true,
+          portalAccessEnabled: true,
+        },
+        select: {
+          id: true,
+          fullName: true,
+        },
+      });
+
+      if (!staff) {
+        return NextResponse.json({ error: 'Employee app access is disabled.' }, { status: 403 });
+      }
+
+      const todayKey = formatLocalDate(new Date(), business.timezone);
+      const startOfToday = localToUTC(todayKey, 0, 0, business.timezone);
+      const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000 - 1);
+      const appointmentsToday = await prisma.appointment.findMany({
+        where: {
+          businessId: business.id,
+          staffId: staff.id,
+          startTime: { gte: startOfToday, lte: endOfToday },
+          status: { in: ['pending', 'scheduled', 'confirmed'] },
+        },
+        orderBy: { startTime: 'asc' },
+        take: 8,
+        include: {
+          customer: { select: { name: true } },
+          service: { select: { name: true } },
+        },
+      });
+
+      return NextResponse.json({
+        business: {
+          id: business.id,
+          email: business.email,
+          name: business.name,
+          businessType: business.businessType,
+          onboardingComplete: true,
+        },
+        viewer: {
+          role: 'staff',
+          staffId: staff.id,
+          staffName: staff.fullName,
+          privacy: 'customer_phone_hidden',
+        },
+        subscription: {
+          plan: null,
+          status: 'active',
+          billingProvider: 'none',
+          isActive: true,
+          requiresPurchase: false,
+        },
+        metrics: [
+          {
+            label: 'Assigned today',
+            value: String(appointmentsToday.length),
+            helper: appointmentsToday.length === 1 ? 'Appointment' : 'Appointments',
+          },
+          {
+            label: 'Pending',
+            value: String(
+              appointmentsToday.filter((appointment) => appointment.status === 'pending').length,
+            ),
+            helper: 'Needs owner action',
+          },
+          {
+            label: 'Confirmed',
+            value: String(
+              appointmentsToday.filter((appointment) => appointment.status === 'confirmed').length,
+            ),
+            helper: 'Ready for service',
+          },
+          {
+            label: 'Privacy',
+            value: 'On',
+            helper: 'Customer phones hidden',
+          },
+        ],
+        todayAppointments: appointmentsToday.map((appointment) => ({
+          id: appointment.id,
+          customerName: appointment.customer.name,
+          serviceName: appointment.service?.name ?? 'Service',
+          status: appointment.status,
+          startTimeLabel: formatTimeLabel(appointment.startTime.toISOString(), business.timezone),
+        })),
+        referralSnapshot: {
+          activeCount: 0,
+          pendingCount: 0,
+          lifetimeCredits: 0,
+          payoutReady: false,
+          setupMessage: null,
+        },
+        trialDaysRemaining: null,
+      });
+    }
+
     const todayKey = formatLocalDate(new Date(), business.timezone);
     const startOfToday = localToUTC(todayKey, 0, 0, business.timezone);
     const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000 - 1);
@@ -151,6 +256,7 @@ export async function GET(request: Request) {
         businessType: business.businessType,
         onboardingComplete: isBusinessOnboardingComplete(business),
       },
+      viewer: { role: 'owner' },
       subscription: {
         plan: business.subscriptionPlan,
         status: business.subscriptionStatus,

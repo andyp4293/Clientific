@@ -16,6 +16,15 @@ export type MobileBusiness = {
   onboardingComplete: boolean;
 };
 
+export type MobileViewer =
+  | { role: 'owner'; staffId?: null; staffName?: null; privacy?: null }
+  | {
+      role: 'staff';
+      staffId: string;
+      staffName: string;
+      privacy?: 'customer_phone_hidden';
+    };
+
 export type MobileBusinessProfile = MobileBusiness & {
   ownerPhone: string | null;
   phone: string | null;
@@ -82,6 +91,7 @@ export type MobileAppointmentUpdateInput = {
 
 export type MobileHomeSummary = {
   business: MobileBusiness;
+  viewer?: MobileViewer;
   subscription: {
     plan: string | null;
     status: string | null;
@@ -103,6 +113,7 @@ export type MobileHomeSummary = {
 
 export type MobileAppointmentsSummary = {
   business: MobileBusiness;
+  viewer?: MobileViewer;
   selectedDate: string;
   dateLabel: string;
   timezone: string;
@@ -421,6 +432,8 @@ export type MobileStaffRecord = {
   role: string | null;
   bio: string | null;
   isActive: boolean;
+  portalAccessEnabled: boolean;
+  hasPortalPassword: boolean;
   workDays: number[];
   workHours: MobileStaffWorkHours;
   workDaysLabel: string;
@@ -453,6 +466,8 @@ export type MobileStaffInput = {
   workDays?: number[];
   workHours?: MobileStaffWorkHours;
   serviceIds?: string[];
+  portalAccessEnabled?: boolean;
+  portalPassword?: string | null;
 };
 
 export type MobileBusinessHoursSummary = {
@@ -679,6 +694,7 @@ export type MobileRedeemResult = {
 export type MobileLoginResponse = {
   token: string;
   business: MobileBusiness;
+  viewer?: MobileViewer;
 };
 
 export type MobileRegistrationInput = {

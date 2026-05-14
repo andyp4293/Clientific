@@ -541,12 +541,21 @@ export function ClientificNativeApp() {
       try {
         const nextHome = await fetchMobileHomeSummary(token);
         setHome(nextHome);
-        setSession({ token, business: nextHome.business });
+        setSession({ token, business: nextHome.business, viewer: nextHome.viewer });
+        if (nextHome.viewer?.role === 'staff') {
+          setActiveTab('appointments');
+          setMoreSection('menu');
+          setBillingNotice(null);
+        }
         if (nextHome.business.onboardingComplete) {
           setBusinessProfile(null);
           setBusinessProfileError(null);
         }
-        if (nextHome.business.onboardingComplete && nextHome.subscription.requiresPurchase) {
+        if (
+          nextHome.viewer?.role !== 'staff' &&
+          nextHome.business.onboardingComplete &&
+          nextHome.subscription.requiresPurchase
+        ) {
           setActiveTab('more');
           setMoreSection('billing');
           setBillingNotice(
@@ -1549,7 +1558,11 @@ export function ClientificNativeApp() {
         }
 
         setHome(nextHome);
-        setSession({ token, business: nextHome.business });
+        setSession({ token, business: nextHome.business, viewer: nextHome.viewer });
+        if (nextHome.viewer?.role === 'staff') {
+          setActiveTab('appointments');
+          setMoreSection('menu');
+        }
         setAuthMode('sign-in');
         setAuthNotice(null);
       } catch (error) {
@@ -1584,12 +1597,12 @@ export function ClientificNativeApp() {
   }, [refreshPushPermissionStatus]);
 
   useEffect(() => {
-    if (!session?.token || notifications || isLoadingNotifications) {
+    if (!session?.token || session.viewer?.role === 'staff' || notifications || isLoadingNotifications) {
       return;
     }
 
     void loadNotifications(session.token);
-  }, [isLoadingNotifications, loadNotifications, notifications, session?.token]);
+  }, [isLoadingNotifications, loadNotifications, notifications, session?.token, session?.viewer?.role]);
 
   useEffect(() => {
     let isMounted = true;
@@ -1621,7 +1634,7 @@ export function ClientificNativeApp() {
   }, [openBillingFromDeepLink]);
 
   useEffect(() => {
-    if (!session?.business.id) {
+    if (!session?.business.id || session.viewer?.role === 'staff') {
       return;
     }
 
@@ -1629,7 +1642,7 @@ export function ClientificNativeApp() {
       console.warn('RevenueCat configuration failed:', error);
       setBillingPurchaseError(getSafeAppStoreBillingErrorMessage(error));
     });
-  }, [session?.business.id]);
+  }, [session?.business.id, session?.viewer?.role]);
 
   useEffect(() => {
     if (!pendingSubscriptionRedirectMessage || !session) {
@@ -1696,7 +1709,7 @@ export function ClientificNativeApp() {
   }, [activeTab, home?.subscription.requiresPurchase, moreSection, openBillingPaywall]);
 
   useEffect(() => {
-    if (!session?.token) {
+    if (!session?.token || session.viewer?.role === 'staff') {
       return;
     }
 
@@ -1736,7 +1749,7 @@ export function ClientificNativeApp() {
     return () => {
       isActive = false;
     };
-  }, [refreshPushPermissionStatus, session?.token]);
+  }, [refreshPushPermissionStatus, session?.token, session?.viewer?.role]);
 
   useEffect(() => {
     const subscription = addPushNotificationResponseListener((response) => {
@@ -1764,7 +1777,7 @@ export function ClientificNativeApp() {
       setAuthMode('sign-in');
       setPendingVerification(null);
       setAuthNotice(null);
-      setActiveTab('dashboard');
+      setActiveTab(nextSession.viewer?.role === 'staff' ? 'appointments' : 'dashboard');
       setMoreSection('menu');
       await loadHome(nextSession.token);
     },
@@ -2960,6 +2973,16 @@ export function ClientificNativeApp() {
 
   useEffect(() => {
     if (!session) {
+      return;
+    }
+
+    if (session.viewer?.role === 'staff') {
+      if (
+        (!appointments || appointments.selectedDate !== appointmentsDate) &&
+        !isLoadingAppointments
+      ) {
+        void loadAppointments(session.token, appointmentsDate);
+      }
       return;
     }
 

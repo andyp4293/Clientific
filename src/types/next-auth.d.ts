@@ -6,6 +6,9 @@ declare module 'next-auth' {
       id: string;
       businessId: string;
       onboardingComplete: boolean;
+      accountType: 'owner' | 'staff';
+      staffId?: string;
+      staffName?: string;
     } & DefaultSession['user'];
   }
 
@@ -13,6 +16,9 @@ declare module 'next-auth' {
     id: string;
     businessId: string;
     onboardingComplete: boolean;
+    accountType?: 'owner' | 'staff';
+    staffId?: string;
+    staffName?: string;
   }
 }
 
@@ -21,5 +27,8 @@ declare module 'next-auth/jwt' {
     id: string;
     businessId: string;
     onboardingComplete: boolean;
+    accountType?: 'owner' | 'staff';
+    staffId?: string;
+    staffName?: string;
   }
 }

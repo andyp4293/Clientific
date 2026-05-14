@@ -15,17 +15,34 @@ vi.mock('@/lib/business-auth', () => ({
 vi.mock('@/lib/mobile-session', () => ({
   createMobileSessionToken: vi.fn(),
 }));
+vi.mock('@/lib/staff-auth', () => ({
+  authenticateStaffCredentials: vi.fn(),
+  StaffAuthError: class StaffAuthError extends Error {
+    constructor(
+      message: string,
+      public readonly code: string,
+      public readonly status: number,
+    ) {
+      super(message);
+    }
+  },
+}));
 
 import {
   authenticateBusinessCredentials,
   BusinessAuthError,
 } from '@/lib/business-auth';
 import { createMobileSessionToken } from '@/lib/mobile-session';
+import {
+  authenticateStaffCredentials,
+  StaffAuthError,
+} from '@/lib/staff-auth';
 import { POST } from './route';
 
 const mockAuthenticateBusinessCredentials =
   authenticateBusinessCredentials as ReturnType<typeof vi.fn>;
 const mockCreateMobileSessionToken = createMobileSessionToken as ReturnType<typeof vi.fn>;
+const mockAuthenticateStaffCredentials = authenticateStaffCredentials as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -37,6 +54,9 @@ beforeEach(() => {
     onboardingComplete: true,
   });
   mockCreateMobileSessionToken.mockResolvedValue('mobile-token');
+  mockAuthenticateStaffCredentials.mockRejectedValue(
+    new StaffAuthError('Email or password is incorrect', 'INVALID_CREDENTIALS', 401),
+  );
 });
 
 describe('POST /api/mobile/auth/login', () => {
@@ -53,6 +73,50 @@ describe('POST /api/mobile/auth/login', () => {
     const body = await response.json();
     expect(body.token).toBe('mobile-token');
     expect(body.business.name).toBe('Clientific Studio');
+    expect(body.viewer.role).toBe('owner');
+    expect(mockCreateMobileSessionToken).toHaveBeenCalledWith(
+      expect.objectContaining({ accountType: 'owner', staffId: null }),
+    );
+  });
+
+  it('returns a staff viewer token when an employee signs in', async () => {
+    mockAuthenticateBusinessCredentials.mockRejectedValue(
+      new BusinessAuthError('Email or password is incorrect', 'INVALID_CREDENTIALS', 401),
+    );
+    mockAuthenticateStaffCredentials.mockResolvedValue({
+      id: 'staff-1',
+      businessId: 'biz-1',
+      staffId: 'staff-1',
+      staffName: 'Taylor Nguyen',
+      businessName: 'Clientific Studio',
+      email: 'taylor@example.com',
+      name: 'Taylor Nguyen',
+      onboardingComplete: true,
+      accountType: 'staff',
+    });
+
+    const response = await POST(
+      new Request('https://www.clientific.app/api/mobile/auth/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: 'taylor@example.com', password: 'temporary123' }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.viewer).toEqual({
+      role: 'staff',
+      staffId: 'staff-1',
+      staffName: 'Taylor Nguyen',
+    });
+    expect(mockCreateMobileSessionToken).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountType: 'staff',
+        staffId: 'staff-1',
+        staffName: 'Taylor Nguyen',
+      }),
+    );
   });
 
   it('returns the shared auth error status when credentials fail', async () => {

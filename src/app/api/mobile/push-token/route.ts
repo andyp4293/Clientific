@@ -21,6 +21,12 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  if (session.accountType === 'staff') {
+    return NextResponse.json(
+      { error: 'Employee accounts can only access assigned appointments.' },
+      { status: 403 },
+    );
+  }
 
   let body: {
     appIdentifier?: string;
@@ -67,6 +73,12 @@ export async function DELETE(request: Request) {
     session = await verifyMobileSessionToken(authToken);
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (session.accountType === 'staff') {
+    return NextResponse.json(
+      { error: 'Employee accounts can only access assigned appointments.' },
+      { status: 403 },
+    );
   }
 
   const url = new URL(request.url);

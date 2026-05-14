@@ -9,6 +9,11 @@ import {
 } from '@/lib/staff-schedule';
 import { formatPhoneForDisplay, normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
 import { getStaffBioValidationError, normalizeStaffBio } from '@/lib/staff-bio';
+import {
+  hasStaffPortalPassword,
+  normalizeStaffEmail,
+  resolveStaffPortalAccessData,
+} from '@/lib/staff-portal-access';
 import { getStaffCacheTag } from '@/lib/cache-tags';
 import { revalidateTag } from 'next/cache';
 
@@ -77,10 +82,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const fullName = typeof body?.fullName === 'string' ? body.fullName.trim() : '';
-    const email =
-      typeof body?.email === 'string' && body.email.trim().length > 0
-        ? body.email.trim()
-        : null;
+    const email = normalizeStaffEmail(body?.email);
     const phone =
       typeof body?.phone === 'string' && body.phone.trim().length > 0
         ? normalizeOptionalStoredPhoneNumber(body.phone)
@@ -97,6 +99,16 @@ export async function POST(request: Request) {
     const serviceIds = Array.isArray(body?.serviceIds)
       ? body.serviceIds.filter((value: unknown): value is string => typeof value === 'string')
       : [];
+    const portalAccess = await resolveStaffPortalAccessData({
+      email,
+      isCreate: true,
+      portalAccessEnabled: body?.portalAccessEnabled,
+      portalPassword: body?.portalPassword,
+    });
+
+    if ('error' in portalAccess) {
+      return NextResponse.json({ error: portalAccess.error }, { status: 400 });
+    }
 
     if (!fullName) {
       return NextResponse.json({ error: 'Full name is required' }, { status: 400 });
@@ -136,6 +148,7 @@ export async function POST(request: Request) {
           role,
           bio,
           active: isActive,
+          ...portalAccess.data,
           workDays,
           workHours: Object.keys(sanitizedWorkHours).length > 0 ? sanitizedWorkHours : undefined,
         },
@@ -185,6 +198,8 @@ export async function POST(request: Request) {
           role: staff.role,
           bio: staff.bio,
           isActive: staff.active,
+          portalAccessEnabled: staff.portalAccessEnabled,
+          hasPortalPassword: hasStaffPortalPassword(staff),
           workDays: staff.workDays,
           workHours: normalizeStaffWorkHours(staff.workHours),
           workDaysLabel: formatWorkDaysLabel(staff.workDays),

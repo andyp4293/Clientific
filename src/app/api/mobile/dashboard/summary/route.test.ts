@@ -7,6 +7,7 @@ vi.mock('@/lib/mobile-session', () => ({
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: { findUnique: vi.fn() },
+    staff: { findFirst: vi.fn() },
     checkIn: { count: vi.fn() },
     appointment: { findMany: vi.fn() },
     referral: { count: vi.fn() },
@@ -24,6 +25,7 @@ import { GET } from './route';
 const mockGetBearerToken = getBearerToken as ReturnType<typeof vi.fn>;
 const mockVerifyMobileSessionToken = verifyMobileSessionToken as ReturnType<typeof vi.fn>;
 const mockFindBusiness = prisma.business.findUnique as ReturnType<typeof vi.fn>;
+const mockFindStaff = prisma.staff.findFirst as ReturnType<typeof vi.fn>;
 const mockCheckInCount = prisma.checkIn.count as ReturnType<typeof vi.fn>;
 const mockFindAppointments = prisma.appointment.findMany as ReturnType<typeof vi.fn>;
 const mockReferralCount = prisma.referral.count as ReturnType<typeof vi.fn>;
@@ -55,6 +57,7 @@ beforeEach(() => {
     stripeConnectPayoutsEnabled: true,
     stripeConnectDetailsSubmitted: true,
   });
+  mockFindStaff.mockResolvedValue({ id: 'staff-1', fullName: 'Taylor' });
   mockCheckInCount.mockResolvedValue(3);
   mockFindAppointments.mockResolvedValue([
     {
@@ -107,6 +110,56 @@ describe('GET /api/mobile/dashboard/summary', () => {
       isActive: true,
       requiresPurchase: false,
     });
+  });
+
+  it('returns a privacy-safe employee home for staff sessions', async () => {
+    mockVerifyMobileSessionToken.mockResolvedValueOnce({
+      businessId: 'biz-1',
+      accountType: 'staff',
+      staffId: 'staff-1',
+      staffName: 'Taylor',
+    });
+    mockFindAppointments.mockResolvedValueOnce([
+      {
+        id: 'appt-1',
+        status: 'pending',
+        startTime: new Date('2026-03-30T15:30:00.000Z'),
+        customer: { name: 'Jordan Lee' },
+        service: { name: 'Haircut' },
+      },
+    ]);
+
+    const response = await GET(
+      new Request('https://www.clientific.app/api/mobile/dashboard/summary', {
+        headers: { authorization: 'Bearer token' },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockFindStaff).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: 'staff-1',
+          businessId: 'biz-1',
+          portalAccessEnabled: true,
+        }),
+      }),
+    );
+    const body = await response.json();
+    expect(body.viewer).toEqual(
+      expect.objectContaining({
+        role: 'staff',
+        staffId: 'staff-1',
+        privacy: 'customer_phone_hidden',
+      }),
+    );
+    expect(body.metrics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: 'Privacy', value: 'On' }),
+      ]),
+    );
+    expect(JSON.stringify(body)).not.toContain('+15551234567');
+    expect(body.subscription.requiresPurchase).toBe(false);
   });
 
   it('returns 401 when the bearer token is missing', async () => {

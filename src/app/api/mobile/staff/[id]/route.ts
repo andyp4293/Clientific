@@ -10,6 +10,11 @@ import {
 } from '@/lib/staff-schedule';
 import { normalizeOptionalStoredPhoneNumber, formatPhoneForDisplay } from '@/lib/phone';
 import { getStaffBioValidationError, normalizeStaffBio } from '@/lib/staff-bio';
+import {
+  hasStaffPortalPassword,
+  normalizeStaffEmail,
+  resolveStaffPortalAccessData,
+} from '@/lib/staff-portal-access';
 import { getStaffCacheTag } from '@/lib/cache-tags';
 import { revalidateTag } from 'next/cache';
 
@@ -61,6 +66,8 @@ async function formatStaffResponse(businessId: string, staff: {
   role: string | null;
   bio: string | null;
   active: boolean;
+  portalAccessEnabled: boolean;
+  portalPasswordHash: string | null;
   workDays: number[];
   workHours: unknown;
   serviceAssignments: { serviceId: string }[];
@@ -86,6 +93,8 @@ async function formatStaffResponse(businessId: string, staff: {
     role: staff.role,
     bio: staff.bio,
     isActive: staff.active,
+    portalAccessEnabled: staff.portalAccessEnabled,
+    hasPortalPassword: hasStaffPortalPassword(staff),
     workDays: staff.workDays,
     workHours: normalizeStaffWorkHours(staff.workHours),
     workDaysLabel: formatWorkDaysLabel(staff.workDays),
@@ -116,12 +125,7 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
     const fullName = body?.fullName === undefined ? undefined : String(body.fullName).trim();
-    const email =
-      body?.email === undefined
-        ? undefined
-        : typeof body.email === 'string' && body.email.trim().length > 0
-          ? body.email.trim()
-          : null;
+    const email = body?.email === undefined ? undefined : normalizeStaffEmail(body.email);
     const phone =
       body?.phone === undefined
         ? undefined
@@ -169,6 +173,20 @@ export async function PATCH(
       return NextResponse.json({ error: 'Staff member not found' }, { status: 404 });
     }
 
+    const portalAccess = await resolveStaffPortalAccessData({
+      email: email ?? existingStaff.email,
+      existing: {
+        email: existingStaff.email,
+        portalAccessEnabled: existingStaff.portalAccessEnabled,
+        portalPasswordHash: existingStaff.portalPasswordHash,
+      },
+      portalAccessEnabled: body?.portalAccessEnabled,
+      portalPassword: body?.portalPassword,
+    });
+    if ('error' in portalAccess) {
+      return NextResponse.json({ error: portalAccess.error }, { status: 400 });
+    }
+
     const nextWorkDays = workDays ?? existingStaff.workDays;
     const businessHours = await prisma.businessHours.findUnique({
       where: { businessId: authorized.session.businessId },
@@ -193,6 +211,7 @@ export async function PATCH(
           ...(role !== undefined ? { role } : {}),
           ...(bio !== undefined ? { bio } : {}),
           ...(isActive !== undefined ? { active: isActive } : {}),
+          ...portalAccess.data,
           ...(workDays !== undefined ? { workDays: nextWorkDays } : {}),
           ...(sanitizedWorkHours !== undefined
             ? {

@@ -4,6 +4,7 @@ import { isBusinessOnboardingComplete } from '@/lib/onboarding';
 import { formatPhoneForDisplay } from '@/lib/phone';
 import { normalizeStaffWorkHours } from '@/lib/staff-schedule';
 import { requireMobileSession } from '@/lib/mobile-route';
+import { hasStaffPortalPassword } from '@/lib/staff-portal-access';
 import { requireActiveSubscription, checkPlanLimit } from '@/lib/subscription';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import {
@@ -169,6 +170,8 @@ export async function GET(request: Request) {
           role: member.role,
           bio: member.bio,
           isActive: member.active,
+          portalAccessEnabled: member.portalAccessEnabled,
+          hasPortalPassword: hasStaffPortalPassword(member),
           workDays: member.workDays,
           workHours: normalizeStaffWorkHours(member.workHours),
           workDaysLabel: formatWorkDaysLabel(member.workDays),

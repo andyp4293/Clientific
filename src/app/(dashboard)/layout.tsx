@@ -163,6 +163,10 @@ export default async function DashboardLayout({
     redirect('/signout');
   }
 
+  if (session.user.accountType === 'staff') {
+    redirect('/staff/appointments');
+  }
+
   const headersList = await headers();
   const pathname = headersList.get('x-pathname') ?? '';
   const isOnboardingPage = pathname === '/dashboard/onboarding';

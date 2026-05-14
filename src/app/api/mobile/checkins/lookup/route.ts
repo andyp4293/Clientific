@@ -33,6 +33,12 @@ export async function GET(request: Request) {
     } catch {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    if (session.accountType === 'staff') {
+      return NextResponse.json(
+        { error: 'Employee accounts can only access assigned appointments.' },
+        { status: 403 },
+      );
+    }
 
     const searchParams = new URL(request.url).searchParams;
     const phone = searchParams.get('phone');

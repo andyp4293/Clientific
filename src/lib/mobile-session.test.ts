@@ -22,6 +22,30 @@ describe('mobile session token helpers', () => {
     expect(payload.businessId).toBe('biz-123');
     expect(payload.email).toBe('owner@clientific.app');
     expect(payload.onboardingComplete).toBe(true);
+    expect(payload.accountType).toBe('owner');
+  });
+
+  it('preserves staff viewer claims for appointment-only sessions', async () => {
+    const token = await createMobileSessionToken({
+      businessId: 'biz-123',
+      email: 'taylor@example.com',
+      name: 'Taylor',
+      onboardingComplete: true,
+      accountType: 'staff',
+      staffId: 'staff-123',
+      staffName: 'Taylor Nguyen',
+    });
+
+    const payload = await verifyMobileSessionToken(token);
+
+    expect(payload).toEqual(
+      expect.objectContaining({
+        businessId: 'biz-123',
+        accountType: 'staff',
+        staffId: 'staff-123',
+        staffName: 'Taylor Nguyen',
+      }),
+    );
   });
 
   it('extracts a bearer token from a request', () => {

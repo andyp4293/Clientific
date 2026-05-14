@@ -7,6 +7,11 @@ import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import { normalizeStaffWorkHours, sanitizeStaffWorkHoursForSave } from '@/lib/staff-schedule';
 import { normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
 import { getStaffBioValidationError, normalizeStaffBio } from '@/lib/staff-bio';
+import {
+  hasStaffPortalPassword,
+  normalizeStaffEmail,
+  resolveStaffPortalAccessData,
+} from '@/lib/staff-portal-access';
 import { getStaffCacheTag, SHARED_REFERENCE_DATA_REVALIDATE_SECONDS } from '@/lib/cache-tags';
 import { revalidateTag, unstable_cache } from 'next/cache';
 
@@ -21,6 +26,8 @@ const STAFF_SELECT = {
   role: true,
   bio: true,
   active: true,
+  portalAccessEnabled: true,
+  portalPasswordHash: true,
   workDays: true,
   workHours: true,
   serviceAssignments: { select: { serviceId: true } },
@@ -37,15 +44,18 @@ function mapStaff(member: {
   role: string;
   bio: string | null;
   active: boolean;
+  portalAccessEnabled: boolean;
+  portalPasswordHash: string | null;
   workDays: number[];
   workHours: unknown;
   serviceAssignments: { serviceId: string }[];
 }) {
-  const { serviceAssignments, active, workHours, ...rest } = member;
+  const { serviceAssignments, active, workHours, portalPasswordHash, ...rest } = member;
   return {
     ...rest,
     active,
     isActive: active,
+    hasPortalPassword: hasStaffPortalPassword({ portalPasswordHash }),
     workHours: normalizeStaffWorkHours(workHours),
     // Empty array = no restrictions (can perform all services).
     // Non-empty = only these service IDs.
@@ -77,7 +87,7 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.id) {
+    if (!session?.user?.id || session.user.accountType === 'staff') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -95,7 +105,7 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.id) {
+    if (!session?.user?.id || session.user.accountType === 'staff') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -114,7 +124,19 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { fullName, email, phone, role, bio, workDays, workHours, serviceIds } = body;
+    const {
+      fullName,
+      email,
+      phone,
+      role,
+      bio,
+      workDays,
+      workHours,
+      serviceIds,
+      portalAccessEnabled,
+      portalPassword,
+    } = body;
+    const normalizedEmail = normalizeStaffEmail(email);
     const normalizedBio = normalizeStaffBio(bio);
     const normalizedPhone =
       typeof phone === 'string' && phone.trim().length > 0
@@ -140,6 +162,15 @@ export async function POST(req: NextRequest) {
     }
 
     const validatedServiceIds: string[] = Array.isArray(serviceIds) ? serviceIds : [];
+    const portalAccess = await resolveStaffPortalAccessData({
+      email: normalizedEmail,
+      isCreate: true,
+      portalAccessEnabled,
+      portalPassword,
+    });
+    if ('error' in portalAccess) {
+      return NextResponse.json({ error: portalAccess.error }, { status: 400 });
+    }
     const normalizedWorkDays = Array.isArray(workDays) ? workDays : [0, 1, 2, 3, 4, 5, 6];
     const businessHours = await prisma.businessHours.findUnique({
       where: { businessId: session.user.id },
@@ -156,11 +187,12 @@ export async function POST(req: NextRequest) {
         data: {
           businessId: session.user.id,
           fullName,
-          email: email || null,
+          email: normalizedEmail,
           phone: normalizedPhone,
           role: role || undefined,
           bio: normalizedBio,
           active: true,
+          ...portalAccess.data,
           workDays: normalizedWorkDays,
           workHours: Object.keys(sanitizedWorkHours).length > 0 ? sanitizedWorkHours : undefined,
         },

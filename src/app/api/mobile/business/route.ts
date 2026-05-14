@@ -49,6 +49,14 @@ async function getAuthorizedBusiness(request: Request) {
 
   try {
     const session = await verifyMobileSessionToken(token);
+    if (session.accountType === 'staff') {
+      return {
+        error: NextResponse.json(
+          { error: 'Employee accounts can only access assigned appointments.' },
+          { status: 403 },
+        ),
+      } as const;
+    }
     const business = await prisma.business.findUnique({
       where: { id: session.businessId },
       select: BUSINESS_SELECT,

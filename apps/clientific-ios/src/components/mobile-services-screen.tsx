@@ -69,6 +69,8 @@ type StaffFormState = {
   role: string;
   bio: string;
   isActive: boolean;
+  portalAccessEnabled: boolean;
+  portalPassword: string;
   workDays: number[];
   workHours: MobileStaffWorkHours;
   serviceIds: string[];
@@ -121,6 +123,8 @@ function createStaffForm(member?: MobileStaffRecord | null): StaffFormState {
     role: member?.role ?? '',
     bio: member?.bio ?? '',
     isActive: member?.isActive ?? true,
+    portalAccessEnabled: member?.portalAccessEnabled ?? false,
+    portalPassword: '',
     workDays,
     workHours: ensureWorkHoursForDays(workDays, member?.workHours),
     serviceIds: member?.serviceIds ?? [],
@@ -571,6 +575,20 @@ export function MobileServicesScreen({
       return;
     }
 
+    if (staffForm.portalAccessEnabled && !staffForm.email.trim()) {
+      setSheetError('Add an email before enabling employee app access.');
+      return;
+    }
+
+    if (
+      staffForm.portalAccessEnabled &&
+      !editingStaff?.hasPortalPassword &&
+      staffForm.portalPassword.trim().length < 8
+    ) {
+      setSheetError('Set a temporary employee app password with at least 8 characters.');
+      return;
+    }
+
     const workHours = ensureWorkHoursForDays(staffForm.workDays, staffForm.workHours);
     const invalidSlot = staffForm.workDays.find((day) => {
       const slot = workHours[day];
@@ -596,6 +614,8 @@ export function MobileServicesScreen({
         workDays: staffForm.workDays,
         workHours,
         serviceIds: staffForm.serviceIds,
+        portalAccessEnabled: staffForm.portalAccessEnabled,
+        portalPassword: staffForm.portalPassword.trim() || null,
       };
 
       if (editingStaff) {
@@ -1163,6 +1183,33 @@ export function MobileServicesScreen({
                           {member.bio}
                         </Text>
                       ) : null}
+                      <View
+                        style={[
+                          styles.portalAccessCard,
+                          {
+                            backgroundColor: member.portalAccessEnabled
+                              ? theme.accentSoft
+                              : theme.surface,
+                            borderColor: theme.border,
+                          },
+                        ]}>
+                        <Text
+                          style={[
+                            styles.portalAccessTitle,
+                            { color: member.portalAccessEnabled ? theme.accent : theme.text },
+                          ]}>
+                          {member.portalAccessEnabled
+                            ? member.hasPortalPassword
+                              ? 'Employee app enabled'
+                              : 'Employee app needs password'
+                            : 'Employee app off'}
+                        </Text>
+                        <Text style={[styles.portalAccessText, { color: theme.mutedText }]}>
+                          {member.portalAccessEnabled
+                            ? 'Appointment-only login. Customer phone numbers stay hidden.'
+                            : 'Enable when this staff member needs their own appointment view.'}
+                        </Text>
+                      </View>
                       <Text style={[styles.metaText, { color: theme.mutedText }]}>
                         {member.workDaysLabel}
                       </Text>
@@ -1468,6 +1515,61 @@ export function MobileServicesScreen({
           <Text style={[styles.helperText, { color: theme.mutedText }]}>
             This appears on booking pages when customers choose a team member.
           </Text>
+
+          <View
+            style={[
+              styles.toggleCard,
+              { backgroundColor: theme.accentSoft, borderColor: theme.border },
+            ]}>
+            <View style={styles.toggleCopy}>
+              <Text style={[styles.toggleTitle, { color: theme.text }]}>Employee app access</Text>
+              <Text style={[styles.toggleText, { color: theme.mutedText }]}>
+                Appointment-only login for this staff member. Customer phone numbers, CRM,
+                billing, deals, and settings stay hidden.
+              </Text>
+            </View>
+            <Switch
+              onValueChange={(value) =>
+                setStaffForm((current) => ({ ...current, portalAccessEnabled: value }))
+              }
+              testID="mobile-staff-portal-toggle"
+              value={staffForm.portalAccessEnabled}
+            />
+          </View>
+
+          {staffForm.portalAccessEnabled ? (
+            <>
+              <FieldLabel
+                label={
+                  editingStaff?.hasPortalPassword
+                    ? 'New temporary password'
+                    : 'Temporary password'
+                }
+                themeText={theme.text}
+              />
+              <TextInput
+                autoCapitalize="none"
+                secureTextEntry
+                onChangeText={(value) =>
+                  setStaffForm((current) => ({ ...current, portalPassword: value }))
+                }
+                placeholder={
+                  editingStaff?.hasPortalPassword
+                    ? 'Leave blank to keep current password'
+                    : 'At least 8 characters'
+                }
+                placeholderTextColor={theme.mutedText}
+                style={[
+                  styles.formInput,
+                  { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text },
+                ]}
+                value={staffForm.portalPassword}
+              />
+              <Text style={[styles.helperText, { color: theme.mutedText }]}>
+                Staff sign in with the email above and this password. Owners can reset it any time.
+              </Text>
+            </>
+          ) : null}
 
           <View style={[styles.toggleCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={styles.toggleCopy}>
@@ -1856,6 +1958,25 @@ const styles = StyleSheet.create({
   metaText: {
     fontSize: 13,
     lineHeight: 18,
+  },
+  portalAccessCard: {
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 4,
+  },
+  portalAccessTitle: {
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  portalAccessText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '600',
   },
   statusBadge: {
     borderWidth: 1,
