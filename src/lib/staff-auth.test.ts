@@ -27,6 +27,7 @@ beforeEach(() => {
       fullName: 'Taylor Nguyen',
       email: 'taylor@example.com',
       portalPasswordHash: 'hashed-password',
+      portalPasswordSetAt: new Date('2026-04-01T12:00:00Z'),
       active: true,
       portalAccessEnabled: true,
       businessId: 'biz-1',
@@ -63,6 +64,40 @@ describe('authenticateStaffCredentials', () => {
         staffId: 'staff-1',
         staffName: 'Taylor Nguyen',
         businessName: 'Clientific Studio',
+        onboardingComplete: true,
+        passwordChangeRequired: false,
+      }),
+    );
+  });
+
+  it('authenticates a temporary staff password but requires first-login password setup', async () => {
+    mockFindStaff.mockResolvedValue([
+      {
+        id: 'staff-1',
+        fullName: 'Taylor Nguyen',
+        email: 'taylor@example.com',
+        portalPasswordHash: 'hashed-password',
+        portalPasswordSetAt: null,
+        active: true,
+        portalAccessEnabled: true,
+        businessId: 'biz-1',
+        business: {
+          id: 'biz-1',
+          email: 'owner@clientific.app',
+          name: 'Clientific Studio',
+        },
+      },
+    ] as never);
+
+    const staff = await authenticateStaffCredentials({
+      email: 'taylor@example.com',
+      password: 'temporary123',
+    });
+
+    expect(staff).toEqual(
+      expect.objectContaining({
+        onboardingComplete: false,
+        passwordChangeRequired: true,
       }),
     );
   });
@@ -91,6 +126,7 @@ describe('authenticateStaffCredentials', () => {
         fullName: 'Taylor Nguyen',
         email: 'taylor@example.com',
         portalPasswordHash: null,
+        portalPasswordSetAt: null,
         active: true,
         portalAccessEnabled: true,
         businessId: 'biz-1',

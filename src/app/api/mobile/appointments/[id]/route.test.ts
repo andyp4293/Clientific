@@ -28,6 +28,7 @@ vi.mock('@/lib/prisma', () => ({
 vi.mock('@/lib/twilio', () => ({
   sendAppointmentBusinessConfirmed: vi.fn().mockResolvedValue({ success: true }),
   sendAppointmentCancellation: vi.fn().mockResolvedValue({ success: true }),
+  sendAppointmentRescheduled: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 vi.mock('@/lib/segment', () => ({
@@ -53,7 +54,9 @@ vi.mock('@/lib/appointment-short-id', () => ({
 }));
 
 vi.mock('@/lib/appointment-services', () => ({
-  resolveAppointmentServiceDisplayName: vi.fn(() => 'Haircut'),
+  resolveAppointmentServiceDisplayName: vi.fn((appointment: { serviceIds?: string[] }) =>
+    appointment.serviceIds?.includes('svc-2') ? 'Pedicure' : 'Haircut',
+  ),
 }));
 
 import { requireMobileSession } from '@/lib/mobile-route';
@@ -62,6 +65,7 @@ import { prisma } from '@/lib/prisma';
 import {
   sendAppointmentBusinessConfirmed,
   sendAppointmentCancellation,
+  sendAppointmentRescheduled,
 } from '@/lib/twilio';
 import {
   cancelScheduledAppointmentReminder,
@@ -79,6 +83,7 @@ const mockDeleteAppointment = vi.mocked(prisma.appointment.delete);
 const mockFindServices = vi.mocked(prisma.service.findMany);
 const mockSendAppointmentBusinessConfirmed = vi.mocked(sendAppointmentBusinessConfirmed);
 const mockSendAppointmentCancellation = vi.mocked(sendAppointmentCancellation);
+const mockSendAppointmentRescheduled = vi.mocked(sendAppointmentRescheduled);
 const mockCancelScheduledAppointmentReminder = vi.mocked(cancelScheduledAppointmentReminder);
 const mockScheduleAppointmentReminder = vi.mocked(scheduleAppointmentReminder);
 
@@ -125,6 +130,7 @@ beforeEach(() => {
   mockFindServices.mockResolvedValue([{ id: 'svc-1', name: 'Haircut' }] as never);
   mockSendAppointmentBusinessConfirmed.mockResolvedValue({ success: true } as never);
   mockSendAppointmentCancellation.mockResolvedValue({ success: true } as never);
+  mockSendAppointmentRescheduled.mockResolvedValue({ success: true } as never);
   mockCancelScheduledAppointmentReminder.mockResolvedValue({ success: true } as never);
   mockScheduleAppointmentReminder.mockResolvedValue({ success: true, sid: 'SM_123' } as never);
 });
@@ -223,6 +229,95 @@ describe('mobile appointment detail route', () => {
         dateTime: new Date('2026-03-30T16:30:00.000Z'),
       }),
     );
+  });
+
+  it('sends customer update SMS for online or AI bookings when service, staff, or time changes', async () => {
+    mockFindAppointment.mockResolvedValueOnce({
+      ...baseAppointment,
+      source: 'ai',
+      status: 'confirmed',
+      serviceId: 'svc-1',
+      staffId: 'staff-1',
+      business: undefined,
+    } as never);
+    mockUpdateAppointment
+      .mockResolvedValueOnce({
+        ...baseAppointment,
+        source: 'ai',
+        status: 'confirmed',
+        serviceIds: ['svc-2'],
+        service: { id: 'svc-2', name: 'Pedicure' },
+        staff: { id: 'staff-2', fullName: 'Morgan' },
+        staffId: 'staff-2',
+        startTime: new Date('2026-03-30T17:00:00.000Z'),
+        duration: 45,
+        business: undefined,
+      } as never)
+      .mockResolvedValueOnce({ id: 'appt-1', reminderSent: true } as never);
+    mockFindServices.mockResolvedValue([{ id: 'svc-2', name: 'Pedicure' }] as never);
+
+    const response = await PATCH(
+      new Request('https://www.clientific.app/api/mobile/appointments/appt-1', {
+        method: 'PATCH',
+        headers: {
+          authorization: 'Bearer token',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          startTime: '2026-03-30T17:00:00.000Z',
+          duration: 45,
+          serviceId: 'svc-2',
+          serviceIds: ['svc-2'],
+          staffId: 'staff-2',
+        }),
+      }),
+      { params: Promise.resolve({ id: 'appt-1' }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockSendAppointmentRescheduled).toHaveBeenCalledWith(
+      '+15551234567',
+      expect.objectContaining({
+        customerName: 'Jordan Lee',
+        serviceName: 'Pedicure',
+        staffName: 'Morgan',
+        newDateTime: new Date('2026-03-30T17:00:00.000Z'),
+        appointmentUrl: expect.stringContaining('/a/ABC1234'),
+      }),
+    );
+  });
+
+  it('does not send customer update SMS for manual dashboard edits', async () => {
+    mockFindAppointment.mockResolvedValueOnce({
+      ...baseAppointment,
+      source: 'dashboard',
+      status: 'confirmed',
+      business: undefined,
+    } as never);
+    mockUpdateAppointment.mockResolvedValueOnce({
+      ...baseAppointment,
+      source: 'dashboard',
+      status: 'confirmed',
+      notes: 'Updated notes only',
+      business: undefined,
+    } as never);
+
+    const response = await PATCH(
+      new Request('https://www.clientific.app/api/mobile/appointments/appt-1', {
+        method: 'PATCH',
+        headers: {
+          authorization: 'Bearer token',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ notes: 'Updated notes only' }),
+      }),
+      { params: Promise.resolve({ id: 'appt-1' }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockSendAppointmentRescheduled).not.toHaveBeenCalled();
+    expect(mockSendAppointmentBusinessConfirmed).not.toHaveBeenCalled();
+    expect(mockSendAppointmentCancellation).not.toHaveBeenCalled();
   });
 
   it('deletes the appointment and sends the cancellation SMS', async () => {

@@ -123,6 +123,8 @@ export const authOptions: NextAuthOptions = {
         const accountType = (user as { accountType?: 'owner' | 'staff' }).accountType ?? 'owner';
         const staffId = (user as { staffId?: string }).staffId;
         const staffName = (user as { staffName?: string }).staffName;
+        const passwordChangeRequired = (user as { passwordChangeRequired?: boolean })
+          .passwordChangeRequired;
         if (businessId) {
           token.businessId = businessId;
         }
@@ -132,6 +134,8 @@ export const authOptions: NextAuthOptions = {
         token.accountType = accountType;
         token.staffId = staffId;
         token.staffName = staffName;
+        token.staffPasswordChangeRequired =
+          accountType === 'staff' ? Boolean(passwordChangeRequired) : false;
       }
 
       if (token.accountType === 'staff') {
@@ -173,6 +177,8 @@ export const authOptions: NextAuthOptions = {
         session.user.staffId = typeof token.staffId === 'string' ? token.staffId : undefined;
         session.user.staffName =
           typeof token.staffName === 'string' ? token.staffName : undefined;
+        session.user.staffPasswordChangeRequired =
+          token.accountType === 'staff' ? Boolean(token.staffPasswordChangeRequired) : false;
       }
       return session;
     },

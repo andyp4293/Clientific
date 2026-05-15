@@ -137,9 +137,13 @@ describe('twilio sms formatting', () => {
     const message = formatAppointmentRescheduledSMS({
       customerName: 'Jane',
       serviceName: 'Haircut',
+      staffName: 'Taylor',
       businessName: 'Test Salon',
       newDateTime: new Date('2026-03-11T14:00:00.000Z'),
+      appointmentUrl: 'https://www.clientific.app/a/ABC1234',
     });
+    expect(message).toContain('Haircut with Taylor');
+    expect(message).toContain('Details: https://www.clientific.app/a/ABC1234');
     expect(message).toContain(FOOTER);
   });
 

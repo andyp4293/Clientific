@@ -2,9 +2,12 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { isBusinessOnboardingComplete } from '@/lib/onboarding';
 import { formatPhoneForDisplay } from '@/lib/phone';
-import { normalizeStaffWorkHours } from '@/lib/staff-schedule';
+import { formatScheduleTimeLabel, normalizeStaffWorkHours } from '@/lib/staff-schedule';
 import { requireMobileSession } from '@/lib/mobile-route';
-import { hasStaffPortalPassword } from '@/lib/staff-portal-access';
+import {
+  hasStaffPortalPassword,
+  isStaffPasswordChangeRequired,
+} from '@/lib/staff-portal-access';
 import { requireActiveSubscription, checkPlanLimit } from '@/lib/subscription';
 import { blockedContentError, getBlockedFieldLabel } from '@/lib/moderation';
 import {
@@ -69,7 +72,7 @@ function formatWorkHoursLabel(workHours: unknown, workDays: number[]) {
   return coveredDays
     .map((day) => {
       const slot = normalized[day];
-      return `${DAY_LABELS[day]} ${slot?.startTime}-${slot?.endTime}`;
+      return `${DAY_LABELS[day]} ${formatScheduleTimeLabel(slot!.startTime)}-${formatScheduleTimeLabel(slot!.endTime)}`;
     })
     .join(' • ');
 }
@@ -172,6 +175,7 @@ export async function GET(request: Request) {
           isActive: member.active,
           portalAccessEnabled: member.portalAccessEnabled,
           hasPortalPassword: hasStaffPortalPassword(member),
+          passwordChangeRequired: isStaffPasswordChangeRequired(member),
           workDays: member.workDays,
           workHours: normalizeStaffWorkHours(member.workHours),
           workDaysLabel: formatWorkDaysLabel(member.workDays),

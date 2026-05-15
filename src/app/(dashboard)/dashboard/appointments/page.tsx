@@ -45,8 +45,15 @@ interface Appointment {
 interface StaffOption {
   id: string;
   fullName: string;
+  serviceIds?: string[];
   workDays?: number[];
   workHours?: StaffWorkHoursRecord;
+}
+
+interface ServiceOption {
+  id: string;
+  name: string;
+  duration: number;
 }
 
 interface BusinessHour {
@@ -796,8 +803,15 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
   });
 
   const customers: any[] = customersData?.customers || [];
-  const services: any[] = servicesData?.services || [];
+  const services: ServiceOption[] = servicesData?.services || [];
   const staffList: StaffOption[] = staffQueryData?.staff || [];
+  const selectedService = services.find((service) => service.id === formData.serviceId) ?? null;
+  const eligibleStaff = selectedService
+    ? staffList.filter(
+        (staffMember) =>
+          !staffMember.serviceIds?.length || staffMember.serviceIds.includes(selectedService.id)
+      )
+    : staffList;
   const businessHours: BusinessHour[] = businessHoursData?.businessHours || [];
   const businessHoursRecord = useMemo(
     () =>
@@ -841,7 +855,7 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
     let closeTime = dayHours.closeTime;
 
     if (formData.staffId) {
-      const selectedStaff = staffList.find((staffMember) => staffMember.id === formData.staffId);
+      const selectedStaff = eligibleStaff.find((staffMember) => staffMember.id === formData.staffId);
       if (!selectedStaff) {
         return { timeSlots: [], isClosed: false, emptyMessage: 'Choose a valid staff member.' };
       }
@@ -870,7 +884,7 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
       isClosed: false,
       emptyMessage: 'No times available for this schedule.',
     };
-  }, [businessHoursRecord, formData.date, formData.duration, formData.staffId, staffList]);
+  }, [businessHoursRecord, eligibleStaff, formData.date, formData.duration, formData.staffId]);
 
   // Compute which slots are blocked by the selected staff's existing appointments
   const blockedSlots = useMemo(() => {
@@ -910,6 +924,17 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
       setFormData((prev) => ({ ...prev, time: '' }));
     }
   }, [formData.time, timeSlots]);
+
+  useEffect(() => {
+    if (
+      !formData.staffId ||
+      eligibleStaff.some((staffMember) => staffMember.id === formData.staffId)
+    ) {
+      return;
+    }
+
+    setFormData((prev) => ({ ...prev, staffId: '', time: '' }));
+  }, [eligibleStaff, formData.staffId]);
 
   const formatSlot = (slot: string) => {
     const [h, m] = slot.split(':').map(Number);
@@ -1078,6 +1103,7 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
                   value={String(formData.duration)}
                   onChange={(val) => setFormData({ ...formData, duration: parseInt(val) })}
                   className="input text-sm"
+                  disabled={Boolean(selectedService)}
                   options={[
                     { value: '15', label: '15 min' },
                     { value: '30', label: '30 min' },
@@ -1087,6 +1113,11 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
                     { value: '120', label: '2 hours' },
                   ]}
                 />
+                {selectedService ? (
+                  <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    Service-based booking uses {selectedService.name}&apos;s {selectedService.duration}-minute length.
+                  </p>
+                ) : null}
               </div>
             </div>
 
@@ -1179,11 +1210,36 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
                 <label className={labelClass}>Service</label>
                 <CustomSelect
                   value={formData.serviceId}
-                  onChange={(val) => setFormData({ ...formData, serviceId: val })}
+                  onChange={(val) => {
+                    const service = services.find((entry) => entry.id === val) ?? null;
+                    const staffForService = service
+                      ? staffList.filter(
+                          (staffMember) =>
+                            !staffMember.serviceIds?.length || staffMember.serviceIds.includes(service.id)
+                        )
+                      : staffList;
+                    setFormData((prev) => ({
+                      ...prev,
+                      serviceId: val,
+                      duration: service?.duration ?? prev.duration,
+                      staffId:
+                        prev.staffId && service
+                          ? staffForService.some((staffMember) => staffMember.id === prev.staffId)
+                            ? prev.staffId
+                            : ''
+                          : prev.staffId,
+                      time: '',
+                    }));
+                  }}
                   className="input text-sm"
                   placeholder="No service"
-                  options={services.map((s: any) => ({ value: s.id, label: s.name }))}
+                  options={services.map((s) => ({ value: s.id, label: s.name }))}
                 />
+                {selectedService ? (
+                  <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    Uses this service&apos;s {selectedService.duration}-minute length for available times.
+                  </p>
+                ) : null}
               </div>
 
               {/* Staff */}
@@ -1191,10 +1247,10 @@ function NewAppointmentModal({ onClose, selectedDate }: { onClose: () => void; s
                 <label className={labelClass}>Staff</label>
                 <CustomSelect
                   value={formData.staffId}
-                  onChange={(val) => setFormData({ ...formData, staffId: val })}
+                  onChange={(val) => setFormData({ ...formData, staffId: val, time: '' })}
                   className="input text-sm"
                   placeholder="Any available"
-                  options={staffList.map((s: any) => ({ value: s.id, label: s.fullName }))}
+                  options={eligibleStaff.map((s) => ({ value: s.id, label: s.fullName }))}
                 />
               </div>
 
@@ -1231,15 +1287,159 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
   const queryClient = useQueryClient();
   const startTime = new Date(appointment.startTime);
   const serviceLabel = getAppointmentServiceLabel(appointment);
+  const initialServiceId = appointment.service?.id || appointment.services?.[0]?.id || '';
 
   const [formData, setFormData] = useState({
     date: startTime.toLocaleDateString('en-CA'),
     time: `${String(startTime.getHours()).padStart(2, '0')}:${String(startTime.getMinutes()).padStart(2, '0')}`,
+    serviceId: initialServiceId,
+    staffId: appointment.staff?.id || '',
     duration: appointment.duration,
     notes: appointment.notes || '',
     status: appointment.status,
     source: appointment.source || 'dashboard',
   });
+
+  const { data: servicesData } = useQuery({
+    queryKey: ['services'],
+    queryFn: async () => { const res = await fetch('/api/services'); if (!res.ok) throw new Error(); return res.json(); },
+  });
+  const { data: staffQueryData } = useQuery({
+    queryKey: ['staff'],
+    queryFn: async () => { const res = await fetch('/api/staff'); if (!res.ok) throw new Error(); return res.json(); },
+  });
+  const { data: businessHoursData } = useQuery({
+    queryKey: ['business-hours'],
+    queryFn: async () => { const res = await fetch('/api/business-hours'); if (!res.ok) throw new Error(); return res.json(); },
+  });
+
+  const services: ServiceOption[] = servicesData?.services || [];
+  const staffList: StaffOption[] = staffQueryData?.staff || [];
+  const businessHours: BusinessHour[] = businessHoursData?.businessHours || [];
+  const selectedService = services.find((service) => service.id === formData.serviceId) ?? null;
+  const eligibleStaff = selectedService
+    ? staffList.filter(
+        (staffMember) =>
+          !staffMember.serviceIds?.length || staffMember.serviceIds.includes(selectedService.id)
+      )
+    : staffList;
+  const businessHoursRecord = useMemo(
+    () =>
+      normalizeBusinessHoursRecord(
+        Object.fromEntries(
+          businessHours.map((hour) => [
+            hour.dayOfWeek,
+            {
+              isOpen: hour.isOpen,
+              openTime: hour.openTime,
+              closeTime: hour.closeTime,
+            },
+          ])
+        )
+      ),
+    [businessHours]
+  );
+
+  const { data: staffApptData } = useQuery({
+    queryKey: ['staff-appointments', formData.staffId, formData.date],
+    queryFn: async () => {
+      const res = await fetch(`/api/appointments?staffId=${formData.staffId}&date=${formData.date}`);
+      if (!res.ok) return { appointments: [] };
+      return res.json();
+    },
+    enabled: !!formData.staffId && !!formData.date,
+  });
+
+  const { timeSlots, emptyMessage } = useMemo(() => {
+    if (!formData.date) return { timeSlots: [], emptyMessage: 'Select a date to view times.' };
+    const [year, month, day] = formData.date.split('-').map(Number);
+    const dayOfWeek = new Date(year, month - 1, day).getDay();
+    const dayHours = businessHoursRecord[dayOfWeek];
+    if (!dayHours?.isOpen || !dayHours.openTime || !dayHours.closeTime) {
+      return { timeSlots: [], emptyMessage: 'Closed on this day' };
+    }
+
+    let openTime = dayHours.openTime;
+    let closeTime = dayHours.closeTime;
+
+    if (formData.staffId) {
+      const selectedStaff = eligibleStaff.find((staffMember) => staffMember.id === formData.staffId);
+      if (!selectedStaff) {
+        return { timeSlots: [], emptyMessage: 'Choose a valid staff member.' };
+      }
+
+      const staffHours = getEffectiveStaffDayHours({
+        dayOfWeek,
+        workDays: selectedStaff.workDays ?? [],
+        workHours: selectedStaff.workHours,
+        businessHours: businessHoursRecord,
+      });
+
+      if (!staffHours.worksDay || !staffHours.startTime || !staffHours.endTime) {
+        return {
+          timeSlots: [],
+          emptyMessage: `${selectedStaff.fullName} is not working during business hours on this day.`,
+        };
+      }
+
+      openTime = staffHours.startTime;
+      closeTime = staffHours.endTime;
+    }
+
+    return {
+      timeSlots: buildAppointmentStartOptions(openTime, closeTime, formData.duration),
+      emptyMessage: 'No times available for this schedule.',
+    };
+  }, [businessHoursRecord, eligibleStaff, formData.date, formData.duration, formData.staffId]);
+
+  const blockedSlots = useMemo(() => {
+    if (!formData.staffId || !staffApptData?.appointments?.length) return new Set<string>();
+    const blocked = new Set<string>();
+    const durationMs = formData.duration * 60000;
+    for (const slot of timeSlots) {
+      const slotStart = new Date(`${formData.date}T${slot}`).getTime();
+      const slotEnd = slotStart + durationMs;
+      for (const appt of staffApptData.appointments) {
+        if (appt.id === appointment.id || !['scheduled', 'confirmed'].includes(appt.status)) continue;
+        const apptStart = new Date(appt.startTime).getTime();
+        const apptEnd = new Date(appt.endTime).getTime();
+        if (slotStart < apptEnd && slotEnd > apptStart) {
+          blocked.add(slot);
+          break;
+        }
+      }
+    }
+    return blocked;
+  }, [appointment.id, formData.staffId, formData.date, formData.duration, staffApptData, timeSlots]);
+
+  const formatSlot = (slot: string) => {
+    const [h, m] = slot.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hour = h > 12 ? h - 12 : h === 0 ? 12 : h;
+    return `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
+  };
+
+  const timeOptions = useMemo(() => {
+    const options = formData.time && !timeSlots.includes(formData.time)
+      ? [formData.time, ...timeSlots]
+      : timeSlots;
+
+    return options.map((slot) => ({
+      value: slot,
+      label: `${formatSlot(slot)}${slot === formData.time && !timeSlots.includes(slot) ? ' (current)' : ''}`,
+    }));
+  }, [formData.time, timeSlots]);
+
+  useEffect(() => {
+    if (
+      !formData.staffId ||
+      eligibleStaff.some((staffMember) => staffMember.id === formData.staffId)
+    ) {
+      return;
+    }
+
+    setFormData((prev) => ({ ...prev, staffId: '', time: '' }));
+  }, [eligibleStaff, formData.staffId]);
 
   const updateMutation = useMutation({
     mutationFn: async (updates: any) => {
@@ -1257,9 +1457,23 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (blockedSlots.has(formData.time)) {
+      toast.error('Choose another time. This staff member is already booked then.');
+      return;
+    }
     const newStart = new Date(`${formData.date}T${formData.time}`);
     const newEnd = new Date(newStart.getTime() + formData.duration * 60000);
-    updateMutation.mutate({ startTime: newStart.toISOString(), endTime: newEnd.toISOString(), duration: formData.duration, notes: formData.notes || null, status: formData.status, source: formData.source });
+    updateMutation.mutate({
+      startTime: newStart.toISOString(),
+      endTime: newEnd.toISOString(),
+      duration: formData.duration,
+      serviceId: formData.serviceId || null,
+      serviceIds: formData.serviceId ? [formData.serviceId] : [],
+      staffId: formData.staffId || null,
+      notes: formData.notes || null,
+      status: formData.status,
+      source: formData.source,
+    });
   };
 
   const initials = appointment.customer.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
@@ -1300,8 +1514,75 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
               </div>
               <div>
                 <label className="label">Time *</label>
-                <input type="time" value={formData.time} onChange={(e) => setFormData({ ...formData, time: e.target.value })} className="input" required />
+                <CustomSelect
+                  value={formData.time}
+                  onChange={(val) => setFormData({ ...formData, time: val })}
+                  className="input"
+                  placeholder={emptyMessage || 'Choose time'}
+                  required
+                  options={timeOptions}
+                />
+                {blockedSlots.has(formData.time) ? (
+                  <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
+                    This staff member is already booked at that time. Choose another slot before saving.
+                  </p>
+                ) : null}
               </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="label">Service</label>
+                <CustomSelect
+                  value={formData.serviceId}
+                  onChange={(val) => {
+                    const service = services.find((entry) => entry.id === val) ?? null;
+                    const staffForService = service
+                      ? staffList.filter(
+                          (staffMember) =>
+                            !staffMember.serviceIds?.length || staffMember.serviceIds.includes(service.id)
+                        )
+                      : staffList;
+                    setFormData((prev) => ({
+                      ...prev,
+                      serviceId: val,
+                      duration: service?.duration ?? prev.duration,
+                      staffId:
+                        prev.staffId && service
+                          ? staffForService.some((staffMember) => staffMember.id === prev.staffId)
+                            ? prev.staffId
+                            : ''
+                          : prev.staffId,
+                      time: '',
+                    }));
+                  }}
+                  className="input"
+                  placeholder="No service"
+                  options={services.map((service) => ({ value: service.id, label: service.name }))}
+                />
+                {selectedService ? (
+                  <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    Duration follows {selectedService.name}: {selectedService.duration} minutes.
+                  </p>
+                ) : null}
+              </div>
+              <div>
+                <label className="label">Staff</label>
+                <CustomSelect
+                  value={formData.staffId}
+                  onChange={(val) => setFormData({ ...formData, staffId: val, time: '' })}
+                  className="input"
+                  placeholder="Any available"
+                  options={eligibleStaff.map((staffMember) => ({
+                    value: staffMember.id,
+                    label: staffMember.fullName,
+                  }))}
+                />
+              </div>
+            </div>
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 text-xs leading-5 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">
+              If this booking came from online booking, the AI receptionist, or SMS booking and the
+              customer allows appointment texts, Clientific will text them when the service, staff,
+              or time changes.
             </div>
             <div>
               <label className="label">Duration *</label>
@@ -1309,6 +1590,7 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
                 value={String(formData.duration)}
                 onChange={(val) => setFormData({ ...formData, duration: parseInt(val) })}
                 className="input"
+                disabled={Boolean(selectedService)}
                 required
                 options={[
                   { value: '15', label: '15 minutes' },
@@ -1319,6 +1601,11 @@ function EditAppointmentModal({ appointment, onClose }: { appointment: Appointme
                   { value: '120', label: '2 hours' },
                 ]}
               />
+              {selectedService ? (
+                <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                  Change the service to change the appointment length.
+                </p>
+              ) : null}
             </div>
             <div>
               <label className="label">Status</label>

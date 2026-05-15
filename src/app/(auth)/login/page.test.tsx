@@ -53,6 +53,24 @@ describe('Login page verification actions', () => {
     expect(screen.getByText(/signing you in/i)).toBeInTheDocument();
   });
 
+  it('redirects authenticated staff with temporary passwords into password setup', async () => {
+    mockUseSession.mockReturnValue({
+      status: 'authenticated',
+      data: {
+        user: {
+          accountType: 'staff',
+          staffPasswordChangeRequired: true,
+        },
+      },
+    });
+
+    render(<LoginPage />);
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/staff/set-password');
+    });
+  });
+
   it('does not show resend verification button by default', () => {
     render(<LoginPage />);
     expect(

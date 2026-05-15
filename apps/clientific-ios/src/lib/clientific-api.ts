@@ -23,6 +23,7 @@ export type MobileViewer =
       staffId: string;
       staffName: string;
       privacy?: 'customer_phone_hidden';
+      passwordChangeRequired?: boolean;
     };
 
 export type MobileBusinessProfile = MobileBusiness & {
@@ -85,6 +86,9 @@ export type MobileAppointmentInput = {
 export type MobileAppointmentUpdateInput = {
   startTime?: string;
   duration?: number;
+  serviceId?: string | null;
+  serviceIds?: string[];
+  staffId?: string | null;
   notes?: string | null;
   status?: string;
 };
@@ -434,6 +438,7 @@ export type MobileStaffRecord = {
   isActive: boolean;
   portalAccessEnabled: boolean;
   hasPortalPassword: boolean;
+  passwordChangeRequired?: boolean;
   workDays: number[];
   workHours: MobileStaffWorkHours;
   workDaysLabel: string;
@@ -697,6 +702,8 @@ export type MobileLoginResponse = {
   viewer?: MobileViewer;
 };
 
+export type MobileStaffPasswordResponse = MobileLoginResponse;
+
 export type MobileRegistrationInput = {
   email: string;
   password: string;
@@ -789,6 +796,20 @@ export async function confirmVerificationCode(input: {
   return requestJson<{ success: true; email: string }>('/api/auth/verify-email/confirm', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateMobileStaffPassword(
+  token: string,
+  input: { currentPassword: string; newPassword: string },
+) {
+  return requestJson<MobileStaffPasswordResponse>('/api/mobile/auth/staff-password', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify(input),
   });
 }

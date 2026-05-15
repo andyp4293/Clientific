@@ -69,6 +69,9 @@ export default async function StaffAppointmentsPage({
   if (session.user.accountType !== 'staff' || !session.user.staffId) {
     redirect('/dashboard');
   }
+  if (session.user.staffPasswordChangeRequired) {
+    redirect('/staff/set-password');
+  }
 
   const staff = await prisma.staff.findFirst({
     where: {

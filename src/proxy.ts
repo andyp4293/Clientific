@@ -9,20 +9,38 @@ export async function proxy(request: NextRequest) {
   // Redirect authenticated users from landing page straight to dashboard
   if (pathname === '/') {
     if (token) {
+      const staffTarget = token.staffPasswordChangeRequired
+        ? '/staff/set-password'
+        : '/staff/appointments';
       return NextResponse.redirect(
-        new URL(token.accountType === 'staff' ? '/staff/appointments' : '/dashboard', request.url),
+        new URL(token.accountType === 'staff' ? staffTarget : '/dashboard', request.url),
       );
     }
   }
 
   if (pathname.startsWith('/dashboard') && token?.accountType === 'staff') {
-    return NextResponse.redirect(new URL('/staff/appointments', request.url));
+    return NextResponse.redirect(
+      new URL(
+        token.staffPasswordChangeRequired ? '/staff/set-password' : '/staff/appointments',
+        request.url,
+      ),
+    );
+  }
+
+  if (
+    token?.accountType === 'staff' &&
+    token.staffPasswordChangeRequired &&
+    pathname.startsWith('/staff') &&
+    !pathname.startsWith('/staff/set-password')
+  ) {
+    return NextResponse.redirect(new URL('/staff/set-password', request.url));
   }
 
   if (pathname.startsWith('/api/')) {
     if (
       token?.accountType === 'staff' &&
       !pathname.startsWith('/api/auth') &&
+      !pathname.startsWith('/api/staff/password') &&
       !pathname.startsWith('/api/public')
     ) {
       return NextResponse.json(

@@ -12,6 +12,7 @@ export type MobileSessionPayload = {
   accountType?: 'owner' | 'staff';
   staffId?: string | null;
   staffName?: string | null;
+  staffPasswordChangeRequired?: boolean;
 };
 
 function getMobileSessionSecret() {
@@ -34,6 +35,8 @@ export async function createMobileSessionToken(
     accountType: payload.accountType ?? 'owner',
     staffId: payload.staffId ?? null,
     staffName: payload.staffName ?? null,
+    staffPasswordChangeRequired:
+      payload.accountType === 'staff' ? Boolean(payload.staffPasswordChangeRequired) : false,
     type: MOBILE_SESSION_TYPE,
   })
     .setProtectedHeader({ alg: 'HS256' })
@@ -63,6 +66,8 @@ export async function verifyMobileSessionToken(token: string) {
     accountType: payload.accountType === 'staff' ? 'staff' : 'owner',
     staffId: typeof payload.staffId === 'string' ? payload.staffId : null,
     staffName: typeof payload.staffName === 'string' ? payload.staffName : null,
+    staffPasswordChangeRequired:
+      payload.accountType === 'staff' ? Boolean(payload.staffPasswordChangeRequired) : false,
   };
 }
 

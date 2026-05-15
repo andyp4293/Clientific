@@ -139,7 +139,33 @@ describe('MobileServicesScreen', () => {
     });
   });
 
-  it('saves employee app access with a temporary password', async () => {
+  it('shows staff hours as AM/PM and saves normalized 24-hour values', async () => {
+    const onUpdateStaff = jest.fn().mockResolvedValue(undefined);
+    renderScreen({ onUpdateStaff });
+
+    fireEvent.press(screen.getByTestId('mobile-services-tab-staff'));
+    fireEvent.press(screen.getByTestId('mobile-staff-edit-staff-1'));
+
+    expect(screen.getByDisplayValue('9:00 AM')).toBeTruthy();
+    expect(screen.getByDisplayValue('5:00 PM')).toBeTruthy();
+
+    fireEvent.changeText(screen.getAllByDisplayValue('9:00 AM')[0], '9:30 AM');
+    fireEvent.changeText(screen.getAllByDisplayValue('5:00 PM')[0], '6:15 PM');
+    fireEvent.press(screen.getByTestId('mobile-save-staff'));
+
+    await waitFor(() => {
+      expect(onUpdateStaff).toHaveBeenCalledWith(
+        'staff-1',
+        expect.objectContaining({
+          workHours: expect.objectContaining({
+            1: { startTime: '09:30', endTime: '18:15' },
+          }),
+        }),
+      );
+    });
+  });
+
+  it('saves employee app access so the backend emails a temporary password', async () => {
     const onCreateStaff = jest.fn().mockResolvedValue(undefined);
     renderScreen({ onCreateStaff });
 
@@ -149,7 +175,7 @@ describe('MobileServicesScreen', () => {
     fireEvent.changeText(screen.getByPlaceholderText('Taylor Smith'), 'Morgan');
     fireEvent.changeText(screen.getByPlaceholderText('taylor@example.com'), 'morgan@example.com');
     fireEvent(screen.getByTestId('mobile-staff-portal-toggle'), 'valueChange', true);
-    fireEvent.changeText(screen.getByPlaceholderText('At least 8 characters'), 'temporary123');
+    expect(screen.getByText('Temporary password email')).toBeTruthy();
     fireEvent.press(screen.getByTestId('mobile-save-staff'));
 
     await waitFor(() => {
@@ -158,7 +184,6 @@ describe('MobileServicesScreen', () => {
           fullName: 'Morgan',
           email: 'morgan@example.com',
           portalAccessEnabled: true,
-          portalPassword: 'temporary123',
         }),
       );
     });

@@ -47,4 +47,14 @@ describe('appointments page mobile dialog contract', () => {
     expect(source).toContain('{timeStr} {a.customer.name}');
     expect(source).toContain('with {a.staff.fullName}');
   });
+
+  it('lets appointment edits change service, staff, and AM/PM time while warning about customer SMS updates', () => {
+    const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('serviceIds: formData.serviceId ? [formData.serviceId] : []');
+    expect(source).toContain('staffId: formData.staffId || null');
+    expect(source).toContain('formatSlot(slot)');
+    expect(source).toContain('Clientific will text them when the service, staff,');
+    expect(source).toContain('Change the service to change the appointment length.');
+  });
 });

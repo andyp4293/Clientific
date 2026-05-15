@@ -6,7 +6,9 @@ vi.mock('@/lib/utils', () => ({
 
 import { hashPassword } from '@/lib/utils';
 import {
+  isStaffPasswordChangeRequired,
   normalizeStaffEmail,
+  resolveStaffPasswordChangeData,
   resolveStaffPortalAccessData,
 } from './staff-portal-access';
 
@@ -22,7 +24,7 @@ describe('staff portal access helpers', () => {
     expect(normalizeStaffEmail('')).toBeNull();
   });
 
-  it('requires an email and temporary password when access is enabled for a new staff member', async () => {
+  it('requires an email when access is enabled for a new staff member', async () => {
     await expect(
       resolveStaffPortalAccessData({
         email: null,
@@ -31,33 +33,25 @@ describe('staff portal access helpers', () => {
         portalPassword: 'temporary123',
       }),
     ).resolves.toEqual({ error: 'Add an email before enabling employee app access.' });
-
-    await expect(
-      resolveStaffPortalAccessData({
-        email: 'taylor@example.com',
-        isCreate: true,
-        portalAccessEnabled: true,
-        portalPassword: '',
-      }),
-    ).resolves.toEqual({ error: 'Set a temporary employee app password before enabling access.' });
   });
 
-  it('hashes a supplied password and preserves existing passwords when left blank', async () => {
+  it('generates a temporary password and preserves existing passwords when left blank', async () => {
     const created = await resolveStaffPortalAccessData({
       email: 'taylor@example.com',
       isCreate: true,
       portalAccessEnabled: true,
-      portalPassword: 'temporary123',
+      portalPassword: '',
     });
 
     expect(created).toEqual({
       data: expect.objectContaining({
         portalAccessEnabled: true,
-        portalPasswordHash: 'hashed:temporary123',
-        portalPasswordSetAt: expect.any(Date),
+        portalPasswordHash: expect.stringMatching(/^hashed:/),
+        portalPasswordSetAt: null,
       }),
+      temporaryPassword: expect.any(String),
     });
-    expect(mockHashPassword).toHaveBeenCalledWith('temporary123');
+    expect(mockHashPassword).toHaveBeenCalledWith(expect.any(String));
 
     const updated = await resolveStaffPortalAccessData({
       email: 'taylor@example.com',
@@ -65,11 +59,47 @@ describe('staff portal access helpers', () => {
         email: 'taylor@example.com',
         portalAccessEnabled: true,
         portalPasswordHash: 'already-hashed',
+        portalPasswordSetAt: new Date(),
       },
       portalAccessEnabled: true,
       portalPassword: '',
     });
 
     expect(updated).toEqual({ data: { portalAccessEnabled: true } });
+  });
+
+  it('marks generated and owner-supplied temporary passwords as requiring employee setup', async () => {
+    const result = await resolveStaffPortalAccessData({
+      email: 'taylor@example.com',
+      isCreate: true,
+      portalAccessEnabled: true,
+      portalPassword: 'temporary123',
+    });
+
+    expect(result).toEqual({
+      data: expect.objectContaining({
+        portalPasswordHash: 'hashed:temporary123',
+        portalPasswordSetAt: null,
+      }),
+      temporaryPassword: 'temporary123',
+    });
+    expect(
+      isStaffPasswordChangeRequired({
+        portalAccessEnabled: true,
+        portalPasswordHash: 'hashed',
+        portalPasswordSetAt: null,
+      }),
+    ).toBe(true);
+  });
+
+  it('hashes employee-created passwords with a completed setup timestamp', async () => {
+    const result = await resolveStaffPasswordChangeData('newpassword123');
+
+    expect(result).toEqual({
+      data: expect.objectContaining({
+        portalPasswordHash: 'hashed:newpassword123',
+        portalPasswordSetAt: expect.any(Date),
+      }),
+    });
   });
 });

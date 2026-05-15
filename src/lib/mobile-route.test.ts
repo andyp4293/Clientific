@@ -22,6 +22,7 @@ beforeEach(() => {
     accountType: 'owner',
     staffId: null,
     staffName: null,
+    staffPasswordChangeRequired: false,
   });
 });
 
@@ -43,6 +44,7 @@ describe('requireMobileSession', () => {
       accountType: 'staff',
       staffId: 'staff-1',
       staffName: 'Taylor',
+      staffPasswordChangeRequired: false,
     });
 
     const denied = await requireMobileSession(
@@ -56,6 +58,37 @@ describe('requireMobileSession', () => {
     const allowed = await requireMobileSession(
       new Request('https://www.clientific.app/api/mobile/appointments'),
       { allowStaff: true },
+    );
+    expect('session' in allowed).toBe(true);
+  });
+
+  it('blocks temporary staff sessions until the password setup route opts in', async () => {
+    mockVerifyMobileSessionToken.mockResolvedValue({
+      businessId: 'biz-1',
+      email: 'taylor@example.com',
+      name: 'Taylor',
+      onboardingComplete: false,
+      accountType: 'staff',
+      staffId: 'staff-1',
+      staffName: 'Taylor',
+      staffPasswordChangeRequired: true,
+    });
+
+    const denied = await requireMobileSession(
+      new Request('https://www.clientific.app/api/mobile/appointments'),
+      { allowStaff: true },
+    );
+    expect('error' in denied).toBe(true);
+    if ('error' in denied) {
+      expect(denied.error?.status).toBe(403);
+      await expect(denied.error.json()).resolves.toMatchObject({
+        code: 'STAFF_PASSWORD_CHANGE_REQUIRED',
+      });
+    }
+
+    const allowed = await requireMobileSession(
+      new Request('https://www.clientific.app/api/mobile/auth/staff-password'),
+      { allowStaff: true, allowPasswordChangeRequired: true },
     );
     expect('session' in allowed).toBe(true);
   });

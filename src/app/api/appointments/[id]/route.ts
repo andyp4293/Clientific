@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
-import { sendAppointmentCancellation, sendAppointmentBusinessConfirmed } from '@/lib/twilio';
+import {
+  sendAppointmentCancellation,
+  sendAppointmentBusinessConfirmed,
+  sendAppointmentRescheduled,
+} from '@/lib/twilio';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { updateCustomerSegment } from '@/lib/segment';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
@@ -13,6 +17,10 @@ import {
 } from '@/lib/appointment-reminders';
 import { ensureAppointmentShortId } from '@/lib/appointment-short-id';
 import { resolveAppointmentServiceDisplayName } from '@/lib/appointment-services';
+import {
+  hasCustomerVisibleAppointmentChanges,
+  isCustomerBookedAppointmentSource,
+} from '@/lib/appointment-update-sms';
 
 function canSendAppointmentSms(customer: {
   phone: string | null;
@@ -147,17 +155,26 @@ export async function PATCH(
       updates.staffId !== undefined ||
       updates.serviceId !== undefined ||
       updates.serviceIds !== undefined;
+    const shouldSendCustomerChangeSms =
+      isCustomerBookedAppointmentSource(appointment.source) &&
+      hasCustomerVisibleAppointmentChanges(appointment, updates);
+    const isCancellingCustomerBookedAppointment =
+      isCustomerBookedAppointmentSource(appointment.source) &&
+      updates.status === 'cancelled' &&
+      appointment.status !== 'cancelled';
 
     const blockedField = getBlockedFieldLabel([{ label: 'Notes', value: updates.notes }]);
     if (blockedField) {
       return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
     }
 
-    // If updating time, check for conflicts
-    if (updates.startTime || updates.duration) {
+    // If updating time, duration, or staff, check the final assignment for conflicts.
+    if (updates.startTime || updates.duration || updates.staffId !== undefined) {
       const start = new Date(updates.startTime || appointment.startTime);
-      const duration = updates.duration || appointment.duration;
+      const duration = Number(updates.duration ?? appointment.duration);
       const end = new Date(start.getTime() + duration * 60000);
+      const nextStaffId =
+        updates.staffId === undefined ? appointment.staffId : updates.staffId || null;
 
       const conflicts = await prisma.appointment.findMany({
         where: {
@@ -166,7 +183,7 @@ export async function PATCH(
           status: {
             in: ['pending', 'scheduled', 'confirmed'],
           },
-          ...(updates.staffId && { staffId: updates.staffId }),
+          ...(nextStaffId && { staffId: nextStaffId }),
           OR: [
             {
               AND: [
@@ -178,6 +195,12 @@ export async function PATCH(
               AND: [
                 { startTime: { lt: end } },
                 { endTime: { gte: end } },
+              ],
+            },
+            {
+              AND: [
+                { startTime: { gte: start } },
+                { endTime: { lte: end } },
               ],
             },
           ],
@@ -229,7 +252,8 @@ export async function PATCH(
       },
     });
 
-    // Send confirmed SMS if business just confirmed a pending or scheduled appointment
+    // Send confirmed SMS if business just confirmed a pending or scheduled appointment.
+    // Use the updated details so confirm+reschedule in one edit texts the correct final time.
     if (
       updates.status === 'confirmed' &&
       ['pending', 'scheduled'].includes(appointment.status) &&
@@ -239,19 +263,61 @@ export async function PATCH(
     ) {
       const appBase = getConfiguredAppBaseUrl();
       const serviceName = await resolveServiceName(
-        appointment.serviceIds,
-        appointment.service?.name,
+        updatedAppointment.serviceIds,
+        updatedAppointment.service?.name,
       );
-      const appointmentUrl = appointment.shortId ? `${appBase}/a/${appointment.shortId}` : undefined;
+      const shortId = await ensureAppointmentShortId(updatedAppointment.id, updatedAppointment.shortId);
+      const appointmentUrl = shortId ? `${appBase}/a/${shortId}` : undefined;
       sendAppointmentBusinessConfirmed(appointment.customer.phone, {
         customerName: updatedAppointment.customer.name,
         serviceName,
-        dateTime: appointment.startTime,
+        dateTime: updatedAppointment.startTime,
         businessName: business.name,
         appointmentUrl,
         timezone: business.timezone ?? undefined,
         senderPhone: business.vapiPhoneNumber,
       }).catch(err => console.warn('⚠️  Confirmed SMS failed:', err));
+    }
+
+    if (
+      isCancellingCustomerBookedAppointment &&
+      canSendAppointmentSms(appointment.customer)
+    ) {
+      const serviceName = await resolveServiceName(
+        appointment.serviceIds,
+        appointment.service?.name,
+      );
+      sendAppointmentCancellation(appointment.customer.phone!, {
+        customerName: appointment.customer.name,
+        serviceName,
+        dateTime: appointment.startTime,
+        businessName: business.name,
+        timezone: business.timezone ?? undefined,
+        senderPhone: business.vapiPhoneNumber,
+      }).catch(err => console.warn('⚠️  Cancellation SMS failed:', err));
+    } else if (
+      shouldSendCustomerChangeSms &&
+      updates.status !== 'confirmed' &&
+      updates.status !== 'cancelled' &&
+      canSendAppointmentSms(updatedAppointment.customer)
+    ) {
+      const serviceName = await resolveServiceName(
+        updatedAppointment.serviceIds,
+        updatedAppointment.service?.name,
+      );
+      const shortId = await ensureAppointmentShortId(updatedAppointment.id, updatedAppointment.shortId);
+      const appBase = getConfiguredAppBaseUrl();
+      const appointmentUrl = shortId ? `${appBase}/a/${shortId}` : undefined;
+      sendAppointmentRescheduled(updatedAppointment.customer.phone!, {
+        customerName: updatedAppointment.customer.name,
+        serviceName,
+        staffName: updatedAppointment.staff?.fullName || 'our team',
+        newDateTime: updatedAppointment.startTime,
+        businessName: business.name,
+        appointmentUrl,
+        timezone: business.timezone ?? undefined,
+        senderPhone: business.vapiPhoneNumber,
+      }).catch(err => console.warn('⚠️  Appointment update SMS failed:', err));
     }
 
     // Update customer segment when appointment is completed

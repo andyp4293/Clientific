@@ -93,6 +93,7 @@ describe('GET /api/mobile/services', () => {
         active: true,
         portalAccessEnabled: true,
         portalPasswordHash: 'hashed',
+        portalPasswordSetAt: null,
         workDays: [1, 2, 3],
         workHours: {
           1: { startTime: '09:00', endTime: '17:00' },
@@ -136,10 +137,12 @@ describe('GET /api/mobile/services', () => {
       phone: '+15557654321',
       phoneDisplay: '(555) 765-4321',
       workDays: [1, 2, 3],
+      workHoursLabel: 'Mon 9:00 AM-5:00 PM • Tue 9:00 AM-5:00 PM',
       serviceIds: ['svc-1'],
       serviceNames: ['Haircut'],
       portalAccessEnabled: true,
       hasPortalPassword: true,
+      passwordChangeRequired: true,
     });
   });
 });

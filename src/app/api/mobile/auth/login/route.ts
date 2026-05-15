@@ -57,6 +57,8 @@ export async function POST(request: Request) {
       accountType: account.accountType,
       staffId: account.accountType === 'staff' ? account.staffId : null,
       staffName: account.accountType === 'staff' ? account.staffName : null,
+      staffPasswordChangeRequired:
+        account.accountType === 'staff' ? account.passwordChangeRequired : false,
     });
 
     return NextResponse.json({
@@ -71,6 +73,8 @@ export async function POST(request: Request) {
         role: account.accountType,
         staffId: account.accountType === 'staff' ? account.staffId : null,
         staffName: account.accountType === 'staff' ? account.staffName : null,
+        passwordChangeRequired:
+          account.accountType === 'staff' ? account.passwordChangeRequired : false,
       },
     });
   } catch (error) {

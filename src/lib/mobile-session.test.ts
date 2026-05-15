@@ -34,6 +34,7 @@ describe('mobile session token helpers', () => {
       accountType: 'staff',
       staffId: 'staff-123',
       staffName: 'Taylor Nguyen',
+      staffPasswordChangeRequired: true,
     });
 
     const payload = await verifyMobileSessionToken(token);
@@ -44,6 +45,7 @@ describe('mobile session token helpers', () => {
         accountType: 'staff',
         staffId: 'staff-123',
         staffName: 'Taylor Nguyen',
+        staffPasswordChangeRequired: true,
       }),
     );
   });

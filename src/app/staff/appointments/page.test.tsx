@@ -6,6 +6,8 @@ describe('staff appointments page', () => {
     const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
 
     expect(source).toContain("session.user.accountType !== 'staff'");
+    expect(source).toContain('session.user.staffPasswordChangeRequired');
+    expect(source).toContain("redirect('/staff/set-password')");
     expect(source).toContain('portalAccessEnabled: true');
     expect(source).toContain('staffId: staff.id');
     expect(source).toContain('customer: {');

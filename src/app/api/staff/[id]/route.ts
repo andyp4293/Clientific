@@ -10,10 +10,13 @@ import { normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
 import { getStaffBioValidationError, normalizeStaffBio } from '@/lib/staff-bio';
 import {
   hasStaffPortalPassword,
+  isStaffPasswordChangeRequired,
   normalizeStaffEmail,
   resolveStaffPortalAccessData,
 } from '@/lib/staff-portal-access';
+import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { getStaffCacheTag } from '@/lib/cache-tags';
+import { sendStaffTemporaryPasswordEmail } from '@/lib/email';
 import { revalidateTag } from 'next/cache';
 
 const STAFF_SELECT = {
@@ -29,6 +32,7 @@ const STAFF_SELECT = {
   active: true,
   portalAccessEnabled: true,
   portalPasswordHash: true,
+  portalPasswordSetAt: true,
   workDays: true,
   workHours: true,
   serviceAssignments: { select: { serviceId: true } },
@@ -99,6 +103,7 @@ export async function PATCH(
         email: existingStaff.email,
         portalAccessEnabled: existingStaff.portalAccessEnabled,
         portalPasswordHash: existingStaff.portalPasswordHash,
+        portalPasswordSetAt: existingStaff.portalPasswordSetAt,
       },
       portalAccessEnabled,
       portalPassword,
@@ -165,9 +170,19 @@ export async function PATCH(
       active,
       workHours: nextWorkHours,
       portalPasswordHash,
+      portalPasswordSetAt,
       ...rest
     } = staff;
     revalidateTag(getStaffCacheTag(session.user.id), 'max');
+    if (portalAccess.temporaryPassword && staff.email) {
+      await sendStaffTemporaryPasswordEmail({
+        to: staff.email,
+        staffName: staff.fullName,
+        businessName: session.user.name || 'your business',
+        temporaryPassword: portalAccess.temporaryPassword,
+        loginUrl: `${getConfiguredAppBaseUrl()}/login`,
+      });
+    }
 
     return NextResponse.json({
       staff: {
@@ -175,6 +190,11 @@ export async function PATCH(
         active,
         isActive: active,
         hasPortalPassword: hasStaffPortalPassword({ portalPasswordHash }),
+        passwordChangeRequired: isStaffPasswordChangeRequired({
+          portalAccessEnabled: staff.portalAccessEnabled,
+          portalPasswordHash,
+          portalPasswordSetAt,
+        }),
         workHours: normalizeStaffWorkHours(nextWorkHours),
         serviceIds: serviceAssignments.map((a) => a.serviceId),
       },

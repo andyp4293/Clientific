@@ -92,6 +92,7 @@ describe('POST /api/mobile/auth/login', () => {
       email: 'taylor@example.com',
       name: 'Taylor Nguyen',
       onboardingComplete: true,
+      passwordChangeRequired: false,
       accountType: 'staff',
     });
 
@@ -109,12 +110,54 @@ describe('POST /api/mobile/auth/login', () => {
       role: 'staff',
       staffId: 'staff-1',
       staffName: 'Taylor Nguyen',
+      passwordChangeRequired: false,
     });
     expect(mockCreateMobileSessionToken).toHaveBeenCalledWith(
       expect.objectContaining({
         accountType: 'staff',
         staffId: 'staff-1',
         staffName: 'Taylor Nguyen',
+        staffPasswordChangeRequired: false,
+      }),
+    );
+  });
+
+  it('marks staff sessions that must create a real password after temp sign-in', async () => {
+    mockAuthenticateBusinessCredentials.mockRejectedValue(
+      new BusinessAuthError('Email or password is incorrect', 'INVALID_CREDENTIALS', 401),
+    );
+    mockAuthenticateStaffCredentials.mockResolvedValue({
+      id: 'staff-1',
+      businessId: 'biz-1',
+      staffId: 'staff-1',
+      staffName: 'Taylor Nguyen',
+      businessName: 'Clientific Studio',
+      email: 'taylor@example.com',
+      name: 'Taylor Nguyen',
+      onboardingComplete: false,
+      passwordChangeRequired: true,
+      accountType: 'staff',
+    });
+
+    const response = await POST(
+      new Request('https://www.clientific.app/api/mobile/auth/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: 'taylor@example.com', password: 'temporary123' }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      viewer: {
+        role: 'staff',
+        passwordChangeRequired: true,
+      },
+    });
+    expect(mockCreateMobileSessionToken).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountType: 'staff',
+        staffPasswordChangeRequired: true,
       }),
     );
   });

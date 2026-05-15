@@ -82,6 +82,8 @@ type AppointmentCreateFormState = {
 type AppointmentEditFormState = {
   date: string;
   time: string;
+  serviceId: string;
+  staffId: string;
   duration: number;
   notes: string;
 };
@@ -229,6 +231,8 @@ function createEditForm(appointment: MobileAppointmentEntry): AppointmentEditFor
   return {
     date: formatIsoToDateKey(appointment.startTime),
     time: formatIsoToTimeValue(appointment.startTime),
+    serviceId: appointment.serviceId ?? '',
+    staffId: appointment.staffId ?? '',
     duration: appointment.duration,
     notes: appointment.notes ?? '',
   };
@@ -276,10 +280,12 @@ function StaffChoiceCard({
   member,
   onPress,
   selected,
+  testIDPrefix = 'mobile-schedule-create-staff',
 }: {
   member: MobileStaffRecord;
   onPress: () => void;
   selected: boolean;
+  testIDPrefix?: string;
 }) {
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
@@ -307,7 +313,7 @@ function StaffChoiceCard({
           borderColor: selected ? theme.accent : theme.border,
         },
       ]}
-      testID={`mobile-schedule-create-staff-${member.id}`}>
+      testID={`${testIDPrefix}-${member.id}`}>
       <View style={styles.staffChoiceHeader}>
         <View style={styles.staffChoiceCopy}>
           <Text style={[styles.staffChoiceTitle, { color: theme.text }]}>{member.fullName}</Text>
@@ -713,6 +719,8 @@ export function MobileScheduleScreen({
   const [editForm, setEditForm] = useState<AppointmentEditFormState>({
     date: formatDateKey(new Date()),
     time: '',
+    serviceId: '',
+    staffId: '',
     duration: 60,
     notes: '',
   });
@@ -733,8 +741,8 @@ export function MobileScheduleScreen({
   const selectedCreateService =
     availableServices.find((service) => service.id === createForm.serviceId) ?? null;
   const selectedEditService =
-    editingAppointment?.serviceId
-      ? availableServices.find((service) => service.id === editingAppointment.serviceId) ?? null
+    editForm.serviceId
+      ? availableServices.find((service) => service.id === editForm.serviceId) ?? null
       : null;
   const createEffectiveDuration = selectedCreateService?.duration ?? createForm.duration;
   const editEffectiveDuration = selectedEditService?.duration ?? editForm.duration;
@@ -801,11 +809,11 @@ export function MobileScheduleScreen({
         ? getSuggestedTimeOptions({
             dateKey: editForm.date,
             duration: editEffectiveDuration,
-            staffId: editingAppointment.staffId ?? '',
+            staffId: editForm.staffId,
             staff: editEligibleStaff,
           })
         : [],
-    [editEffectiveDuration, editEligibleStaff, editForm.date, editingAppointment],
+    [editEffectiveDuration, editEligibleStaff, editForm.date, editForm.staffId, editingAppointment],
   );
   const activeCalendarDateKey =
     calendarTarget === 'create'
@@ -963,6 +971,22 @@ export function MobileScheduleScreen({
       time: '',
     }));
   }, [createEligibleStaff, createForm.staffId, selectedCreateService]);
+
+  useEffect(() => {
+    if (!selectedEditService || !editForm.staffId) {
+      return;
+    }
+
+    if (editEligibleStaff.some((staff) => staff.id === editForm.staffId)) {
+      return;
+    }
+
+    setEditForm((current) => ({
+      ...current,
+      staffId: '',
+      time: '',
+    }));
+  }, [editEligibleStaff, editForm.staffId, selectedEditService]);
 
   useEffect(() => {
     if (!editingAppointment || !editSuggestedTimeOptions.length) {
@@ -1140,6 +1164,9 @@ export function MobileScheduleScreen({
       await onUpdateAppointment(editingAppointment.id, {
         startTime: start.toISOString(),
         duration: editEffectiveDuration,
+        serviceId: editForm.serviceId || null,
+        serviceIds: editForm.serviceId ? [editForm.serviceId] : [],
+        staffId: editForm.staffId || null,
         notes: editForm.notes.trim() || null,
       });
       setEditingAppointment(null);
@@ -2015,12 +2042,43 @@ export function MobileScheduleScreen({
                   styles.detailSectionCard,
                   { backgroundColor: theme.surface, borderColor: theme.border },
                 ]}>
-                <SectionLabel label="Service" />
+                <SectionLabel label="Service & staff" />
                 <Text style={[styles.helperText, { color: theme.mutedText }]}>
-                  {selectedEditService
-                    ? `${selectedEditService.name} uses ${selectedEditService.durationLabel}, so the slot suggestions stay aligned with that service.`
-                    : 'This appointment is using manual timing, so you can keep the custom duration.'}
+                  Change the service, staff member, date, or time. Online and AI bookings with
+                  appointment-text consent will receive an updated SMS automatically.
                 </Text>
+
+                <SectionLabel label="Service" />
+                {availableServices.length ? (
+                  <View style={styles.segmentRow}>
+                    {availableServices.map((service) => (
+                      <OptionChip
+                        key={service.id}
+                        label={service.name}
+                        onPress={() =>
+                          setEditForm((current) => ({
+                            ...current,
+                            serviceId: service.id,
+                            duration: service.duration,
+                            staffId:
+                              current.staffId && service.id !== current.serviceId
+                                ? ''
+                                : current.staffId,
+                            time: '',
+                          }))
+                        }
+                        selected={editForm.serviceId === service.id}
+                        testID={`mobile-schedule-edit-service-${service.id}`}
+                      />
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={[styles.warningText, { color: '#c47f00' }]}>
+                    No active services are set up yet, so this appointment can only keep manual
+                    timing until services are added.
+                  </Text>
+                )}
+
                 {selectedEditService ? (
                   <View
                     style={[
@@ -2035,6 +2093,49 @@ export function MobileScheduleScreen({
                     </Text>
                   </View>
                 ) : null}
+
+                <SectionLabel label="Staff" />
+                <View style={styles.staffChoiceStack}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: !editForm.staffId }}
+                    onPress={() => setEditForm((current) => ({ ...current, staffId: '', time: '' }))}
+                    style={[
+                      styles.staffChoiceCard,
+                      {
+                        backgroundColor: !editForm.staffId ? theme.accentSoft : theme.surfaceMuted,
+                        borderColor: !editForm.staffId ? theme.accent : theme.border,
+                      },
+                    ]}
+                    testID="mobile-schedule-edit-staff-any">
+                    <View style={styles.staffChoiceHeader}>
+                      <View style={styles.staffChoiceCopy}>
+                        <Text style={[styles.staffChoiceTitle, { color: theme.text }]}>
+                          Any available team member
+                        </Text>
+                        <Text style={[styles.staffChoiceRole, { color: theme.mutedText }]}>
+                          Uses the first open employee who can perform the selected service.
+                        </Text>
+                      </View>
+                      {!editForm.staffId ? (
+                        <View style={[styles.staffSelectedBadge, { backgroundColor: theme.accent }]}>
+                          <Text style={styles.staffSelectedBadgeText}>Selected</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </Pressable>
+                  {editEligibleStaff.map((staff) => (
+                    <StaffChoiceCard
+                      key={staff.id}
+                      member={staff}
+                      onPress={() =>
+                        setEditForm((current) => ({ ...current, staffId: staff.id, time: '' }))
+                      }
+                      selected={editForm.staffId === staff.id}
+                      testIDPrefix="mobile-schedule-edit-staff"
+                    />
+                  ))}
+                </View>
 
                 <SectionLabel label="Date" />
                 <CalendarDateButton

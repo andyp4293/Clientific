@@ -25,19 +25,26 @@ vi.mock('@/lib/prisma', () => ({
 vi.mock('@/lib/utils', () => ({
   hashPassword: vi.fn(async (password: string) => `hashed:${password}`),
 }));
+vi.mock('@/lib/email', () => ({
+  sendStaffTemporaryPasswordEmail: vi.fn(),
+}));
 
 import { requireMobileSession } from '@/lib/mobile-route';
 import { prisma } from '@/lib/prisma';
+import { sendStaffTemporaryPasswordEmail } from '@/lib/email';
 import { POST } from './route';
 
 const mockRequireMobileSession = requireMobileSession as ReturnType<typeof vi.fn>;
 const mockFindBusinessHours = prisma.businessHours.findUnique as ReturnType<typeof vi.fn>;
 const mockFindServices = prisma.service.findMany as ReturnType<typeof vi.fn>;
 const mockTransaction = prisma.$transaction as ReturnType<typeof vi.fn>;
+const mockSendStaffTemporaryPasswordEmail = vi.mocked(sendStaffTemporaryPasswordEmail);
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockRequireMobileSession.mockResolvedValue({ session: { businessId: 'biz-1' } });
+  mockRequireMobileSession.mockResolvedValue({
+    session: { businessId: 'biz-1', name: 'Clientific Studio' },
+  });
 });
 
 describe('POST /api/mobile/staff', () => {
@@ -53,6 +60,7 @@ describe('POST /api/mobile/staff', () => {
       active: true,
       portalAccessEnabled: true,
       portalPasswordHash: 'hashed:temporary123',
+      portalPasswordSetAt: null,
       workDays: [1],
       workHours: { 1: { startTime: '09:00', endTime: '17:00' } },
       serviceAssignments: [{ serviceId: 'svc-1' }],
@@ -87,7 +95,6 @@ describe('POST /api/mobile/staff', () => {
           role: 'Stylist',
           bio: '  Gel specialist who keeps appointments calm and efficient.  ',
           portalAccessEnabled: true,
-          portalPassword: 'temporary123',
           serviceIds: ['svc-1'],
           workDays: [1],
           workHours: { 1: { startTime: '09:00', endTime: '17:00' } },
@@ -100,10 +107,17 @@ describe('POST /api/mobile/staff', () => {
       data: expect.objectContaining({
         email: 'taylor@example.com',
         portalAccessEnabled: true,
-        portalPasswordHash: 'hashed:temporary123',
-        portalPasswordSetAt: expect.any(Date),
+        portalPasswordHash: expect.any(String),
+        portalPasswordSetAt: null,
       }),
     });
+    expect(mockSendStaffTemporaryPasswordEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'taylor@example.com',
+        businessName: 'Clientific Studio',
+        temporaryPassword: expect.any(String),
+      }),
+    );
     const body = await response.json();
     expect(body.staff).toMatchObject({
       id: 'staff-1',
@@ -112,6 +126,7 @@ describe('POST /api/mobile/staff', () => {
       bio: 'Gel specialist who keeps appointments calm and efficient.',
       portalAccessEnabled: true,
       hasPortalPassword: true,
+      passwordChangeRequired: true,
       serviceNames: ['Haircut'],
     });
   });

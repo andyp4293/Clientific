@@ -12,10 +12,13 @@ import { normalizeOptionalStoredPhoneNumber, formatPhoneForDisplay } from '@/lib
 import { getStaffBioValidationError, normalizeStaffBio } from '@/lib/staff-bio';
 import {
   hasStaffPortalPassword,
+  isStaffPasswordChangeRequired,
   normalizeStaffEmail,
   resolveStaffPortalAccessData,
 } from '@/lib/staff-portal-access';
 import { getStaffCacheTag } from '@/lib/cache-tags';
+import { getConfiguredAppBaseUrl } from '@/lib/app-url';
+import { sendStaffTemporaryPasswordEmail } from '@/lib/email';
 import { revalidateTag } from 'next/cache';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -68,6 +71,7 @@ async function formatStaffResponse(businessId: string, staff: {
   active: boolean;
   portalAccessEnabled: boolean;
   portalPasswordHash: string | null;
+  portalPasswordSetAt: Date | null;
   workDays: number[];
   workHours: unknown;
   serviceAssignments: { serviceId: string }[];
@@ -95,6 +99,7 @@ async function formatStaffResponse(businessId: string, staff: {
     isActive: staff.active,
     portalAccessEnabled: staff.portalAccessEnabled,
     hasPortalPassword: hasStaffPortalPassword(staff),
+    passwordChangeRequired: isStaffPasswordChangeRequired(staff),
     workDays: staff.workDays,
     workHours: normalizeStaffWorkHours(staff.workHours),
     workDaysLabel: formatWorkDaysLabel(staff.workDays),
@@ -179,6 +184,7 @@ export async function PATCH(
         email: existingStaff.email,
         portalAccessEnabled: existingStaff.portalAccessEnabled,
         portalPasswordHash: existingStaff.portalPasswordHash,
+        portalPasswordSetAt: existingStaff.portalPasswordSetAt,
       },
       portalAccessEnabled: body?.portalAccessEnabled,
       portalPassword: body?.portalPassword,
@@ -245,6 +251,15 @@ export async function PATCH(
     });
 
     revalidateTag(getStaffCacheTag(authorized.session.businessId), 'max');
+    if (portalAccess.temporaryPassword && staff.email) {
+      await sendStaffTemporaryPasswordEmail({
+        to: staff.email,
+        staffName: staff.fullName,
+        businessName: authorized.session.name || 'your business',
+        temporaryPassword: portalAccess.temporaryPassword,
+        loginUrl: `${getConfiguredAppBaseUrl()}/login`,
+      });
+    }
 
     return NextResponse.json({
       staff: await formatStaffResponse(authorized.session.businessId, staff),

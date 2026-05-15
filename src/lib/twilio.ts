@@ -79,8 +79,10 @@ export interface ReminderDetails {
 interface RescheduleDetails {
   customerName: string;
   serviceName: string;
+  staffName?: string | null;
   businessName: string;
   newDateTime: Date;
+  appointmentUrl?: string;
   timezone?: string;
   senderPhone?: string | null;
 }
@@ -392,8 +394,11 @@ export function formatAppointmentRescheduledSMS(details: RescheduleDetails): str
     hour12: true,
     ...(tz ? { timeZone: tz } : {}),
   });
-  const message = `${details.businessName}: Hi ${details.customerName}, your ${details.serviceName} appointment has been rescheduled to ${dateStr} at ${timeStr}. See you then!`;
-  return appendSmsComplianceFooter(message);
+  const staffLine =
+    details.staffName && details.staffName !== 'our team' ? ` with ${details.staffName}` : '';
+  const base = `${details.businessName}: Hi ${details.customerName}, your ${details.serviceName}${staffLine} appointment has been updated to ${dateStr} at ${timeStr}. See you then!`;
+  const withUrl = details.appointmentUrl ? `${base} Details: ${details.appointmentUrl}` : base;
+  return appendSmsComplianceFooter(withUrl);
 }
 
 export async function sendAppointmentRescheduled(

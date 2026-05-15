@@ -54,6 +54,7 @@ vi.mock('@/lib/appointment-short-id', () => ({
 vi.mock('@/lib/twilio', () => ({
   sendAppointmentBusinessConfirmed: vi.fn().mockResolvedValue({ success: true, sid: 'SM_confirmed' }),
   sendAppointmentCancellation: vi.fn().mockResolvedValue({ success: true, sid: 'SM_cancelled' }),
+  sendAppointmentRescheduled: vi.fn().mockResolvedValue({ success: true, sid: 'SM_updated' }),
 }));
 
 import { getServerSession } from 'next-auth';
@@ -67,6 +68,7 @@ import { ensureAppointmentShortId } from '@/lib/appointment-short-id';
 import {
   sendAppointmentBusinessConfirmed,
   sendAppointmentCancellation,
+  sendAppointmentRescheduled,
 } from '@/lib/twilio';
 import { PATCH } from './route';
 
@@ -86,6 +88,8 @@ const mockSendAppointmentBusinessConfirmed =
   sendAppointmentBusinessConfirmed as ReturnType<typeof vi.fn>;
 const mockSendAppointmentCancellation =
   sendAppointmentCancellation as ReturnType<typeof vi.fn>;
+const mockSendAppointmentRescheduled =
+  sendAppointmentRescheduled as ReturnType<typeof vi.fn>;
 
 function buildExistingAppointment(overrides: Record<string, any> = {}) {
   return {
@@ -171,6 +175,10 @@ describe('PATCH /api/appointments/[id]', () => {
     mockSendAppointmentCancellation.mockResolvedValue({
       success: true,
       sid: 'SM_cancelled',
+    });
+    mockSendAppointmentRescheduled.mockResolvedValue({
+      success: true,
+      sid: 'SM_updated',
     });
   });
 
@@ -286,5 +294,90 @@ describe('PATCH /api/appointments/[id]', () => {
         businessName: 'Test Salon',
       }),
     );
+  });
+
+  it('sends an updated appointment SMS when an online booking changes service, staff, or time', async () => {
+    mockAppointmentFindFirst.mockResolvedValue(
+      buildExistingAppointment({
+        source: 'online',
+        status: 'confirmed',
+        serviceId: 'svc-1',
+        serviceIds: ['svc-1'],
+        staffId: 'stf-1',
+      }),
+    );
+    mockAppointmentUpdate.mockReset();
+    mockAppointmentUpdate
+      .mockResolvedValueOnce(
+        buildUpdatedAppointment({
+          source: 'online',
+          status: 'confirmed',
+          serviceId: 'svc-2',
+          serviceIds: ['svc-2'],
+          staffId: 'stf-2',
+          startTime: new Date('2026-04-10T19:30:00.000Z'),
+          duration: 60,
+          service: { name: 'Pedicure' },
+          staff: { fullName: 'Taylor' },
+        }),
+      )
+      .mockResolvedValueOnce({ id: 'appt-1', reminderSent: true });
+    mockServiceFindMany.mockResolvedValue([{ id: 'svc-2', name: 'Pedicure' }]);
+
+    const request = new NextRequest('http://localhost/api/appointments/appt-1', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        startTime: '2026-04-10T19:30:00.000Z',
+        duration: 60,
+        serviceId: 'svc-2',
+        serviceIds: ['svc-2'],
+        staffId: 'stf-2',
+      }),
+    });
+
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'appt-1' }) });
+
+    expect(response.status).toBe(200);
+    expect(mockSendAppointmentRescheduled).toHaveBeenCalledWith(
+      '+15551234567',
+      expect.objectContaining({
+        customerName: 'Jane Doe',
+        serviceName: 'Pedicure',
+        staffName: 'Taylor',
+        newDateTime: new Date('2026-04-10T19:30:00.000Z'),
+        appointmentUrl: expect.stringContaining('/a/ABC1234'),
+      }),
+    );
+  });
+
+  it('does not text customers for notes-only manual dashboard appointment edits', async () => {
+    mockAppointmentFindFirst.mockResolvedValue(
+      buildExistingAppointment({
+        source: 'dashboard',
+        status: 'confirmed',
+      }),
+    );
+    mockAppointmentUpdate.mockReset();
+    mockAppointmentUpdate.mockResolvedValueOnce(
+      buildUpdatedAppointment({
+        source: 'dashboard',
+        status: 'confirmed',
+        notes: 'Prefers quiet corner',
+      }),
+    );
+
+    const request = new NextRequest('http://localhost/api/appointments/appt-1', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ notes: 'Prefers quiet corner' }),
+    });
+
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'appt-1' }) });
+
+    expect(response.status).toBe(200);
+    expect(mockSendAppointmentRescheduled).not.toHaveBeenCalled();
+    expect(mockSendAppointmentBusinessConfirmed).not.toHaveBeenCalled();
+    expect(mockSendAppointmentCancellation).not.toHaveBeenCalled();
   });
 });

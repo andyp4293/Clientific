@@ -97,7 +97,8 @@ describe("services page cache sync contract", () => {
     expect(source).toContain("Employee app access");
     expect(source).toContain("Appointment-only login");
     expect(source).toContain("portalAccessEnabled");
-    expect(source).toContain("portalPassword");
+    expect(source).toContain("Temporary password email");
+    expect(source).toContain("must create their own password");
     expect(source).toContain("Customer phones stay hidden");
     expect(source).toMatch(/CRM,\s+deals,\s+billing,\s+and settings stay hidden/);
     expect(source).toContain("Employee app enabled");

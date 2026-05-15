@@ -27,6 +27,7 @@ import type {
 } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { formatScheduleTimeLabel } from '@/lib/staff-schedule';
 
 type MobileServicesScreenProps = {
   data: MobileServicesSummary | null;
@@ -70,7 +71,6 @@ type StaffFormState = {
   bio: string;
   isActive: boolean;
   portalAccessEnabled: boolean;
-  portalPassword: string;
   workDays: number[];
   workHours: MobileStaffWorkHours;
   serviceIds: string[];
@@ -113,6 +113,44 @@ function ensureWorkHoursForDays(workDays: number[], workHours?: MobileStaffWorkH
   return nextHours;
 }
 
+function normalizeStaffTimeInput(value?: string | null) {
+  if (!value) return null;
+
+  const normalizedValue = value.trim().toUpperCase().replace(/\s+/g, ' ');
+  const match = normalizedValue.match(/^(\d{1,2})(?::(\d{2}))?\s*(A\.?M\.?|P\.?M\.?)?$/);
+  if (!match) return null;
+
+  let hour = Number.parseInt(match[1], 10);
+  const minute = match[2] ? Number.parseInt(match[2], 10) : 0;
+  const period = match[3]?.replace(/\./g, '');
+
+  if (!Number.isFinite(hour) || !Number.isFinite(minute) || minute < 0 || minute > 59) {
+    return null;
+  }
+
+  if (period) {
+    if (hour < 1 || hour > 12) return null;
+    if (period === 'AM') hour = hour === 12 ? 0 : hour;
+    if (period === 'PM') hour = hour === 12 ? 12 : hour + 12;
+  } else if (hour < 0 || hour > 23) {
+    return null;
+  }
+
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function formatStaffTimeInput(value?: string | null, fallback = '09:00') {
+  const normalized = normalizeStaffTimeInput(value ?? fallback);
+  return normalized ? formatScheduleTimeLabel(normalized) : value ?? fallback;
+}
+
+function staffTimeToMinutes(value: string) {
+  const normalized = normalizeStaffTimeInput(value);
+  if (!normalized) return null;
+  const [hours, minutes] = normalized.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
 function createStaffForm(member?: MobileStaffRecord | null): StaffFormState {
   const workDays = member?.workDays?.length ? member.workDays : [1, 2, 3, 4, 5];
 
@@ -124,7 +162,6 @@ function createStaffForm(member?: MobileStaffRecord | null): StaffFormState {
     bio: member?.bio ?? '',
     isActive: member?.isActive ?? true,
     portalAccessEnabled: member?.portalAccessEnabled ?? false,
-    portalPassword: '',
     workDays,
     workHours: ensureWorkHoursForDays(workDays, member?.workHours),
     serviceIds: member?.serviceIds ?? [],
@@ -580,16 +617,27 @@ export function MobileServicesScreen({
       return;
     }
 
-    if (
-      staffForm.portalAccessEnabled &&
-      !editingStaff?.hasPortalPassword &&
-      staffForm.portalPassword.trim().length < 8
-    ) {
-      setSheetError('Set a temporary employee app password with at least 8 characters.');
-      return;
-    }
+    const rawWorkHours = ensureWorkHoursForDays(staffForm.workDays, staffForm.workHours);
+    const workHours: MobileStaffWorkHours = {};
+    for (const day of staffForm.workDays) {
+      const slot = rawWorkHours[day];
+      const startTime = normalizeStaffTimeInput(slot?.startTime);
+      const endTime = normalizeStaffTimeInput(slot?.endTime);
 
-    const workHours = ensureWorkHoursForDays(staffForm.workDays, staffForm.workHours);
+      if (!startTime || !endTime) {
+        setSheetError('Use clear AM/PM staff hours like 9:00 AM and 5:00 PM.');
+        return;
+      }
+
+      const startMinutes = staffTimeToMinutes(startTime);
+      const endMinutes = staffTimeToMinutes(endTime);
+      if (startMinutes === null || endMinutes === null || startMinutes >= endMinutes) {
+        setSheetError('Each selected work day needs an end time after its start time.');
+        return;
+      }
+
+      workHours[day] = { startTime, endTime };
+    }
     const invalidSlot = staffForm.workDays.find((day) => {
       const slot = workHours[day];
       return !slot?.startTime || !slot?.endTime;
@@ -615,7 +663,6 @@ export function MobileServicesScreen({
         workHours,
         serviceIds: staffForm.serviceIds,
         portalAccessEnabled: staffForm.portalAccessEnabled,
-        portalPassword: staffForm.portalPassword.trim() || null,
       };
 
       if (editingStaff) {
@@ -1251,7 +1298,8 @@ export function MobileServicesScreen({
                           style={[
                             styles.actionButton,
                             { backgroundColor: theme.surface, borderColor: theme.border },
-                          ]}>
+                          ]}
+                          testID={`mobile-staff-edit-${member.id}`}>
                           <Text style={[styles.actionButtonText, { color: theme.text }]}>Edit</Text>
                         </Pressable>
                         <Pressable
@@ -1538,37 +1586,24 @@ export function MobileServicesScreen({
           </View>
 
           {staffForm.portalAccessEnabled ? (
-            <>
-              <FieldLabel
-                label={
-                  editingStaff?.hasPortalPassword
-                    ? 'New temporary password'
-                    : 'Temporary password'
-                }
-                themeText={theme.text}
-              />
-              <TextInput
-                autoCapitalize="none"
-                secureTextEntry
-                onChangeText={(value) =>
-                  setStaffForm((current) => ({ ...current, portalPassword: value }))
-                }
-                placeholder={
-                  editingStaff?.hasPortalPassword
-                    ? 'Leave blank to keep current password'
-                    : 'At least 8 characters'
-                }
-                placeholderTextColor={theme.mutedText}
-                style={[
-                  styles.formInput,
-                  { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text },
-                ]}
-                value={staffForm.portalPassword}
-              />
-              <Text style={[styles.helperText, { color: theme.mutedText }]}>
-                Staff sign in with the email above and this password. Owners can reset it any time.
+            <View
+              style={[
+                styles.portalInviteInfo,
+                { backgroundColor: theme.accentSoft, borderColor: theme.border },
+              ]}>
+              <Text style={[styles.portalInviteTitle, { color: theme.accent }]}>
+                Temporary password email
               </Text>
-            </>
+              <Text style={[styles.helperText, { color: theme.mutedText }]}>
+                When access is first enabled, Clientific emails this employee a temporary password.
+                They must create their own password before seeing appointments.
+              </Text>
+              {editingStaff?.passwordChangeRequired ? (
+                <Text style={[styles.portalInvitePending, { color: theme.accent }]}>
+                  Invite is pending password setup.
+                </Text>
+              ) : null}
+            </View>
           ) : null}
 
           <View style={[styles.toggleCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -1659,13 +1694,13 @@ export function MobileServicesScreen({
                           },
                         }))
                       }
-                      placeholder="09:00"
+                      placeholder="9:00 AM"
                       placeholderTextColor={theme.mutedText}
                       style={[
                         styles.scheduleInput,
                         { backgroundColor: theme.surfaceMuted, borderColor: theme.border, color: theme.text },
                       ]}
-                      value={staffForm.workHours[day]?.startTime ?? '09:00'}
+                      value={formatStaffTimeInput(staffForm.workHours[day]?.startTime, '09:00')}
                     />
                     <Text style={[styles.scheduleDash, { color: theme.mutedText }]}>to</Text>
                     <TextInput
@@ -1682,13 +1717,13 @@ export function MobileServicesScreen({
                           },
                         }))
                       }
-                      placeholder="17:00"
+                      placeholder="5:00 PM"
                       placeholderTextColor={theme.mutedText}
                       style={[
                         styles.scheduleInput,
                         { backgroundColor: theme.surfaceMuted, borderColor: theme.border, color: theme.text },
                       ]}
-                      value={staffForm.workHours[day]?.endTime ?? '17:00'}
+                      value={formatStaffTimeInput(staffForm.workHours[day]?.endTime, '17:00')}
                     />
                   </View>
                 </View>
@@ -2137,6 +2172,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     marginTop: -4,
+  },
+  portalInviteInfo: {
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 14,
+    gap: 8,
+  },
+  portalInviteTitle: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '900',
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+  },
+  portalInvitePending: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '800',
   },
   emptyInlineText: {
     fontSize: 14,

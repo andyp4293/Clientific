@@ -19,6 +19,7 @@ vi.mock('@/lib/prisma', () => ({
 vi.mock('@/lib/twilio', () => ({
   sendAppointmentBusinessConfirmed: vi.fn().mockResolvedValue({ success: true }),
   sendAppointmentCancellation: vi.fn().mockResolvedValue({ success: true }),
+  sendAppointmentRescheduled: vi.fn().mockResolvedValue({ success: true }),
 }));
 vi.mock('@/lib/appointment-reminders', () => ({
   scheduleAppointmentReminder: vi.fn().mockResolvedValue({ success: true, sid: 'SM_reminder' }),

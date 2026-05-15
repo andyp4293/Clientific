@@ -25,16 +25,21 @@ vi.mock('@/lib/stripe', () => ({
 
 vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
 vi.mock('@/app/api/auth/[...nextauth]/route', () => ({ authOptions: {} }));
+vi.mock('@/lib/email', () => ({
+  sendStaffTemporaryPasswordEmail: vi.fn(),
+}));
 
 import { getServerSession } from 'next-auth';
 import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma';
+import { sendStaffTemporaryPasswordEmail } from '@/lib/email';
 import { GET, POST } from './route';
 
 const mockSession = getServerSession as ReturnType<typeof vi.fn>;
 const mockBusiness = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockStaffFindMany = prisma.staff.findMany as ReturnType<typeof vi.fn>;
 const mockTransaction = prisma.$transaction as ReturnType<typeof vi.fn>;
+const mockSendStaffTemporaryPasswordEmail = vi.mocked(sendStaffTemporaryPasswordEmail);
 
 function makeRequest(body: Record<string, unknown> = { fullName: 'John Doe' }) {
   return new NextRequest('http://localhost/api/staff', {
@@ -48,7 +53,7 @@ function makeGetRequest() {
   return new NextRequest('http://localhost/api/staff', { method: 'GET' });
 }
 
-const activeSession = { user: { id: 'biz-1' } };
+const activeSession = { user: { id: 'biz-1', name: 'Clientific Studio' } };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -303,5 +308,78 @@ describe('POST /api/staff', () => {
       })
     );
     expect(revalidateTag).toHaveBeenCalledWith('staff-biz-1', 'max');
+  });
+
+  it('generates and emails a temporary password when employee app access is enabled', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce({
+        subscriptionPlan: 'starter',
+        _count: { customers: 0, staff: 0, services: 0 },
+      });
+    const fakeStaff = {
+      id: 'staff-1',
+      fullName: 'Taylor Nguyen',
+      businessId: 'biz-1',
+      email: 'taylor@example.com',
+      phone: null,
+      role: 'staff',
+      bio: null,
+      active: true,
+      portalAccessEnabled: true,
+      portalPasswordHash: 'hashed-temp',
+      portalPasswordSetAt: null,
+      workDays: [1, 2, 3, 4, 5],
+      workHours: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      serviceAssignments: [],
+    };
+    const createMock = vi.fn().mockResolvedValue(fakeStaff);
+    mockTransaction.mockImplementationOnce(async (fn: any) => {
+      const tx = {
+        staff: {
+          create: createMock,
+          update: vi.fn(),
+          findUniqueOrThrow: vi.fn().mockResolvedValue(fakeStaff),
+        },
+        staffService: { deleteMany: vi.fn(), createMany: vi.fn() },
+      };
+      return fn(tx);
+    });
+
+    const res = await POST(
+      makeRequest({
+        fullName: 'Taylor Nguyen',
+        email: 'taylor@example.com',
+        portalAccessEnabled: true,
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          portalAccessEnabled: true,
+          portalPasswordHash: expect.any(String),
+          portalPasswordSetAt: null,
+        }),
+      }),
+    );
+    expect(mockSendStaffTemporaryPasswordEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'taylor@example.com',
+        staffName: 'Taylor Nguyen',
+        businessName: 'Clientific Studio',
+        temporaryPassword: expect.any(String),
+      }),
+    );
+    await expect(res.json()).resolves.toMatchObject({
+      staff: {
+        hasPortalPassword: true,
+        passwordChangeRequired: true,
+      },
+    });
   });
 });

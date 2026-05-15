@@ -1,6 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { MobileScheduleScreen } from '@/components/mobile-schedule-screen';
+import type { MobileServicesSummary } from '@/lib/clientific-api';
 
 const business = {
   id: 'biz-1',
@@ -10,13 +11,13 @@ const business = {
   onboardingComplete: true,
 };
 
-const servicesSummary = {
+const servicesSummary: MobileServicesSummary = {
   business,
   counts: {
-    services: 1,
-    activeServices: 1,
-    staff: 1,
-    activeStaff: 1,
+    services: 2,
+    activeServices: 2,
+    staff: 2,
+    activeStaff: 2,
   },
   groups: [],
   services: [
@@ -32,6 +33,19 @@ const servicesSummary = {
       groupId: null,
       groupName: null,
       sortOrder: 0,
+    },
+    {
+      id: 'svc-2',
+      name: 'Gel manicure',
+      description: 'Polished gel set',
+      duration: 60,
+      durationLabel: '1 hr',
+      price: 65,
+      priceLabel: '$65.00',
+      isActive: true,
+      groupId: null,
+      groupName: null,
+      sortOrder: 1,
     },
   ],
   staff: [
@@ -57,6 +71,29 @@ const servicesSummary = {
       serviceCount: 0,
       serviceIds: [],
       serviceNames: [],
+    },
+    {
+      id: 'staff-2',
+      fullName: 'Morgan',
+      email: 'morgan@example.com',
+      phone: '+15559876543',
+      phoneDisplay: '(555) 987-6543',
+      role: 'Nail artist',
+      bio: 'Careful with gel manicures and detailed nail art.',
+      isActive: true,
+      portalAccessEnabled: true,
+      hasPortalPassword: true,
+      workDays: [3, 4, 5],
+      workHours: {
+        3: { startTime: '10:00', endTime: '18:00' },
+        4: { startTime: '10:00', endTime: '18:00' },
+        5: { startTime: '10:00', endTime: '18:00' },
+      },
+      workDaysLabel: 'Wed, Thu, Fri',
+      workHoursLabel: 'Wed 10:00 AM-6:00 PM',
+      serviceCount: 1,
+      serviceIds: ['svc-2'],
+      serviceNames: ['Gel manicure'],
     },
   ],
 };
@@ -433,12 +470,17 @@ describe('MobileScheduleScreen', () => {
     });
   });
 
-  it('opens the edit sheet and saves updated appointment timing', async () => {
+  it('opens the edit sheet and saves updated appointment service, staff, and timing', async () => {
     const onUpdateAppointment = jest.fn().mockResolvedValue(undefined);
 
     renderScreen({ onUpdateAppointment });
 
     fireEvent.press(screen.getByTestId('mobile-appointment-edit-appt-1'));
+    await waitFor(() => {
+      expect(screen.getByTestId('mobile-schedule-edit-service-svc-2')).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId('mobile-schedule-edit-service-svc-2'));
+    fireEvent.press(screen.getByTestId('mobile-schedule-edit-staff-staff-2'));
     fireEvent.press(screen.getByTestId('mobile-schedule-edit-open-calendar'));
     expect(screen.getByTestId('mobile-schedule-edit-submit')).toBeTruthy();
     fireEvent.press(screen.getByTestId('mobile-calendar-day-2026-04-01'));
@@ -451,7 +493,10 @@ describe('MobileScheduleScreen', () => {
       expect(onUpdateAppointment).toHaveBeenCalledWith(
         'appt-1',
         expect.objectContaining({
-          duration: 45,
+          duration: 60,
+          serviceId: 'svc-2',
+          serviceIds: ['svc-2'],
+          staffId: 'staff-2',
           startTime: expectedStartTime,
         }),
       );

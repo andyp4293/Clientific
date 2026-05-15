@@ -9,6 +9,7 @@ declare module 'next-auth' {
       accountType: 'owner' | 'staff';
       staffId?: string;
       staffName?: string;
+      staffPasswordChangeRequired?: boolean;
     } & DefaultSession['user'];
   }
 
@@ -19,6 +20,7 @@ declare module 'next-auth' {
     accountType?: 'owner' | 'staff';
     staffId?: string;
     staffName?: string;
+    passwordChangeRequired?: boolean;
   }
 }
 
@@ -30,5 +32,6 @@ declare module 'next-auth/jwt' {
     accountType?: 'owner' | 'staff';
     staffId?: string;
     staffName?: string;
+    staffPasswordChangeRequired?: boolean;
   }
 }

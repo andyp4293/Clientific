@@ -40,6 +40,7 @@ jest.mock('@/lib/clientific-api', () => {
     updateMobileCustomerGroup: jest.fn(),
     updateMobileServiceGroup: jest.fn(),
     updateMobileService: jest.fn(),
+    updateMobileStaffPassword: jest.fn(),
     updateMobileStaff: jest.fn(),
     reorderMobileServiceGroups: jest.fn(),
     reorderMobileServices: jest.fn(),
@@ -166,6 +167,7 @@ jest.mock('@/lib/clientific-api', () => {
     updateMobileCustomerGroup: mockClientificApi.updateMobileCustomerGroup,
     updateMobileServiceGroup: mockClientificApi.updateMobileServiceGroup,
     updateMobileService: mockClientificApi.updateMobileService,
+    updateMobileStaffPassword: mockClientificApi.updateMobileStaffPassword,
     updateMobileStaff: mockClientificApi.updateMobileStaff,
     reorderMobileServiceGroups: mockClientificApi.reorderMobileServiceGroups,
     reorderMobileServices: mockClientificApi.reorderMobileServices,
@@ -277,6 +279,30 @@ jest.mock('@/components/mobile-auth-screen', () => {
           testID="mock-verify"
           onPress={() => onVerify('owner@clientific.app', '123456')}>
           <Text>verify</Text>
+        </Pressable>
+      </View>
+    ),
+  };
+});
+
+jest.mock('@/components/mobile-staff-password-screen', () => {
+  const React = require('react');
+  const { Pressable, Text, View } = require('react-native');
+
+  return {
+    MobileStaffPasswordScreen: ({ error, onSubmit, staffName }: any) => (
+      <View>
+        <Text testID="mock-staff-password-screen">{staffName}</Text>
+        {error ? <Text testID="mock-staff-password-error">{error}</Text> : null}
+        <Pressable
+          testID="mock-staff-password-submit"
+          onPress={() =>
+            onSubmit({
+              currentPassword: 'Password123!',
+              newPassword: 'NewPassword123!',
+            })
+          }>
+          <Text>create password</Text>
         </Pressable>
       </View>
     ),
@@ -568,6 +594,55 @@ describe('ClientificNativeApp', () => {
       /Start the 14-day App Store trial from Billing/i,
     );
     expect(screen.queryByTestId('mock-shell-billing-error')).toBeNull();
+  });
+
+  it('forces staff users with temporary passwords through password setup before loading home', async () => {
+    mockClientificApi.loginWithClientific.mockResolvedValueOnce({
+      token: 'temporary-staff-token',
+      business: activeHome.business,
+      viewer: {
+        role: 'staff',
+        staffId: 'staff-1',
+        staffName: 'Taylor',
+        passwordChangeRequired: true,
+      },
+    });
+    mockClientificApi.updateMobileStaffPassword.mockResolvedValueOnce({
+      token: 'fresh-staff-token',
+      business: activeHome.business,
+      viewer: {
+        role: 'staff',
+        staffId: 'staff-1',
+        staffName: 'Taylor',
+        privacy: 'customer_phone_hidden',
+        passwordChangeRequired: false,
+      },
+    });
+    mockClientificApi.fetchMobileHomeSummary.mockResolvedValueOnce(staffHome);
+
+    render(<ClientificNativeApp />);
+
+    fireEvent.press(await screen.findByTestId('mock-login'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-staff-password-screen').props.children).toBe('Taylor');
+    });
+    expect(mockClientificApi.fetchMobileHomeSummary).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByTestId('mock-staff-password-submit'));
+
+    await waitFor(() => {
+      expect(mockClientificApi.updateMobileStaffPassword).toHaveBeenCalledWith(
+        'temporary-staff-token',
+        {
+          currentPassword: 'Password123!',
+          newPassword: 'NewPassword123!',
+        },
+      );
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-shell-tab').props.children).toBe('appointments');
+    });
   });
 
   it('loads App Store offerings once on entry and only retries on an explicit billing refresh', async () => {

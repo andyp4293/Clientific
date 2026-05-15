@@ -98,6 +98,7 @@ import {
   updateMobileCustomerGroup,
   updateMobileServiceGroup,
   updateMobileService,
+  updateMobileStaffPassword,
   updateMobileStaff,
   reorderMobileServiceGroups,
   reorderMobileServices,
@@ -139,6 +140,7 @@ import {
 } from '@/components/mobile-auth-screen';
 import type { MobileMoreSection } from '@/components/mobile-more-screen';
 import { MobileOnboardingScreen } from '@/components/mobile-onboarding-screen';
+import { MobileStaffPasswordScreen } from '@/components/mobile-staff-password-screen';
 
 const MOBILE_SESSION_TOKEN_KEY = 'clientific.mobile.session.token';
 
@@ -241,6 +243,7 @@ export function ClientificNativeApp() {
   const [moreSection, setMoreSection] = useState<MobileMoreSection>('menu');
   const [authMode, setAuthMode] = useState<MobileAuthMode>('sign-in');
   const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
+  const [isUpdatingStaffPassword, setIsUpdatingStaffPassword] = useState(false);
   const [isResendingCode, setIsResendingCode] = useState(false);
   const [isLoadingHome, setIsLoadingHome] = useState(false);
   const [isRefreshingHome, setIsRefreshingHome] = useState(false);
@@ -488,6 +491,7 @@ export function ClientificNativeApp() {
     setBillingPurchaseError(null);
     setPendingSubscriptionRedirectMessage(null);
     setIsDeletingAccount(false);
+    setIsUpdatingStaffPassword(false);
     setAppointmentsDate(formatMobileDateKey(new Date()));
     setCheckInsDate(formatMobileDateKey(new Date()));
     setCustomersPage(1);
@@ -1783,6 +1787,10 @@ export function ClientificNativeApp() {
       setAuthNotice(null);
       setActiveTab(nextSession.viewer?.role === 'staff' ? 'appointments' : 'dashboard');
       setMoreSection('menu');
+      if (nextSession.viewer?.role === 'staff' && nextSession.viewer.passwordChangeRequired) {
+        setHome(null);
+        return;
+      }
       await loadHome(nextSession.token);
     },
     [loadHome],
@@ -1823,6 +1831,32 @@ export function ClientificNativeApp() {
       setIsBooting(false);
     }
   }, [establishSession]);
+
+  const handleUpdateStaffPassword = useCallback(
+    async (input: { currentPassword: string; newPassword: string }) => {
+      if (!session?.token) {
+        setAuthError('Sign in again to continue.');
+        return;
+      }
+
+      setIsUpdatingStaffPassword(true);
+      setAuthError(null);
+      setAuthNotice(null);
+      try {
+        const nextSession = await updateMobileStaffPassword(session.token, input);
+        await SecureStore.setItemAsync(MOBILE_SESSION_TOKEN_KEY, nextSession.token);
+        setSession(nextSession);
+        setActiveTab('appointments');
+        setMoreSection('menu');
+        await loadHome(nextSession.token);
+      } catch (error) {
+        setAuthError(getReadableError(error, 'Unable to update your password right now.'));
+      } finally {
+        setIsUpdatingStaffPassword(false);
+      }
+    },
+    [loadHome, session?.token],
+  );
 
   const handleRegister = useCallback(async (input: MobileRegistrationForm) => {
     const trimmedEmail = input.email.trim().toLowerCase();
@@ -3186,6 +3220,19 @@ export function ClientificNativeApp() {
           </Text>
         </View>
       </View>
+    );
+  }
+
+  if (session?.viewer?.role === 'staff' && session.viewer.passwordChangeRequired) {
+    return (
+      <MobileStaffPasswordScreen
+        businessName={session.business.name}
+        error={authError}
+        isSubmitting={isUpdatingStaffPassword}
+        onSignOut={signOut}
+        onSubmit={handleUpdateStaffPassword}
+        staffName={session.viewer.staffName}
+      />
     );
   }
 

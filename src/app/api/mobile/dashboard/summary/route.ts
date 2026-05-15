@@ -83,6 +83,15 @@ export async function GET(request: Request) {
       if (!session.staffId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
+      if (session.staffPasswordChangeRequired) {
+        return NextResponse.json(
+          {
+            error: 'Create your employee password before using the app.',
+            code: 'STAFF_PASSWORD_CHANGE_REQUIRED',
+          },
+          { status: 403 },
+        );
+      }
 
       const staff = await prisma.staff.findFirst({
         where: {
@@ -132,6 +141,7 @@ export async function GET(request: Request) {
           staffId: staff.id,
           staffName: staff.fullName,
           privacy: 'customer_phone_hidden',
+          passwordChangeRequired: false,
         },
         subscription: {
           plan: null,

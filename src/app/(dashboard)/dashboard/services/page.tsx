@@ -57,6 +57,7 @@ interface Staff {
   isActive: boolean;
   portalAccessEnabled: boolean;
   hasPortalPassword: boolean;
+  passwordChangeRequired?: boolean;
   workDays: number[];
   workHours?: StaffWorkHoursRecord;
   /** Empty = no restrictions (can perform all services). Non-empty = restricted to these service IDs. */
@@ -580,13 +581,17 @@ function StaffTab({
               <div>
                 <p className="font-semibold">
                   {member.portalAccessEnabled
-                    ? member.hasPortalPassword
-                      ? "Employee app enabled"
-                      : "Employee app needs password"
+                    ? member.passwordChangeRequired
+                      ? "Invite sent"
+                      : member.hasPortalPassword
+                        ? "Employee app enabled"
+                        : "Employee app needs invite"
                     : "Employee app off"}
                 </p>
                 <p className="mt-0.5 leading-5">
-                  {member.portalAccessEnabled
+                  {member.passwordChangeRequired
+                    ? "They must sign in with the temporary email password and create their own."
+                    : member.portalAccessEnabled
                     ? "Can view assigned appointments only. Customer phones stay hidden."
                     : "Enable when this staff member needs their own appointment-only login."}
                 </p>
@@ -1721,36 +1726,19 @@ export default function ServicesPage() {
                               to sign in with.
                             </p>
                           </div>
-                          <div>
-                            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                              {editingStaff?.hasPortalPassword
-                                ? "New temporary password"
-                                : "Temporary password"}
-                              {!editingStaff?.hasPortalPassword && (
-                                <span className="text-red-500 dark:text-red-400"> *</span>
-                              )}
-                            </label>
-                            <input
-                              type="password"
-                              minLength={8}
-                              value={staffFormData.portalPassword}
-                              onChange={(e) =>
-                                setStaffFormData({
-                                  ...staffFormData,
-                                  portalPassword: e.target.value,
-                                })
-                              }
-                              className="input w-full"
-                              placeholder={
-                                editingStaff?.hasPortalPassword
-                                  ? "Leave blank to keep current password"
-                                  : "At least 8 characters"
-                              }
-                            />
-                            <p className="mt-1.5 text-xs leading-5 text-gray-500 dark:text-gray-400">
-                              Share this password directly with the employee. Owners can reset it here
-                              any time.
+                          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-800 dark:bg-emerald-950/30">
+                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">
+                              Temporary password email
                             </p>
+                            <p className="mt-2 leading-6 text-gray-700 dark:text-gray-200">
+                              When access is first enabled, Clientific emails a temporary password.
+                              The employee must create their own password before seeing appointments.
+                            </p>
+                            {editingStaff?.passwordChangeRequired ? (
+                              <p className="mt-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                                Invite is pending password setup.
+                              </p>
+                            ) : null}
                           </div>
                         </div>
                       )}

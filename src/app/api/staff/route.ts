@@ -9,10 +9,13 @@ import { normalizeOptionalStoredPhoneNumber } from '@/lib/phone';
 import { getStaffBioValidationError, normalizeStaffBio } from '@/lib/staff-bio';
 import {
   hasStaffPortalPassword,
+  isStaffPasswordChangeRequired,
   normalizeStaffEmail,
   resolveStaffPortalAccessData,
 } from '@/lib/staff-portal-access';
+import { getConfiguredAppBaseUrl } from '@/lib/app-url';
 import { getStaffCacheTag, SHARED_REFERENCE_DATA_REVALIDATE_SECONDS } from '@/lib/cache-tags';
+import { sendStaffTemporaryPasswordEmail } from '@/lib/email';
 import { revalidateTag, unstable_cache } from 'next/cache';
 
 const STAFF_SELECT = {
@@ -28,6 +31,7 @@ const STAFF_SELECT = {
   active: true,
   portalAccessEnabled: true,
   portalPasswordHash: true,
+  portalPasswordSetAt: true,
   workDays: true,
   workHours: true,
   serviceAssignments: { select: { serviceId: true } },
@@ -46,16 +50,29 @@ function mapStaff(member: {
   active: boolean;
   portalAccessEnabled: boolean;
   portalPasswordHash: string | null;
+  portalPasswordSetAt: Date | null;
   workDays: number[];
   workHours: unknown;
   serviceAssignments: { serviceId: string }[];
 }) {
-  const { serviceAssignments, active, workHours, portalPasswordHash, ...rest } = member;
+  const {
+    serviceAssignments,
+    active,
+    workHours,
+    portalPasswordHash,
+    portalPasswordSetAt,
+    ...rest
+  } = member;
   return {
     ...rest,
     active,
     isActive: active,
     hasPortalPassword: hasStaffPortalPassword({ portalPasswordHash }),
+    passwordChangeRequired: isStaffPasswordChangeRequired({
+      portalAccessEnabled: member.portalAccessEnabled,
+      portalPasswordHash,
+      portalPasswordSetAt,
+    }),
     workHours: normalizeStaffWorkHours(workHours),
     // Empty array = no restrictions (can perform all services).
     // Non-empty = only these service IDs.
@@ -218,6 +235,15 @@ export async function POST(req: NextRequest) {
     });
 
     revalidateTag(getStaffCacheTag(session.user.id), 'max');
+    if (portalAccess.temporaryPassword && staff.email) {
+      await sendStaffTemporaryPasswordEmail({
+        to: staff.email,
+        staffName: staff.fullName,
+        businessName: session.user.name || 'your business',
+        temporaryPassword: portalAccess.temporaryPassword,
+        loginUrl: `${getConfiguredAppBaseUrl()}/login`,
+      });
+    }
 
     return NextResponse.json({ staff: mapStaff(staff) }, { status: 201 });
   } catch (error: any) {

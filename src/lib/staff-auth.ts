@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { isStaffPasswordChangeRequired } from '@/lib/staff-portal-access';
 import { verifyPassword } from '@/lib/utils';
 
 const STAFF_AUTH_SELECT = {
@@ -6,6 +7,7 @@ const STAFF_AUTH_SELECT = {
   fullName: true,
   email: true,
   portalPasswordHash: true,
+  portalPasswordSetAt: true,
   active: true,
   portalAccessEnabled: true,
   businessId: true,
@@ -27,6 +29,7 @@ export type AuthenticatedStaff = {
   staffName: string;
   businessName: string;
   onboardingComplete: boolean;
+  passwordChangeRequired: boolean;
   accountType: 'staff';
 };
 
@@ -97,6 +100,8 @@ export async function authenticateStaffCredentials(input: {
       );
     }
 
+    const passwordChangeRequired = isStaffPasswordChangeRequired(staff);
+
     return {
       id: staff.id,
       email: staff.email ?? email,
@@ -105,7 +110,8 @@ export async function authenticateStaffCredentials(input: {
       staffId: staff.id,
       staffName: staff.fullName,
       businessName: staff.business.name,
-      onboardingComplete: true,
+      onboardingComplete: !passwordChangeRequired,
+      passwordChangeRequired,
       accountType: 'staff',
     };
   } catch (error) {

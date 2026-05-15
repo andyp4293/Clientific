@@ -40,6 +40,14 @@ interface SupportContactDetails {
   message: string;
 }
 
+interface StaffTemporaryPasswordDetails {
+  to: string;
+  staffName: string;
+  businessName: string;
+  temporaryPassword: string;
+  loginUrl?: string;
+}
+
 export async function sendNewBookingEmail(businessEmail: string, details: NewBookingDetails): Promise<void> {
   const resend = new Resend(getResendApiKey());
   const FROM = getResendFromEmail();
@@ -208,6 +216,63 @@ export async function sendPasswordResetEmail(email: string, token: string) {
         <p style="color: #9ca3af; font-size: 12px; margin: 0;">
           If the button above doesn't work, copy and paste this URL into your browser:<br />
           <a href="${resetUrl}" style="color: #2563eb;">${resetUrl}</a>
+        </p>
+      </div>
+    `,
+  });
+}
+
+export async function sendStaffTemporaryPasswordEmail(
+  details: StaffTemporaryPasswordDetails,
+): Promise<void> {
+  const resend = new Resend(getResendApiKey());
+  const FROM = getResendFromEmail();
+  const loginUrl = details.loginUrl ?? `${getConfiguredAppBaseUrl()}/login`;
+  const safeStaffName = escapeHtml(details.staffName);
+  const safeBusinessName = escapeHtml(details.businessName);
+  const safeTemporaryPassword = escapeHtml(details.temporaryPassword);
+
+  const text = [
+    `${safeBusinessName} invited you to ${APP_NAME}`,
+    '',
+    `Hi ${details.staffName},`,
+    `${details.businessName} created an employee login for you.`,
+    '',
+    `Sign in email: ${details.to}`,
+    `Temporary password: ${details.temporaryPassword}`,
+    '',
+    'After you sign in, you will be asked to create your own password before you can view appointments.',
+    `Sign in here: ${loginUrl}`,
+  ].join('\n');
+
+  await resend.emails.send({
+    from: `${APP_NAME} <${FROM}>`,
+    to: details.to,
+    subject: `${details.businessName} invited you to ${APP_NAME}`,
+    text,
+    html: `
+      <div style="font-family: ui-sans-serif, system-ui, sans-serif; max-width: 540px; margin: 0 auto; padding: 32px 24px; background: #ffffff;">
+        <div style="margin-bottom: 24px;">
+          <span style="font-size: 22px; font-weight: 700; color: #111827;">${APP_NAME}</span>
+        </div>
+        <p style="margin: 0 0 10px; font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #059669;">Employee app invite</p>
+        <h1 style="font-size: 22px; line-height: 1.25; font-weight: 800; color: #111827; margin: 0 0 12px;">${safeBusinessName} invited you to view your appointments</h1>
+        <p style="color: #4b5563; margin: 0 0 24px; line-height: 1.6;">
+          Hi ${safeStaffName}, use this temporary password to sign in. You will be asked to create your own password before you can use your employee appointment view.
+        </p>
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 14px; padding: 18px; margin-bottom: 24px;">
+          <p style="margin: 0 0 6px; font-size: 12px; color: #047857; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;">Sign in email</p>
+          <p style="margin: 0 0 16px; color: #111827; font-size: 16px; font-weight: 700;">${escapeHtml(details.to)}</p>
+          <p style="margin: 0 0 6px; font-size: 12px; color: #047857; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;">Temporary password</p>
+          <p style="margin: 0; color: #111827; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 22px; font-weight: 800; letter-spacing: 0.04em;">${safeTemporaryPassword}</p>
+        </div>
+        <a href="${loginUrl}"
+           style="display: inline-block; background: #059669; color: #fff; font-weight: 700;
+                  padding: 12px 24px; border-radius: 10px; text-decoration: none; margin-bottom: 20px;">
+          Sign in to ${APP_NAME}
+        </a>
+        <p style="color: #6b7280; font-size: 13px; line-height: 1.6; margin: 0;">
+          For privacy, employee accounts only show appointments assigned to the employee. Customer phone numbers, billing, deals, and business settings stay hidden.
         </p>
       </div>
     `,

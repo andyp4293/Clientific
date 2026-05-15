@@ -35,11 +35,21 @@ function LoginForm() {
   // Redirect if already logged in
   useEffect(() => {
     if (status === 'authenticated' && !pendingRedirect) {
-      const targetPath = session?.user?.accountType === 'staff' ? '/staff/appointments' : '/dashboard';
+      const targetPath =
+        session?.user?.accountType === 'staff'
+          ? session.user.staffPasswordChangeRequired
+            ? '/staff/set-password'
+            : '/staff/appointments'
+          : '/dashboard';
       setPendingRedirect(targetPath);
       window.location.replace(targetPath);
     }
-  }, [session?.user?.accountType, status, pendingRedirect]);
+  }, [
+    session?.user?.accountType,
+    session?.user?.staffPasswordChangeRequired,
+    status,
+    pendingRedirect,
+  ]);
 
   useEffect(() => {
     if (!oauthError) return;
@@ -79,7 +89,11 @@ function LoginForm() {
         setNotice('Signing you in...');
         const nextSession = await fetch('/api/auth/session').then((res) => res.json()).catch(() => null);
         const targetPath =
-          nextSession?.user?.accountType === 'staff' ? '/staff/appointments' : '/dashboard';
+          nextSession?.user?.accountType === 'staff'
+            ? nextSession.user.staffPasswordChangeRequired
+              ? '/staff/set-password'
+              : '/staff/appointments'
+            : '/dashboard';
         setPendingRedirect(targetPath);
         window.location.assign(targetPath);
       }

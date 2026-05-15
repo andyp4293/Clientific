@@ -13,7 +13,7 @@ export function mobileForbiddenResponse(
 
 export async function requireMobileSession(
   request: Request,
-  options: { allowStaff?: boolean } = {},
+  options: { allowStaff?: boolean; allowPasswordChangeRequired?: boolean } = {},
 ) {
   const token = getBearerToken(request);
   if (!token) {
@@ -22,6 +22,21 @@ export async function requireMobileSession(
 
   try {
     const session = await verifyMobileSessionToken(token);
+    if (
+      session.accountType === 'staff' &&
+      session.staffPasswordChangeRequired &&
+      !options.allowPasswordChangeRequired
+    ) {
+      return {
+        error: NextResponse.json(
+          {
+            error: 'Create your employee password before using the app.',
+            code: 'STAFF_PASSWORD_CHANGE_REQUIRED',
+          },
+          { status: 403 },
+        ),
+      } as const;
+    }
     if (session.accountType === 'staff' && !options.allowStaff) {
       return { error: mobileForbiddenResponse() } as const;
     }
