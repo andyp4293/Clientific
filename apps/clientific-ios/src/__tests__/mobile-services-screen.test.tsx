@@ -1,4 +1,5 @@
 import React from 'react';
+import { Keyboard } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { MobileServicesScreen } from '@/components/mobile-services-screen';
 import type { MobileServicesSummary } from '@/lib/clientific-api';
@@ -163,6 +164,28 @@ describe('MobileServicesScreen', () => {
         }),
       );
     });
+  });
+
+  it('keeps staff delete in the edit form danger zone and dismisses the keyboard before showing save errors', async () => {
+    const keyboardDismissSpy = jest.spyOn(Keyboard, 'dismiss').mockImplementation(() => undefined);
+    const onUpdateStaff = jest.fn().mockResolvedValue(undefined);
+    renderScreen({ onUpdateStaff });
+
+    fireEvent.press(screen.getByTestId('mobile-services-tab-staff'));
+    fireEvent.press(screen.getByTestId('mobile-staff-edit-staff-1'));
+
+    expect(screen.getByTestId('mobile-delete-staff-from-sheet')).toBeTruthy();
+    expect(screen.getByText('Delete staff member')).toBeTruthy();
+
+    fireEvent.changeText(screen.getByDisplayValue('Taylor'), '');
+    fireEvent.press(screen.getByTestId('mobile-save-staff'));
+
+    expect(keyboardDismissSpy).toHaveBeenCalled();
+    expect(screen.getByText('Fix before saving')).toBeTruthy();
+    expect(screen.getAllByText('Staff name is required.')).toHaveLength(2);
+    expect(onUpdateStaff).not.toHaveBeenCalled();
+
+    keyboardDismissSpy.mockRestore();
   });
 
   it('saves employee app access so the backend emails a temporary password', async () => {

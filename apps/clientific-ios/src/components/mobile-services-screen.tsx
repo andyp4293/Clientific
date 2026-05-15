@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -602,6 +603,8 @@ export function MobileServicesScreen({
   };
 
   const handleSaveStaff = async () => {
+    Keyboard.dismiss();
+
     if (!staffForm.fullName.trim()) {
       setSheetError('Staff name is required.');
       return;
@@ -1729,16 +1732,52 @@ export function MobileServicesScreen({
                 </View>
               ))}
           </View>
-        </ScrollView>
-        <View style={[styles.sheetFooter, { backgroundColor: theme.background, borderColor: theme.border }]}>
+
           {editingStaff ? (
-            <Pressable
-              accessibilityRole="button"
-              disabled={isSavingStaff}
-              onPress={() => void handleDeleteCurrentStaff(editingStaff)}
-              style={[styles.destructiveFooterButton, { borderColor: theme.border }]}>
-              <Text style={styles.destructiveFooterButtonText}>Delete</Text>
-            </Pressable>
+            <View
+              style={[
+                styles.dangerZoneCard,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}>
+              <View style={styles.dangerZoneCopy}>
+                <Text style={[styles.dangerZoneTitle, { color: theme.danger }]}>
+                  Delete staff member
+                </Text>
+                <Text style={[styles.dangerZoneText, { color: theme.mutedText }]}>
+                  Use this only when this employee should no longer appear in the booking
+                  roster. Existing appointment history stays in place.
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                disabled={isSavingStaff}
+                onPress={() => void handleDeleteCurrentStaff(editingStaff)}
+                style={[styles.inlineDestructiveButton, { borderColor: theme.danger }]}
+                testID="mobile-delete-staff-from-sheet">
+                <Text style={[styles.inlineDestructiveButtonText, { color: theme.danger }]}>
+                  Delete staff
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+        </ScrollView>
+        <View
+          style={[
+            styles.sheetFooter,
+            styles.sheetFooterStack,
+            { backgroundColor: theme.background, borderColor: theme.border },
+          ]}>
+          {sheetError ? (
+            <View
+              style={[
+                styles.footerErrorCard,
+                { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+              ]}>
+              <Text style={[styles.footerErrorTitle, { color: theme.danger }]}>
+                Fix before saving
+              </Text>
+              <Text style={[styles.footerErrorText, { color: theme.text }]}>{sheetError}</Text>
+            </View>
           ) : null}
           <Pressable
             accessibilityRole="button"
@@ -2236,6 +2275,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
+  sheetFooterStack: {
+    flexDirection: 'column',
+  },
+  footerErrorCard: {
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 4,
+  },
+  footerErrorTitle: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '900',
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
+  },
+  footerErrorText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
   footerPrimaryButton: {
     flex: 1,
     minHeight: 52,
@@ -2264,5 +2325,38 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 18,
     fontWeight: '800',
+  },
+  dangerZoneCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 14,
+  },
+  dangerZoneCopy: {
+    gap: 5,
+  },
+  dangerZoneTitle: {
+    fontSize: 16,
+    lineHeight: 21,
+    fontWeight: '900',
+  },
+  dangerZoneText: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '600',
+  },
+  inlineDestructiveButton: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  inlineDestructiveButtonText: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '900',
   },
 });
