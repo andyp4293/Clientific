@@ -136,6 +136,43 @@ beforeEach(() => {
 });
 
 describe('mobile appointment detail route', () => {
+  it('propagates the staff-session block for mobile update and delete detail routes', async () => {
+    const forbidden = new Response(
+      JSON.stringify({ error: 'Employee accounts can only access assigned appointments.' }),
+      { status: 403 },
+    );
+    mockRequireMobileSession.mockResolvedValueOnce({ error: forbidden } as never);
+
+    const patchResponse = await PATCH(
+      new Request('https://www.clientific.app/api/mobile/appointments/appt-1', {
+        method: 'PATCH',
+        headers: {
+          authorization: 'Bearer token',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'confirmed' }),
+      }),
+      { params: Promise.resolve({ id: 'appt-1' }) },
+    );
+
+    mockRequireMobileSession.mockResolvedValueOnce({ error: forbidden } as never);
+    const deleteResponse = await DELETE(
+      new Request('https://www.clientific.app/api/mobile/appointments/appt-1', {
+        method: 'DELETE',
+        headers: {
+          authorization: 'Bearer token',
+        },
+      }),
+      { params: Promise.resolve({ id: 'appt-1' }) },
+    );
+
+    expect(patchResponse.status).toBe(403);
+    expect(deleteResponse.status).toBe(403);
+    expect(mockFindAppointment).not.toHaveBeenCalled();
+    expect(mockUpdateAppointment).not.toHaveBeenCalled();
+    expect(mockDeleteAppointment).not.toHaveBeenCalled();
+  });
+
   it('confirms an appointment and schedules the reminder when it becomes reminder-eligible', async () => {
     mockFindAppointment.mockResolvedValueOnce({
       ...baseAppointment,

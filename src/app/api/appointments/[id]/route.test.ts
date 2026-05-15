@@ -70,7 +70,7 @@ import {
   sendAppointmentCancellation,
   sendAppointmentRescheduled,
 } from '@/lib/twilio';
-import { PATCH } from './route';
+import { DELETE, GET, PATCH } from './route';
 
 const mockGetServerSession = getServerSession as ReturnType<typeof vi.fn>;
 const mockRequireActiveSubscription = requireActiveSubscription as ReturnType<typeof vi.fn>;
@@ -180,6 +180,43 @@ describe('PATCH /api/appointments/[id]', () => {
       success: true,
       sid: 'SM_updated',
     });
+  });
+
+  it('blocks employee sessions from owner appointment detail, update, and delete APIs', async () => {
+    mockGetServerSession.mockResolvedValue({
+      user: {
+        accountType: 'staff',
+        email: 'employee@clientific.app',
+        businessId: 'biz-1',
+        staffId: 'staff-1',
+      },
+    });
+
+    const getResponse = await GET(
+      new NextRequest('http://localhost/api/appointments/appt-1'),
+      { params: Promise.resolve({ id: 'appt-1' }) },
+    );
+    const patchResponse = await PATCH(
+      new NextRequest('http://localhost/api/appointments/appt-1', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ status: 'confirmed' }),
+      }),
+      { params: Promise.resolve({ id: 'appt-1' }) },
+    );
+    const deleteResponse = await DELETE(
+      new NextRequest('http://localhost/api/appointments/appt-1', {
+        method: 'DELETE',
+      }),
+      { params: Promise.resolve({ id: 'appt-1' }) },
+    );
+
+    expect(getResponse.status).toBe(403);
+    expect(patchResponse.status).toBe(403);
+    expect(deleteResponse.status).toBe(403);
+    expect(mockBusinessFindUnique).not.toHaveBeenCalled();
+    expect(mockAppointmentFindFirst).not.toHaveBeenCalled();
+    expect(mockAppointmentUpdate).not.toHaveBeenCalled();
   });
 
   it('sends the confirmed SMS and schedules the 2-hour reminder when a pending appointment is confirmed', async () => {

@@ -70,6 +70,13 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    if (session.user.accountType === 'staff') {
+      return NextResponse.json(
+        { error: 'Employee accounts can only view assigned appointments.' },
+        { status: 403 },
+      );
+    }
+
     const business = await prisma.business.findUnique({
       where: { email: session.user.email },
     });
@@ -116,6 +123,13 @@ export async function PATCH(
 
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (session.user.accountType === 'staff') {
+      return NextResponse.json(
+        { error: 'Employee accounts can only view assigned appointments.' },
+        { status: 403 },
+      );
     }
 
     const subscriptionError = await requireActiveSubscription(session.user.businessId);
@@ -383,6 +397,13 @@ export async function DELETE(
 
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (session.user.accountType === 'staff') {
+      return NextResponse.json(
+        { error: 'Employee accounts can only view assigned appointments.' },
+        { status: 403 },
+      );
     }
 
     const subscriptionError = await requireActiveSubscription(session.user.businessId);

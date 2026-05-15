@@ -70,6 +70,14 @@ const mockCreateBusinessNotification = createBusinessNotification as ReturnType<
 
 // Appointments use session.user.email for business lookup, session.user.businessId for subscription
 const activeSession = { user: { businessId: 'biz-1', email: 'owner@test.com' } };
+const staffSession = {
+  user: {
+    accountType: 'staff',
+    businessId: 'biz-1',
+    email: 'employee@test.com',
+    staffId: 'staff-1',
+  },
+};
 const fakeBusiness = {
   id: 'biz-1',
   email: 'owner@test.com',
@@ -138,6 +146,19 @@ describe('GET /api/appointments', () => {
     expect(res.status).toBe(401);
   });
 
+  it('blocks employee sessions from the owner appointment list API', async () => {
+    mockSession.mockResolvedValue(staffSession);
+
+    const res = await GET(new NextRequest('http://localhost/api/appointments'));
+
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toMatchObject({
+      error: 'Employee accounts can only view assigned appointments.',
+    });
+    expect(mockBusiness).not.toHaveBeenCalled();
+    expect(mockAppointmentFindMany).not.toHaveBeenCalled();
+  });
+
   it('returns 404 when business not found', async () => {
     mockSession.mockResolvedValue(activeSession);
     mockBusiness.mockResolvedValue(null);
@@ -189,6 +210,19 @@ describe('POST /api/appointments', () => {
     mockSession.mockResolvedValue(null);
     const res = await POST(makeRequest());
     expect(res.status).toBe(401);
+  });
+
+  it('blocks employee sessions from creating owner-managed appointments', async () => {
+    mockSession.mockResolvedValue(staffSession);
+
+    const res = await POST(makeRequest());
+
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toMatchObject({
+      error: 'Employee accounts can only view assigned appointments.',
+    });
+    expect(mockBusiness).not.toHaveBeenCalled();
+    expect(mockAppointmentCreate).not.toHaveBeenCalled();
   });
 
   it('returns 403 SUBSCRIPTION_REQUIRED when trial expired', async () => {
