@@ -104,6 +104,47 @@ describe('MobileAuthScreen', () => {
     );
   });
 
+  it('passes a pasted referral invite link through the registration payload', () => {
+    const onRegister = jest.fn().mockResolvedValue(undefined);
+
+    render(
+      <MobileAuthScreen
+        error={null}
+        isResendingCode={false}
+        isSubmitting={false}
+        mode="register"
+        notice={null}
+        onOpenPrivacyPolicy={jest.fn().mockResolvedValue(undefined)}
+        onOpenTermsOfService={jest.fn().mockResolvedValue(undefined)}
+        verificationEmail=""
+        onBackToSignIn={jest.fn()}
+        onLogin={jest.fn().mockResolvedValue(undefined)}
+        onModeChange={jest.fn()}
+        onRegister={onRegister}
+        onResendCode={jest.fn().mockResolvedValue(undefined)}
+        onVerify={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    fireEvent.changeText(screen.getByTestId('mobile-register-business-name'), 'Referred Studio');
+    fireEvent.changeText(screen.getByTestId('mobile-register-email'), 'owner@referred.com');
+    fireEvent.changeText(screen.getByTestId('mobile-register-password'), 'secret123!');
+    fireEvent.changeText(screen.getByTestId('mobile-register-confirm-password'), 'secret123!');
+    fireEvent.changeText(
+      screen.getByTestId('mobile-register-referral-code'),
+      'https://www.clientific.app/register?ref=abcd1234',
+    );
+    fireEvent.press(screen.getByTestId('mobile-register-accept-terms'));
+    fireEvent.press(screen.getByTestId('mobile-register-submit'));
+
+    expect(onRegister).toHaveBeenCalledWith(
+      expect.objectContaining({
+        businessName: 'Referred Studio',
+        referralCode: 'https://www.clientific.app/register?ref=abcd1234',
+      }),
+    );
+  });
+
   it('lets the user reveal both registration password fields', () => {
     render(
       <MobileAuthScreen

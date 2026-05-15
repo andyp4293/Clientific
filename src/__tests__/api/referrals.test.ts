@@ -185,6 +185,35 @@ describe('POST /api/auth/register - referral code handling', () => {
     });
   });
 
+  it('normalizes referral codes from copied links before matching the referrer', async () => {
+    const referrer = {
+      id: 'biz-referrer',
+      referralCode: 'ABCD1234',
+      name: 'Referring Salon',
+      stripeConnectAccountId: 'acct_referrer',
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+      stripeConnectDetailsSubmitted: true,
+    };
+
+    vi.mocked(prisma.business.findUnique).mockImplementation((({ where }: any) => {
+      if (where.referralCode === 'ABCD1234') return Promise.resolve(referrer as any);
+      return Promise.resolve(null);
+    }) as any);
+
+    const res = await registerPOST(
+      req('POST', { ...VALID_REGISTER_BODY, referralCode: ' abcd1234 ' })
+    );
+    expect(res.status).toBe(200);
+
+    expect(prisma.business.findUnique).toHaveBeenCalledWith({
+      where: { referralCode: 'ABCD1234' },
+    });
+    expect(prisma.referral.create).toHaveBeenCalledWith({
+      data: { referrerId: 'biz-referrer', refereeId: 'biz-new' },
+    });
+  });
+
   it('ignores referral codes until the referrer has finished payout setup', async () => {
     const referrer = {
       id: 'biz-referrer',

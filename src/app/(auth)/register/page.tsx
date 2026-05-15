@@ -40,7 +40,7 @@ function RegisterForm() {
 
   const defaultPlan = getPublicPlanSlug(searchParams.get('plan') || 'starter');
   const defaultEmail = searchParams.get('email') || '';
-  const refCode = searchParams.get('ref') || '';
+  const refCode = (searchParams.get('ref') || '').trim().toUpperCase();
   const isPartnerSignup = searchParams.get('partner') === '1';
   const oauthProvider = searchParams.get('oauth');
   const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === 'true';
@@ -442,6 +442,16 @@ function RegisterForm() {
               {oauthProvider === 'google' && (
                 <div className="rounded-lg border border-primary/20 bg-primary-50 px-4 py-3 text-sm text-primary-900 dark:border-primary/30 dark:bg-primary/10 dark:text-primary-100">
                   Google sign-up sent you here to finish creating your business account. Add a password so you can sign in directly if needed.
+                </div>
+              )}
+
+              {formData.referralCode && (
+                <div
+                  className="rounded-lg border border-primary/20 bg-primary-50 px-4 py-3 text-sm text-primary-900 dark:border-primary/30 dark:bg-primary/10 dark:text-primary-100"
+                  data-testid="register-referral-applied"
+                >
+                  Referral invite applied. If the business that shared this link has finished
+                  payout setup, this signup will be connected to their recurring referral credit.
                 </div>
               )}
 

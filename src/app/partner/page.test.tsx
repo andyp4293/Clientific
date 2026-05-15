@@ -23,6 +23,10 @@ describe('PartnerPage', () => {
       screen.getByText(/no paid clientific subscription is required to earn or collect payouts/i)
     ).toBeInTheDocument();
     expect(
+      screen.getByText(/built for content creators, salon consultants, local marketers/i)
+    ).toBeInTheDocument();
+    expect(screen.getByText(/creator-ready tracking/i)).toBeInTheDocument();
+    expect(
       screen.getByText(/referral sharing unlocks only after stripe payout setup is complete/i)
     ).toBeInTheDocument();
     expect(screen.queryByText(/earn \$15 for every business you refer/i)).not.toBeInTheDocument();

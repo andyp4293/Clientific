@@ -253,6 +253,50 @@ describe("RegisterPage", () => {
     });
   });
 
+  it("applies a referral link from signup through the registration payload", async () => {
+    searchParamValues.set("ref", "abcd1234");
+
+    render(<RegisterPage />);
+
+    expect(screen.getByTestId("register-referral-applied")).toHaveTextContent(
+      /referral invite applied/i,
+    );
+
+    fireEvent.change(screen.getByLabelText(/account email/i), {
+      target: { value: "referred-owner@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText(/^password \*/i), {
+      target: { value: "Password123!" },
+    });
+    fireEvent.change(screen.getByLabelText(/confirm password/i), {
+      target: { value: "Password123!" },
+    });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: /^next$/i }));
+
+    await screen.findByRole("heading", {
+      name: /tell us about your business/i,
+    });
+
+    fireEvent.change(screen.getByLabelText(/business name/i), {
+      target: { value: "Referred Salon" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+
+    await screen.findByRole("heading", { name: /check your email/i });
+
+    const registerCall = vi.mocked(global.fetch).mock.calls[1];
+    const payload = JSON.parse(
+      (registerCall?.[1] as RequestInit).body as string,
+    );
+
+    expect(payload).toMatchObject({
+      email: "referred-owner@example.com",
+      businessName: "Referred Salon",
+      referralCode: "ABCD1234",
+    });
+  });
+
   it("redirects partner signups to payout setup after verification succeeds", async () => {
     searchParamValues.set("partner", "1");
 

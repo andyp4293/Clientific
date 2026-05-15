@@ -195,8 +195,13 @@ export async function registerBusinessAccount(args: {
 
   const passwordHash = await hashPassword(password);
 
-  const referrerCandidate = referralCode
-    ? await prisma.business.findUnique({ where: { referralCode } })
+  const normalizedReferralCode =
+    typeof referralCode === 'string' && referralCode.trim().length > 0
+      ? referralCode.trim().toUpperCase()
+      : '';
+
+  const referrerCandidate = normalizedReferralCode
+    ? await prisma.business.findUnique({ where: { referralCode: normalizedReferralCode } })
     : null;
 
   let referrerBusiness = referrerCandidate;

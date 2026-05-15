@@ -4,9 +4,25 @@ import { useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { QRCodeCanvas } from 'qrcode.react';
-import { Gift, Copy, Download, Users, CheckCircle, Clock, TrendingUp } from 'lucide-react';
+import {
+  Gift,
+  Copy,
+  Download,
+  Users,
+  CheckCircle,
+  Clock,
+  TrendingUp,
+  Megaphone,
+  Mail,
+} from 'lucide-react';
 import { DashboardPageLoading } from '@/components/layout/DashboardPageLoading';
 import { REFERRAL_COMMISSION_DISPLAY, STANDARD_TRIAL_DAYS } from '@/lib/referral-config';
+import {
+  buildReferralCreatorBrief,
+  buildReferralCreatorCaption,
+  buildReferralCreatorEmailHref,
+  buildReferralCreatorPartnerUrl,
+} from '@/lib/referral-creator-kit';
 
 interface Referral {
   id: string;
@@ -47,6 +63,13 @@ export default function ReferralsPage() {
     typeof window !== 'undefined' && data?.referralCode
       ? `${window.location.origin}/register?ref=${data.referralCode}`
       : '';
+  const appOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+  const creatorPartnerUrl = appOrigin ? buildReferralCreatorPartnerUrl(appOrigin) : '';
+  const creatorBrief = creatorPartnerUrl ? buildReferralCreatorBrief(creatorPartnerUrl) : '';
+  const creatorCaption = creatorPartnerUrl ? buildReferralCreatorCaption(creatorPartnerUrl) : '';
+  const creatorEmailHref = creatorPartnerUrl
+    ? buildReferralCreatorEmailHref(creatorPartnerUrl)
+    : '#';
   const payoutReady = data?.payoutReady ?? false;
   const sharingLocked = !isLoading && !payoutReady;
   const canShareReferralLink = Boolean(payoutReady && referralUrl);
@@ -58,6 +81,18 @@ export default function ReferralsPage() {
     if (!canShareReferralLink) return;
     navigator.clipboard.writeText(referralUrl);
     toast.success('Referral link copied!');
+  }
+
+  function copyCreatorBrief() {
+    if (!creatorBrief) return;
+    navigator.clipboard.writeText(creatorBrief);
+    toast.success('Creator instructions copied!');
+  }
+
+  function copyCreatorCaption() {
+    if (!creatorCaption) return;
+    navigator.clipboard.writeText(creatorCaption);
+    toast.success('Creator caption copied!');
   }
 
   function downloadQr() {
@@ -195,6 +230,7 @@ export default function ReferralsPage() {
             onClick={copyLink}
             disabled={!canShareReferralLink}
             className="flex items-center gap-1.5 text-sm font-medium bg-primary text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2 rounded-lg transition-colors shrink-0"
+            data-testid="copy-referral-link"
           >
             <Copy className="w-4 h-4" />
             <span className="hidden sm:inline">Copy</span>
@@ -225,10 +261,87 @@ export default function ReferralsPage() {
             onClick={downloadQr}
             disabled={!canShareReferralLink}
             className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            data-testid="download-referral-qr"
           >
             <Download className="w-4 h-4" />
             Download QR Code
           </button>
+        </div>
+      </div>
+
+      {/* Creator promo kit */}
+      <div className="card p-5 mb-4" data-testid="creator-referral-kit">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <Megaphone className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+                Creator promo kit
+              </p>
+              <h2 className="mt-1 text-lg font-bold text-gray-900 dark:text-white">
+                Send this to creators so they promote Clientific correctly
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
+                Creators should make their own free partner account, finish payout setup, and
+                promote with their own dashboard referral link. That keeps attribution clean and
+                makes the recurring commission easy to track.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/60">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+            Copy-and-send creator instructions
+          </p>
+          <p
+            className="mt-3 whitespace-pre-line text-sm leading-6 text-gray-700 dark:text-gray-300"
+            data-testid="creator-referral-brief"
+          >
+            {creatorBrief}
+          </p>
+        </div>
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          <button
+            type="button"
+            onClick={copyCreatorBrief}
+            className="btn-primary flex items-center justify-center gap-2 text-sm"
+            data-testid="copy-creator-brief"
+          >
+            <Copy className="h-4 w-4" />
+            Copy creator brief
+          </button>
+          <button
+            type="button"
+            onClick={copyCreatorCaption}
+            className="btn-outline flex items-center justify-center gap-2 text-sm"
+            data-testid="copy-creator-caption"
+          >
+            <Copy className="h-4 w-4" />
+            Copy short caption
+          </button>
+          <a
+            href={creatorEmailHref}
+            className="btn-outline flex items-center justify-center gap-2 text-center text-sm"
+            data-testid="email-creator-brief"
+          >
+            <Mail className="h-4 w-4" />
+            Email creator
+          </a>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-primary/20 bg-primary-50 p-4 dark:border-primary/30 dark:bg-primary/10">
+          <p className="text-sm font-semibold text-gray-900 dark:text-white">
+            Important tracking rule
+          </p>
+          <p className="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300">
+            Do not have creators promote someone else&apos;s dashboard referral link if the creator
+            expects commission. Send them to <span className="font-semibold">{creatorPartnerUrl}</span>{' '}
+            so they can get their own trackable link and fallback code.
+          </p>
         </div>
       </div>
 

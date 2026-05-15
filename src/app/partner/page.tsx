@@ -7,6 +7,11 @@ import {
 
 const highlights = [
   {
+    title: 'Creator-ready tracking',
+    body:
+      'Use your own dashboard link or fallback code in every post, caption, bio link, story, or DM so each signup tracks back to you.',
+  },
+  {
     title: 'Free partner account',
     body:
       'Create a free Clientific partner account so you can finish payout setup and manage your referral link.',
@@ -62,10 +67,10 @@ export default function PartnerPage() {
               Earn {REFERRAL_COMMISSION_DISPLAY} every month a referred business pays
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-gray-600 dark:text-gray-300 md:text-lg">
-              This page now follows the same recurring referral program used inside the
-              dashboard. Create a free Clientific partner account, finish payout setup,
-              and share your referral link. No paid Clientific subscription is required
-              to earn or collect payouts.
+              Built for content creators, salon consultants, local marketers, and business
+              owners who want to promote Clientific. Create a free Clientific partner
+              account, finish payout setup, and share your own referral link. No paid
+              Clientific subscription is required to earn or collect payouts.
             </p>
 
             <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200">
@@ -84,7 +89,7 @@ export default function PartnerPage() {
           </div>
         </section>
 
-        <section className="mt-8 grid gap-4 md:grid-cols-3">
+        <section className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {highlights.map((item) => (
             <div
               key={item.title}

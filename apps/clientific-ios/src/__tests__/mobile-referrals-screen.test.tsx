@@ -46,6 +46,11 @@ describe('MobileReferralsScreen', () => {
     expect(screen.getByText('Fallback code')).toBeTruthy();
     expect(screen.getByText('ABCD1234')).toBeTruthy();
     expect(screen.getByTestId('mobile-referrals-share')).toBeTruthy();
+    expect(screen.getByTestId('mobile-referrals-creator-kit')).toBeTruthy();
+    expect(screen.getByTestId('mobile-referrals-creator-brief')).toBeTruthy();
+    expect(
+      screen.getByText(/creators should make their own free partner account/i),
+    ).toBeTruthy();
 
     fireEvent.press(screen.getByTestId('mobile-referrals-copy-link'));
     expect(Clipboard.setStringAsync).toHaveBeenCalledWith(
@@ -54,6 +59,19 @@ describe('MobileReferralsScreen', () => {
 
     fireEvent.press(screen.getByTestId('mobile-referrals-copy-code'));
     expect(Clipboard.setStringAsync).toHaveBeenCalledWith('ABCD1234');
+
+    fireEvent.press(screen.getByTestId('mobile-referrals-copy-creator-brief'));
+    expect(Clipboard.setStringAsync).toHaveBeenLastCalledWith(
+      expect.stringContaining('https://www.clientific.app/partner'),
+    );
+    expect((Clipboard.setStringAsync as jest.Mock).mock.calls.at(-1)?.[0]).not.toContain(
+      'ref=ABCD1234',
+    );
+
+    fireEvent.press(screen.getByTestId('mobile-referrals-copy-creator-caption'));
+    expect(Clipboard.setStringAsync).toHaveBeenLastCalledWith(
+      expect.stringContaining('online booking'),
+    );
   });
 
   it('keeps sharing locked until payouts are ready', () => {
@@ -82,5 +100,6 @@ describe('MobileReferralsScreen', () => {
     expect(screen.getByText('Finish payouts before sharing')).toBeTruthy();
     expect(screen.queryByText('Referral link')).toBeNull();
     expect(screen.queryByText('Fallback code')).toBeNull();
+    expect(screen.getByTestId('mobile-referrals-creator-kit')).toBeTruthy();
   });
 });

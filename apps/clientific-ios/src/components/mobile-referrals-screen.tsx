@@ -11,6 +11,11 @@ import {
 } from 'react-native';
 import type { MobileBusiness, MobileReferralsSummary } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
+import {
+  buildReferralCreatorBrief,
+  buildReferralCreatorCaption,
+  REFERRAL_CREATOR_PARTNER_URL,
+} from '@/lib/referral-creator-kit';
 import { buildReferralInviteUrl } from '@/lib/referral-links';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -37,10 +42,26 @@ export function MobileReferralsScreen({
 }: MobileReferralsScreenProps) {
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
-  const [copiedItem, setCopiedItem] = useState<'code' | 'link' | null>(null);
+  const [copiedItem, setCopiedItem] = useState<'code' | 'link' | 'creator' | 'caption' | null>(
+    null,
+  );
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasLiveInvite = Boolean(data?.payoutReady && data?.referralCode);
   const referralUrl = data?.referralCode ? buildReferralInviteUrl(data.referralCode) : null;
+  const creatorBrief = buildReferralCreatorBrief(business.name);
+  const creatorCaption = buildReferralCreatorCaption();
+
+  const copyText = (item: 'code' | 'link' | 'creator' | 'caption', value: string) => {
+    void Clipboard.setStringAsync(value);
+    setCopiedItem(item);
+    if (copyTimeoutRef.current) {
+      clearTimeout(copyTimeoutRef.current);
+    }
+    copyTimeoutRef.current = setTimeout(
+      () => setCopiedItem((current) => (current === item ? null : current)),
+      1600,
+    );
+  };
 
   useEffect(() => {
     return () => {
@@ -122,15 +143,7 @@ export function MobileReferralsScreen({
                   <Pressable
                     accessibilityRole="button"
                     onPress={() => {
-                      void Clipboard.setStringAsync(referralUrl ?? '');
-                      setCopiedItem('link');
-                      if (copyTimeoutRef.current) {
-                        clearTimeout(copyTimeoutRef.current);
-                      }
-                      copyTimeoutRef.current = setTimeout(
-                        () => setCopiedItem((current) => (current === 'link' ? null : current)),
-                        1600,
-                      );
+                      copyText('link', referralUrl ?? '');
                     }}
                     style={[
                       styles.secondaryButton,
@@ -158,15 +171,7 @@ export function MobileReferralsScreen({
                   <Pressable
                     accessibilityRole="button"
                     onPress={() => {
-                      void Clipboard.setStringAsync(data?.referralCode ?? '');
-                      setCopiedItem('code');
-                      if (copyTimeoutRef.current) {
-                        clearTimeout(copyTimeoutRef.current);
-                      }
-                      copyTimeoutRef.current = setTimeout(
-                        () => setCopiedItem((current) => (current === 'code' ? null : current)),
-                        1600,
-                      );
+                      copyText('code', data?.referralCode ?? '');
                     }}
                     style={[
                       styles.secondaryButton,
@@ -208,6 +213,67 @@ export function MobileReferralsScreen({
                 </Pressable>
               </View>
             )}
+          </View>
+
+          <View
+            style={[
+              styles.sectionCard,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
+            testID="mobile-referrals-creator-kit">
+            <Text style={[styles.sectionEyebrow, { color: theme.accent }]}>Creator promo kit</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              Send creators the correct referral setup
+            </Text>
+            <Text style={[styles.creatorIntro, { color: theme.mutedText }]}>
+              Creators should make their own free partner account, finish payout setup, and promote
+              with their own dashboard referral link so commission tracking stays clean.
+            </Text>
+            <View
+              style={[
+                styles.creatorBriefCard,
+                { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+              ]}>
+              <Text style={[styles.codeLabel, { color: theme.mutedText }]}>Instructions</Text>
+              <Text
+                selectable
+                style={[styles.creatorBriefText, { color: theme.text }]}
+                testID="mobile-referrals-creator-brief">
+                {creatorBrief}
+              </Text>
+            </View>
+            <View style={styles.creatorActions}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => copyText('creator', creatorBrief)}
+                style={[
+                  styles.secondaryButton,
+                  styles.creatorButton,
+                  { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                ]}
+                testID="mobile-referrals-copy-creator-brief">
+                <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+                  {copiedItem === 'creator' ? 'Copied' : 'Copy creator brief'}
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => copyText('caption', creatorCaption)}
+                style={[
+                  styles.secondaryButton,
+                  styles.creatorButton,
+                  { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                ]}
+                testID="mobile-referrals-copy-creator-caption">
+                <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+                  {copiedItem === 'caption' ? 'Copied' : 'Copy caption'}
+                </Text>
+              </Pressable>
+            </View>
+            <Text style={[styles.creatorTrackingRule, { color: theme.mutedText }]}>
+              Send creators to {REFERRAL_CREATOR_PARTNER_URL}. They should not promote someone
+              else's referral link if they expect commission.
+            </Text>
           </View>
 
           <View style={styles.statsRow}>
@@ -355,6 +421,13 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontWeight: '800',
   },
+  sectionEyebrow: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '800',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
   linkCard: {
     borderWidth: 1,
     borderRadius: 22,
@@ -390,6 +463,34 @@ const styles = StyleSheet.create({
   codeHelper: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  creatorIntro: {
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  creatorBriefCard: {
+    borderWidth: 1,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 8,
+  },
+  creatorBriefText: {
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  creatorActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  creatorButton: {
+    alignSelf: 'auto',
+    flexGrow: 1,
+  },
+  creatorTrackingRule: {
+    fontSize: 13,
+    lineHeight: 19,
   },
   primaryButton: {
     minHeight: 52,

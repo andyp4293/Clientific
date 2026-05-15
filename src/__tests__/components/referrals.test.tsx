@@ -32,6 +32,8 @@ vi.mock('lucide-react', () => ({
   CheckCircle: () => <svg data-testid="icon-check" />,
   Clock: () => <svg data-testid="icon-clock" />,
   TrendingUp: () => <svg data-testid="icon-trending" />,
+  Megaphone: () => <svg data-testid="icon-megaphone" />,
+  Mail: () => <svg data-testid="icon-mail" />,
 }));
 
 import { useQuery } from '@tanstack/react-query';
@@ -157,10 +159,44 @@ describe('ReferralsPage', () => {
       isLoading: false,
     } as any);
     render(<ReferralsPage />);
-    const copyBtn = screen.getByRole('button', { name: /copy/i });
+    const copyBtn = screen.getByTestId('copy-referral-link');
     await userEvent.click(copyBtn);
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
       expect.stringContaining('ref=MYCODE12')
+    );
+  });
+
+  it('shows creator-ready instructions that send creators to their own partner account', async () => {
+    mockUseQuery.mockReturnValue({
+      data: makeData(),
+      isLoading: false,
+    } as any);
+
+    render(<ReferralsPage />);
+
+    const creatorKit = screen.getByTestId('creator-referral-kit');
+    expect(creatorKit).toHaveTextContent(/creator promo kit/i);
+    expect(creatorKit).toHaveTextContent(/create a free referral partner account/i);
+    expect(creatorKit).toHaveTextContent('/partner');
+    expect(creatorKit).toHaveTextContent(/30% recurring commission/i);
+    expect(creatorKit).toHaveTextContent(/use your own referral link/i);
+
+    await userEvent.click(screen.getByTestId('copy-creator-brief'));
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(
+      expect.stringContaining('/partner')
+    );
+    expect(vi.mocked(navigator.clipboard.writeText).mock.calls.at(-1)?.[0]).not.toContain(
+      'ref=MYCODE12'
+    );
+
+    await userEvent.click(screen.getByTestId('copy-creator-caption'));
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(
+      expect.stringContaining('online booking')
+    );
+
+    expect(screen.getByTestId('email-creator-brief')).toHaveAttribute(
+      'href',
+      expect.stringContaining('mailto:?subject=Clientific%20creator%20referral%20program')
     );
   });
 
@@ -223,8 +259,11 @@ describe('ReferralsPage', () => {
     expect(
       screen.getByDisplayValue(/referral sharing unlocks after payout setup is complete/i)
     ).toBeDisabled();
-    expect(screen.getByRole('button', { name: /copy/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /download qr code/i })).toBeDisabled();
+    expect(screen.getByTestId('copy-referral-link')).toBeDisabled();
+    expect(screen.getByTestId('download-referral-qr')).toBeDisabled();
     expect(screen.getByRole('link', { name: /finish payout setup/i })).toBeInTheDocument();
+    expect(screen.getByTestId('creator-referral-kit')).toHaveTextContent(
+      /send them to/i
+    );
   });
 });
