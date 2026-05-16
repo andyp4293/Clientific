@@ -39,6 +39,7 @@ describe('GET /api/public/business/[slug]/available-slots', () => {
       date: '2026-03-15',
       serviceId: 'svc-1',
       serviceIds: null,
+      serviceStaffAssignments: null,
       staffId: 'stf-1',
       durationOverride: '90',
     });

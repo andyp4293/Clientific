@@ -39,6 +39,7 @@ export type CreateBusinessNotificationInput = {
   link?: string | null;
   sendPush?: boolean;
   staffId?: string | null;
+  staffIds?: string[];
 };
 
 function getMobilePushDeviceModel() {
@@ -239,6 +240,12 @@ export async function createBusinessNotification(input: CreateBusinessNotificati
   if (input.sendPush !== false && shouldSendPushForNotificationType(input.type)) {
     try {
       const unreadCount = await getUnreadNotificationCount(input.businessId);
+      const targetStaffIds = Array.from(
+        new Set([
+          ...(input.staffIds ?? []),
+          ...(input.staffId ? [input.staffId] : []),
+        ])
+      );
 
       await sendBusinessPushNotification({
         badgeCount: unreadCount,
@@ -252,18 +259,18 @@ export async function createBusinessNotification(input: CreateBusinessNotificati
         },
       });
 
-      if (input.staffId) {
+      for (const staffId of targetStaffIds) {
         await sendBusinessPushNotification({
           badgeCount: 1,
           businessId: input.businessId,
-          staffId: input.staffId,
+          staffId,
           title: input.title,
           body: input.message,
           data: {
             link: input.link ?? '/dashboard/appointments',
             type: input.type,
             notificationId: notification.id,
-            staffId: input.staffId,
+            staffId,
           },
         });
       }

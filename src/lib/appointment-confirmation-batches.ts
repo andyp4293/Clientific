@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-export type AppointmentBatchTokenPayload = {
+export type AiAppointmentBatchTokenPayload = {
   v: 1;
   t: 'ai';
   b: string;
@@ -8,6 +8,17 @@ export type AppointmentBatchTokenPayload = {
   s: number;
   e: number;
 };
+
+export type OnlineAppointmentBatchTokenPayload = {
+  v: 1;
+  t: 'online';
+  b: string;
+  a: string[];
+};
+
+export type AppointmentBatchTokenPayload =
+  | AiAppointmentBatchTokenPayload
+  | OnlineAppointmentBatchTokenPayload;
 
 function getAppointmentBatchTokenSecret(): string {
   return (
@@ -31,7 +42,7 @@ function isValidPayload(value: unknown): value is AppointmentBatchTokenPayload {
   if (!value || typeof value !== 'object') return false;
 
   const payload = value as Record<string, unknown>;
-  return (
+  if (
     payload.v === 1 &&
     payload.t === 'ai' &&
     typeof payload.b === 'string' &&
@@ -43,15 +54,42 @@ function isValidPayload(value: unknown): value is AppointmentBatchTokenPayload {
     typeof payload.e === 'number' &&
     Number.isFinite(payload.e) &&
     payload.e >= payload.s
+  ) {
+    return true;
+  }
+
+  return (
+    payload.v === 1 &&
+    payload.t === 'online' &&
+    typeof payload.b === 'string' &&
+    payload.b.length > 0 &&
+    Array.isArray(payload.a) &&
+    payload.a.length > 0 &&
+    payload.a.length <= 20 &&
+    payload.a.every((appointmentId) => typeof appointmentId === 'string' && appointmentId.length > 0)
   );
 }
 
 export function createAppointmentBatchToken(
-  payload: Omit<AppointmentBatchTokenPayload, 'v' | 't'>
+  payload: Omit<AiAppointmentBatchTokenPayload, 'v' | 't'>
 ): string {
-  const normalizedPayload: AppointmentBatchTokenPayload = {
+  const normalizedPayload: AiAppointmentBatchTokenPayload = {
     v: 1,
     t: 'ai',
+    ...payload,
+  };
+  const encodedPayload = Buffer.from(JSON.stringify(normalizedPayload)).toString('base64url');
+  const signature = signPayload(encodedPayload);
+
+  return `ab1.${encodedPayload}.${signature}`;
+}
+
+export function createOnlineAppointmentBatchToken(
+  payload: Omit<OnlineAppointmentBatchTokenPayload, 'v' | 't'>
+): string {
+  const normalizedPayload: OnlineAppointmentBatchTokenPayload = {
+    v: 1,
+    t: 'online',
     ...payload,
   };
   const encodedPayload = Buffer.from(JSON.stringify(normalizedPayload)).toString('base64url');

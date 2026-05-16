@@ -18,7 +18,10 @@ vi.mock('@/lib/prisma', () => ({
 
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-import { createAppointmentBatchToken } from '@/lib/appointment-confirmation-batches';
+import {
+  createAppointmentBatchToken,
+  createOnlineAppointmentBatchToken,
+} from '@/lib/appointment-confirmation-batches';
 import { GET } from './route';
 
 const mockGetServerSession = getServerSession as ReturnType<typeof vi.fn>;
@@ -120,6 +123,26 @@ describe('GET /api/public/appointment-batch/[token]', () => {
     const body = await res.json();
     expect(body.viewerCanManage).toBe(true);
     expect(body.batch.business.name).toBe('Test Salon');
+  });
+
+  it('loads online multi-service booking batches by exact appointment ids', async () => {
+    const token = createOnlineAppointmentBatchToken({
+      b: 'biz-1',
+      a: ['appt-1', 'appt-2'],
+    });
+
+    const req = new NextRequest(`http://localhost/api/public/appointment-batch/${token}`);
+    const res = await GET(req, { params: Promise.resolve({ token }) });
+
+    expect(res.status).toBe(200);
+    expect(mockAppointmentFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          businessId: 'biz-1',
+          id: { in: ['appt-1', 'appt-2'] },
+        },
+      })
+    );
   });
 
   it('returns 404 for invalid tokens', async () => {

@@ -12,6 +12,7 @@ export async function GET(
     const { slug } = await params;
     const { searchParams } = new URL(req.url);
     const rawServiceIds = searchParams.get('serviceIds');
+    const rawServiceStaffAssignments = searchParams.get('serviceStaffAssignments');
 
     const result = await getPublicAvailableSlots({
       businessLookup: { slug },
@@ -19,6 +20,9 @@ export async function GET(
       serviceId: searchParams.get('serviceId'),
       serviceIds: rawServiceIds
         ? rawServiceIds.split(',').map((value) => value.trim()).filter(Boolean)
+        : null,
+      serviceStaffAssignments: rawServiceStaffAssignments
+        ? JSON.parse(rawServiceStaffAssignments)
         : null,
       staffId: searchParams.get('staffId'),
       durationOverride: searchParams.get('duration'),

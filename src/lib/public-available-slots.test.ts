@@ -4,7 +4,7 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     business: { findUnique: vi.fn() },
     service: { findMany: vi.fn() },
-    staff: { findFirst: vi.fn() },
+    staff: { findFirst: vi.fn(), findMany: vi.fn() },
     appointment: { findMany: vi.fn() },
   },
 }));
@@ -32,6 +32,7 @@ describe('public available slots helper', () => {
       },
     } as any);
     vi.mocked(prisma.service.findMany).mockResolvedValue([{ id: 'svc-1', duration: 60 }] as any);
+    vi.mocked(prisma.staff.findMany).mockResolvedValue([]);
     vi.mocked(prisma.appointment.findMany).mockResolvedValue([]);
   });
 
@@ -204,6 +205,101 @@ describe('public available slots helper', () => {
     expect(result.slots).toContain('2026-03-10T14:00:00.000Z');
     expect(prisma.staff.findFirst).not.toHaveBeenCalled();
     expect(prisma.appointment.findMany).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
+
+  it('checks consecutive per-service staff assignments against each staff member’s own segment', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'));
+
+    vi.mocked(prisma.service.findMany).mockResolvedValue([
+      { id: 'svc-gel', name: 'Gel Manicure', duration: 60 },
+      { id: 'svc-pedi', name: 'Pedicure', duration: 60 },
+    ] as any);
+    vi.mocked(prisma.staff.findMany).mockResolvedValue([
+      {
+        id: 'staff-a',
+        fullName: 'Anna',
+        workDays: [2],
+        workHours: {},
+        serviceAssignments: [{ serviceId: 'svc-gel' }],
+      },
+      {
+        id: 'staff-b',
+        fullName: 'Bella',
+        workDays: [2],
+        workHours: {},
+        serviceAssignments: [{ serviceId: 'svc-pedi' }],
+      },
+    ] as any);
+    vi.mocked(prisma.appointment.findMany).mockResolvedValue([
+      {
+        staffId: 'staff-b',
+        startTime: new Date('2026-03-10T14:00:00.000Z'),
+        endTime: new Date('2026-03-10T14:30:00.000Z'),
+      },
+    ] as any);
+
+    const result = await getPublicAvailableSlots({
+      businessLookup: { slug: 'test-salon' },
+      date: '2026-03-10',
+      serviceId: 'svc-gel',
+      serviceIds: ['svc-gel', 'svc-pedi'],
+      serviceStaffAssignments: [
+        { serviceId: 'svc-gel', staffId: 'staff-a' },
+        { serviceId: 'svc-pedi', staffId: 'staff-b' },
+      ],
+    });
+
+    expect(result.unavailableSlots).toContain('2026-03-10T13:00:00.000Z');
+    expect(result.slots).toContain('2026-03-10T14:30:00.000Z');
+    expect(prisma.appointment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          staffId: { in: ['staff-a', 'staff-b'] },
+        }),
+      })
+    );
+
+    vi.useRealTimers();
+  });
+
+  it('rejects per-service assignment slots when a selected employee cannot perform that service', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'));
+
+    vi.mocked(prisma.service.findMany).mockResolvedValue([
+      { id: 'svc-gel', name: 'Gel Manicure', duration: 45 },
+      { id: 'svc-pedi', name: 'Pedicure', duration: 60 },
+    ] as any);
+    vi.mocked(prisma.staff.findMany).mockResolvedValue([
+      {
+        id: 'staff-a',
+        fullName: 'Anna',
+        workDays: [2],
+        workHours: {},
+        serviceAssignments: [{ serviceId: 'svc-gel' }],
+      },
+    ] as any);
+
+    const result = await getPublicAvailableSlots({
+      businessLookup: { slug: 'test-salon' },
+      date: '2026-03-10',
+      serviceId: 'svc-gel',
+      serviceIds: ['svc-gel', 'svc-pedi'],
+      serviceStaffAssignments: [
+        { serviceId: 'svc-gel', staffId: 'staff-a' },
+        { serviceId: 'svc-pedi', staffId: 'staff-a' },
+      ],
+    });
+
+    expect(result).toMatchObject({
+      slots: [],
+      unavailableSlots: [],
+      availabilityReason: 'staff_cant_do_service',
+      message: 'Anna does not perform one of the selected services.',
+    });
 
     vi.useRealTimers();
   });

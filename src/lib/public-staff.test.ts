@@ -37,6 +37,7 @@ describe('getPublicStaff', () => {
         fullName: 'Taylor',
         role: 'Lead stylist',
         bio: 'Known for calm consultations and detailed gel work.',
+        serviceIds: [],
       },
     ]);
   });

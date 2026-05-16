@@ -39,6 +39,15 @@ describe('public booking page source', () => {
     const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
 
     expect(source).toContain('member.bio');
-    expect(source).toContain('Choose Staff Member');
+    expect(source).toContain('Choose Staff');
+  });
+
+  it('lets customers assign different staff members to consecutive selected services', () => {
+    const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('Different staff per service');
+    expect(source).toContain('serviceStaffAssignments');
+    expect(source).toContain('Services run one after another');
+    expect(source).toContain('appointmentBatchUrl');
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   createAppointmentBatchToken,
+  createOnlineAppointmentBatchToken,
   parseAppointmentBatchToken,
 } from './appointment-confirmation-batches';
 
@@ -32,6 +33,20 @@ describe('appointment confirmation batch tokens', () => {
     });
 
     expect(parseAppointmentBatchToken(`${token}tampered`)).toBeNull();
+  });
+
+  it('round-trips online booking batch tokens with exact appointment ids', () => {
+    const token = createOnlineAppointmentBatchToken({
+      b: 'biz_123',
+      a: ['appt_1', 'appt_2'],
+    });
+
+    expect(parseAppointmentBatchToken(token)).toEqual({
+      v: 1,
+      t: 'online',
+      b: 'biz_123',
+      a: ['appt_1', 'appt_2'],
+    });
   });
 
   it('rejects malformed tokens', () => {

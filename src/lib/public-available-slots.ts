@@ -8,8 +8,16 @@ import { validateBookableStaffSelection } from '@/lib/staff-service-validation';
 import {
   buildAppointmentStartOptions,
   getEffectiveStaffDayHours,
+  isAppointmentWithinStaffHours,
   normalizeBusinessHoursRecord,
 } from '@/lib/staff-schedule';
+import {
+  appointmentsOverlap,
+  buildServiceBookingSegments,
+  getUniqueAssignedStaffIds,
+  normalizeServiceStaffAssignments,
+  shouldCreateSegmentedServiceBooking,
+} from '@/lib/service-staff-assignments';
 
 const businessTimeToUTC = localToUTC;
 
@@ -25,6 +33,7 @@ export type PublicAvailableSlotsInput = {
   date: string | null;
   serviceId: string | null;
   serviceIds?: string[] | null;
+  serviceStaffAssignments?: unknown;
   staffId?: string | null;
   durationOverride?: string | null;
 };
@@ -51,6 +60,7 @@ export async function getPublicAvailableSlots({
   date,
   serviceId,
   serviceIds,
+  serviceStaffAssignments,
   staffId,
   durationOverride,
 }: PublicAvailableSlotsInput): Promise<PublicAvailableSlotsResult> {
@@ -94,7 +104,7 @@ export async function getPublicAvailableSlots({
       businessId: business.id,
       active: true,
     },
-    select: { id: true, duration: true },
+    select: { id: true, name: true, duration: true },
   });
 
   if (services.length !== requestedServiceIds.length) {
@@ -104,7 +114,15 @@ export async function getPublicAvailableSlots({
   const servicesById = new Map(services.map((service) => [service.id, service]));
   const orderedServices = requestedServiceIds
     .map((requestedId) => servicesById.get(requestedId))
-    .filter((service): service is { id: string; duration: number } => Boolean(service));
+    .filter((service): service is { id: string; name: string; duration: number } => Boolean(service));
+  const normalizedServiceStaffAssignments = normalizeServiceStaffAssignments(
+    serviceStaffAssignments,
+    requestedServiceIds
+  );
+  const useSegmentedStaffAssignments = shouldCreateSegmentedServiceBooking({
+    assignments: normalizedServiceStaffAssignments,
+    orderedServiceIds: requestedServiceIds,
+  });
 
   const dayOfWeek = weekdayIndexForLocalDate(date, business.timezone);
   const closure = findBusinessClosureForDate(date, business.closureDates);
@@ -139,7 +157,7 @@ export async function getPublicAvailableSlots({
     };
   }
 
-  if (staffId && staffId !== 'anyone') {
+  if (!useSegmentedStaffAssignments && staffId && staffId !== 'anyone') {
     const staffValidation = await validateBookableStaffSelection({
       staffId,
       businessId: business.id,
@@ -170,7 +188,7 @@ export async function getPublicAvailableSlots({
 
   const parsedDuration = durationOverride ? Number.parseInt(durationOverride, 10) : NaN;
   const duration =
-    Number.isFinite(parsedDuration) && parsedDuration > 0
+    !useSegmentedStaffAssignments && Number.isFinite(parsedDuration) && parsedDuration > 0
       ? parsedDuration
       : orderedServices.reduce((sum, service) => sum + service.duration, 0);
   const slotInterval = 30;
@@ -178,7 +196,7 @@ export async function getPublicAvailableSlots({
   let openTime = businessDayHours.openTime;
   let closeTimeLabel = businessDayHours.closeTime;
 
-  if (staffId && staffId !== 'anyone') {
+  if (!useSegmentedStaffAssignments && staffId && staffId !== 'anyone') {
     const staffMember = await prisma.staff.findFirst({
       where: { id: staffId, businessId: business.id, active: true },
       select: {
@@ -234,8 +252,78 @@ export async function getPublicAvailableSlots({
     business.timezone
   );
 
+  const previewSegments = buildServiceBookingSegments({
+    assignments: normalizedServiceStaffAssignments,
+    orderedServices,
+    startTime: startOfDay,
+  });
+  const assignedStaffIds = useSegmentedStaffAssignments
+    ? getUniqueAssignedStaffIds(previewSegments)
+    : [];
+  const assignedStaffMembers = useSegmentedStaffAssignments
+    ? await prisma.staff.findMany({
+        where: {
+          businessId: business.id,
+          active: true,
+          id: { in: assignedStaffIds },
+        },
+        select: {
+          id: true,
+          fullName: true,
+          workDays: true,
+          workHours: true,
+          serviceAssignments: { select: { serviceId: true } },
+        },
+      })
+    : [];
+  const assignedStaffById = new Map(assignedStaffMembers.map((member) => [member.id, member]));
+
+  if (useSegmentedStaffAssignments) {
+    for (const assignment of normalizedServiceStaffAssignments) {
+      if (!assignment.staffId) continue;
+
+      const staffMember = assignedStaffById.get(assignment.staffId);
+      if (!staffMember) {
+        return {
+          slots: [],
+          unavailableSlots: [],
+          availabilityReason: 'staff_not_found',
+          message: 'Selected staff member was not found.',
+        };
+      }
+
+      if (!staffMember.workDays.includes(dayOfWeek)) {
+        return {
+          slots: [],
+          unavailableSlots: [],
+          availabilityReason: 'staff_off_day',
+          message: `${staffMember.fullName} is off on this day.`,
+        };
+      }
+
+      const assignedServices = staffMember.serviceAssignments.map((assignment) => assignment.serviceId);
+      if (assignedServices.length > 0 && !assignedServices.includes(assignment.serviceId)) {
+        return {
+          slots: [],
+          unavailableSlots: [],
+          availabilityReason: 'staff_cant_do_service',
+          message: `${staffMember.fullName} does not perform one of the selected services.`,
+        };
+      }
+    }
+  }
+
   const existingAppointments =
-    staffId && staffId !== 'anyone'
+    useSegmentedStaffAssignments && assignedStaffIds.length > 0
+      ? await prisma.appointment.findMany({
+          where: {
+            businessId: business.id,
+            staffId: { in: assignedStaffIds },
+            status: { in: ['pending', 'scheduled', 'confirmed'] },
+            startTime: { gte: startOfDay, lte: endOfDay },
+          },
+        })
+      : staffId && staffId !== 'anyone'
       ? await prisma.appointment.findMany({
           where: {
             businessId: business.id,
@@ -263,18 +351,52 @@ export async function getPublicAvailableSlots({
     if (slotEndTime > closeTime) continue;
     if (slotTime < new Date()) continue;
 
-    const hasConflict = existingAppointments.some((appointment) => {
-      const appointmentStart = new Date(appointment.startTime);
-      const appointmentEnd = new Date(appointment.endTime);
+    const slotSegments = useSegmentedStaffAssignments
+      ? buildServiceBookingSegments({
+          assignments: normalizedServiceStaffAssignments,
+          orderedServices,
+          startTime: slotTime,
+        })
+      : [];
+    const hasSegmentStaffUnavailable =
+      useSegmentedStaffAssignments &&
+      slotSegments.some((segment) => {
+        if (!segment.staffId) return false;
+        const staffMember = assignedStaffById.get(segment.staffId);
+        if (!staffMember) return true;
 
-      return (
-        (slotTime >= appointmentStart && slotTime < appointmentEnd) ||
-        (slotEndTime > appointmentStart && slotEndTime <= appointmentEnd) ||
-        (slotTime <= appointmentStart && slotEndTime >= appointmentEnd)
-      );
-    });
+        return !isAppointmentWithinStaffHours({
+          startTime: segment.startTime,
+          endTime: segment.endTime,
+          timezone: business.timezone,
+          workDays: staffMember.workDays,
+          workHours: staffMember.workHours,
+          businessHours: hoursData,
+        }).allowed;
+      });
 
-    if (hasConflict) {
+    const hasConflict = useSegmentedStaffAssignments
+      ? slotSegments.some((segment) => {
+          if (!segment.staffId) return false;
+
+          return existingAppointments.some((appointment) => {
+            if (appointment.staffId !== segment.staffId) return false;
+            return appointmentsOverlap(
+              segment.startTime,
+              segment.endTime,
+              new Date(appointment.startTime),
+              new Date(appointment.endTime)
+            );
+          });
+        })
+      : existingAppointments.some((appointment) => {
+          const appointmentStart = new Date(appointment.startTime);
+          const appointmentEnd = new Date(appointment.endTime);
+
+          return appointmentsOverlap(slotTime, slotEndTime, appointmentStart, appointmentEnd);
+        });
+
+    if (hasSegmentStaffUnavailable || hasConflict) {
       unavailableSlots.push(slotTime.toISOString());
     } else {
       slots.push(slotTime.toISOString());

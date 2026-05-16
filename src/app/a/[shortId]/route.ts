@@ -26,6 +26,28 @@ export async function GET(
     return NextResponse.redirect(`${base}/`);
   }
 
+  if (batchPayload.t === 'online') {
+    const batchAppointments = await prisma.appointment.findMany({
+      where: {
+        businessId: batchPayload.b,
+        id: { in: batchPayload.a },
+      },
+      select: { id: true },
+      orderBy: { startTime: 'asc' },
+      take: 20,
+    });
+
+    if (batchAppointments.length === 0) {
+      return NextResponse.redirect(`${base}/`);
+    }
+
+    if (batchAppointments.length === 1) {
+      return NextResponse.redirect(`${base}/appt/${batchAppointments[0].id}`);
+    }
+
+    return NextResponse.redirect(`${base}/appt/batch/${encodeURIComponent(shortId)}`);
+  }
+
   const batchAppointments = await prisma.appointment.findMany({
     where: buildAiAppointmentBatchWhereInput(
       batchPayload.b,

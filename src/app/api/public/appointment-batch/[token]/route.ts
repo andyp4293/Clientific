@@ -17,8 +17,16 @@ export async function GET(
     return NextResponse.json({ error: 'Appointment batch not found' }, { status: 404 });
   }
 
+  const appointmentWhere =
+    payload.t === 'online'
+      ? {
+          businessId: payload.b,
+          id: { in: payload.a },
+        }
+      : buildAiAppointmentBatchWhereInput(payload.b, payload.p, payload.s, payload.e);
+
   const appointments = await prisma.appointment.findMany({
-    where: buildAiAppointmentBatchWhereInput(payload.b, payload.p, payload.s, payload.e),
+    where: appointmentWhere,
     select: {
       id: true,
       status: true,

@@ -40,6 +40,8 @@ export async function getPublicStaff({
           return requiredServiceIds.every((id) => assigned.includes(id));
         });
 
-  // Strip the internal serviceAssignments from the public payload
-  return filtered.map(({ serviceAssignments: _a, ...rest }) => rest);
+  return filtered.map(({ serviceAssignments, ...rest }) => ({
+    ...rest,
+    serviceIds: serviceAssignments.map((assignment) => assignment.serviceId),
+  }));
 }

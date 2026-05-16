@@ -54,6 +54,7 @@ interface Staff {
   fullName: string;
   role?: string | null;
   bio?: string | null;
+  serviceIds?: string[];
 }
 
 interface Deal {
@@ -124,6 +125,8 @@ export default function PublicBookingPage() {
   const [step, setStep] = useState(1);
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
+  const [staffMode, setStaffMode] = useState<'single' | 'per-service'>('single');
+  const [serviceStaffAssignments, setServiceStaffAssignments] = useState<Record<string, string>>({});
   // Initialize with today's date in local timezone
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -183,16 +186,12 @@ export default function PublicBookingPage() {
     enabled: !!businessData,
   });
 
-  // Fetch staff — filtered to those who can perform the selected services
+  // Fetch staff once; the page filters by service locally for same-staff and split-staff flows.
   const selectedServiceIds = selectedServices.map((s) => s.id);
   const { data: staffData } = useQuery({
-    queryKey: ['staff', slugOrPublicId, selectedServiceIds.join(',')],
+    queryKey: ['staff', slugOrPublicId],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (selectedServiceIds.length > 0) {
-        params.set('serviceIds', selectedServiceIds.join(','));
-      }
-      const res = await fetch(`${apiBase}/staff?${params}`);
+      const res = await fetch(`${apiBase}/staff`);
       if (!res.ok) throw new Error('Failed to fetch staff');
       return res.json();
     },
@@ -204,9 +203,29 @@ export default function PublicBookingPage() {
   const formatDateLocal = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+  const getServiceAssignedStaffId = (serviceId: string) => serviceStaffAssignments[serviceId] ?? 'anyone';
+  const usesPerServiceStaff = staffMode === 'per-service' && selectedServices.length > 1;
+  const serviceStaffAssignmentPayload = usesPerServiceStaff
+    ? selectedServices.map((service) => ({
+        serviceId: service.id,
+        staffId: getServiceAssignedStaffId(service.id),
+      }))
+    : [];
+  const serviceStaffAssignmentSignature = serviceStaffAssignmentPayload
+    .map((assignment) => `${assignment.serviceId}:${assignment.staffId}`)
+    .join('|');
+
   // Fetch available slots — use first service's id + combined duration
   const { data: slotsData, isLoading: isLoadingSlots } = useQuery({
-    queryKey: ['slots', slugOrPublicId, formatDateLocal(selectedDate), selectedServices.map(s => s.id).join(','), selectedStaff],
+    queryKey: [
+      'slots',
+      slugOrPublicId,
+      formatDateLocal(selectedDate),
+      selectedServices.map(s => s.id).join(','),
+      selectedStaff,
+      staffMode,
+      serviceStaffAssignmentSignature,
+    ],
     queryFn: async () => {
       if (!selectedServices.length) return { slots: [] };
       const qp = new URLSearchParams({
@@ -214,8 +233,12 @@ export default function PublicBookingPage() {
         serviceId: selectedServices[0].id,
         serviceIds: selectedServices.map((service) => service.id).join(','),
         duration: String(totalDuration),
-        ...(selectedStaff && selectedStaff !== 'anyone' && { staffId: selectedStaff }),
       });
+      if (usesPerServiceStaff) {
+        qp.set('serviceStaffAssignments', JSON.stringify(serviceStaffAssignmentPayload));
+      } else if (selectedStaff && selectedStaff !== 'anyone') {
+        qp.set('staffId', selectedStaff);
+      }
       const res = await fetch(`${apiBase}/available-slots?${qp}`);
       if (!res.ok) throw new Error('Failed to fetch slots');
       return res.json();
@@ -238,6 +261,10 @@ export default function PublicBookingPage() {
       return res.json();
     },
     onSuccess: (data) => {
+      if (data.appointmentBatchUrl) {
+        router.push(data.appointmentBatchUrl.replace(/^https?:\/\/[^/]+/, ''));
+        return;
+      }
       router.push(`/appt/${data.appointment.id}`);
     },
   });
@@ -246,7 +273,12 @@ export default function PublicBookingPage() {
   const viewerCanManage = businessData?.viewerCanManage === true;
   const services: Service[] = servicesData?.services || [];
   const groups: ServiceGroup[] = servicesData?.groups || [];
-  const staff: Staff[] = staffData?.staff || [];
+  const allStaff: Staff[] = staffData?.staff || [];
+  const staffCanPerformService = (member: Staff, serviceId: string) =>
+    !member.serviceIds?.length || member.serviceIds.includes(serviceId);
+  const staff = selectedServiceIds.length
+    ? allStaff.filter((member) => selectedServiceIds.every((serviceId) => staffCanPerformService(member, serviceId)))
+    : allStaff;
   const deals: Deal[] = dealsData?.deals || [];
   const availableSlots: string[] = slotsData?.slots || [];
   const unavailableSlots: string[] = slotsData?.unavailableSlots || [];
@@ -278,6 +310,20 @@ export default function PublicBookingPage() {
       return prev.length ? prev.filter(id => groupedServices.groupedSections.some(section => section.group.id === id)) : [firstGroupId];
     });
   }, [groupedServices]);
+
+  useEffect(() => {
+    setServiceStaffAssignments((current) => {
+      const next: Record<string, string> = {};
+      for (const service of selectedServices) {
+        next[service.id] = current[service.id] ?? 'anyone';
+      }
+      return next;
+    });
+
+    if (selectedServices.length <= 1) {
+      setStaffMode('single');
+    }
+  }, [selectedServices]);
   // All slots sorted by time for display
   const allSlots = [...availableSlots, ...unavailableSlots].sort();
   const unavailableSet = new Set(unavailableSlots);
@@ -286,6 +332,7 @@ export default function PublicBookingPage() {
     // Reset staff selection when services change — the previously chosen staff
     // may not be able to perform the new service combination.
     setSelectedStaff(null);
+    setSelectedTime(null);
     setSelectedServices((prev) => toggleServiceSelection(prev, service));
   };
 
@@ -295,7 +342,8 @@ export default function PublicBookingPage() {
     bookingMutation.mutate({
       serviceIds: selectedServices.map(s => s.id),
       serviceId: selectedServices[0].id,
-      staffId: selectedStaff ?? 'anyone',
+      staffId: usesPerServiceStaff ? 'anyone' : selectedStaff ?? 'anyone',
+      serviceStaffAssignments: usesPerServiceStaff ? serviceStaffAssignmentPayload : undefined,
       startTime: selectedTime,
       duration: totalDuration,
       customerName: customerInfo.name,
@@ -536,54 +584,162 @@ export default function PublicBookingPage() {
           {/* Step 2: Select Staff */}
           {step === 2 && (
             <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">Choose Staff Member</h2>
-              {staff.length > 0 && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-5 flex items-center gap-1.5">
-                  <svg className="w-4 h-4 shrink-0 text-primary dark:text-primary-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Showing staff available for your selected {selectedServices.length === 1 ? 'service' : 'services'}
-                </p>
-              )}
-              <div className="space-y-3">
-                <button
-                  onClick={() => setSelectedStaff('anyone')}
-                  className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                    selectedStaff === 'anyone'
-                      ? 'border-primary bg-primary-50 dark:bg-primary/10'
-                      : 'border-gray-200 dark:border-gray-600 hover:border-primary hover:bg-primary-50 dark:hover:bg-primary/5'
-                  }`}
-                >
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Anyone Available</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">First available staff member</p>
-                </button>
-
-                {staff.map((member) => (
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">Choose Staff</h2>
+              {selectedServices.length > 1 && (
+                <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <button
-                    key={member.id}
-                    onClick={() => setSelectedStaff(member.id)}
-                    className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                      selectedStaff === member.id
+                    type="button"
+                    onClick={() => {
+                      setStaffMode('single');
+                      setSelectedTime(null);
+                    }}
+                    className={`rounded-xl border-2 p-4 text-left transition-all ${
+                      staffMode === 'single'
                         ? 'border-primary bg-primary-50 dark:bg-primary/10'
-                        : 'border-gray-200 dark:border-gray-600 hover:border-primary hover:bg-primary-50 dark:hover:bg-primary/5'
+                        : 'border-gray-200 hover:border-primary dark:border-gray-600 dark:hover:border-primary'
                     }`}
                   >
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">{member.fullName}</h3>
-                    {member.role && (
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{member.role}</p>
-                    )}
-                    {member.bio && (
-                      <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">{member.bio}</p>
-                    )}
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">Same staff for all services</h3>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                      Best when one person will handle the full appointment.
+                    </p>
                   </button>
-                ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStaffMode('per-service');
+                      setSelectedStaff('anyone');
+                      setSelectedTime(null);
+                    }}
+                    className={`rounded-xl border-2 p-4 text-left transition-all ${
+                      staffMode === 'per-service'
+                        ? 'border-primary bg-primary-50 dark:bg-primary/10'
+                        : 'border-gray-200 hover:border-primary dark:border-gray-600 dark:hover:border-primary'
+                    }`}
+                  >
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">Different staff per service</h3>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                      Services run one after another, with each staff member checked for their time.
+                    </p>
+                  </button>
+                </div>
+              )}
 
-                {staff.length === 0 && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-                    No specific staff available for these services — select "Anyone Available" above.
+              {usesPerServiceStaff ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Pick a staff member for each service, or leave a service as anyone available. The time slots will reserve each person only during their own service.
                   </p>
-                )}
-              </div>
+                  {selectedServices.map((service, index) => {
+                    const eligibleStaff = allStaff.filter((member) => staffCanPerformService(member, service.id));
+                    const assignedStaffId = getServiceAssignedStaffId(service.id);
+
+                    return (
+                      <div
+                        key={service.id}
+                        className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30"
+                      >
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                              Service {index + 1}
+                            </p>
+                            <h3 className="mt-1 font-semibold text-gray-900 dark:text-gray-100">{service.name}</h3>
+                          </div>
+                          <span className="rounded-full bg-white px-3 py-1 text-sm font-medium text-gray-600 shadow-sm dark:bg-gray-800 dark:text-gray-300">
+                            {service.duration} min
+                          </span>
+                        </div>
+
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setServiceStaffAssignments((current) => ({ ...current, [service.id]: 'anyone' }));
+                              setSelectedTime(null);
+                            }}
+                            className={`rounded-xl border px-3 py-3 text-left text-sm transition-all ${
+                              assignedStaffId === 'anyone'
+                                ? 'border-primary bg-primary-50 text-primary-800 dark:bg-primary/10 dark:text-primary-200'
+                                : 'border-gray-200 bg-white text-gray-700 hover:border-primary dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                            }`}
+                          >
+                            <span className="font-semibold">Anyone available</span>
+                          </button>
+                          {eligibleStaff.map((member) => (
+                            <button
+                              key={member.id}
+                              type="button"
+                              onClick={() => {
+                                setServiceStaffAssignments((current) => ({ ...current, [service.id]: member.id }));
+                                setSelectedTime(null);
+                              }}
+                              className={`rounded-xl border px-3 py-3 text-left text-sm transition-all ${
+                                assignedStaffId === member.id
+                                  ? 'border-primary bg-primary-50 text-primary-800 dark:bg-primary/10 dark:text-primary-200'
+                                  : 'border-gray-200 bg-white text-gray-700 hover:border-primary dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                              }`}
+                            >
+                              <span className="font-semibold">{member.fullName}</span>
+                              {member.role && <span className="mt-0.5 block text-xs opacity-75">{member.role}</span>}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <>
+                  {staff.length > 0 && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-5 flex items-center gap-1.5">
+                      <svg className="w-4 h-4 shrink-0 text-primary dark:text-primary-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Showing staff available for your selected {selectedServices.length === 1 ? 'service' : 'services'}
+                    </p>
+                  )}
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => setSelectedStaff('anyone')}
+                      className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                        selectedStaff === 'anyone'
+                          ? 'border-primary bg-primary-50 dark:bg-primary/10'
+                          : 'border-gray-200 dark:border-gray-600 hover:border-primary hover:bg-primary-50 dark:hover:bg-primary/5'
+                      }`}
+                    >
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Anyone Available</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">First available staff member</p>
+                    </button>
+
+                    {staff.map((member) => (
+                      <button
+                        key={member.id}
+                        onClick={() => setSelectedStaff(member.id)}
+                        className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                          selectedStaff === member.id
+                            ? 'border-primary bg-primary-50 dark:bg-primary/10'
+                            : 'border-gray-200 dark:border-gray-600 hover:border-primary hover:bg-primary-50 dark:hover:bg-primary/5'
+                        }`}
+                      >
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100">{member.fullName}</h3>
+                        {member.role && (
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{member.role}</p>
+                        )}
+                        {member.bio && (
+                          <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">{member.bio}</p>
+                        )}
+                      </button>
+                    ))}
+
+                    {staff.length === 0 && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                        No specific staff available for these services — select "Anyone Available" above.
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
 
               <div className="flex gap-3 mt-6">
                 <button
@@ -594,7 +750,7 @@ export default function PublicBookingPage() {
                 </button>
                 <button
                   onClick={() => setStep(3)}
-                  disabled={!selectedStaff}
+                  disabled={!usesPerServiceStaff && !selectedStaff}
                   className="flex-1 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Continue
@@ -838,7 +994,16 @@ export default function PublicBookingPage() {
                   <ul className="space-y-1">
                     {selectedServices.map(s => (
                       <li key={s.id} className="flex justify-between">
-                        <span className="font-medium text-gray-900 dark:text-gray-100 ml-2">{s.name}</span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100 ml-2">
+                          {s.name}
+                          {usesPerServiceStaff && (
+                            <span className="block text-xs font-normal text-gray-500 dark:text-gray-400">
+                              {getServiceAssignedStaffId(s.id) === 'anyone'
+                                ? 'with anyone available'
+                                : `with ${allStaff.find((member) => member.id === getServiceAssignedStaffId(s.id))?.fullName ?? 'selected staff'}`}
+                            </span>
+                          )}
+                        </span>
                         {s.price != null && s.price > 0 && (
                           <span className="text-gray-600 dark:text-gray-400">${s.price.toFixed(2)}</span>
                         )}
@@ -848,7 +1013,7 @@ export default function PublicBookingPage() {
                 </div>
               )}
 
-              {step >= 3 && selectedStaff && (
+              {step >= 3 && selectedStaff && !usesPerServiceStaff && (
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-400">Staff:</span>
                   <span className="font-medium text-gray-900 dark:text-gray-100">

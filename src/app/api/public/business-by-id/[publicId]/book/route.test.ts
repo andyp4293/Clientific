@@ -106,6 +106,88 @@ describe('POST /api/public/business-by-id/[publicId]/book', () => {
     );
   });
 
+  it('creates consecutive appointment segments when each selected service has a different staff member', async () => {
+    vi.mocked(prisma.service.findMany).mockResolvedValue([
+      { id: 'svc-gel', name: 'Gel Manicure', duration: 45 },
+      { id: 'svc-pedi', name: 'Pedicure', duration: 60 },
+    ] as any);
+    (prisma.staff.findFirst as any).mockImplementation(async (args: any) => ({
+      id: args.where.id,
+      fullName: args.where.id === 'staff-a' ? 'Anna' : 'Bella',
+      workDays: [2],
+      workHours: {},
+      serviceAssignments: [
+        { serviceId: args.where.id === 'staff-a' ? 'svc-gel' : 'svc-pedi' },
+      ],
+    }) as any);
+    (prisma.appointment.create as any).mockImplementation(async (args: any) => ({
+      id: args.data.serviceId === 'svc-gel' ? 'appt-gel' : 'appt-pedi',
+      shortId: args.data.shortId,
+      startTime: args.data.startTime,
+      endTime: args.data.endTime,
+      duration: args.data.duration,
+      notes: args.data.notes,
+      customer: { id: 'cust-1', name: 'Jane', phone: '+15551234567' },
+      service: { name: args.data.serviceId === 'svc-gel' ? 'Gel Manicure' : 'Pedicure' },
+      staff: {
+        id: args.data.staffId,
+        fullName: args.data.staffId === 'staff-a' ? 'Anna' : 'Bella',
+      },
+      business: { name: 'Test Salon' },
+    }) as any);
+
+    const res = await POST(
+      req({
+        ...BASE_BODY,
+        serviceIds: ['svc-gel', 'svc-pedi'],
+        duration: 105,
+        serviceStaffAssignments: [
+          { serviceId: 'svc-gel', staffId: 'staff-a' },
+          { serviceId: 'svc-pedi', staffId: 'staff-b' },
+        ],
+      }),
+      { params: Promise.resolve({ publicId: 'pub_123' }) }
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.appointments).toHaveLength(2);
+    expect(body.appointmentBatchUrl).toContain('/appt/batch/');
+    expect(prisma.appointment.create).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          serviceId: 'svc-gel',
+          serviceIds: ['svc-gel'],
+          staffId: 'staff-a',
+          startTime: new Date('2026-03-10T14:00:00.000Z'),
+          endTime: new Date('2026-03-10T14:45:00.000Z'),
+          duration: 45,
+        }),
+      })
+    );
+    expect(prisma.appointment.create).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          serviceId: 'svc-pedi',
+          serviceIds: ['svc-pedi'],
+          staffId: 'staff-b',
+          startTime: new Date('2026-03-10T14:45:00.000Z'),
+          endTime: new Date('2026-03-10T15:45:00.000Z'),
+          duration: 60,
+        }),
+      })
+    );
+    expect(sendAppointmentConfirmation).toHaveBeenCalledWith(
+      '+15551234567',
+      expect.objectContaining({
+        serviceName: 'Gel Manicure with Anna, Pedicure with Bella',
+        appointmentUrl: expect.stringContaining('/appt/batch/'),
+      })
+    );
+  });
+
   it('automatically enables transactional appointment SMS when a booking request is submitted', async () => {
     const res = await POST(
       req(BASE_BODY),
