@@ -14,7 +14,11 @@ vi.mock('resend', () => ({
   Resend: mockResendCtor,
 }));
 
-import { sendEmailVerificationEmail, sendSupportContactEmail } from './email';
+import {
+  sendEmailVerificationEmail,
+  sendStaffTemporaryPasswordEmail,
+  sendSupportContactEmail,
+} from './email';
 
 describe('email sender configuration', () => {
   beforeEach(() => {
@@ -70,5 +74,36 @@ describe('email sender configuration', () => {
         html: expect.stringContaining('Need help with an invoice.'),
       })
     );
+  });
+
+  it('sends staff temporary password instructions with clear setup and privacy steps', async () => {
+    await sendStaffTemporaryPasswordEmail({
+      to: 'taylor@example.com',
+      staffName: 'Taylor Nguyen',
+      businessName: 'Clientific Studio',
+      temporaryPassword: 'TempPass123!',
+      loginUrl: 'https://clientific.app/login',
+    });
+
+    expect(mockSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'taylor@example.com',
+        subject: 'Clientific Studio invited you to Clientific',
+        text: expect.stringContaining('What to do next:'),
+        html: expect.stringContaining('What to do next'),
+      }),
+    );
+    const sent = mockSend.mock.calls.at(-1)?.[0];
+    expect(sent.text).toContain(
+      'Use the sign-in email and temporary password exactly as shown above.',
+    );
+    expect(sent.text).toContain(
+      'After setup, you will see only the appointments assigned to you.',
+    );
+    expect(sent.text).toContain(
+      'employee accounts cannot see customer phone numbers, CRM lists, deals, billing, or business settings',
+    );
+    expect(sent.html).toContain('Create your own password when prompted');
+    expect(sent.html).toContain('only appointments assigned to you');
   });
 });

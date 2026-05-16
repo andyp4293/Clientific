@@ -231,6 +231,7 @@ export async function sendStaffTemporaryPasswordEmail(
   const safeStaffName = escapeHtml(details.staffName);
   const safeBusinessName = escapeHtml(details.businessName);
   const safeTemporaryPassword = escapeHtml(details.temporaryPassword);
+  const safeLoginUrl = escapeHtml(loginUrl);
 
   const text = [
     `${safeBusinessName} invited you to ${APP_NAME}`,
@@ -241,7 +242,14 @@ export async function sendStaffTemporaryPasswordEmail(
     `Sign in email: ${details.to}`,
     `Temporary password: ${details.temporaryPassword}`,
     '',
-    'After you sign in, you will be asked to create your own password before you can view appointments.',
+    'What to do next:',
+    `1. Open ${APP_NAME} from the link below or from the Clientific iOS app.`,
+    '2. Tap Sign in.',
+    '3. Use the sign-in email and temporary password exactly as shown above.',
+    '4. When prompted, create your own password. Use that new password from then on.',
+    '5. After setup, you will see only the appointments assigned to you.',
+    '',
+    'For privacy, employee accounts cannot see customer phone numbers, CRM lists, deals, billing, or business settings.',
     `Sign in here: ${loginUrl}`,
   ].join('\n');
 
@@ -266,7 +274,17 @@ export async function sendStaffTemporaryPasswordEmail(
           <p style="margin: 0 0 6px; font-size: 12px; color: #047857; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;">Temporary password</p>
           <p style="margin: 0; color: #111827; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 22px; font-weight: 800; letter-spacing: 0.04em;">${safeTemporaryPassword}</p>
         </div>
-        <a href="${loginUrl}"
+        <div style="border: 1px solid #e5e7eb; border-radius: 14px; padding: 18px; margin-bottom: 24px;">
+          <p style="margin: 0 0 10px; font-size: 13px; color: #111827; font-weight: 800;">What to do next</p>
+          <ol style="margin: 0; padding-left: 20px; color: #4b5563; font-size: 14px; line-height: 1.7;">
+            <li>Open ${APP_NAME} from this email or from the Clientific iOS app.</li>
+            <li>Tap <strong>Sign in</strong>.</li>
+            <li>Use the sign-in email and temporary password exactly as shown above.</li>
+            <li>Create your own password when prompted. Use that new password from then on.</li>
+            <li>After setup, your appointment view will show only appointments assigned to you.</li>
+          </ol>
+        </div>
+        <a href="${safeLoginUrl}"
            style="display: inline-block; background: #059669; color: #fff; font-weight: 700;
                   padding: 12px 24px; border-radius: 10px; text-decoration: none; margin-bottom: 20px;">
           Sign in to ${APP_NAME}

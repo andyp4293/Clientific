@@ -169,6 +169,70 @@ describe('PATCH /api/staff/[id]', () => {
     expect(revalidateTag).toHaveBeenCalledWith('staff-biz-1', 'max');
   });
 
+  it('disables employee app access and clears the staff password', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });
+    mockStaffFindUnique.mockResolvedValue({
+      ...existingStaff,
+      email: 'jane@example.com',
+      portalAccessEnabled: true,
+      portalPasswordHash: 'hashed-temporary-password',
+      portalPasswordSetAt: new Date('2026-01-01T12:00:00.000Z'),
+    });
+
+    const updateMock = vi.fn().mockResolvedValue({ id: 'staff-1' });
+    const updatedStaff = {
+      id: 'staff-1',
+      fullName: 'Jane',
+      businessId: 'biz-1',
+      email: 'jane@example.com',
+      phone: null,
+      role: 'staff',
+      bio: null,
+      active: true,
+      portalAccessEnabled: false,
+      portalPasswordHash: null,
+      portalPasswordSetAt: null,
+      workDays: [0, 1, 2, 3, 4, 5, 6],
+      workHours: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      serviceAssignments: [],
+    };
+
+    mockTransaction.mockImplementationOnce(async (fn: any) => {
+      const tx = {
+        staff: {
+          update: updateMock,
+          findUniqueOrThrow: vi.fn().mockResolvedValue(updatedStaff),
+        },
+        staffService: { deleteMany: vi.fn(), createMany: vi.fn() },
+      };
+      return fn(tx);
+    });
+
+    const res = await PATCH(makePatchRequest({ portalAccessEnabled: false }), routeParams);
+
+    expect(res.status).toBe(200);
+    expect(updateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          portalAccessEnabled: false,
+          portalPasswordHash: null,
+          portalPasswordSetAt: null,
+        }),
+      }),
+    );
+    await expect(res.json()).resolves.toMatchObject({
+      staff: {
+        portalAccessEnabled: false,
+        hasPortalPassword: false,
+        passwordChangeRequired: false,
+      },
+    });
+    expect(revalidateTag).toHaveBeenCalledWith('staff-biz-1', 'max');
+  });
+
   it('replaces service assignments when serviceIds provided', async () => {
     mockSession.mockResolvedValue(activeSession);
     mockBusiness.mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null });

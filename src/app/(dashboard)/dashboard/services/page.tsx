@@ -66,6 +66,11 @@ interface Staff {
 
 type Tab = "services" | "staff";
 type ModalType = "service" | "staff" | null;
+type PortalAccessConfirmation =
+  | { action: "enable"; scope: "form" }
+  | { action: "disable"; scope: "form" }
+  | { action: "disable"; scope: "member"; staff: Staff }
+  | null;
 
 function businessHoursArrayToRecord(
   hours: BusinessHour[],
@@ -487,12 +492,14 @@ function StaffTab({
   businessHoursRecord,
   onEdit,
   onDelete,
+  onDisablePortalAccess,
 }: {
   staff: Staff[];
   services: Service[];
   businessHoursRecord: BusinessHoursRecord;
   onEdit: (staff: Staff) => void;
   onDelete: (id: string) => void;
+  onDisablePortalAccess: (staff: Staff) => void;
 }) {
   if (staff.length === 0) {
     return (
@@ -694,13 +701,22 @@ function StaffTab({
             )}
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => onEdit(member)}
-              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="min-w-[7rem] flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Edit
             </button>
+            {member.portalAccessEnabled && (
+              <button
+                type="button"
+                onClick={() => onDisablePortalAccess(member)}
+                className="min-w-[8rem] flex-1 rounded-lg border border-amber-200 px-3 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950/30"
+              >
+                Disable login
+              </button>
+            )}
             <button
               onClick={() => {
                 if (
@@ -740,6 +756,8 @@ export default function ServicesPage() {
   const [modalType, setModalType] = useState<ModalType>(null);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+  const [portalAccessConfirmation, setPortalAccessConfirmation] =
+    useState<PortalAccessConfirmation>(null);
   const [serviceFormData, setServiceFormData] = useState({
     name: "",
     description: "",
@@ -1034,6 +1052,32 @@ export default function ServicesPage() {
     },
   });
 
+  const staffPortalAccessMutation = useMutation({
+    mutationFn: async ({
+      id,
+      portalAccessEnabled,
+    }: {
+      id: string;
+      portalAccessEnabled: boolean;
+    }) => {
+      const res = await fetch(`/api/staff/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ portalAccessEnabled }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to update employee login");
+      }
+
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["staff"] });
+    },
+  });
+
   const services: Service[] = servicesData?.services || [];
   const groups: ServiceGroup[] = groupsData?.groups || [];
   const staff: Staff[] = staffData?.staff || [];
@@ -1139,6 +1183,38 @@ export default function ServicesPage() {
     saveStaffMutation.mutate(staffFormData);
   };
 
+  const requestStaffPortalAccessChange = (nextEnabled: boolean) => {
+    if (nextEnabled === staffFormData.portalAccessEnabled) return;
+
+    setPortalAccessConfirmation({
+      action: nextEnabled ? "enable" : "disable",
+      scope: "form",
+    });
+  };
+
+  const confirmStaffPortalAccessChange = () => {
+    if (!portalAccessConfirmation) return;
+
+    if (portalAccessConfirmation.scope === "form") {
+      setStaffFormData((current) => ({
+        ...current,
+        portalAccessEnabled: portalAccessConfirmation.action === "enable",
+        portalPassword:
+          portalAccessConfirmation.action === "disable"
+            ? ""
+            : current.portalPassword,
+      }));
+      setPortalAccessConfirmation(null);
+      return;
+    }
+
+    staffPortalAccessMutation.mutate({
+      id: portalAccessConfirmation.staff.id,
+      portalAccessEnabled: false,
+    });
+    setPortalAccessConfirmation(null);
+  };
+
   const moveService = (
     serviceId: string,
     direction: "up" | "down",
@@ -1184,6 +1260,12 @@ export default function ServicesPage() {
   };
 
   const isLoading = isLoadingServices || isLoadingStaff || isLoadingGroups;
+  const portalConfirmationStaffName =
+    portalAccessConfirmation?.scope === "member"
+      ? portalAccessConfirmation.staff.fullName
+      : staffFormData.fullName || "this staff member";
+  const portalConfirmationIsEnable =
+    portalAccessConfirmation?.action === "enable";
 
   if (isLoading) {
     return <DashboardPageLoading />;
@@ -1331,8 +1413,21 @@ export default function ServicesPage() {
           businessHoursRecord={businessHoursRecord}
           onEdit={openStaffModal}
           onDelete={(id) => deleteStaffMutation.mutate(id)}
+          onDisablePortalAccess={(member) =>
+            setPortalAccessConfirmation({
+              action: "disable",
+              scope: "member",
+              staff: member,
+            })
+          }
         />
-      )}{" "}
+      )}
+      {staffPortalAccessMutation.isError && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+          {staffPortalAccessMutation.error?.message ||
+            "Failed to update employee login."}
+        </div>
+      )}
       {/* Service Modal */}
       {modalType === "service" && (
         <div
@@ -1704,10 +1799,7 @@ export default function ServicesPage() {
                             type="checkbox"
                             checked={staffFormData.portalAccessEnabled}
                             onChange={(e) =>
-                              setStaffFormData({
-                                ...staffFormData,
-                                portalAccessEnabled: e.target.checked,
-                              })
+                              requestStaffPortalAccessChange(e.target.checked)
                             }
                             className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary dark:border-gray-600"
                           />
@@ -1732,7 +1824,8 @@ export default function ServicesPage() {
                             </p>
                             <p className="mt-2 leading-6 text-gray-700 dark:text-gray-200">
                               When access is first enabled, Clientific emails a temporary password.
-                              The employee must create their own password before seeing appointments.
+                              The email tells them to sign in, use the temporary password once, and
+                              create their own password before seeing appointments.
                             </p>
                             {editingStaff?.passwordChangeRequired ? (
                               <p className="mt-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
@@ -1742,6 +1835,14 @@ export default function ServicesPage() {
                           </div>
                         </div>
                       )}
+                      {editingStaff?.portalAccessEnabled &&
+                        !staffFormData.portalAccessEnabled && (
+                          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                            Saving will immediately disable this employee login
+                            and clear their password. Their staff profile and
+                            appointment history stay intact.
+                          </div>
+                        )}
                     </section>
                   </div>
 
@@ -2353,6 +2454,94 @@ export default function ServicesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {portalAccessConfirmation && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="staff-portal-confirmation-title"
+            className="w-full max-w-lg rounded-3xl border border-gray-100 bg-white p-6 shadow-2xl dark:border-gray-700 dark:bg-gray-900"
+          >
+            <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-primary dark:text-primary-300">
+              Employee app access
+            </p>
+            <h3
+              id="staff-portal-confirmation-title"
+              className="text-2xl font-bold text-gray-950 dark:text-white"
+            >
+              {portalConfirmationIsEnable
+                ? `Enable login for ${portalConfirmationStaffName}?`
+                : `Disable login for ${portalConfirmationStaffName}?`}
+            </h3>
+            {portalConfirmationIsEnable ? (
+              <div className="mt-4 space-y-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                <p>
+                  Saving this staff member will create an appointment-only
+                  employee account and email them a temporary password with
+                  step-by-step sign-in instructions.
+                </p>
+                <ul className="space-y-2">
+                  <li className="flex gap-2">
+                    <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary" />
+                    They must use the temporary password once, then create
+                    their own password.
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary" />
+                    They only see appointments assigned to them.
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary" />
+                    Customer phone numbers, CRM lists, deals, billing, and
+                    settings stay hidden.
+                  </li>
+                </ul>
+                <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                  Make sure their email is correct before saving.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                <p>
+                  This immediately turns off their employee login and clears
+                  their password. Use this when an employee leaves or should no
+                  longer see their appointment calendar.
+                </p>
+                <p>
+                  Their staff profile, service assignments, appointment history,
+                  and business records stay intact.
+                </p>
+              </div>
+            )}
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setPortalAccessConfirmation(null)}
+                className="rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                disabled={staffPortalAccessMutation.isPending}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmStaffPortalAccessChange}
+                className={`rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                  portalConfirmationIsEnable
+                    ? "bg-primary hover:bg-primary-600"
+                    : "bg-amber-600 hover:bg-amber-700"
+                }`}
+                disabled={staffPortalAccessMutation.isPending}
+              >
+                {staffPortalAccessMutation.isPending
+                  ? "Updating..."
+                  : portalConfirmationIsEnable
+                    ? "Enable employee login"
+                    : "Disable employee login"}
+              </button>
+            </div>
           </div>
         </div>
       )}
