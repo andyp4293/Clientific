@@ -145,6 +145,9 @@ describe('MobileServicesScreen', () => {
     renderScreen({ onUpdateStaff });
 
     fireEvent.press(screen.getByTestId('mobile-services-tab-staff'));
+    expect(screen.getByText('Mon 9:00 AM-5:00 PM • Tue 10:00 AM-6:00 PM')).toBeTruthy();
+    expect(screen.queryByText('Mon 09:00-17:00 • Tue 10:00-18:00')).toBeNull();
+
     fireEvent.press(screen.getByTestId('mobile-staff-edit-staff-1'));
 
     expect(screen.getByDisplayValue('9:00 AM')).toBeTruthy();

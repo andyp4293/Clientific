@@ -145,6 +145,25 @@ function formatStaffTimeInput(value?: string | null, fallback = '09:00') {
   return normalized ? formatScheduleTimeLabel(normalized) : value ?? fallback;
 }
 
+function formatStaffWorkHoursSummary(member: MobileStaffRecord) {
+  const workDays = member.workDays?.length ? member.workDays : [];
+  const workHours = member.workHours ?? {};
+
+  const summary = workDays
+    .slice()
+    .sort((left, right) => left - right)
+    .map((day) => {
+      const slot = workHours[day];
+      if (!slot?.startTime || !slot?.endTime) return null;
+
+      const label = DAY_OPTIONS.find((option) => option.value === day)?.label ?? `Day ${day}`;
+      return `${label} ${formatStaffTimeInput(slot.startTime)}-${formatStaffTimeInput(slot.endTime)}`;
+    })
+    .filter(Boolean);
+
+  return summary.length ? summary.join(' • ') : member.workHoursLabel;
+}
+
 function staffTimeToMinutes(value: string) {
   const normalized = normalizeStaffTimeInput(value);
   if (!normalized) return null;
@@ -1264,7 +1283,7 @@ export function MobileServicesScreen({
                         {member.workDaysLabel}
                       </Text>
                       <Text style={[styles.metaText, { color: theme.mutedText }]}>
-                        {member.workHoursLabel}
+                        {formatStaffWorkHoursSummary(member)}
                       </Text>
 
                       <View style={styles.groupRow}>

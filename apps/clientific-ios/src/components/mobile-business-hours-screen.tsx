@@ -14,6 +14,7 @@ import type {
   MobileBusinessHoursUpdateInput,
 } from '@/lib/clientific-api';
 import { getClientificTheme } from '@/lib/clientific-mobile-theme';
+import { formatScheduleTimeLabel } from '@/lib/staff-schedule';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type MobileBusinessHoursScreenProps = {
@@ -41,6 +42,53 @@ type EditableClosure = {
   label: string;
   formattedDate?: string;
 };
+
+function normalizeBusinessTimeInput(value?: string | null) {
+  if (!value) return null;
+
+  const normalizedValue = value.trim().toUpperCase().replace(/\s+/g, ' ');
+  const match = normalizedValue.match(/^(\d{1,2})(?::(\d{2}))?\s*(A\.?M\.?|P\.?M\.?)?$/);
+  if (!match) return null;
+
+  let hour = Number.parseInt(match[1], 10);
+  const minute = match[2] ? Number.parseInt(match[2], 10) : 0;
+  const period = match[3]?.replace(/\./g, '');
+
+  if (!Number.isFinite(hour) || !Number.isFinite(minute) || minute < 0 || minute > 59) {
+    return null;
+  }
+
+  if (period) {
+    if (hour < 1 || hour > 12) return null;
+    if (period === 'AM') hour = hour === 12 ? 0 : hour;
+    if (period === 'PM') hour = hour === 12 ? 12 : hour + 12;
+  } else if (hour < 0 || hour > 23) {
+    return null;
+  }
+
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function businessTimeToMinutes(value: string) {
+  const [hours, minutes] = value.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+function formatBusinessTimeInput(value?: string | null, fallback = '09:00') {
+  const normalized = normalizeBusinessTimeInput(value ?? fallback);
+  return normalized ? formatScheduleTimeLabel(normalized) : value ?? fallback;
+}
+
+function formatBusinessTimeRange(openTime?: string | null, closeTime?: string | null) {
+  const normalizedOpen = normalizeBusinessTimeInput(openTime);
+  const normalizedClose = normalizeBusinessTimeInput(closeTime);
+
+  if (!normalizedOpen || !normalizedClose) {
+    return '--';
+  }
+
+  return `${formatScheduleTimeLabel(normalizedOpen)} - ${formatScheduleTimeLabel(normalizedClose)}`;
+}
 
 export function MobileBusinessHoursScreen({
   data,
@@ -98,14 +146,43 @@ export function MobileBusinessHoursScreen({
   async function handleSave() {
     setSaveError(null);
 
+    const normalizedHours: MobileBusinessHoursUpdateInput['hours'] = [];
+
+    for (const hour of localHours) {
+      if (!hour.isOpen) {
+        normalizedHours.push({
+          dayOfWeek: hour.dayOfWeek,
+          isOpen: false,
+          openTime: null,
+          closeTime: null,
+        });
+        continue;
+      }
+
+      const openTime = normalizeBusinessTimeInput(hour.openTime);
+      const closeTime = normalizeBusinessTimeInput(hour.closeTime);
+
+      if (!openTime || !closeTime) {
+        setSaveError(`Use AM/PM times for ${hour.label}, like 9:00 AM to 5:00 PM.`);
+        return;
+      }
+
+      if (businessTimeToMinutes(openTime) >= businessTimeToMinutes(closeTime)) {
+        setSaveError(`${hour.label} closing time must be after opening time.`);
+        return;
+      }
+
+      normalizedHours.push({
+        dayOfWeek: hour.dayOfWeek,
+        isOpen: true,
+        openTime,
+        closeTime,
+      });
+    }
+
     try {
       await onSave({
-        hours: localHours.map((hour) => ({
-          dayOfWeek: hour.dayOfWeek,
-          isOpen: hour.isOpen,
-          openTime: hour.isOpen ? hour.openTime : null,
-          closeTime: hour.isOpen ? hour.closeTime : null,
-        })),
+        hours: normalizedHours,
         closures: localClosures.map((closure) => ({
           date: closure.date,
           label: closure.label.trim() || null,
@@ -282,7 +359,7 @@ export function MobileBusinessHoursScreen({
                         <Text style={[styles.rowTitle, { color: theme.text }]}>{hour.label}</Text>
                         <Text style={[styles.rowSubtitle, { color: theme.mutedText }]}>
                           {hour.isOpen
-                            ? `${hour.openTime ?? '--:--'} - ${hour.closeTime ?? '--:--'}`
+                            ? formatBusinessTimeRange(hour.openTime, hour.closeTime)
                             : 'Closed'}
                         </Text>
                       </View>
@@ -325,6 +402,7 @@ export function MobileBusinessHoursScreen({
                         <TextInput
                           autoCapitalize="none"
                           autoCorrect={false}
+                          keyboardType="numbers-and-punctuation"
                           onChangeText={(value) =>
                             setLocalHours((current) =>
                               current.map((entry) =>
@@ -334,7 +412,7 @@ export function MobileBusinessHoursScreen({
                               ),
                             )
                           }
-                          placeholder="09:00"
+                          placeholder="9:00 AM"
                           placeholderTextColor={theme.mutedText}
                           style={[
                             styles.timeInput,
@@ -345,12 +423,13 @@ export function MobileBusinessHoursScreen({
                             },
                           ]}
                           testID={`mobile-business-hours-open-${hour.dayOfWeek}`}
-                          value={hour.openTime ?? ''}
+                          value={formatBusinessTimeInput(hour.openTime, '09:00')}
                         />
                         <Text style={[styles.timeSeparator, { color: theme.mutedText }]}>to</Text>
                         <TextInput
                           autoCapitalize="none"
                           autoCorrect={false}
+                          keyboardType="numbers-and-punctuation"
                           onChangeText={(value) =>
                             setLocalHours((current) =>
                               current.map((entry) =>
@@ -360,7 +439,7 @@ export function MobileBusinessHoursScreen({
                               ),
                             )
                           }
-                          placeholder="17:00"
+                          placeholder="5:00 PM"
                           placeholderTextColor={theme.mutedText}
                           style={[
                             styles.timeInput,
@@ -371,7 +450,7 @@ export function MobileBusinessHoursScreen({
                             },
                           ]}
                           testID={`mobile-business-hours-close-${hour.dayOfWeek}`}
-                          value={hour.closeTime ?? ''}
+                          value={formatBusinessTimeInput(hour.closeTime, '17:00')}
                         />
                       </View>
                     ) : null}
