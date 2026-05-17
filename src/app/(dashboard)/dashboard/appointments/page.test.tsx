@@ -57,4 +57,14 @@ describe('appointments page mobile dialog contract', () => {
     expect(source).toContain('Clientific will text them when the service, staff,');
     expect(source).toContain('Change the service to change the appointment length.');
   });
+
+  it('lets manual dashboard appointment creation assign different staff to consecutive services', () => {
+    const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('Multiple services run consecutively in the order you pick them.');
+    expect(source).toContain('Staff by service');
+    expect(source).toContain('serviceStaffAssignments: selectedServiceIds.map');
+    expect(source).toContain('Times reserve {effectiveDuration} minutes and check each assigned employee');
+    expect(source).toContain('Select at least one service before creating the appointment');
+  });
 });

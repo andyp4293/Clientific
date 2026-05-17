@@ -137,6 +137,9 @@ beforeEach(() => {
   mockAppointmentUpdate.mockResolvedValue({ id: 'appt-1', reminderSent: true });
   mockScheduleAppointmentReminder.mockResolvedValue({ success: true, sid: 'SM_reminder' });
   mockEnsureAppointmentShortId.mockResolvedValue('ABC1234');
+  mockServiceFindMany.mockResolvedValue([
+    { id: 'svc-1', name: 'Gel Manicure', duration: 60 },
+  ]);
 });
 
 describe('GET /api/appointments', () => {
@@ -350,6 +353,112 @@ describe('POST /api/appointments', () => {
         message: 'Khang Nguyen was scheduled for Gel Manicure with Andy at Tue, Mar 10, 10:00 AM.',
       }),
     );
+  });
+
+  it('creates consecutive manual service segments with different staff assignments', async () => {
+    mockSession.mockResolvedValue(activeSession);
+    mockBusiness
+      .mockResolvedValueOnce({ subscriptionStatus: 'active', trialEndsAt: null })
+      .mockResolvedValueOnce(fakeBusiness);
+    mockServiceFindMany.mockResolvedValue([
+      { id: 'svc-gel', name: 'Gel Manicure', duration: 45 },
+      { id: 'svc-pedi', name: 'Spa Pedicure', duration: 60 },
+    ]);
+    mockAppointmentFindMany.mockResolvedValue([]);
+    mockAppointmentCreate.mockImplementation(({ data }: any) =>
+      Promise.resolve({
+        id: data.serviceId === 'svc-gel' ? 'appt-gel' : 'appt-pedi',
+        customerId: data.customerId,
+        businessId: data.businessId,
+        shortId: null,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        duration: data.duration,
+        notes: data.notes,
+        customer: {
+          id: 'cust-1',
+          name: 'Khang Nguyen',
+          phone: '+15551234567',
+          email: null,
+          smsConsent: true,
+          smsOptedOut: false,
+        },
+        service: {
+          id: data.serviceId,
+          name: data.serviceId === 'svc-gel' ? 'Gel Manicure' : 'Spa Pedicure',
+        },
+        staff: data.staffId
+          ? {
+              id: data.staffId,
+              fullName: data.staffId === 'staff-a' ? 'Annie' : 'Binh',
+            }
+          : null,
+        business: { name: 'Test Salon' },
+      })
+    );
+
+    const res = await POST(
+      makeRequest({
+        customerId: 'cust-1',
+        serviceId: 'svc-gel',
+        serviceIds: ['svc-gel', 'svc-pedi'],
+        serviceStaffAssignments: [
+          { serviceId: 'svc-gel', staffId: 'staff-a' },
+          { serviceId: 'svc-pedi', staffId: 'staff-b' },
+        ],
+        startTime: '2026-03-10T14:00:00.000Z',
+        duration: 999,
+        appointmentSmsConsent: true,
+      })
+    );
+
+    expect(res.status).toBe(201);
+    expect(mockAppointmentCreate).toHaveBeenCalledTimes(2);
+    expect(mockAppointmentCreate).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          serviceId: 'svc-gel',
+          serviceIds: ['svc-gel'],
+          staffId: 'staff-a',
+          startTime: new Date('2026-03-10T14:00:00.000Z'),
+          endTime: new Date('2026-03-10T14:45:00.000Z'),
+          duration: 45,
+        }),
+      })
+    );
+    expect(mockAppointmentCreate).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          serviceId: 'svc-pedi',
+          serviceIds: ['svc-pedi'],
+          staffId: 'staff-b',
+          startTime: new Date('2026-03-10T14:45:00.000Z'),
+          endTime: new Date('2026-03-10T15:45:00.000Z'),
+          duration: 60,
+        }),
+      })
+    );
+    expect(sendAppointmentConfirmation).toHaveBeenCalledWith(
+      '+15551234567',
+      expect.objectContaining({
+        serviceName: 'Gel Manicure with Annie, Spa Pedicure with Binh',
+        staffName: 'our team',
+        duration: 105,
+        appointmentUrl: expect.stringContaining('/appt/batch/'),
+      })
+    );
+    expect(mockCreateBusinessNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        staffIds: ['staff-a', 'staff-b'],
+        title: 'New Multi-Service Appointment',
+        message: expect.stringContaining('Gel Manicure with Annie, Spa Pedicure with Binh'),
+      })
+    );
+    const body = await res.json();
+    expect(body.appointments).toHaveLength(2);
+    expect(body.appointmentBatchUrl).toContain('/appt/batch/');
   });
 
   it('creates appointment without staffId (no conflict check)', async () => {

@@ -133,7 +133,7 @@ beforeEach(() => {
   } as never);
   mockFindStaff.mockResolvedValue({ id: 'staff-1', fullName: 'Taylor' } as never);
   mockFindAppointments.mockResolvedValue([]);
-  mockFindServices.mockResolvedValue([{ id: 'svc-1', name: 'Color' }] as never);
+  mockFindServices.mockResolvedValue([{ id: 'svc-1', name: 'Haircut', duration: 45 }] as never);
   mockFindService.mockResolvedValue({
     id: 'svc-1',
     name: 'Haircut',
@@ -320,9 +320,9 @@ describe('mobile appointments route', () => {
     );
 
     expect(response.status).toBe(201);
-    expect(mockFindService).toHaveBeenCalledWith({
+    expect(mockFindServices).toHaveBeenCalledWith({
       where: {
-        id: 'svc-1',
+        id: { in: ['svc-1'] },
         businessId: 'biz-1',
         active: true,
       },
@@ -392,6 +392,111 @@ describe('mobile appointments route', () => {
     );
   });
 
+  it('creates consecutive mobile appointment segments with per-service staff assignments', async () => {
+    mockFindServices.mockResolvedValueOnce([
+      { id: 'svc-1', name: 'Haircut', duration: 45 },
+      { id: 'svc-2', name: 'Gel manicure', duration: 60 },
+    ] as never);
+    mockCreateAppointment.mockImplementation(({ data }: any) =>
+      Promise.resolve({
+        id: data.serviceId === 'svc-1' ? 'appt-haircut' : 'appt-gel',
+        customerId: data.customerId,
+        duration: data.duration,
+        notes: data.notes,
+        status: 'scheduled',
+        source: 'dashboard',
+        shortId: null,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        customer: {
+          id: 'cust-1',
+          name: 'Jordan Lee',
+          phone: '+15551234567',
+          smsConsent: true,
+          smsOptedOut: false,
+        },
+        service: {
+          id: data.serviceId,
+          name: data.serviceId === 'svc-1' ? 'Haircut' : 'Gel manicure',
+        },
+        staff: data.staffId
+          ? {
+              id: data.staffId,
+              fullName: data.staffId === 'staff-1' ? 'Taylor' : 'Morgan',
+            }
+          : null,
+      }) as never
+    );
+
+    const response = await POST(
+      new Request('https://www.clientific.app/api/mobile/appointments', {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer token',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerId: 'cust-1',
+          serviceId: 'svc-1',
+          serviceIds: ['svc-1', 'svc-2'],
+          serviceStaffAssignments: [
+            { serviceId: 'svc-1', staffId: 'staff-1' },
+            { serviceId: 'svc-2', staffId: 'staff-2' },
+          ],
+          startTime: '2026-03-30T15:00:00.000Z',
+          duration: 999,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(mockCreateAppointment).toHaveBeenCalledTimes(2);
+    expect(mockCreateAppointment).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          serviceId: 'svc-1',
+          serviceIds: ['svc-1'],
+          staffId: 'staff-1',
+          endTime: new Date('2026-03-30T15:45:00.000Z'),
+          duration: 45,
+        }),
+      }),
+    );
+    expect(mockCreateAppointment).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          serviceId: 'svc-2',
+          serviceIds: ['svc-2'],
+          staffId: 'staff-2',
+          startTime: new Date('2026-03-30T15:45:00.000Z'),
+          endTime: new Date('2026-03-30T16:45:00.000Z'),
+          duration: 60,
+        }),
+      }),
+    );
+    expect(mockCreateBusinessNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        staffIds: ['staff-1', 'staff-2'],
+        title: 'New Multi-Service Appointment',
+        message: expect.stringContaining('Haircut with Taylor, Gel manicure with Morgan'),
+      }),
+    );
+    expect(mockSendAppointmentConfirmation).toHaveBeenCalledWith(
+      '+15551234567',
+      expect.objectContaining({
+        serviceName: 'Haircut with Taylor, Gel manicure with Morgan',
+        staffName: 'our team',
+        duration: 105,
+        appointmentUrl: expect.stringContaining('/appt/batch/'),
+      }),
+    );
+    const body = await response.json();
+    expect(body.appointments).toHaveLength(2);
+    expect(body.appointmentBatchUrl).toContain('/appt/batch/');
+  });
+
   it('blocks appointment SMS consent when the customer has no phone number', async () => {
     mockFindCustomer.mockResolvedValueOnce({
       id: 'cust-1',
@@ -449,7 +554,7 @@ describe('mobile appointments route', () => {
   });
 
   it('rejects inactive or cross-business services before creating a mobile appointment', async () => {
-    mockFindService.mockResolvedValueOnce(null);
+    mockFindServices.mockResolvedValueOnce([]);
 
     const response = await POST(
       new Request('https://www.clientific.app/api/mobile/appointments', {
@@ -469,7 +574,7 @@ describe('mobile appointments route', () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
-      error: 'Select an active service before creating the appointment.',
+      error: 'Select active services before creating the appointment.',
     });
     expect(mockCreateAppointment).not.toHaveBeenCalled();
   });

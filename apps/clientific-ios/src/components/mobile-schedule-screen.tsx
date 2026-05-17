@@ -71,6 +71,8 @@ type AppointmentCreateFormState = {
   newCustomerName: string;
   newCustomerPhone: string;
   serviceId: string;
+  serviceIds: string[];
+  serviceStaffAssignments: Record<string, string>;
   staffId: string;
   date: string;
   time: string;
@@ -218,6 +220,8 @@ function createInitialAppointmentForm(dateKey: string): AppointmentCreateFormSta
     newCustomerName: '',
     newCustomerPhone: '',
     serviceId: '',
+    serviceIds: [],
+    serviceStaffAssignments: {},
     staffId: '',
     date: dateKey,
     time: '',
@@ -738,16 +742,27 @@ export function MobileScheduleScreen({
 
   const availableServices = servicesSummary?.services.filter((service) => service.isActive) ?? [];
   const availableStaff = servicesSummary?.staff.filter((staff) => staff.isActive) ?? [];
-  const selectedCreateService =
-    availableServices.find((service) => service.id === createForm.serviceId) ?? null;
+  const selectedCreateServiceIds = createForm.serviceIds.length
+    ? createForm.serviceIds
+    : createForm.serviceId
+      ? [createForm.serviceId]
+      : [];
+  const selectedCreateServices = selectedCreateServiceIds
+    .map((serviceId) => availableServices.find((service) => service.id === serviceId))
+    .filter((service): service is MobileServiceRecord => Boolean(service));
+  const selectedCreateService = selectedCreateServices[0] ?? null;
   const selectedEditService =
     editForm.serviceId
       ? availableServices.find((service) => service.id === editForm.serviceId) ?? null
       : null;
-  const createEffectiveDuration = selectedCreateService?.duration ?? createForm.duration;
+  const createEffectiveDuration = selectedCreateServices.length
+    ? selectedCreateServices.reduce((sum, service) => sum + service.duration, 0)
+    : createForm.duration;
   const editEffectiveDuration = selectedEditService?.duration ?? editForm.duration;
+  const getCreateEligibleStaffForService = (serviceId: string) =>
+    availableStaff.filter((staff) => staffCanPerformService(staff, serviceId));
   const createEligibleStaff = selectedCreateService
-    ? availableStaff.filter((staff) => staffCanPerformService(staff, selectedCreateService.id))
+    ? getCreateEligibleStaffForService(selectedCreateService.id)
     : availableStaff;
   const editEligibleStaff = selectedEditService
     ? availableStaff.filter((staff) => staffCanPerformService(staff, selectedEditService.id))
@@ -784,14 +799,17 @@ export function MobileScheduleScreen({
   );
   const createSuggestedTimeOptions = useMemo(
     () => {
-      if (!selectedCreateService) {
+      if (!selectedCreateServices.length) {
         return [];
       }
 
       return getSuggestedTimeOptions({
         dateKey: createForm.date,
         duration: createEffectiveDuration,
-        staffId: createForm.staffId,
+        staffId:
+          selectedCreateServiceIds.length === 1
+            ? createForm.serviceStaffAssignments[selectedCreateServiceIds[0]] || createForm.staffId
+            : '',
         staff: createEligibleStaff,
       });
     },
@@ -799,8 +817,10 @@ export function MobileScheduleScreen({
       createEffectiveDuration,
       createEligibleStaff,
       createForm.date,
+      createForm.serviceStaffAssignments,
       createForm.staffId,
-      selectedCreateService,
+      selectedCreateServiceIds,
+      selectedCreateServices.length,
     ],
   );
   const editSuggestedTimeOptions = useMemo(
@@ -951,26 +971,38 @@ export function MobileScheduleScreen({
     setCreateForm((current) => ({
       ...current,
       serviceId: defaultService.id,
+      serviceIds: [defaultService.id],
       duration: defaultService.duration,
       time: '',
     }));
-  }, [availableServices, createForm.serviceId, isCreateSheetVisible]);
+  }, [availableServices, createForm.serviceId, createForm.serviceIds.length, isCreateSheetVisible]);
 
   useEffect(() => {
-    if (!selectedCreateService || !createForm.staffId) {
-      return;
+    if (!selectedCreateServices.length) return;
+
+    const nextAssignments = { ...createForm.serviceStaffAssignments };
+    let changed = false;
+
+    for (const service of selectedCreateServices) {
+      const staffId = nextAssignments[service.id];
+      if (!staffId) continue;
+      if (getCreateEligibleStaffForService(service.id).some((staff) => staff.id === staffId)) {
+        continue;
+      }
+
+      delete nextAssignments[service.id];
+      changed = true;
     }
 
-    if (createEligibleStaff.some((staff) => staff.id === createForm.staffId)) {
-      return;
-    }
+    if (!changed) return;
 
     setCreateForm((current) => ({
       ...current,
+      serviceStaffAssignments: nextAssignments,
       staffId: '',
       time: '',
     }));
-  }, [createEligibleStaff, createForm.staffId, selectedCreateService]);
+  }, [availableStaff, createForm.serviceStaffAssignments, selectedCreateServices]);
 
   useEffect(() => {
     if (!selectedEditService || !editForm.staffId) {
@@ -1018,6 +1050,7 @@ export function MobileScheduleScreen({
         ? {
             ...initialForm,
             serviceId: defaultService.id,
+            serviceIds: [defaultService.id],
             duration: defaultService.duration,
           }
         : initialForm,
@@ -1076,7 +1109,7 @@ export function MobileScheduleScreen({
   };
 
   const handleSubmitCreate = async () => {
-    if (!selectedCreateService) {
+    if (!selectedCreateServices.length) {
       setSheetError('Add and select an active service before creating the appointment.');
       return;
     }
@@ -1123,8 +1156,16 @@ export function MobileScheduleScreen({
 
       await onCreateAppointment({
         customerId,
-        serviceId: createForm.serviceId || null,
-        staffId: createForm.staffId || null,
+        serviceId: selectedCreateServiceIds[0] || null,
+        serviceIds: selectedCreateServiceIds,
+        staffId:
+          selectedCreateServiceIds.length === 1
+            ? createForm.serviceStaffAssignments[selectedCreateServiceIds[0]] || createForm.staffId || null
+            : null,
+        serviceStaffAssignments: selectedCreateServiceIds.map((serviceId) => ({
+          serviceId,
+          staffId: createForm.serviceStaffAssignments[serviceId] || null,
+        })),
         startTime: start.toISOString(),
         duration: createEffectiveDuration,
         notes: createForm.notes.trim() || null,
@@ -1720,11 +1761,11 @@ export function MobileScheduleScreen({
             ]}>
             <SectionLabel label="Service & staff" />
             <Text style={[styles.helperText, { color: theme.mutedText }]}>
-              Pick the service first. Clientific uses that service's duration to suggest the right
-              appointment length and available start times.
+              Pick one or more services. Multiple services run back-to-back, and each service can
+              have its own employee.
             </Text>
 
-            <SectionLabel label="Service" />
+            <SectionLabel label="Services" />
             {availableServices.length ? (
               <>
                 <View style={styles.segmentRow}>
@@ -1733,37 +1774,59 @@ export function MobileScheduleScreen({
                       key={service.id}
                       label={service.name}
                       onPress={() =>
-                        setCreateForm((current) => ({
-                          ...current,
-                          serviceId: service.id,
-                          duration: service.duration,
-                          staffId:
-                            current.staffId && service.id !== current.serviceId
-                              ? ''
-                              : current.staffId,
-                          time: '',
-                        }))
+                        setCreateForm((current) => {
+                          const alreadySelected = current.serviceIds.includes(service.id);
+                          const serviceIds = alreadySelected
+                            ? current.serviceIds.filter((serviceId) => serviceId !== service.id)
+                            : [...current.serviceIds, service.id];
+                          const serviceStaffAssignments = {
+                            ...current.serviceStaffAssignments,
+                          };
+                          if (alreadySelected) {
+                            delete serviceStaffAssignments[service.id];
+                          }
+                          const primaryServiceId = serviceIds[0] ?? '';
+                          const duration = serviceIds.length
+                            ? serviceIds.reduce((sum, serviceId) => {
+                                const selected = availableServices.find(
+                                  (entry) => entry.id === serviceId,
+                                );
+                                return sum + (selected?.duration ?? 0);
+                              }, 0)
+                            : current.duration;
+
+                          return {
+                            ...current,
+                            serviceId: primaryServiceId,
+                            serviceIds,
+                            serviceStaffAssignments,
+                            staffId: primaryServiceId
+                              ? serviceStaffAssignments[primaryServiceId] ?? ''
+                              : '',
+                            duration,
+                            time: '',
+                          };
+                        })
                       }
-                      selected={createForm.serviceId === service.id}
+                      selected={selectedCreateServiceIds.includes(service.id)}
                       testID={`mobile-schedule-create-service-${service.id}`}
                     />
                   ))}
                 </View>
 
-                {selectedCreateService ? (
+                {selectedCreateServices.length ? (
                   <View
                     style={[
                       styles.summaryCard,
                       { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
                     ]}>
                     <Text style={[styles.summaryCardTitle, { color: theme.text }]}>
-                      {selectedCreateService.name}
+                      {selectedCreateServices.length === 1
+                        ? selectedCreateServices[0].name
+                        : `${selectedCreateServices.length} services selected`}
                     </Text>
                     <Text style={[styles.summaryCardText, { color: theme.mutedText }]}>
-                      {selectedCreateService.durationLabel} appointment
-                      {selectedCreateService.priceLabel
-                        ? ` · ${selectedCreateService.priceLabel}`
-                        : ''}
+                      {createEffectiveDuration} min total · consecutive appointment
                     </Text>
                   </View>
                 ) : null}
@@ -1775,47 +1838,101 @@ export function MobileScheduleScreen({
               </Text>
             )}
 
-            <SectionLabel label="Staff" />
-            <View style={styles.staffChoiceStack}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ selected: !createForm.staffId }}
-                onPress={() => setCreateForm((current) => ({ ...current, staffId: '' }))}
-                style={[
-                  styles.staffChoiceCard,
-                  {
-                    backgroundColor: !createForm.staffId ? theme.accentSoft : theme.surfaceMuted,
-                    borderColor: !createForm.staffId ? theme.accent : theme.border,
-                  },
-                ]}
-                testID="mobile-schedule-create-staff-any">
-                <View style={styles.staffChoiceHeader}>
-                  <View style={styles.staffChoiceCopy}>
-                    <Text style={[styles.staffChoiceTitle, { color: theme.text }]}>
-                      Any available team member
-                    </Text>
-                    <Text style={[styles.staffChoiceRole, { color: theme.mutedText }]}>
-                      Uses the first open employee who can perform the selected service.
-                    </Text>
-                  </View>
-                  {!createForm.staffId ? (
-                    <View style={[styles.staffSelectedBadge, { backgroundColor: theme.accent }]}>
-                      <Text style={styles.staffSelectedBadgeText}>Selected</Text>
-                    </View>
-                  ) : null}
+            {selectedCreateServices.length ? (
+              <>
+                <SectionLabel label="Staff by service" />
+                <View style={styles.staffChoiceStack}>
+                  {selectedCreateServices.map((service, index) => {
+                    const assignedStaffId = createForm.serviceStaffAssignments[service.id] ?? '';
+                    const eligibleStaffForService = getCreateEligibleStaffForService(service.id);
+                    return (
+                      <View
+                        key={service.id}
+                        style={[
+                          styles.serviceStaffCard,
+                          { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                        ]}>
+                        <Text style={[styles.staffChoiceTitle, { color: theme.text }]}>
+                          {index + 1}. {service.name}
+                        </Text>
+                        <Text style={[styles.staffChoiceRole, { color: theme.mutedText }]}>
+                          {service.durationLabel} · choose who performs this service.
+                        </Text>
+                        <View style={styles.staffChoiceStack}>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: !assignedStaffId }}
+                            onPress={() =>
+                              setCreateForm((current) => ({
+                                ...current,
+                                serviceStaffAssignments: {
+                                  ...current.serviceStaffAssignments,
+                                  [service.id]: '',
+                                },
+                                staffId: index === 0 ? '' : current.staffId,
+                                time: '',
+                              }))
+                            }
+                            style={[
+                              styles.staffChoiceCard,
+                              {
+                                backgroundColor: !assignedStaffId
+                                  ? theme.accentSoft
+                                  : theme.surface,
+                                borderColor: !assignedStaffId ? theme.accent : theme.border,
+                              },
+                            ]}
+                            testID={`mobile-schedule-create-staff-any-${service.id}`}>
+                            <View style={styles.staffChoiceHeader}>
+                              <View style={styles.staffChoiceCopy}>
+                                <Text style={[styles.staffChoiceTitle, { color: theme.text }]}>
+                                  Any available
+                                </Text>
+                                <Text style={[styles.staffChoiceRole, { color: theme.mutedText }]}>
+                                  Clientific can assign an open employee for this service.
+                                </Text>
+                              </View>
+                              {!assignedStaffId ? (
+                                <View
+                                  style={[
+                                    styles.staffSelectedBadge,
+                                    { backgroundColor: theme.accent },
+                                  ]}>
+                                  <Text style={styles.staffSelectedBadgeText}>Selected</Text>
+                                </View>
+                              ) : null}
+                            </View>
+                          </Pressable>
+                          {eligibleStaffForService.map((staff) => (
+                            <StaffChoiceCard
+                              key={staff.id}
+                              member={staff}
+                              onPress={() =>
+                                setCreateForm((current) => ({
+                                  ...current,
+                                  serviceStaffAssignments: {
+                                    ...current.serviceStaffAssignments,
+                                    [service.id]: staff.id,
+                                  },
+                                  staffId: index === 0 ? staff.id : current.staffId,
+                                  time: '',
+                                }))
+                              }
+                              selected={assignedStaffId === staff.id}
+                              testIDPrefix={
+                                selectedCreateServices.length === 1
+                                  ? 'mobile-schedule-create-staff'
+                                  : `mobile-schedule-create-staff-${service.id}`
+                              }
+                            />
+                          ))}
+                        </View>
+                      </View>
+                    );
+                  })}
                 </View>
-              </Pressable>
-              {createEligibleStaff.map((staff) => (
-                <StaffChoiceCard
-                  key={staff.id}
-                  member={staff}
-                  onPress={() =>
-                    setCreateForm((current) => ({ ...current, staffId: staff.id, time: '' }))
-                  }
-                  selected={createForm.staffId === staff.id}
-                />
-              ))}
-            </View>
+              </>
+            ) : null}
 
             <SectionLabel label="Notes" />
             <TextInput
@@ -1870,8 +1987,10 @@ export function MobileScheduleScreen({
             </View>
 
             <Text style={[styles.helperText, { color: theme.mutedText }]}>
-              {selectedCreateService
-                ? `Available slots are based on ${selectedCreateService.name} (${selectedCreateService.durationLabel}).`
+              {selectedCreateServices.length
+                ? selectedCreateServices.length === 1
+                  ? `Available slots are based on ${selectedCreateServices[0].name} (${selectedCreateServices[0].durationLabel}).`
+                  : `Available slots reserve ${createEffectiveDuration} minutes for ${selectedCreateServices.length} consecutive services.`
                 : 'Add an active service before choosing an appointment time.'}
             </Text>
 
@@ -1891,7 +2010,7 @@ export function MobileScheduleScreen({
             </View>
             {!createSuggestedTimeOptions.length ? (
               <Text style={[styles.warningText, { color: '#c47f00' }]}>
-                {selectedCreateService
+                {selectedCreateServices.length
                   ? 'No suggested times are available for this day yet. Pick another date or staff member.'
                   : 'Start times will appear after you add an active service.'}
               </Text>
@@ -1979,22 +2098,22 @@ export function MobileScheduleScreen({
           <Pressable
             accessibilityRole="button"
             accessibilityState={{
-              disabled: isSubmittingCreate || !selectedCreateService,
+              disabled: isSubmittingCreate || !selectedCreateServices.length,
             }}
-            disabled={isSubmittingCreate || !selectedCreateService}
+            disabled={isSubmittingCreate || !selectedCreateServices.length}
             onPress={() => void handleSubmitCreate()}
             style={[
               styles.footerPrimaryButton,
               {
                 backgroundColor: theme.accent,
-                opacity: isSubmittingCreate || !selectedCreateService ? 0.55 : 1,
+                opacity: isSubmittingCreate || !selectedCreateServices.length ? 0.55 : 1,
               },
             ]}
             testID="mobile-schedule-create-submit">
             <Text style={styles.footerPrimaryButtonText}>
               {isSubmittingCreate
                 ? 'Creating...'
-                : selectedCreateService
+                : selectedCreateServices.length
                   ? 'Create appointment'
                   : 'Add a service first'}
             </Text>
@@ -2641,6 +2760,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   staffChoiceStack: {
+    gap: 10,
+  },
+  serviceStaffCard: {
+    borderWidth: 1,
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     gap: 10,
   },
   staffChoiceCard: {

@@ -334,7 +334,6 @@ describe('MobileScheduleScreen', () => {
         screen.getByTestId('mobile-schedule-appointment-sms-toggle').props.accessibilityState,
       ).toMatchObject({ checked: true });
     });
-    fireEvent.press(screen.getByTestId('mobile-schedule-create-service-svc-1'));
     expect(screen.getByText('Gentle with first-time clients and excellent at clean gel sets.')).toBeTruthy();
     expect(screen.getByText('Mon, Tue, Wed · All services')).toBeTruthy();
     fireEvent.press(screen.getByTestId('mobile-schedule-create-staff-staff-1'));
@@ -346,9 +345,49 @@ describe('MobileScheduleScreen', () => {
         expect.objectContaining({
           customerId: 'cust-1',
           serviceId: 'svc-1',
+          serviceIds: ['svc-1'],
           staffId: 'staff-1',
+          serviceStaffAssignments: [{ serviceId: 'svc-1', staffId: 'staff-1' }],
           duration: 45,
           appointmentSmsConsent: true,
+        }),
+      );
+    });
+  });
+
+  it('lets owners create consecutive services with a different staff member for each service', async () => {
+    const onCreateAppointment = jest.fn().mockResolvedValue(undefined);
+
+    renderScreen({ onCreateAppointment });
+
+    fireEvent.press(screen.getByTestId('mobile-schedule-add'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mobile-schedule-create-service-svc-2')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('mobile-schedule-create-service-svc-2'));
+
+    expect(screen.getByText('2 services selected')).toBeTruthy();
+    expect(screen.getByText('105 min total · consecutive appointment')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('mobile-schedule-create-staff-svc-1-staff-1'));
+    fireEvent.press(screen.getByTestId('mobile-schedule-create-staff-svc-2-staff-2'));
+    fireEvent.press(screen.getByTestId('mobile-schedule-create-time-10:30'));
+    fireEvent.press(screen.getByTestId('mobile-schedule-create-submit'));
+
+    await waitFor(() => {
+      expect(onCreateAppointment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          customerId: 'cust-1',
+          serviceId: 'svc-1',
+          serviceIds: ['svc-1', 'svc-2'],
+          staffId: null,
+          duration: 105,
+          serviceStaffAssignments: [
+            { serviceId: 'svc-1', staffId: 'staff-1' },
+            { serviceId: 'svc-2', staffId: 'staff-2' },
+          ],
         }),
       );
     });

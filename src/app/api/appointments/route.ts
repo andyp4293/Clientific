@@ -4,7 +4,7 @@ import { authOptions } from '../auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { sendAppointmentConfirmation } from '@/lib/twilio';
 import { sendNewBookingEmail } from '@/lib/email';
-import { businessDayStart } from '@/lib/timezone';
+import { businessDayStart, weekdayIndexInTimeZone } from '@/lib/timezone';
 import { requireActiveSubscription } from '@/lib/subscription';
 import { revalidateTag } from 'next/cache';
 import { getConfiguredAppBaseUrl } from '@/lib/app-url';
@@ -19,8 +19,80 @@ import { scheduleAppointmentReminder } from '@/lib/appointment-reminders';
 import { ensureAppointmentShortId } from '@/lib/appointment-short-id';
 import { createBusinessNotification } from '@/lib/mobile-push';
 import { buildAppointmentScheduledNotificationMessage } from '@/lib/appointment-notification-copy';
+import { createOnlineAppointmentBatchToken } from '@/lib/appointment-confirmation-batches';
+import {
+  buildSegmentServiceStaffSummary,
+  buildServiceBookingSegments,
+  getUniqueAssignedStaffIds,
+  normalizeServiceStaffAssignments,
+  ServiceBookingSegment,
+  shouldCreateSegmentedServiceBooking,
+} from '@/lib/service-staff-assignments';
 
 const businessMidnightUTC = businessDayStart;
+
+function buildOverlapWhere(start: Date, end: Date) {
+  return [
+    {
+      AND: [
+        { startTime: { lte: start } },
+        { endTime: { gt: start } },
+      ],
+    },
+    {
+      AND: [
+        { startTime: { lt: end } },
+        { endTime: { gte: end } },
+      ],
+    },
+    {
+      AND: [
+        { startTime: { gte: start } },
+        { endTime: { lte: end } },
+      ],
+    },
+  ];
+}
+
+async function findStaffConflicts({
+  businessId,
+  segments,
+  staffId,
+  start,
+  end,
+}: {
+  businessId: string;
+  segments?: ServiceBookingSegment[];
+  staffId?: string | null;
+  start?: Date;
+  end?: Date;
+}) {
+  const assignedSegments = segments?.filter((segment) => segment.staffId) ?? [];
+
+  if (assignedSegments.length > 0) {
+    return prisma.appointment.findMany({
+      where: {
+        businessId,
+        status: { in: ['pending', 'scheduled', 'confirmed'] },
+        OR: assignedSegments.map((segment) => ({
+          staffId: segment.staffId,
+          OR: buildOverlapWhere(segment.startTime, segment.endTime),
+        })),
+      },
+    });
+  }
+
+  if (!staffId || staffId === 'anyone' || !start || !end) return [];
+
+  return prisma.appointment.findMany({
+    where: {
+      businessId,
+      staffId,
+      status: { in: ['scheduled', 'confirmed'] },
+      OR: buildOverlapWhere(start, end),
+    },
+  });
+}
 
 // GET - List appointments
 export async function GET(req: NextRequest) {
@@ -158,12 +230,26 @@ export async function POST(req: NextRequest) {
     const {
       customerId,
       serviceId,
+      serviceIds: rawServiceIds,
+      serviceStaffAssignments: rawServiceStaffAssignments,
       staffId,
       startTime,
       duration,
       notes,
       appointmentSmsConsent,
     } = await req.json();
+
+    const serviceIds = Array.from(
+      new Set(
+        [
+          ...(Array.isArray(rawServiceIds) ? rawServiceIds : []),
+          ...(typeof serviceId === 'string' ? [serviceId] : []),
+        ]
+          .filter((value): value is string => typeof value === 'string')
+          .map((value) => value.trim())
+          .filter(Boolean)
+      )
+    );
 
     if (!customerId || !startTime || !duration) {
       return NextResponse.json(
@@ -172,13 +258,68 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (serviceIds.length > 20) {
+      return NextResponse.json({ error: 'Please select 20 services or fewer' }, { status: 400 });
+    }
+
     const blockedField = getBlockedFieldLabel([{ label: 'Notes', value: notes }]);
     if (blockedField) {
       return NextResponse.json({ error: blockedContentError(blockedField) }, { status: 400 });
     }
 
+    const services = serviceIds.length > 0
+      ? await prisma.service.findMany({
+          where: {
+            id: { in: serviceIds },
+            businessId: business.id,
+          },
+          select: {
+            id: true,
+            name: true,
+            duration: true,
+          },
+        })
+      : [];
+
+    if (services.length !== serviceIds.length) {
+      return NextResponse.json({ error: 'One or more services not found' }, { status: 404 });
+    }
+
+    const servicesById = new Map(services.map((service) => [service.id, service]));
+    const orderedServices = serviceIds
+      .map((selectedServiceId) => servicesById.get(selectedServiceId))
+      .filter((service): service is (typeof services)[number] => Boolean(service));
+    const totalServiceDuration = orderedServices.reduce((sum, service) => sum + service.duration, 0);
+    const serviceStaffAssignments = normalizeServiceStaffAssignments(
+      rawServiceStaffAssignments,
+      serviceIds
+    );
+    const createSegmentedAppointments = shouldCreateSegmentedServiceBooking({
+      assignments: serviceStaffAssignments,
+      orderedServiceIds: serviceIds,
+    });
+
     const start = new Date(startTime);
-    const end = new Date(start.getTime() + duration * 60000);
+    const segments = createSegmentedAppointments
+      ? buildServiceBookingSegments({
+          assignments: serviceStaffAssignments,
+          orderedServices,
+          startTime: start,
+        })
+      : [];
+    const effectiveDuration = createSegmentedAppointments
+      ? totalServiceDuration
+      : serviceIds.length > 0 && totalServiceDuration > 0
+        ? totalServiceDuration
+        : duration;
+    const end = createSegmentedAppointments
+      ? segments[segments.length - 1]?.endTime
+      : new Date(start.getTime() + effectiveDuration * 60000);
+
+    if (!end || isNaN(end.getTime())) {
+      return NextResponse.json({ error: 'Invalid appointment time' }, { status: 400 });
+    }
+
     const businessHoursError = validateBusinessHoursForAppointment({
       startTime: start,
       endTime: end,
@@ -194,11 +335,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (staffId) {
+    if (createSegmentedAppointments) {
+      for (const segment of segments) {
+        if (!segment.staffId) continue;
+
+        const staffError = await validateBookableStaffSelection({
+          staffId: segment.staffId,
+          businessId: business.id,
+          serviceIds: [segment.serviceId],
+          dayOfWeek: weekdayIndexInTimeZone(segment.startTime, business.timezone),
+          businessHours: business.businessHours?.hours,
+          timezone: business.timezone,
+          startTime: segment.startTime,
+          endTime: segment.endTime,
+        });
+
+        if (staffError) {
+          return NextResponse.json({ error: staffError.error }, { status: staffError.status });
+        }
+      }
+    } else if (staffId) {
       const staffError = await validateBookableStaffSelection({
         staffId,
         businessId: business.id,
-        serviceIds: serviceId ? [serviceId] : [],
+        serviceIds,
         businessHours: business.businessHours?.hours,
         timezone: business.timezone,
         startTime: start,
@@ -210,44 +370,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Check for conflicts — only when a specific staff member is assigned
-    if (staffId) {
-      const conflicts = await prisma.appointment.findMany({
-        where: {
-          businessId: business.id,
-          staffId,
-          status: {
-            in: ['scheduled', 'confirmed'],
-          },
-          OR: [
-            {
-              AND: [
-                { startTime: { lte: start } },
-                { endTime: { gt: start } },
-              ],
-            },
-            {
-              AND: [
-                { startTime: { lt: end } },
-                { endTime: { gte: end } },
-              ],
-            },
-            {
-              AND: [
-                { startTime: { gte: start } },
-                { endTime: { lte: end } },
-              ],
-            },
-          ],
-        },
-      });
+    const conflicts = await findStaffConflicts({
+      businessId: business.id,
+      segments: createSegmentedAppointments ? segments : undefined,
+      staffId,
+      start,
+      end,
+    });
 
-      if (conflicts.length > 0) {
-        return NextResponse.json(
-          { error: 'Time slot is not available' },
-          { status: 409 }
-        );
-      }
+    if (conflicts.length > 0) {
+      return NextResponse.json(
+        { error: 'Time slot is not available' },
+        { status: 409 }
+      );
     }
 
     if (appointmentSmsConsent === true) {
@@ -274,30 +409,59 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const appointment = await prisma.appointment.create({
-      data: {
+    const appointmentInclude = {
+      customer: true,
+      service: true,
+      staff: true,
+      business: {
+        select: {
+          name: true,
+        },
+      },
+    } as const;
+
+    const createAppointmentData = (segment?: ServiceBookingSegment) => {
+      const appointmentServiceIds = segment ? [segment.serviceId] : serviceIds;
+      return {
         businessId: business.id,
         customerId,
-        serviceId: serviceId || null,
-        staffId: staffId || null,
-        startTime: start,
-        endTime: end,
-        duration,
+        serviceId: appointmentServiceIds[0] || null,
+        serviceIds: appointmentServiceIds,
+        staffId: segment ? segment.staffId : staffId || null,
+        startTime: segment?.startTime ?? start,
+        endTime: segment?.endTime ?? end,
+        duration: segment?.duration ?? effectiveDuration,
         notes: notes || null,
         status: 'scheduled',
         source: 'dashboard',
-      },
-      include: {
-        customer: true,
-        service: true,
-        staff: true,
-        business: {
-          select: {
-            name: true,
-          },
-        },
-      },
-    });
+      };
+    };
+
+    const appointments = createSegmentedAppointments
+      ? await (typeof prisma.$transaction === 'function'
+          ? prisma.$transaction(
+              segments.map((segment) =>
+                prisma.appointment.create({
+                  data: createAppointmentData(segment),
+                  include: appointmentInclude,
+                })
+              )
+            )
+          : Promise.all(
+              segments.map((segment) =>
+                prisma.appointment.create({
+                  data: createAppointmentData(segment),
+                  include: appointmentInclude,
+                })
+              )
+            ))
+      : [
+          await prisma.appointment.create({
+            data: createAppointmentData(),
+            include: appointmentInclude,
+          }),
+        ];
+    const appointment = appointments[0];
 
     let manualConsentApplied = false;
     if (appointmentSmsConsent === true && appointment.customer.phone) {
@@ -322,6 +486,7 @@ export async function POST(req: NextRequest) {
             consentMethod: 'verbal',
             channel: 'dashboard-appointments',
             appointmentId: appointment.id,
+            appointmentIds: appointments.map((createdAppointment) => createdAppointment.id),
             appointmentStartTime: appointment.startTime.toISOString(),
           },
         },
@@ -340,16 +505,38 @@ export async function POST(req: NextRequest) {
     let reminderResult = null;
     if (canSendTransactionalSms && appointment.customer.phone) {
       const appBase = getConfiguredAppBaseUrl();
-      const shortId = await ensureAppointmentShortId(appointment.id, appointment.shortId);
-      const appointmentUrl = shortId ? `${appBase}/a/${shortId}` : undefined;
+      const shortId = createSegmentedAppointments
+        ? null
+        : await ensureAppointmentShortId(appointment.id, appointment.shortId);
+      const appointmentUrl = createSegmentedAppointments
+        ? `${appBase}/appt/batch/${createOnlineAppointmentBatchToken({
+            b: business.id,
+            a: appointments.map((createdAppointment) => createdAppointment.id),
+          })}`
+        : shortId
+          ? `${appBase}/a/${shortId}`
+          : undefined;
+      const staffNamesById = new Map<string, string>(
+        appointments
+          .flatMap((createdAppointment) =>
+            createdAppointment.staff ? [createdAppointment.staff] : []
+          )
+          .map((staff) => [staff.id, staff.fullName])
+      );
+      const serviceName = createSegmentedAppointments
+        ? buildSegmentServiceStaffSummary({ segments, staffNamesById })
+        : appointment.service?.name || orderedServices.map((service) => service.name).join(', ') || 'Appointment';
+      const staffName = createSegmentedAppointments
+        ? 'our team'
+        : appointment.staff?.fullName || 'our team';
 
       smsResult = await sendAppointmentConfirmation(appointment.customer.phone, {
         customerName: appointment.customer.name,
-        serviceName: appointment.service?.name || 'Appointment',
-        staffName: appointment.staff?.fullName || 'our team',
+        serviceName,
+        staffName,
         dateTime: appointment.startTime,
         businessName: appointment.business.name,
-        duration: appointment.duration,
+        duration: effectiveDuration,
         appointmentUrl,
         timezone: business.timezone,
         senderPhone: business.vapiPhoneNumber,
@@ -361,8 +548,8 @@ export async function POST(req: NextRequest) {
 
       reminderResult = await scheduleAppointmentReminder(appointment.customer.phone, {
         customerName: appointment.customer.name,
-        serviceName: appointment.service?.name || 'Appointment',
-        staffName: appointment.staff?.fullName || 'our team',
+        serviceName,
+        staffName,
         dateTime: appointment.startTime,
         businessName: appointment.business.name,
         appointmentUrl,
@@ -371,23 +558,39 @@ export async function POST(req: NextRequest) {
       });
 
       if (reminderResult.success) {
-        await prisma.appointment.update({
-          where: { id: appointment.id },
-          data: { reminderSent: true },
-        });
+        await Promise.all(
+          appointments.map((createdAppointment) =>
+            prisma.appointment.update({
+              where: { id: createdAppointment.id },
+              data: { reminderSent: true },
+            })
+          )
+        );
       }
     }
 
     // Create notification
+    const assignedStaffIds = getUniqueAssignedStaffIds(segments);
+    const notificationStaffNamesById = new Map<string, string>(
+      appointments
+        .flatMap((createdAppointment) =>
+          createdAppointment.staff ? [createdAppointment.staff] : []
+        )
+        .map((staff) => [staff.id, staff.fullName])
+    );
+    const notificationServiceName = createSegmentedAppointments
+      ? buildSegmentServiceStaffSummary({ segments, staffNamesById: notificationStaffNamesById })
+      : ((appointment.service?.name ?? orderedServices.map((service) => service.name).join(', ')) || 'Appointment');
     await createBusinessNotification({
       businessId: business.id,
       staffId: appointment.staff?.id ?? null,
+      staffIds: assignedStaffIds,
       type: 'new_appointment',
-      title: 'New Appointment',
+      title: createSegmentedAppointments ? 'New Multi-Service Appointment' : 'New Appointment',
       message: buildAppointmentScheduledNotificationMessage({
         customerName: appointment.customer.name,
-        serviceName: appointment.service?.name ?? 'Appointment',
-        staffName: appointment.staff?.fullName ?? null,
+        serviceName: notificationServiceName,
+        staffName: createSegmentedAppointments ? null : (appointment.staff?.fullName ?? null),
         startTime: appointment.startTime,
         timezone: business.timezone,
       }),
@@ -402,10 +605,10 @@ export async function POST(req: NextRequest) {
         businessName: business.name,
         customerName: appointment.customer.name,
         customerPhone: appointment.customer.phone,
-        serviceName: appointment.service?.name || 'Appointment',
-        staffName: appointment.staff?.fullName || null,
+        serviceName: notificationServiceName,
+        staffName: createSegmentedAppointments ? null : appointment.staff?.fullName || null,
         dateTime: appointment.startTime,
-        duration: appointment.duration,
+        duration: effectiveDuration,
         notes: appointment.notes,
         appointmentUrl: `${appBase}/dashboard/appointments`,
         timezone: business.timezone,
@@ -415,6 +618,13 @@ export async function POST(req: NextRequest) {
     revalidateTag(`dashboard-stats-${business.id}`, {});
     return NextResponse.json({
       appointment,
+      appointments,
+      appointmentBatchUrl: createSegmentedAppointments
+        ? `${getConfiguredAppBaseUrl()}/appt/batch/${createOnlineAppointmentBatchToken({
+            b: business.id,
+            a: appointments.map((createdAppointment) => createdAppointment.id),
+          })}`
+        : null,
       smsNotification: smsResult?.success
         ? 'Confirmation SMS sent'
         : appointment.customer.phone

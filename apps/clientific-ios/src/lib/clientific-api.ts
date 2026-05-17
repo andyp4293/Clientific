@@ -76,6 +76,11 @@ export type MobileAppointmentEntry = {
 export type MobileAppointmentInput = {
   customerId: string;
   serviceId?: string | null;
+  serviceIds?: string[];
+  serviceStaffAssignments?: Array<{
+    serviceId: string;
+    staffId?: string | null;
+  }>;
   staffId?: string | null;
   startTime: string;
   duration: number;
