@@ -26,6 +26,7 @@ import {
   ServiceBookingSegment,
   shouldCreateSegmentedServiceBooking,
 } from '@/lib/service-staff-assignments';
+import { resolveMobileAppointmentStartTime } from '@/lib/mobile-appointment-time';
 
 function buildOverlapWhere(start: Date, end: Date) {
   return [
@@ -359,6 +360,8 @@ export async function POST(request: Request) {
       serviceStaffAssignments: rawServiceStaffAssignments,
       staffId,
       startTime,
+      startDate,
+      startTimeLocal,
       notes,
       appointmentSmsConsent,
     } =
@@ -376,7 +379,7 @@ export async function POST(request: Request) {
       )
     );
 
-    if (!customerId || serviceIds.length === 0 || !startTime) {
+    if (!customerId || serviceIds.length === 0 || (!startTime && (!startDate || !startTimeLocal))) {
       return NextResponse.json(
         { error: 'Customer, service, and start time are required' },
         { status: 400 },
@@ -430,8 +433,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
     }
 
-    const start = new Date(startTime);
-    if (Number.isNaN(start.getTime())) {
+    const start = resolveMobileAppointmentStartTime({
+      startTime,
+      startDate,
+      startTimeLocal,
+      timezone: business.timezone,
+    });
+    if (!start) {
       return NextResponse.json({ error: 'Select a valid start time.' }, { status: 400 });
     }
 

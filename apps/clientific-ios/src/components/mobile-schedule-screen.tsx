@@ -1167,6 +1167,8 @@ export function MobileScheduleScreen({
           staffId: createForm.serviceStaffAssignments[serviceId] || null,
         })),
         startTime: start.toISOString(),
+        startDate: createForm.date,
+        startTimeLocal: createForm.time,
         duration: createEffectiveDuration,
         notes: createForm.notes.trim() || null,
         appointmentSmsConsent: createForm.appointmentSmsConsent,
@@ -1204,6 +1206,8 @@ export function MobileScheduleScreen({
     try {
       await onUpdateAppointment(editingAppointment.id, {
         startTime: start.toISOString(),
+        startDate: editForm.date,
+        startTimeLocal: editForm.time,
         duration: editEffectiveDuration,
         serviceId: editForm.serviceId || null,
         serviceIds: editForm.serviceId ? [editForm.serviceId] : [],

@@ -83,6 +83,8 @@ export type MobileAppointmentInput = {
   }>;
   staffId?: string | null;
   startTime: string;
+  startDate?: string;
+  startTimeLocal?: string;
   duration: number;
   notes?: string | null;
   appointmentSmsConsent?: boolean;
@@ -90,6 +92,8 @@ export type MobileAppointmentInput = {
 
 export type MobileAppointmentUpdateInput = {
   startTime?: string;
+  startDate?: string;
+  startTimeLocal?: string;
   duration?: number;
   serviceId?: string | null;
   serviceIds?: string[];

@@ -20,6 +20,7 @@ import {
   hasCustomerVisibleAppointmentChanges,
   isCustomerBookedAppointmentSource,
 } from '@/lib/appointment-update-sms';
+import { resolveMobileAppointmentStartTime } from '@/lib/mobile-appointment-time';
 
 function canSendAppointmentSms(customer: {
   phone: string | null;
@@ -181,6 +182,22 @@ export async function PATCH(
     }
 
     const updates = await request.json();
+    if (updates.startDate || updates.startTimeLocal) {
+      const resolvedStart = resolveMobileAppointmentStartTime({
+        startTime: updates.startTime,
+        startDate: updates.startDate,
+        startTimeLocal: updates.startTimeLocal,
+        timezone: business.timezone,
+      });
+
+      if (!resolvedStart) {
+        return NextResponse.json({ error: 'Select a valid start time.' }, { status: 400 });
+      }
+
+      updates.startTime = resolvedStart.toISOString();
+      delete updates.startDate;
+      delete updates.startTimeLocal;
+    }
     const shouldResyncReminder =
       (typeof updates.status === 'string' && updates.status !== appointment.status) ||
       updates.startTime !== undefined ||

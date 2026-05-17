@@ -392,6 +392,43 @@ describe('mobile appointments route', () => {
     );
   });
 
+  it('treats mobile local date and time as business-timezone appointment input', async () => {
+    const response = await POST(
+      new Request('https://www.clientific.app/api/mobile/appointments', {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer token',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerId: 'cust-1',
+          serviceId: 'svc-1',
+          staffId: 'staff-1',
+          startDate: '2026-03-30',
+          startTimeLocal: '11:00',
+          duration: 999,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(mockValidateBusinessHours).toHaveBeenCalledWith(
+      expect.objectContaining({
+        startTime: new Date('2026-03-30T15:00:00.000Z'),
+        endTime: new Date('2026-03-30T15:45:00.000Z'),
+        timezone: 'America/New_York',
+      }),
+    );
+    expect(mockCreateAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          startTime: new Date('2026-03-30T15:00:00.000Z'),
+          endTime: new Date('2026-03-30T15:45:00.000Z'),
+        }),
+      }),
+    );
+  });
+
   it('creates consecutive mobile appointment segments with per-service staff assignments', async () => {
     mockFindServices.mockResolvedValueOnce([
       { id: 'svc-1', name: 'Haircut', duration: 45 },

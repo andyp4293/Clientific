@@ -225,7 +225,7 @@ describe('mobile appointment detail route', () => {
     );
   });
 
-  it('updates timing changes and cancels the prior reminder before rescheduling', async () => {
+  it('updates mobile local timing changes in the business timezone before rescheduling', async () => {
     mockFindAppointment.mockResolvedValueOnce({
       ...baseAppointment,
       status: 'confirmed',
@@ -247,12 +247,25 @@ describe('mobile appointment detail route', () => {
           authorization: 'Bearer token',
           'content-type': 'application/json',
         },
-        body: JSON.stringify({ startTime: '2026-03-30T16:30:00.000Z', duration: 60 }),
+        body: JSON.stringify({
+          startDate: '2026-03-30',
+          startTimeLocal: '12:30',
+          duration: 60,
+        }),
       }),
       { params: Promise.resolve({ id: 'appt-1' }) },
     );
 
     expect(response.status).toBe(200);
+    expect(mockUpdateAppointment).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          startTime: '2026-03-30T16:30:00.000Z',
+          endTime: new Date('2026-03-30T17:30:00.000Z'),
+        }),
+      }),
+    );
     expect(mockCancelScheduledAppointmentReminder).toHaveBeenCalledWith(
       '+15551234567',
       expect.objectContaining({
