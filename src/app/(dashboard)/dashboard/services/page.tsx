@@ -69,7 +69,6 @@ type ModalType = "service" | "staff" | null;
 type PortalAccessConfirmation =
   | { action: "enable"; scope: "form" }
   | { action: "disable"; scope: "form" }
-  | { action: "disable"; scope: "member"; staff: Staff }
   | null;
 
 function businessHoursArrayToRecord(
@@ -492,14 +491,12 @@ function StaffTab({
   businessHoursRecord,
   onEdit,
   onDelete,
-  onDisablePortalAccess,
 }: {
   staff: Staff[];
   services: Service[];
   businessHoursRecord: BusinessHoursRecord;
   onEdit: (staff: Staff) => void;
   onDelete: (id: string) => void;
-  onDisablePortalAccess: (staff: Staff) => void;
 }) {
   if (staff.length === 0) {
     return (
@@ -708,15 +705,6 @@ function StaffTab({
             >
               Edit
             </button>
-            {member.portalAccessEnabled && (
-              <button
-                type="button"
-                onClick={() => onDisablePortalAccess(member)}
-                className="min-w-[8rem] flex-1 rounded-lg border border-amber-200 px-3 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950/30"
-              >
-                Disable login
-              </button>
-            )}
             <button
               onClick={() => {
                 if (
@@ -1052,32 +1040,6 @@ export default function ServicesPage() {
     },
   });
 
-  const staffPortalAccessMutation = useMutation({
-    mutationFn: async ({
-      id,
-      portalAccessEnabled,
-    }: {
-      id: string;
-      portalAccessEnabled: boolean;
-    }) => {
-      const res = await fetch(`/api/staff/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ portalAccessEnabled }),
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Failed to update employee login");
-      }
-
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["staff"] });
-    },
-  });
-
   const services: Service[] = servicesData?.services || [];
   const groups: ServiceGroup[] = groupsData?.groups || [];
   const staff: Staff[] = staffData?.staff || [];
@@ -1195,23 +1157,14 @@ export default function ServicesPage() {
   const confirmStaffPortalAccessChange = () => {
     if (!portalAccessConfirmation) return;
 
-    if (portalAccessConfirmation.scope === "form") {
-      setStaffFormData((current) => ({
-        ...current,
-        portalAccessEnabled: portalAccessConfirmation.action === "enable",
-        portalPassword:
-          portalAccessConfirmation.action === "disable"
-            ? ""
-            : current.portalPassword,
-      }));
-      setPortalAccessConfirmation(null);
-      return;
-    }
-
-    staffPortalAccessMutation.mutate({
-      id: portalAccessConfirmation.staff.id,
-      portalAccessEnabled: false,
-    });
+    setStaffFormData((current) => ({
+      ...current,
+      portalAccessEnabled: portalAccessConfirmation.action === "enable",
+      portalPassword:
+        portalAccessConfirmation.action === "disable"
+          ? ""
+          : current.portalPassword,
+    }));
     setPortalAccessConfirmation(null);
   };
 
@@ -1261,9 +1214,7 @@ export default function ServicesPage() {
 
   const isLoading = isLoadingServices || isLoadingStaff || isLoadingGroups;
   const portalConfirmationStaffName =
-    portalAccessConfirmation?.scope === "member"
-      ? portalAccessConfirmation.staff.fullName
-      : staffFormData.fullName || "this staff member";
+    staffFormData.fullName || "this staff member";
   const portalConfirmationIsEnable =
     portalAccessConfirmation?.action === "enable";
 
@@ -1413,20 +1364,7 @@ export default function ServicesPage() {
           businessHoursRecord={businessHoursRecord}
           onEdit={openStaffModal}
           onDelete={(id) => deleteStaffMutation.mutate(id)}
-          onDisablePortalAccess={(member) =>
-            setPortalAccessConfirmation({
-              action: "disable",
-              scope: "member",
-              staff: member,
-            })
-          }
         />
-      )}
-      {staffPortalAccessMutation.isError && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
-          {staffPortalAccessMutation.error?.message ||
-            "Failed to update employee login."}
-        </div>
       )}
       {/* Service Modal */}
       {modalType === "service" && (
@@ -1807,6 +1745,52 @@ export default function ServicesPage() {
                         </label>
                       </div>
 
+                      <div
+                        className={`mt-5 rounded-2xl border p-4 ${staffFormData.portalAccessEnabled
+                          ? "border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30"
+                          : "border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                              Current login status
+                            </p>
+                            <p
+                              className={`mt-1 text-lg font-black ${staffFormData.portalAccessEnabled
+                                ? "text-emerald-800 dark:text-emerald-200"
+                                : "text-gray-900 dark:text-gray-100"
+                              }`}
+                            >
+                              {staffFormData.portalAccessEnabled
+                                ? "Login is enabled"
+                                : "Login is disabled"}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              requestStaffPortalAccessChange(
+                                !staffFormData.portalAccessEnabled,
+                              )
+                            }
+                            className={`rounded-xl px-4 py-2 text-sm font-semibold shadow-sm transition ${staffFormData.portalAccessEnabled
+                              ? "border border-amber-200 bg-white text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:bg-gray-950 dark:text-amber-300 dark:hover:bg-amber-950/30"
+                              : "bg-primary text-white hover:bg-primary-600"
+                            }`}
+                          >
+                            {staffFormData.portalAccessEnabled
+                              ? "Turn employee login off"
+                              : "Turn employee login on"}
+                          </button>
+                        </div>
+                        <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-gray-300">
+                          {staffFormData.portalAccessEnabled
+                            ? "This staff member can currently sign in. Turning login off will log them out of active web and mobile sessions after you save."
+                            : "This staff member cannot currently sign in. Turn login on to send or restore appointment-only access."}
+                        </p>
+                      </div>
+
                       {staffFormData.portalAccessEnabled && (
                         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                           <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
@@ -1839,8 +1823,9 @@ export default function ServicesPage() {
                         !staffFormData.portalAccessEnabled && (
                           <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
                             Saving will immediately disable this employee login
-                            and clear their password. Their staff profile and
-                            appointment history stay intact.
+                            and clear their password. Any active employee web
+                            or mobile sessions will be forced out. Their staff
+                            profile and appointment history stay intact.
                           </div>
                         )}
                     </section>
@@ -2473,8 +2458,8 @@ export default function ServicesPage() {
               className="text-2xl font-bold text-gray-950 dark:text-white"
             >
               {portalConfirmationIsEnable
-                ? `Enable login for ${portalConfirmationStaffName}?`
-                : `Disable login for ${portalConfirmationStaffName}?`}
+                ? `Turn employee login on for ${portalConfirmationStaffName}?`
+                : `Turn employee login off for ${portalConfirmationStaffName}?`}
             </h3>
             {portalConfirmationIsEnable ? (
               <div className="mt-4 space-y-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
@@ -2506,9 +2491,10 @@ export default function ServicesPage() {
             ) : (
               <div className="mt-4 space-y-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
                 <p>
-                  This immediately turns off their employee login and clears
-                  their password. Use this when an employee leaves or should no
-                  longer see their appointment calendar.
+                  Saving will turn off their employee login, clear their
+                  password, and force out active web and mobile sessions. Use
+                  this when an employee leaves or should no longer see their
+                  appointment calendar.
                 </p>
                 <p>
                   Their staff profile, service assignments, appointment history,
@@ -2521,7 +2507,7 @@ export default function ServicesPage() {
                 type="button"
                 onClick={() => setPortalAccessConfirmation(null)}
                 className="rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
-                disabled={staffPortalAccessMutation.isPending}
+                disabled={false}
               >
                 Cancel
               </button>
@@ -2533,13 +2519,11 @@ export default function ServicesPage() {
                     ? "bg-primary hover:bg-primary-600"
                     : "bg-amber-600 hover:bg-amber-700"
                 }`}
-                disabled={staffPortalAccessMutation.isPending}
+                disabled={false}
               >
-                {staffPortalAccessMutation.isPending
-                  ? "Updating..."
-                  : portalConfirmationIsEnable
-                    ? "Enable employee login"
-                    : "Disable employee login"}
+                {portalConfirmationIsEnable
+                  ? "Turn employee login on"
+                  : "Turn employee login off"}
               </button>
             </div>
           </div>

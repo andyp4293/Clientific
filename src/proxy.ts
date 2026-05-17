@@ -9,12 +9,27 @@ export async function proxy(request: NextRequest) {
   // Redirect authenticated users from landing page straight to dashboard
   if (pathname === '/') {
     if (token) {
+      if (token.accountType === 'staff' && token.staffPortalAccessRevoked) {
+        return NextResponse.redirect(new URL('/signout', request.url));
+      }
       const staffTarget = token.staffPasswordChangeRequired
         ? '/staff/set-password'
         : '/staff/appointments';
       return NextResponse.redirect(
         new URL(token.accountType === 'staff' ? staffTarget : '/dashboard', request.url),
       );
+    }
+  }
+
+  if (token?.accountType === 'staff' && token.staffPortalAccessRevoked) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json(
+        { error: 'Employee login has been disabled.' },
+        { status: 401 },
+      );
+    }
+    if (pathname !== '/signout' && !pathname.startsWith('/api/auth')) {
+      return NextResponse.redirect(new URL('/signout', request.url));
     }
   }
 

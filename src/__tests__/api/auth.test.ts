@@ -64,11 +64,16 @@ vi.mock('@/lib/referral-sharing', () => ({
   }),
 }));
 
+vi.mock('@/lib/staff-session-access', () => ({
+  getStaffSessionAccess: vi.fn(),
+}));
+
 // ── Imports (after mocks) ─────────────────────────────────────────────────────
 
 import { prisma } from '@/lib/prisma';
 import { hashPassword, verifyPassword, generateSlug, generatePublicBusinessId } from '@/lib/utils';
 import { sendEmailVerificationEmail, sendPasswordResetEmail } from '@/lib/email';
+import { getStaffSessionAccess } from '@/lib/staff-session-access';
 import { POST as registerPOST } from '@/app/api/auth/register/route';
 import { POST as forgotPasswordPOST } from '@/app/api/auth/forgot-password/route';
 import { POST as resetPasswordPOST } from '@/app/api/auth/reset-password/route';
@@ -90,6 +95,7 @@ const mockGenerateSlug = generateSlug as ReturnType<typeof vi.fn>;
 const mockGeneratePublicId = generatePublicBusinessId as ReturnType<typeof vi.fn>;
 const mockSendResetEmail = sendPasswordResetEmail as ReturnType<typeof vi.fn>;
 const mockSendVerificationEmail = sendEmailVerificationEmail as ReturnType<typeof vi.fn>;
+const mockGetStaffSessionAccess = getStaffSessionAccess as ReturnType<typeof vi.fn>;
 
 function req(url: string, body: Record<string, unknown>) {
   return new NextRequest(`http://localhost${url}`, {
@@ -125,6 +131,11 @@ beforeEach(() => {
   mockGenerateSlug.mockReturnValue('test-business');
   mockGeneratePublicId.mockReturnValue('pub-abc123');
   mockHashPassword.mockResolvedValue('hashed-password');
+  mockGetStaffSessionAccess.mockResolvedValue({
+    allowed: true,
+    passwordChangeRequired: false,
+    staffName: 'Taylor Nguyen',
+  });
 });
 
 // ── POST /api/auth/register ───────────────────────────────────────────────────
@@ -717,6 +728,26 @@ describe('NextAuth sign-in (authorize logic)', () => {
     expect(token.onboardingComplete).toBe(false);
   });
 
+  it('jwt callback marks disabled staff sessions as revoked', async () => {
+    mockGetStaffSessionAccess.mockResolvedValueOnce({ allowed: false });
+    const jwtCallback = authOptions.callbacks?.jwt as Function;
+    const token = await jwtCallback({
+      token: {
+        accountType: 'staff',
+        businessId: 'biz-1',
+        staffId: 'staff-1',
+        staffPasswordChangeRequired: true,
+      },
+    });
+
+    expect(mockGetStaffSessionAccess).toHaveBeenCalledWith({
+      staffId: 'staff-1',
+      businessId: 'biz-1',
+    });
+    expect(token.staffPortalAccessRevoked).toBe(true);
+    expect(token.staffPasswordChangeRequired).toBe(false);
+  });
+
   it('session callback attaches businessId to session user', async () => {
     const sessionCallback = authOptions.callbacks?.session as Function;
     const session = await sessionCallback({
@@ -726,5 +757,22 @@ describe('NextAuth sign-in (authorize logic)', () => {
     expect(session.user.id).toBe('biz-1');
     expect(session.user.businessId).toBe('biz-1');
     expect(session.user.onboardingComplete).toBe(true);
+  });
+
+  it('session callback exposes revoked staff access to the UI', async () => {
+    const sessionCallback = authOptions.callbacks?.session as Function;
+    const session = await sessionCallback({
+      session: { user: {} },
+      token: {
+        id: 'staff-1',
+        businessId: 'biz-1',
+        accountType: 'staff',
+        staffId: 'staff-1',
+        staffPortalAccessRevoked: true,
+      },
+    });
+
+    expect(session.user.accountType).toBe('staff');
+    expect(session.user.staffPortalAccessRevoked).toBe(true);
   });
 });

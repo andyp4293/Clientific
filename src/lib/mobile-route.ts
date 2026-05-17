@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getBearerToken, verifyMobileSessionToken } from '@/lib/mobile-session';
+import { getStaffSessionAccess } from '@/lib/staff-session-access';
 
 export function mobileUnauthorizedResponse(message = 'Mobile sign-in is required.') {
   return NextResponse.json({ error: message }, { status: 401 });
@@ -22,6 +23,19 @@ export async function requireMobileSession(
 
   try {
     const session = await verifyMobileSessionToken(token);
+    if (session.accountType === 'staff') {
+      const access = await getStaffSessionAccess({
+        staffId: session.staffId,
+        businessId: session.businessId,
+      });
+      if (!access.allowed) {
+        return {
+          error: mobileUnauthorizedResponse('Employee login has been disabled.'),
+        } as const;
+      }
+      session.staffPasswordChangeRequired = access.passwordChangeRequired;
+      session.staffName = access.staffName;
+    }
     if (
       session.accountType === 'staff' &&
       session.staffPasswordChangeRequired &&

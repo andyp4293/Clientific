@@ -25,6 +25,7 @@ describe('Login page verification actions', () => {
     vi.clearAllMocks();
     mockUseSession.mockReturnValue({ status: 'unauthenticated', data: null });
     mockSignIn.mockResolvedValue({ error: 'Invalid credentials' });
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('session unavailable')));
     Object.defineProperty(window, 'location', {
       configurable: true,
       value: {
@@ -68,6 +69,24 @@ describe('Login page verification actions', () => {
 
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/staff/set-password');
+    });
+  });
+
+  it('signs out authenticated staff when employee login was disabled', async () => {
+    mockUseSession.mockReturnValue({
+      status: 'authenticated',
+      data: {
+        user: {
+          accountType: 'staff',
+          staffPortalAccessRevoked: true,
+        },
+      },
+    });
+
+    render(<LoginPage />);
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/signout');
     });
   });
 
@@ -122,5 +141,34 @@ describe('Login page verification actions', () => {
     });
 
     expect(screen.getByText(/signing you in/i)).toBeInTheDocument();
+  });
+
+  it('routes staff sign-ins to signout when the refreshed session is revoked', async () => {
+    mockSignIn.mockResolvedValueOnce({ ok: true });
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          user: {
+            accountType: 'staff',
+            staffPortalAccessRevoked: true,
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText(/email address/i), {
+      target: { value: 'employee@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/password/i), {
+      target: { value: 'Password123!' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /log in/i }));
+
+    await waitFor(() => {
+      expect(mockAssign).toHaveBeenCalledWith('/signout');
+    });
   });
 });

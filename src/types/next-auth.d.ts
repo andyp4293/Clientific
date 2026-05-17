@@ -10,6 +10,7 @@ declare module 'next-auth' {
       staffId?: string;
       staffName?: string;
       staffPasswordChangeRequired?: boolean;
+      staffPortalAccessRevoked?: boolean;
     } & DefaultSession['user'];
   }
 
@@ -33,5 +34,6 @@ declare module 'next-auth/jwt' {
     staffId?: string;
     staffName?: string;
     staffPasswordChangeRequired?: boolean;
+    staffPortalAccessRevoked?: boolean;
   }
 }

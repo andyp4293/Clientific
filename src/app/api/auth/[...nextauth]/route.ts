@@ -11,6 +11,7 @@ import {
   authenticateStaffCredentials,
   StaffAuthError,
 } from '@/lib/staff-auth';
+import { getStaffSessionAccess } from '@/lib/staff-session-access';
 
 const ONBOARDING_SELECT = {
   id: true,
@@ -139,6 +140,18 @@ export const authOptions: NextAuthOptions = {
       }
 
       if (token.accountType === 'staff') {
+        const access = await getStaffSessionAccess({
+          staffId: typeof token.staffId === 'string' ? token.staffId : null,
+          businessId: typeof token.businessId === 'string' ? token.businessId : null,
+        });
+        if (!access.allowed) {
+          token.staffPortalAccessRevoked = true;
+          token.staffPasswordChangeRequired = false;
+          return token;
+        }
+        token.staffPortalAccessRevoked = false;
+        token.staffPasswordChangeRequired = access.passwordChangeRequired;
+        token.staffName = access.staffName;
         return token;
       }
 
@@ -179,6 +192,8 @@ export const authOptions: NextAuthOptions = {
           typeof token.staffName === 'string' ? token.staffName : undefined;
         session.user.staffPasswordChangeRequired =
           token.accountType === 'staff' ? Boolean(token.staffPasswordChangeRequired) : false;
+        session.user.staffPortalAccessRevoked =
+          token.accountType === 'staff' ? Boolean(token.staffPortalAccessRevoked) : false;
       }
       return session;
     },

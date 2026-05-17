@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { ClientificLogo } from '@/components/brand/ClientificLogo';
 import { APP_NAME } from '@/lib/brand';
+import { getStaffSessionAccess } from '@/lib/staff-session-access';
 import { StaffSetPasswordForm } from './StaffSetPasswordForm';
 
 export default async function StaffSetPasswordPage() {
@@ -12,6 +13,13 @@ export default async function StaffSetPasswordPage() {
   }
   if (session.user.accountType !== 'staff' || !session.user.staffId) {
     redirect('/dashboard');
+  }
+  const access = await getStaffSessionAccess({
+    staffId: session.user.staffId,
+    businessId: session.user.businessId,
+  });
+  if (!access.allowed) {
+    redirect('/signout');
   }
   if (!session.user.staffPasswordChangeRequired) {
     redirect('/staff/appointments');
