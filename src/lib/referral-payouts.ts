@@ -6,6 +6,8 @@ import { REFERRAL_COMMISSION_PERCENT } from './referral-config';
 const TRANSFER_STATUS_PENDING = 'pending';
 const TRANSFER_STATUS_FAILED = 'failed';
 const TRANSFER_STATUS_TRANSFERRED = 'transferred';
+export const REFERRAL_TRANSFER_STATUS_WAITING_FOR_STRIPE_BALANCE =
+  'waiting_for_stripe_balance';
 export const DEFAULT_REFERRAL_RECONCILIATION_LOOKBACK_DAYS = 45;
 
 export type ReferralPayoutSummary = {
@@ -56,6 +58,122 @@ function normalizeTransferFailureReason(error: unknown) {
   return message.slice(0, 500);
 }
 
+function normalizeStripeId(value: unknown) {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'object' && 'id' in value) {
+    const id = (value as { id?: unknown }).id;
+    return typeof id === 'string' ? id : null;
+  }
+
+  return null;
+}
+
+function isStripeBalanceInsufficientError(error: unknown) {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const stripeError = error as {
+    code?: unknown;
+    type?: unknown;
+    message?: unknown;
+  };
+  const message = typeof stripeError.message === 'string' ? stripeError.message : '';
+
+  return (
+    stripeError.code === 'balance_insufficient' ||
+    /insufficient funds|insufficient available balance/i.test(message)
+  );
+}
+
+export function isRetryableReferralTransferFailureReason(reason: string | null | undefined) {
+  return /insufficient funds|insufficient available balance/i.test(reason ?? '');
+}
+
+export function getVisibleReferralTransferStatus(
+  status: string | null | undefined,
+  failureReason?: string | null
+) {
+  if (
+    (status === TRANSFER_STATUS_FAILED || status === TRANSFER_STATUS_PENDING) &&
+    isRetryableReferralTransferFailureReason(failureReason)
+  ) {
+    return REFERRAL_TRANSFER_STATUS_WAITING_FOR_STRIPE_BALANCE;
+  }
+
+  return status ?? TRANSFER_STATUS_PENDING;
+}
+
+function getInvoiceSourceChargeId(invoice: Stripe.Invoice) {
+  const expandedInvoice = invoice as Stripe.Invoice & {
+    charge?: string | Stripe.Charge | null;
+    payment_intent?:
+      | string
+      | (Stripe.PaymentIntent & {
+          latest_charge?: string | Stripe.Charge | null;
+        })
+      | null;
+  };
+  const paymentIntent = expandedInvoice.payment_intent;
+  const paymentIntentCharge =
+    paymentIntent && typeof paymentIntent === 'object'
+      ? normalizeStripeId(paymentIntent.latest_charge)
+      : null;
+
+  return paymentIntentCharge ?? normalizeStripeId(expandedInvoice.charge);
+}
+
+async function getInvoiceSourceTransactionId(stripeInvoiceId: string) {
+  try {
+    const invoice = await stripe.invoices.retrieve(stripeInvoiceId, {
+      expand: ['payment_intent.latest_charge', 'charge'],
+    });
+
+    return getInvoiceSourceChargeId(invoice);
+  } catch (error) {
+    if (isMissingStripeCustomerError(error) || isMissingStripeInvoiceError(error)) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+async function listReferralTransfersForDestination(destinationAccountId: string) {
+  const transferByCommissionId = new Map<string, Stripe.Transfer>();
+  let startingAfter: string | undefined;
+
+  do {
+    const page = await stripe.transfers.list({
+      destination: destinationAccountId,
+      limit: 100,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+
+    for (const transfer of page.data) {
+      const referralCommissionId = transfer.metadata?.referralCommissionId;
+      if (referralCommissionId && !transferByCommissionId.has(referralCommissionId)) {
+        transferByCommissionId.set(referralCommissionId, transfer);
+      }
+    }
+
+    if (!page.has_more || page.data.length === 0) {
+      break;
+    }
+
+    startingAfter = page.data[page.data.length - 1]?.id;
+  } while (startingAfter);
+
+  return transferByCommissionId;
+}
+
 export function emptyReferralPayoutSummary(): ReferralPayoutSummary {
   return {
     lifetimeEarned: 0,
@@ -78,6 +196,19 @@ function isMissingStripeCustomerError(error: unknown) {
   };
 
   return stripeError.code === 'resource_missing' && stripeError.param === 'customer';
+}
+
+function isMissingStripeInvoiceError(error: unknown) {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const stripeError = error as {
+    code?: unknown;
+    param?: unknown;
+  };
+
+  return stripeError.code === 'resource_missing' && stripeError.param === 'invoice';
 }
 
 function emptyReferralReconciliationSummary(since: Date): ReferralReconciliationSummary {
@@ -240,9 +371,12 @@ export async function settlePendingReferralCommissions(params: {
       id: true,
       stripeInvoiceId: true,
       amountDollars: true,
+      transferFailureReason: true,
     },
     orderBy: { createdAt: 'asc' },
   });
+  const existingTransferByCommissionId =
+    await listReferralTransfersForDestination(connectAccountId);
 
   let transferredAmount = 0;
   let transferredCount = 0;
@@ -263,11 +397,29 @@ export async function settlePendingReferralCommissions(params: {
     }
 
     try {
+      const existingTransfer = existingTransferByCommissionId.get(commission.id);
+      if (existingTransfer) {
+        await prisma.referralCommission.update({
+          where: { id: commission.id },
+          data: {
+            transferStatus: TRANSFER_STATUS_TRANSFERRED,
+            stripeTransferId: existingTransfer.id,
+            transferredAt: new Date(existingTransfer.created * 1000),
+            transferFailureReason: null,
+          },
+        });
+        transferredAmount += amount;
+        transferredCount += 1;
+        continue;
+      }
+
+      const sourceTransaction = await getInvoiceSourceTransactionId(commission.stripeInvoiceId);
       const transfer = await stripe.transfers.create(
         {
           amount,
           currency: 'usd',
           destination: connectAccountId,
+          ...(sourceTransaction ? { source_transaction: sourceTransaction } : {}),
           description: 'Referral commission payout',
           metadata: {
             referralCommissionId: commission.id,
@@ -276,7 +428,9 @@ export async function settlePendingReferralCommissions(params: {
           },
         },
         {
-          idempotencyKey: `referral-commission-${commission.id}`,
+          idempotencyKey: sourceTransaction
+            ? `referral-commission-${commission.id}-source-${sourceTransaction}`
+            : `referral-commission-${commission.id}`,
         }
       );
 
@@ -293,10 +447,13 @@ export async function settlePendingReferralCommissions(params: {
       transferredAmount += amount;
       transferredCount += 1;
     } catch (error) {
+      const retryableBalanceError = isStripeBalanceInsufficientError(error);
       await prisma.referralCommission.update({
         where: { id: commission.id },
         data: {
-          transferStatus: TRANSFER_STATUS_FAILED,
+          transferStatus: retryableBalanceError
+            ? TRANSFER_STATUS_PENDING
+            : TRANSFER_STATUS_FAILED,
           transferFailureReason: normalizeTransferFailureReason(error),
         },
       });

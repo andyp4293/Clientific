@@ -60,6 +60,7 @@ const referralFixtures = [
     createdAt: new Date('2026-03-15T10:30:00Z'),
     amountDollars: 12.5,
     transferStatus: 'transferred',
+    transferFailureReason: null,
     transferredAt: new Date('2026-03-16T12:00:00Z'),
     referral: {
       referee: {
@@ -140,6 +141,39 @@ describe('GET /api/deal-purchases/earnings', () => {
     expect(body.totals.dealCount).toBe(2);
     expect(body.totals.referralCount).toBe(1);
     expect(body.totals.entryCount).toBe(3);
+  });
+
+  it('shows retryable Stripe balance transfer errors as waiting instead of failed', async () => {
+    mockReferralFindMany.mockResolvedValue([
+      {
+        id: 'commission-retryable',
+        createdAt: new Date('2026-05-20T10:30:00Z'),
+        amountDollars: 20.7,
+        transferStatus: 'pending',
+        transferFailureReason:
+          'You have insufficient funds in your Stripe account. One likely reason you have insufficient funds is that your funds are automatically being paid out.',
+        transferredAt: null,
+        referral: {
+          referee: {
+            name: 'Jackson Nails',
+            email: 'ankhangjr@yahoo.com',
+            businessEmail: 'ankhangjr@yahoo.com',
+          },
+        },
+      },
+    ]);
+
+    const res = await GET(makeRequest());
+    const body = await res.json();
+
+    expect(body.entries[0]).toMatchObject({
+      id: 'commission-retryable',
+      kind: 'referral',
+      sourceName: 'Jackson Nails',
+      status: 'waiting_for_stripe_balance',
+      grossAmount: 2070,
+      netAmount: 2070,
+    });
   });
 
   it('queries deal purchases and referral commissions for the session business', async () => {

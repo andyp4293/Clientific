@@ -74,25 +74,6 @@ function emptyResponse(
   };
 }
 
-async function clearStaleConnectState(businessId: string) {
-  await Promise.all([
-    prisma.business.update({
-      where: { id: businessId },
-      data: {
-        stripeConnectAccountId: null,
-        stripeConnectChargesEnabled: false,
-        stripeConnectPayoutsEnabled: false,
-        stripeConnectDetailsSubmitted: false,
-        stripeConnectOnboardedAt: null,
-        stripeConnectLastSyncedAt: new Date(),
-      },
-    }),
-    prisma.businessBankAccount.deleteMany({
-      where: { businessId },
-    }),
-  ]);
-}
-
 export async function GET(_req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -198,16 +179,20 @@ export async function GET(_req: NextRequest) {
       });
     } catch (error: any) {
       if (isRecoverableConnectAccountError(error)) {
-        await clearStaleConnectState(business.id);
         return withNoStoreHeaders(
-          emptyResponse(
-            true,
-            referralPayouts,
-            dealPayouts,
-            business.businessType,
-            business.name,
-            business.email
-          )
+          {
+            ...emptyResponse(
+              true,
+              referralPayouts,
+              dealPayouts,
+              business.businessType,
+              business.name,
+              business.email
+            ),
+            connectStatusUnavailable: true,
+            connectStatusMessage:
+              'Stripe payout status could not be verified, so the saved payout setup was left unchanged.',
+          }
         );
       }
 

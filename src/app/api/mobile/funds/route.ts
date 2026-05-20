@@ -151,25 +151,6 @@ function buildSetupMessage(connectState: {
   return null;
 }
 
-async function clearStaleConnectState(businessId: string) {
-  await Promise.all([
-    prisma.business.update({
-      where: { id: businessId },
-      data: {
-        stripeConnectAccountId: null,
-        stripeConnectChargesEnabled: false,
-        stripeConnectPayoutsEnabled: false,
-        stripeConnectDetailsSubmitted: false,
-        stripeConnectOnboardedAt: null,
-        stripeConnectLastSyncedAt: new Date(),
-      },
-    }),
-    prisma.businessBankAccount.deleteMany({
-      where: { businessId },
-    }),
-  ]);
-}
-
 function emptyFundsResponse(
   business: {
     id: string;
@@ -341,8 +322,12 @@ export async function GET(request: Request) {
       });
     } catch (error) {
       if (isRecoverableConnectAccountError(error)) {
-        await clearStaleConnectState(business.id);
-        return NextResponse.json(emptyFundsResponse(business, referralPayouts, dealPayouts));
+        return NextResponse.json({
+          ...emptyFundsResponse(business, referralPayouts, dealPayouts),
+          connectStatusUnavailable: true,
+          setupMessage:
+            'Clientific could not verify Stripe payouts right now. Your saved payout setup was left unchanged.',
+        });
       }
 
       throw error;

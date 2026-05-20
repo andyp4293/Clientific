@@ -1,4 +1,3 @@
-import { prisma } from '@/lib/prisma';
 import {
   isRecoverableConnectAccountError,
   syncBusinessConnectState,
@@ -71,25 +70,6 @@ export function getReferralSharingStatus(
   };
 }
 
-async function clearStaleConnectState(businessId: string) {
-  await Promise.all([
-    prisma.business.update({
-      where: { id: businessId },
-      data: {
-        stripeConnectAccountId: null,
-        stripeConnectChargesEnabled: false,
-        stripeConnectPayoutsEnabled: false,
-        stripeConnectDetailsSubmitted: false,
-        stripeConnectOnboardedAt: null,
-        stripeConnectLastSyncedAt: new Date(),
-      },
-    }),
-    prisma.businessBankAccount.deleteMany({
-      where: { businessId },
-    }),
-  ]);
-}
-
 export async function resolveReferralSharingStatus(
   business: ReferralSharingBusinessSeed
 ): Promise<ReferralSharingStatus> {
@@ -114,13 +94,11 @@ export async function resolveReferralSharingStatus(
       throw error;
     }
 
-    await clearStaleConnectState(business.id);
-
-    return getReferralSharingStatus({
-      stripeConnectAccountId: null,
-      stripeConnectChargesEnabled: false,
-      stripeConnectPayoutsEnabled: false,
-      stripeConnectDetailsSubmitted: false,
-    });
+    return {
+      ready: false,
+      code: 'onboarding_incomplete',
+      message:
+        'Clientific could not verify Stripe payout status right now. Your saved payout setup was left unchanged, so refresh and try again.',
+    };
   }
 }

@@ -267,16 +267,28 @@ describe('PayoutsPage', () => {
                 netAmount: 1250,
                 status: 'transferred',
               },
+              {
+                id: 'ref_waiting',
+                kind: 'referral',
+                sourceName: 'Jackson Nails',
+                detailLabel: 'ankhangjr@yahoo.com',
+                detailPhone: null,
+                occurredAt: '2026-05-20T10:00:00.000Z',
+                grossAmount: 2070,
+                feeAmount: 0,
+                netAmount: 2070,
+                status: 'waiting_for_stripe_balance',
+              },
             ],
             totals: {
               dealGross: 4000,
               dealFees: 600,
               dealNet: 3400,
               dealCount: 1,
-              referralNet: 1250,
-              referralCount: 1,
-              totalNet: 4650,
-              entryCount: 2,
+              referralNet: 3320,
+              referralCount: 2,
+              totalNet: 6720,
+              entryCount: 3,
             },
           }),
           isLoading: false,
@@ -307,9 +319,11 @@ describe('PayoutsPage', () => {
     expect(screen.getByText(/total earnings/i)).toBeInTheDocument();
     expect(screen.getByText(/spring facial/i)).toBeInTheDocument();
     expect(screen.getByText(/glow spa/i)).toBeInTheDocument();
+    expect(screen.getByText(/jackson nails/i)).toBeInTheDocument();
     expect(screen.getByText(/^deal$/i)).toBeInTheDocument();
-    expect(screen.getByText(/^referral$/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/^referral$/i)).toHaveLength(2);
     expect(screen.getByText(/moved to stripe/i)).toBeInTheDocument();
+    expect(screen.getByText(/waiting for stripe balance/i)).toBeInTheDocument();
   });
 
   it('keeps the combined earnings view for referral-only accounts', () => {
@@ -555,6 +569,39 @@ describe('PayoutsPage', () => {
       })
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /retry payout status/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /start secure setup/i })).not.toBeInTheDocument();
+  });
+
+  it('shows a payout status error instead of setup when Stripe verification is temporarily unavailable', () => {
+    mockUseQuery.mockImplementation((config: { queryKey?: string[] }) => {
+      const key = config?.queryKey?.[0];
+
+      if (key === 'deal-earnings') {
+        return {
+          data: buildEarningsData(),
+          isLoading: false,
+        };
+      }
+
+      if (key === 'connect-payouts') {
+        return {
+          data: buildConnectData({
+            connectStatusUnavailable: true,
+            connectStatusMessage:
+              'Stripe payout status could not be verified, so the saved payout setup was left unchanged.',
+          }),
+          isLoading: false,
+          refetch: vi.fn(),
+        };
+      }
+
+      return { data: undefined, isLoading: false };
+    });
+
+    render(<PayoutsPage />);
+
+    expect(screen.getByText(/payout status unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/saved payout setup was left unchanged/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /start secure setup/i })).not.toBeInTheDocument();
   });
 });

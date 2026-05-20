@@ -73,6 +73,7 @@ const statusBadgeClass = (status: string) => {
     case 'redeemed':
       return 'bg-primary/10 text-primary';
     case 'pending':
+    case 'waiting_for_stripe_balance':
       return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300';
     case 'failed':
       return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300';
@@ -91,6 +92,8 @@ const formatStatusLabel = (status: string) => {
       return 'Moved to Stripe';
     case 'pending':
       return 'Waiting to move';
+    case 'waiting_for_stripe_balance':
+      return 'Waiting for Stripe balance';
     case 'failed':
       return 'Transfer failed';
     default:
@@ -157,8 +160,11 @@ export default function PayoutsPage() {
     },
   });
 
+  const connectStatusUnavailable = Boolean(connectData?.connectStatusUnavailable);
   const connectErrorMessage =
-    connectError instanceof Error ? connectError.message : 'Failed to load payout status';
+    connectError instanceof Error
+      ? connectError.message
+      : connectData?.connectStatusMessage ?? 'Failed to load payout status';
   const refreshConnect = async () => {
     await refetchConnect();
     await queryClient.invalidateQueries({ queryKey: ['connect-payouts'] });
@@ -193,7 +199,7 @@ export default function PayoutsPage() {
   const pendingBalance = sumBalanceAmounts(connectData?.balances?.pending);
   const dealPending = connectData?.dealPayouts?.pendingTransfer ?? 0;
   const dealPendingCount = connectData?.dealPayouts?.pendingCount ?? 0;
-  const hasConnectStatusError = Boolean(connectError);
+  const hasConnectStatusError = Boolean(connectError) || connectStatusUnavailable;
   const needsSetup = !hasConnectStatusError && !connectData?.readyForPaidDeals;
   const isReferralOnly = Boolean(connectData?.isReferralOnly);
   const referralPending = connectData?.referralPayouts?.pendingTransfer ?? 0;

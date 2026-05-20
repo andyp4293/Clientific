@@ -28,8 +28,10 @@ vi.mock('@/lib/stripe', () => ({
   stripe: {
     invoices: {
       list: vi.fn(),
+      retrieve: vi.fn(),
     },
     transfers: {
+      list: vi.fn(),
       create: vi.fn(),
     },
   },
@@ -41,7 +43,9 @@ import {
   canAutoTransferReferralPayouts,
   DEFAULT_REFERRAL_RECONCILIATION_LOOKBACK_DAYS,
   emptyReferralPayoutSummary,
+  getVisibleReferralTransferStatus,
   getReferralPayoutSummary,
+  REFERRAL_TRANSFER_STATUS_WAITING_FOR_STRIPE_BALANCE,
   recordReferralCommission,
   reconcileReferralCommissions,
   retryPendingReferralTransfers,
@@ -60,6 +64,8 @@ const mockBusinessFindUnique = prisma.business.findUnique as ReturnType<typeof v
 const mockUpdateBusiness = prisma.business.update as ReturnType<typeof vi.fn>;
 const mockTransaction = prisma.$transaction as ReturnType<typeof vi.fn>;
 const mockInvoiceList = stripe.invoices.list as ReturnType<typeof vi.fn>;
+const mockInvoiceRetrieve = stripe.invoices.retrieve as ReturnType<typeof vi.fn>;
+const mockTransferList = stripe.transfers.list as ReturnType<typeof vi.fn>;
 const mockTransferCreate = stripe.transfers.create as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
@@ -73,6 +79,15 @@ beforeEach(() => {
   mockReferralFindMany.mockResolvedValue([]);
   mockBusinessFindMany.mockResolvedValue([]);
   mockInvoiceList.mockResolvedValue({
+    data: [],
+    has_more: false,
+  });
+  mockInvoiceRetrieve.mockResolvedValue({
+    id: 'inv_1',
+    payment_intent: null,
+    charge: null,
+  });
+  mockTransferList.mockResolvedValue({
     data: [],
     has_more: false,
   });
@@ -143,6 +158,21 @@ describe('recordReferralCommission', () => {
   });
 });
 
+describe('getVisibleReferralTransferStatus', () => {
+  it('keeps retryable balance failures out of the scary failed state', () => {
+    const reason =
+      'You have insufficient funds in your Stripe account. One likely reason you have insufficient funds is that your funds are automatically being paid out.';
+
+    expect(getVisibleReferralTransferStatus('failed', reason)).toBe(
+      REFERRAL_TRANSFER_STATUS_WAITING_FOR_STRIPE_BALANCE
+    );
+    expect(getVisibleReferralTransferStatus('pending', reason)).toBe(
+      REFERRAL_TRANSFER_STATUS_WAITING_FOR_STRIPE_BALANCE
+    );
+    expect(getVisibleReferralTransferStatus('failed', 'Bank account rejected')).toBe('failed');
+  });
+});
+
 describe('settlePendingReferralCommissions', () => {
   it('moves pending commissions into the connected account balance', async () => {
     mockFindMany.mockResolvedValue([
@@ -191,7 +221,7 @@ describe('settlePendingReferralCommissions', () => {
     });
   });
 
-  it('marks a commission failed when Stripe transfer creation fails', async () => {
+  it('ties referral transfers to the original invoice charge when Stripe exposes one', async () => {
     mockFindMany.mockResolvedValue([
       {
         id: 'comm_1',
@@ -199,7 +229,143 @@ describe('settlePendingReferralCommissions', () => {
         amountDollars: 8.7,
       },
     ]);
-    mockTransferCreate.mockRejectedValue(new Error('Insufficient available balance'));
+    mockInvoiceRetrieve.mockResolvedValue({
+      id: 'inv_1',
+      payment_intent: {
+        id: 'pi_1',
+        latest_charge: { id: 'ch_invoice_1' },
+      },
+      charge: null,
+    });
+
+    await settlePendingReferralCommissions({
+      businessId: 'biz_1',
+      connectAccountId: 'acct_123',
+    });
+
+    expect(mockTransferCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 870,
+        destination: 'acct_123',
+        source_transaction: 'ch_invoice_1',
+      }),
+      { idempotencyKey: 'referral-commission-comm_1-source-ch_invoice_1' }
+    );
+  });
+
+  it('falls back safely when an older local commission points at a missing Stripe invoice', async () => {
+    mockFindMany.mockResolvedValue([
+      {
+        id: 'comm_1',
+        stripeInvoiceId: 'inv_missing',
+        amountDollars: 8.7,
+      },
+    ]);
+    mockInvoiceRetrieve.mockRejectedValue(
+      Object.assign(new Error("No such invoice: 'inv_missing'"), {
+        code: 'resource_missing',
+        param: 'invoice',
+      })
+    );
+
+    await settlePendingReferralCommissions({
+      businessId: 'biz_1',
+      connectAccountId: 'acct_123',
+    });
+
+    expect(mockTransferCreate).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        source_transaction: expect.any(String),
+      }),
+      { idempotencyKey: 'referral-commission-comm_1' }
+    );
+  });
+
+  it('reconciles an existing Stripe transfer before creating a duplicate', async () => {
+    mockFindMany.mockResolvedValue([
+      {
+        id: 'comm_1',
+        stripeInvoiceId: 'inv_1',
+        amountDollars: 8.7,
+      },
+    ]);
+    mockTransferList.mockResolvedValue({
+      data: [
+        {
+          id: 'tr_existing',
+          created: 1772460000,
+          metadata: { referralCommissionId: 'comm_1' },
+        },
+      ],
+      has_more: false,
+    });
+
+    const result = await settlePendingReferralCommissions({
+      businessId: 'biz_1',
+      connectAccountId: 'acct_123',
+    });
+
+    expect(result).toEqual({
+      transferredAmount: 870,
+      transferredCount: 1,
+    });
+    expect(mockTransferCreate).not.toHaveBeenCalled();
+    expect(mockUpdateCommission).toHaveBeenCalledWith({
+      where: { id: 'comm_1' },
+      data: {
+        transferStatus: 'transferred',
+        stripeTransferId: 'tr_existing',
+        transferredAt: new Date(1772460000 * 1000),
+        transferFailureReason: null,
+      },
+    });
+  });
+
+  it('keeps balance-short referral transfers pending so they retry instead of looking broken', async () => {
+    mockFindMany.mockResolvedValue([
+      {
+        id: 'comm_1',
+        stripeInvoiceId: 'inv_1',
+        amountDollars: 8.7,
+      },
+    ]);
+    mockTransferCreate.mockRejectedValue(
+      Object.assign(
+        new Error(
+          'You have insufficient funds in your Stripe account. One likely reason you have insufficient funds is that your funds are automatically being paid out.'
+        ),
+        { code: 'balance_insufficient' }
+      )
+    );
+
+    const result = await settlePendingReferralCommissions({
+      businessId: 'biz_1',
+      connectAccountId: 'acct_123',
+    });
+
+    expect(result).toEqual({
+      transferredAmount: 0,
+      transferredCount: 0,
+    });
+    expect(mockUpdateCommission).toHaveBeenCalledWith({
+      where: { id: 'comm_1' },
+      data: {
+        transferStatus: 'pending',
+        transferFailureReason:
+          'You have insufficient funds in your Stripe account. One likely reason you have insufficient funds is that your funds are automatically being paid out.',
+      },
+    });
+  });
+
+  it('marks a commission failed when Stripe transfer creation fails for a non-retryable reason', async () => {
+    mockFindMany.mockResolvedValue([
+      {
+        id: 'comm_1',
+        stripeInvoiceId: 'inv_1',
+        amountDollars: 8.7,
+      },
+    ]);
+    mockTransferCreate.mockRejectedValue(new Error('Connected account rejected this transfer'));
 
     const result = await settlePendingReferralCommissions({
       businessId: 'biz_1',
@@ -214,7 +380,7 @@ describe('settlePendingReferralCommissions', () => {
       where: { id: 'comm_1' },
       data: {
         transferStatus: 'failed',
-        transferFailureReason: 'Insufficient available balance',
+        transferFailureReason: 'Connected account rejected this transfer',
       },
     });
   });

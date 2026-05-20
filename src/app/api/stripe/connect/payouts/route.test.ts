@@ -283,7 +283,7 @@ describe('GET /api/stripe/connect/payouts', () => {
   });
 
   it.each(['resource_missing', 'account_invalid'])(
-    'clears stale connect state when Stripe returns %s',
+    'keeps stored connect state when a read-only Stripe status check returns %s',
     async (code) => {
       mockFindUnique.mockResolvedValue(connectedBusiness);
       mockSyncStatus.mockRejectedValue({ code });
@@ -293,8 +293,10 @@ describe('GET /api/stripe/connect/payouts', () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.notConnected).toBe(true);
-      expect(mockUpdate).toHaveBeenCalled();
-      expect(mockDeleteMany).toHaveBeenCalled();
+      expect(body.connectStatusUnavailable).toBe(true);
+      expect(body.connectStatusMessage).toContain('left unchanged');
+      expect(mockUpdate).not.toHaveBeenCalled();
+      expect(mockDeleteMany).not.toHaveBeenCalled();
     }
   );
 

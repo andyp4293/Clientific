@@ -50,6 +50,7 @@ import {
 } from '@/lib/referral-payouts';
 import {
   fetchConnectPayoutsOverview,
+  isRecoverableConnectAccountError,
   syncBusinessConnectState,
 } from '@/lib/stripe-connect';
 import { getBearerToken, verifyMobileSessionToken } from '@/lib/mobile-session';
@@ -66,7 +67,11 @@ const mockSettlePendingDealPurchasePayouts =
 const mockSettlePendingReferralCommissions =
   settlePendingReferralCommissions as ReturnType<typeof vi.fn>;
 const mockFetchConnectPayoutsOverview = fetchConnectPayoutsOverview as ReturnType<typeof vi.fn>;
+const mockIsRecoverableConnectAccountError =
+  isRecoverableConnectAccountError as ReturnType<typeof vi.fn>;
 const mockSyncBusinessConnectState = syncBusinessConnectState as ReturnType<typeof vi.fn>;
+const mockUpdateBusiness = prisma.business.update as ReturnType<typeof vi.fn>;
+const mockDeleteBankAccount = prisma.businessBankAccount.deleteMany as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -83,6 +88,9 @@ beforeEach(() => {
   mockReconcileReferralCommissions.mockResolvedValue(undefined);
   mockSettlePendingDealPurchasePayouts.mockResolvedValue(undefined);
   mockSettlePendingReferralCommissions.mockResolvedValue(undefined);
+  mockIsRecoverableConnectAccountError.mockReturnValue(false);
+  mockUpdateBusiness.mockResolvedValue({});
+  mockDeleteBankAccount.mockResolvedValue({});
 });
 
 describe('GET /api/mobile/funds', () => {
@@ -179,5 +187,36 @@ describe('GET /api/mobile/funds', () => {
     expect(body.availableBalanceLabel).toBe('$18.20');
     expect(body.bankAccountSummary).toBe('Mercury ending in 1234');
     expect(body.recentPayouts).toHaveLength(1);
+  });
+
+  it('does not clear stored payout setup when a mobile status refresh cannot verify Stripe', async () => {
+    mockFindBusiness.mockResolvedValue({
+      id: 'biz-1',
+      name: 'Clientific Studio',
+      email: 'owner@clientific.app',
+      businessType: 'Salon',
+      phone: '+15551234567',
+      street: '123 Main St',
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      country: 'US',
+      stripeConnectAccountId: 'acct_1',
+    });
+    mockSyncBusinessConnectState.mockRejectedValue({ code: 'resource_missing' });
+    mockIsRecoverableConnectAccountError.mockReturnValue(true);
+
+    const response = await GET(
+      new Request('https://www.clientific.app/api/mobile/funds', {
+        headers: { authorization: 'Bearer token' },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.connectStatusUnavailable).toBe(true);
+    expect(body.setupMessage).toContain('left unchanged');
+    expect(mockUpdateBusiness).not.toHaveBeenCalled();
+    expect(mockDeleteBankAccount).not.toHaveBeenCalled();
   });
 });

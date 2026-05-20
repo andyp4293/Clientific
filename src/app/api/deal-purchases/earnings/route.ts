@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { getVisibleReferralTransferStatus } from '@/lib/referral-payouts';
 import { getSessionBusinessId } from '@/lib/session-business';
 
 const dollarsToCents = (value: number) => Math.round(value * 100);
@@ -47,6 +48,7 @@ export async function GET(_req: NextRequest) {
           createdAt: true,
           amountDollars: true,
           transferStatus: true,
+          transferFailureReason: true,
           transferredAt: true,
           referral: {
             select: {
@@ -93,7 +95,10 @@ export async function GET(_req: NextRequest) {
         grossAmount: amountCents,
         feeAmount: 0,
         netAmount: amountCents,
-        status: commission.transferStatus,
+        status: getVisibleReferralTransferStatus(
+          commission.transferStatus,
+          commission.transferFailureReason
+        ),
       };
     });
 

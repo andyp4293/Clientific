@@ -60,7 +60,11 @@ vi.mock('next-auth', () => ({
 vi.mock('@/lib/stripe', () => ({
   stripe: {
     webhooks: { constructEvent: vi.fn() },
-    transfers: { create: vi.fn().mockResolvedValue({ id: 'tr_referral_1' }) },
+    invoices: { retrieve: vi.fn() },
+    transfers: {
+      list: vi.fn().mockResolvedValue({ data: [], has_more: false }),
+      create: vi.fn().mockResolvedValue({ id: 'tr_referral_1' }),
+    },
     subscriptions: { retrieve: vi.fn() },
   },
   PRICING_PLANS: {
@@ -84,6 +88,8 @@ const mockReferralCommissionFindUnique =
   prisma.referralCommission.findUnique as ReturnType<typeof vi.fn>;
 const mockReferralCommissionFindMany =
   prisma.referralCommission.findMany as ReturnType<typeof vi.fn>;
+const mockInvoiceRetrieve = stripe.invoices.retrieve as ReturnType<typeof vi.fn>;
+const mockTransferList = stripe.transfers.list as ReturnType<typeof vi.fn>;
 const mockTransferCreate = stripe.transfers.create as ReturnType<typeof vi.fn>;
 const mockSyncBusinessConnectState =
   syncBusinessConnectState as ReturnType<typeof vi.fn>;
@@ -463,6 +469,12 @@ describe('Stripe webhook - invoice.payment_succeeded referral credit', () => {
         amountDollars: 8.7,
       },
     ]);
+    mockInvoiceRetrieve.mockResolvedValue({
+      id: 'inv_001',
+      payment_intent: null,
+      charge: null,
+    });
+    mockTransferList.mockResolvedValue({ data: [], has_more: false });
     mockTransferCreate.mockResolvedValue({ id: 'tr_referral_1' });
   });
 
