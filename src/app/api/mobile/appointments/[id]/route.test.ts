@@ -281,6 +281,63 @@ describe('mobile appointment detail route', () => {
     );
   });
 
+  it('accepts 15-minute mobile appointment duration updates', async () => {
+    mockFindAppointment.mockResolvedValueOnce({
+      ...baseAppointment,
+      status: 'scheduled',
+      serviceId: null,
+      serviceIds: [],
+      service: null,
+      business: undefined,
+    } as never);
+    mockUpdateAppointment
+      .mockResolvedValueOnce({
+        ...baseAppointment,
+        status: 'scheduled',
+        serviceId: null,
+        serviceIds: [],
+        service: null,
+        duration: 15,
+        startTime: new Date('2026-03-30T16:30:00.000Z'),
+        endTime: new Date('2026-03-30T16:45:00.000Z'),
+        business: undefined,
+      } as never)
+      .mockResolvedValueOnce({ id: 'appt-1', reminderSent: true } as never);
+    mockFindServices.mockResolvedValue([] as never);
+
+    const response = await PATCH(
+      new Request('https://www.clientific.app/api/mobile/appointments/appt-1', {
+        method: 'PATCH',
+        headers: {
+          authorization: 'Bearer token',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          startDate: '2026-03-30',
+          startTimeLocal: '12:30',
+          duration: 15,
+          serviceId: null,
+          serviceIds: [],
+        }),
+      }),
+      { params: Promise.resolve({ id: 'appt-1' }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockUpdateAppointment).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          duration: 15,
+          endTime: new Date('2026-03-30T16:45:00.000Z'),
+          serviceId: null,
+          serviceIds: [],
+          startTime: '2026-03-30T16:30:00.000Z',
+        }),
+      }),
+    );
+  });
+
   it('sends customer update SMS for online or AI bookings when service, staff, or time changes', async () => {
     mockFindAppointment.mockResolvedValueOnce({
       ...baseAppointment,

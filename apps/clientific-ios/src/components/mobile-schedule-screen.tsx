@@ -92,6 +92,8 @@ type AppointmentEditFormState = {
 
 type CalendarTarget = 'schedule' | 'create' | 'edit';
 
+const MANUAL_APPOINTMENT_DURATIONS = [15, 30, 45, 60, 90, 120] as const;
+
 function formatDateKey(date: Date) {
   return date.toLocaleDateString('en-CA');
 }
@@ -212,6 +214,14 @@ function formatTimePreview(time: string) {
   const suffix = hour >= 12 ? 'PM' : 'AM';
   const normalizedHour = hour % 12 === 0 ? 12 : hour % 12;
   return `${normalizedHour}:${String(minute).padStart(2, '0')} ${suffix}`;
+}
+
+function formatManualDurationLabel(duration: number) {
+  if (duration < 60) {
+    return `${duration} min`;
+  }
+
+  return `${duration / 60} hr`;
 }
 
 function createInitialAppointmentForm(dateKey: string): AppointmentCreateFormState {
@@ -2271,12 +2281,13 @@ export function MobileScheduleScreen({
                   <>
                     <SectionLabel label="Manual duration" />
                     <View style={styles.segmentRow}>
-                      {[30, 45, 60, 90, 120].map((duration) => (
+                      {MANUAL_APPOINTMENT_DURATIONS.map((duration) => (
                         <OptionChip
                           key={duration}
-                          label={duration >= 60 ? `${duration / 60} hr` : `${duration} min`}
+                          label={formatManualDurationLabel(duration)}
                           onPress={() => setEditForm((current) => ({ ...current, duration }))}
                           selected={editForm.duration === duration}
+                          testID={`mobile-schedule-edit-duration-${duration}`}
                         />
                       ))}
                     </View>

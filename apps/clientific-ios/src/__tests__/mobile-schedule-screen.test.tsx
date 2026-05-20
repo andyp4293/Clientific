@@ -541,4 +541,56 @@ describe('MobileScheduleScreen', () => {
       );
     });
   });
+
+  it('lets owners shorten manual appointment edits to 15 minutes', async () => {
+    const onUpdateAppointment = jest.fn().mockResolvedValue(undefined);
+    const schedule = buildSchedule('2099-03-31', 'Thursday, March 31');
+    const manualAppointment = {
+      ...schedule.appointments[0],
+      serviceId: null,
+      serviceName: 'Manual appointment',
+      staffId: null,
+      staffName: null,
+      duration: 30,
+      endTimeLabel: '12:00 PM',
+    };
+
+    renderScreen({
+      data: {
+        ...schedule,
+        appointments: [manualAppointment],
+      },
+      onUpdateAppointment,
+    });
+
+    fireEvent.press(screen.getByTestId('mobile-appointment-edit-appt-1'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mobile-schedule-edit-duration-15')).toBeTruthy();
+    });
+
+    expect(screen.getByText('Manual duration')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('mobile-schedule-edit-duration-15'));
+    expect(
+      screen.getByTestId('mobile-schedule-edit-duration-15').props.accessibilityState,
+    ).toMatchObject({ selected: true });
+
+    fireEvent.press(screen.getByTestId('mobile-schedule-edit-time-11:00'));
+    fireEvent.press(screen.getByTestId('mobile-schedule-edit-submit'));
+
+    const expectedStartTime = new Date('2026-03-31T11:00').toISOString();
+
+    await waitFor(() => {
+      expect(onUpdateAppointment).toHaveBeenCalledWith(
+        'appt-1',
+        expect.objectContaining({
+          duration: 15,
+          serviceId: null,
+          serviceIds: [],
+          staffId: null,
+          startTime: expectedStartTime,
+        }),
+      );
+    });
+  });
 });
