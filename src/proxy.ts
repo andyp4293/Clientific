@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { checkRateLimit } from '@/lib/rate-limit';
+import { checkRateLimit, getClientIp, type RateLimitDecision } from '@/lib/rate-limit';
 
-function rateLimitResponse(request: NextRequest, decision: ReturnType<typeof checkRateLimit>) {
+function rateLimitResponse(request: NextRequest, decision: RateLimitDecision) {
   const headers = new Headers(decision.headers);
   headers.set('Cache-Control', 'no-store');
 
@@ -26,13 +26,63 @@ function rateLimitResponse(request: NextRequest, decision: ReturnType<typeof che
   );
 }
 
+function getInternalRateLimitSecret() {
+  return process.env.RATE_LIMIT_INTERNAL_SECRET || process.env.NEXTAUTH_SECRET;
+}
+
+async function checkPersistentRateLimit(
+  request: NextRequest,
+  localDecision: RateLimitDecision,
+) {
+  if (
+    !localDecision.policyId ||
+    process.env.RATE_LIMIT_PERSISTENT_DISABLED === 'true' ||
+    process.env.RATE_LIMIT_DISABLED === 'true'
+  ) {
+    return localDecision;
+  }
+
+  const secret = getInternalRateLimitSecret();
+  if (!secret) return localDecision;
+
+  try {
+    const response = await fetch(new URL('/api/internal/rate-limit', request.url), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-clientific-internal-rate-limit': secret,
+      },
+      body: JSON.stringify({
+        pathname: request.nextUrl.pathname,
+        method: request.method,
+        ip: getClientIp(request.headers),
+        userAgent: request.headers.get('user-agent') || '',
+      }),
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      console.warn('[rate-limit] Persistent limiter returned', response.status);
+      return localDecision;
+    }
+
+    const persistentDecision = (await response.json()) as RateLimitDecision;
+    return persistentDecision?.allowed === false ? persistentDecision : localDecision;
+  } catch (error) {
+    console.warn('[rate-limit] Persistent limiter failed open:', error);
+    return localDecision;
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const rateLimitDecision = checkRateLimit({
+  let rateLimitDecision = checkRateLimit({
     pathname,
     method: request.method,
     headers: request.headers,
   });
+
+  rateLimitDecision = await checkPersistentRateLimit(request, rateLimitDecision);
 
   if (!rateLimitDecision.allowed) {
     return rateLimitResponse(request, rateLimitDecision);

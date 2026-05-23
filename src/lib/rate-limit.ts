@@ -1,20 +1,28 @@
-type HeaderReader = {
+export type HeaderReader = {
   get(name: string): string | null;
 };
 
-type RateLimitRequest = {
+export type RateLimitRequest = {
   pathname: string;
   method: string;
   headers: HeaderReader;
   now?: number;
 };
 
-type RateLimitPolicy = {
+export type RateLimitPolicy = {
   id: string;
   limit: number;
   windowMs: number;
   message: string;
   match: (request: RateLimitRequest) => boolean;
+};
+
+export type RateLimitCheck = {
+  policyId: string;
+  key: string;
+  limit: number;
+  windowMs: number;
+  message: string;
 };
 
 type WindowState = {
@@ -135,6 +143,7 @@ function isDynamicPublicPage(pathname: string) {
 
 function isBypassedPath(pathname: string) {
   return startsWithAny(pathname, [
+    '/api/internal/rate-limit',
     '/api/webhooks/',
     '/api/cron/',
     '/api/auth/session',
@@ -285,9 +294,8 @@ function buildHeaders(limit: number, remaining: number, resetAt: number, retryAf
   return headers;
 }
 
-export function checkRateLimit(request: RateLimitRequest): RateLimitDecision {
+export function getRateLimitChecks(request: RateLimitRequest): RateLimitCheck[] {
   const method = normalizeMethod(request.method);
-  const now = request.now ?? Date.now();
   const clientIp = getClientIp(request.headers);
 
   if (
@@ -296,11 +304,56 @@ export function checkRateLimit(request: RateLimitRequest): RateLimitDecision {
     isBypassedPath(request.pathname) ||
     parseTrustedIps().includes(clientIp)
   ) {
-    return { allowed: true, headers: {} };
+    return [];
   }
 
-  const matchingPolicies = rateLimitPolicies.filter((policy) => policy.match(request));
-  if (matchingPolicies.length === 0) {
+  return rateLimitPolicies
+    .filter((policy) => policy.match(request))
+    .map((policy) => ({
+      policyId: policy.id,
+      key: getRateLimitKey(policy, request, clientIp),
+      limit: policy.limit,
+      windowMs: policy.windowMs,
+      message: policy.message,
+    }));
+}
+
+export function buildRateLimitDecisionFromCount(
+  check: RateLimitCheck,
+  count: number,
+  resetAt: number,
+  now: number,
+): RateLimitDecision {
+  const remaining = check.limit - count;
+
+  if (remaining < 0) {
+    const retryAfterSeconds = Math.max(1, Math.ceil((resetAt - now) / 1000));
+    return {
+      allowed: false,
+      policyId: check.policyId,
+      limit: check.limit,
+      remaining: 0,
+      resetAt,
+      retryAfterSeconds,
+      message: check.message,
+      headers: buildHeaders(check.limit, 0, resetAt, retryAfterSeconds),
+    };
+  }
+
+  return {
+    allowed: true,
+    policyId: check.policyId,
+    limit: check.limit,
+    remaining,
+    resetAt,
+    headers: buildHeaders(check.limit, remaining, resetAt),
+  };
+}
+
+export function checkRateLimit(request: RateLimitRequest): RateLimitDecision {
+  const now = request.now ?? Date.now();
+  const checks = getRateLimitChecks(request);
+  if (checks.length === 0) {
     return { allowed: true, headers: {} };
   }
 
@@ -308,43 +361,33 @@ export function checkRateLimit(request: RateLimitRequest): RateLimitDecision {
 
   let mostRestrictiveAllowed: RateLimitDecision | null = null;
 
-  for (const policy of matchingPolicies) {
-    const key = getRateLimitKey(policy, request, clientIp);
-    const existing = rateLimitStore.get(key);
+  for (const check of checks) {
+    const existing = rateLimitStore.get(check.key);
     const windowState =
       existing && existing.resetAt > now
         ? existing
-        : { count: 0, resetAt: now + policy.windowMs, touchedAt: now };
+        : { count: 0, resetAt: now + check.windowMs, touchedAt: now };
 
     windowState.count += 1;
     windowState.touchedAt = now;
-    rateLimitStore.set(key, windowState);
+    rateLimitStore.set(check.key, windowState);
 
-    const remaining = policy.limit - windowState.count;
+    const decision = buildRateLimitDecisionFromCount(
+      check,
+      windowState.count,
+      windowState.resetAt,
+      now,
+    );
 
-    if (remaining < 0) {
-      const retryAfterSeconds = Math.max(1, Math.ceil((windowState.resetAt - now) / 1000));
-      return {
-        allowed: false,
-        policyId: policy.id,
-        limit: policy.limit,
-        remaining: 0,
-        resetAt: windowState.resetAt,
-        retryAfterSeconds,
-        message: policy.message,
-        headers: buildHeaders(policy.limit, 0, windowState.resetAt, retryAfterSeconds),
-      };
+    if (!decision.allowed) {
+      return decision;
     }
 
-    if (!mostRestrictiveAllowed || remaining < (mostRestrictiveAllowed.remaining ?? Infinity)) {
-      mostRestrictiveAllowed = {
-        allowed: true,
-        policyId: policy.id,
-        limit: policy.limit,
-        remaining,
-        resetAt: windowState.resetAt,
-        headers: buildHeaders(policy.limit, remaining, windowState.resetAt),
-      };
+    if (
+      !mostRestrictiveAllowed ||
+      (decision.remaining ?? Infinity) < (mostRestrictiveAllowed.remaining ?? Infinity)
+    ) {
+      mostRestrictiveAllowed = decision;
     }
   }
 

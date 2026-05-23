@@ -673,3 +673,13 @@ model AffiliateSignup {
 
   @@index([affiliateId])
 }
+
+model RateLimitWindow {
+  key       String   @id
+  count     Int      @default(0)
+  resetAt   DateTime
+  touchedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([resetAt])
+}

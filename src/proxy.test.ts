@@ -20,9 +20,11 @@ function request(pathname: string, ip = '203.0.113.80') {
 describe('proxy rate limiting', () => {
   afterEach(() => {
     resetRateLimitStore();
+    vi.unstubAllEnvs();
   });
 
   it('returns a JSON 429 before protected API handlers are reached', async () => {
+    vi.stubEnv('RATE_LIMIT_PERSISTENT_DISABLED', 'true');
     let response = await proxy(request('/api/mobile/auth/login'));
 
     for (let index = 0; index < 8; index += 1) {

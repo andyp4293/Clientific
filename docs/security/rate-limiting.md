@@ -4,6 +4,8 @@ Clientific uses two layers of abuse protection:
 
 1. Vercel's platform DDoS mitigation, which is always active in front of the deployment.
 2. Application-level request throttling in `src/proxy.ts`, before API route handlers run.
+3. A shared `RateLimitWindow` database table, so limits keep working when Vercel spreads traffic
+   across multiple production isolates.
 
 The app-level limiter is intentionally route-aware:
 
@@ -23,6 +25,11 @@ Optional environment controls:
 
 - `RATE_LIMIT_DISABLED=true` disables app-level throttling only for emergency debugging.
 - `RATE_LIMIT_TRUSTED_IPS=203.0.113.10,198.51.100.8` bypasses known monitors or internal admin IPs.
+- `RATE_LIMIT_PERSISTENT_DISABLED=true` disables the shared database limiter and keeps only the
+  in-process safety net. This should only be used during an incident where the database limiter is
+  unhealthy.
+- `RATE_LIMIT_INTERNAL_SECRET` optionally sets the shared secret used by the proxy when calling the
+  internal database limiter. If omitted, `NEXTAUTH_SECRET` is used.
 
 For Enterprise/Pro hardening in Vercel Firewall, mirror the same buckets at the edge dashboard/API,
 especially:
