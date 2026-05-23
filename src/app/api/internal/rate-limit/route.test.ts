@@ -16,13 +16,21 @@ import { checkDatabaseRateLimit } from '@/lib/rate-limit-db';
 
 const checkDatabaseRateLimitMock = checkDatabaseRateLimit as ReturnType<typeof vi.fn>;
 
-function request(body: Record<string, unknown>, secret = 'test-secret') {
+function request(
+  body: Record<string, unknown>,
+  secret: string | null = 'test-secret',
+) {
+  const headers = new Headers({
+    'content-type': 'application/json',
+  });
+
+  if (secret) {
+    headers.set('x-clientific-internal-rate-limit', secret);
+  }
+
   return new Request('https://www.clientific.app/api/internal/rate-limit', {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-clientific-internal-rate-limit': secret,
-    },
+    headers,
     body: JSON.stringify(body),
   });
 }
@@ -73,6 +81,41 @@ describe('POST /api/internal/rate-limit', () => {
     expect(response.headers.get('Retry-After')).toBe('60');
     expect(await response.json()).toMatchObject({
       allowed: false,
+      policyId: 'auth-burst',
+    });
+  });
+
+  it('also accepts the shared proxy secret in the internal JSON body', async () => {
+    vi.stubEnv('NEXTAUTH_SECRET', 'test-secret');
+    checkDatabaseRateLimitMock.mockResolvedValue({
+      allowed: true,
+      policyId: 'auth-burst',
+      limit: 8,
+      remaining: 7,
+      resetAt: 1_800_000_060_000,
+      headers: {
+        'X-RateLimit-Limit': '8',
+        'X-RateLimit-Remaining': '7',
+        'X-RateLimit-Reset': '1800000060',
+      },
+    });
+
+    const response = await POST(
+      request(
+        {
+          pathname: '/api/mobile/auth/login',
+          method: 'POST',
+          ip: '203.0.113.92',
+          userAgent: 'vitest-route',
+          internalSecret: 'test-secret',
+        },
+        null,
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      allowed: true,
       policyId: 'auth-burst',
     });
   });

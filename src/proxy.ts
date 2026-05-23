@@ -57,6 +57,7 @@ async function checkPersistentRateLimit(
         method: request.method,
         ip: getClientIp(request.headers),
         userAgent: request.headers.get('user-agent') || '',
+        internalSecret: secret,
       }),
       cache: 'no-store',
     });

@@ -23,20 +23,39 @@ function isSafeMethod(value: unknown): value is string {
 export async function POST(request: Request) {
   const secret = getInternalSecret();
 
-  if (!secret || request.headers.get('x-clientific-internal-rate-limit') !== secret) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
-
   let body: {
     pathname?: unknown;
     method?: unknown;
     ip?: unknown;
     userAgent?: unknown;
-  };
+    internalSecret?: unknown;
+  } = {};
+  let bodyParseFailed = false;
 
   try {
     body = await request.json();
   } catch {
+    bodyParseFailed = true;
+  }
+
+  const headerSecret = request.headers.get('x-clientific-internal-rate-limit');
+  const bodySecret = typeof body.internalSecret === 'string' ? body.internalSecret : null;
+
+  if (!secret || (headerSecret !== secret && bodySecret !== secret)) {
+    if (headerSecret || bodySecret) {
+      console.warn('[rate-limit] Rejected internal limiter request', {
+        hasSecret: Boolean(secret),
+        headerPresent: Boolean(headerSecret),
+        bodySecretPresent: Boolean(bodySecret),
+        secretLength: secret?.length ?? 0,
+        headerLength: headerSecret?.length ?? 0,
+        bodySecretLength: bodySecret?.length ?? 0,
+      });
+    }
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
+  if (bodyParseFailed) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
