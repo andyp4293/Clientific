@@ -1,9 +1,43 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { checkRateLimit } from '@/lib/rate-limit';
+
+function rateLimitResponse(request: NextRequest, decision: ReturnType<typeof checkRateLimit>) {
+  const headers = new Headers(decision.headers);
+  headers.set('Cache-Control', 'no-store');
+
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    return NextResponse.json(
+      {
+        error: decision.message || 'Too many requests. Please wait a moment and try again.',
+        code: 'RATE_LIMITED',
+      },
+      { status: 429, headers },
+    );
+  }
+
+  return new NextResponse(
+    decision.message || 'Too many requests. Please wait a moment and try again.',
+    {
+      status: 429,
+      headers,
+    },
+  );
+}
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const rateLimitDecision = checkRateLimit({
+    pathname,
+    method: request.method,
+    headers: request.headers,
+  });
+
+  if (!rateLimitDecision.allowed) {
+    return rateLimitResponse(request, rateLimitDecision);
+  }
+
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
 
   // Redirect authenticated users from landing page straight to dashboard
