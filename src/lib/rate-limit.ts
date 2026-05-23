@@ -231,11 +231,11 @@ function firstForwardedIp(value: string | null) {
 
 export function getClientIp(headers: HeaderReader) {
   return (
-    firstForwardedIp(headers.get('x-forwarded-for')) ||
+    firstForwardedIp(headers.get('true-client-ip')) ||
+    firstForwardedIp(headers.get('cf-connecting-ip')) ||
+    firstForwardedIp(headers.get('x-real-ip')) ||
     firstForwardedIp(headers.get('x-vercel-forwarded-for')) ||
-    headers.get('x-real-ip') ||
-    headers.get('cf-connecting-ip') ||
-    headers.get('true-client-ip') ||
+    firstForwardedIp(headers.get('x-forwarded-for')) ||
     'unknown'
   );
 }

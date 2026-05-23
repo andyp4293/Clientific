@@ -44,12 +44,32 @@ describe('rate limiting', () => {
     vi.unstubAllEnvs();
   });
 
-  it('uses the first forwarded IP as the rate limit identity', () => {
+  it('prefers real client IP headers before generic proxy forwarding', () => {
+    expect(
+      getClientIp(
+        headers({
+          'cf-connecting-ip': '198.51.100.10',
+          'x-forwarded-for': '198.51.100.20, 10.0.0.1',
+          'x-real-ip': '198.51.100.99',
+        }),
+      ),
+    ).toBe('198.51.100.10');
+  });
+
+  it('falls back through proxy-provided IP headers in a stable order', () => {
     expect(
       getClientIp(
         headers({
           'x-forwarded-for': '198.51.100.20, 10.0.0.1',
           'x-real-ip': '198.51.100.99',
+        }),
+      ),
+    ).toBe('198.51.100.99');
+
+    expect(
+      getClientIp(
+        headers({
+          'x-forwarded-for': '198.51.100.20, 10.0.0.1',
         }),
       ),
     ).toBe('198.51.100.20');
