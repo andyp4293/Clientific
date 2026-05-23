@@ -1,12 +1,12 @@
 import { PrismaClient } from '@prisma/client';
+import { sanitizeUserTextFieldsForStorage } from '@/lib/user-text-sanitization';
 
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+  prisma: ReturnType<typeof createPrismaClient> | undefined;
 };
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+function createPrismaClient() {
+  return new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
     // Enable connection pooling for better performance
     datasources: {
@@ -14,7 +14,20 @@ export const prisma =
         url: process.env.DATABASE_URL,
       },
     },
+  }).$extends({
+    query: {
+      $allModels: {
+        async $allOperations({ args, query }) {
+          return query(sanitizeUserTextFieldsForStorage(args));
+        },
+      },
+    },
   });
+}
+
+export const prisma =
+  globalForPrisma.prisma ??
+  createPrismaClient();
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
