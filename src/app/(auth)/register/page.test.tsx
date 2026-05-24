@@ -69,6 +69,9 @@ describe("RegisterPage", () => {
 
     expect(screen.getByLabelText(/business name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/business type/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText(/business type/i));
+    expect(screen.getByRole("option", { name: "Family Law" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("option", { name: "Salon" }));
     expect(screen.queryByLabelText(/business phone/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/street address/i)).not.toBeInTheDocument();
     expect(
