@@ -52,7 +52,6 @@ const BUSINESS_TYPES = [
   'Auto Service',
   'Retail',
   'Professional Services',
-  'Family Law',
   'Referral Partner',
   'Other',
 ] as const;

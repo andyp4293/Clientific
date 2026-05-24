@@ -115,7 +115,6 @@ function RegisterForm() {
     'Auto Service',
     'Retail',
     'Professional Services',
-    'Family Law',
     'Other',
   ];
 

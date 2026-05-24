@@ -479,7 +479,6 @@ export default function SettingsPage() {
     'Auto Service',
     'Retail',
     'Professional Services',
-    'Family Law',
     'Other',
   ];
 

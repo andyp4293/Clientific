@@ -116,37 +116,6 @@ function formatSpecialClosures(
     .join('\n');
 }
 
-function isFamilyLawBusinessType(businessType: string): boolean {
-  const normalized = businessType.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-
-  return [
-    /\bfamily law\b/,
-    /\bfamily lawyer\b/,
-    /\bfamily attorney\b/,
-    /\bdivorce law\b/,
-    /\bcustody law\b/,
-    /\bmatrimonial law\b/,
-  ].some((pattern) => pattern.test(normalized));
-}
-
-function buildFamilyLawReceptionistTemplate(): string {
-  return `
-Family law intake template:
-- Keep the same Clientific receptionist workflow: answer listed firm facts, explain listed services, schedule consultations or appointments, check availability, reschedule, cancel, collect brief notes, and transfer when needed.
-- Family law scope includes divorce, legal separation, child custody, parenting time or visitation, child support, spousal support or alimony, adoption, guardianship, domestic violence or protection orders, mediation, enforcement, modifications, and prenuptial or postnuptial agreements.
-- You are not a lawyer and must not give legal advice, predict outcomes, interpret court orders, calculate support, recommend legal strategy, promise representation, or say an attorney-client relationship exists.
-- If the caller asks for legal advice, say you cannot provide legal advice over the phone, but you can help schedule a consultation or transfer them to the office.
-- For sensitive matters, collect only high-level intake notes needed for scheduling, such as the general family-law topic, preferred attorney if listed, court date urgency, and safe callback preference. Do not ask for Social Security numbers, full dates of birth, financial account numbers, detailed abuse allegations, or confidential documents.
-- If the caller mentions immediate danger, violence happening now, a child in immediate danger, or an emergency, tell them to call emergency services right away before continuing.
-- If the caller mentions a court hearing, filing deadline, service deadline, restraining order deadline, or same-day urgent legal deadline, prioritize transfer to the office or taking a clear urgent message instead of trying to answer the legal question.
-- If the caller asks about criminal law, immigration, bankruptcy, tax, estate planning, landlord-tenant, employment law, personal injury, business litigation, or another matter outside family law, say: "Our team focuses on family law, so I can't help with that area directly. Would you like me to connect you or take a message for the office?" Do not answer the non-family-law question yourself.
-- Never say the firm handles an out-of-scope practice area unless that exact service or FAQ is listed above.`;
-}
-
-function buildIndustryReceptionistTemplate(businessType: string): string {
-  return isFamilyLawBusinessType(businessType) ? buildFamilyLawReceptionistTemplate() : '';
-}
-
 function formatSpokenDate(date: Date, timezone: string): string {
   return date.toLocaleDateString('en-US', {
     weekday: 'long',
@@ -682,7 +651,6 @@ export function buildAssistantConfig(
   const faqText = faqList.length > 0
     ? '\nFrequently asked questions:\n' + faqList.map(f => `Q: ${f.question}\nA: ${f.answer}`).join('\n\n')
     : '';
-  const industryTemplate = buildIndustryReceptionistTemplate(business.businessType);
   const forcedLanguage = options?.forcedLanguage ?? null;
   const shouldOfferLanguageSelection =
     business.aiReceptionistSpanishEnabled && !forcedLanguage;
@@ -736,7 +704,6 @@ ${servicesList}
 ${staffList ? `\nOur team (use the ID field when calling tools, never say the ID aloud):\n${staffList}\n` : ''}
 Location: ${location}
 Online booking: ${bookingUrl}${faqText}
-${industryTemplate}
 ${languageInstructions}
 
 Your job:

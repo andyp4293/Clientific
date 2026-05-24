@@ -86,7 +86,6 @@ describe('MobileAuthScreen', () => {
     );
 
     fireEvent.changeText(screen.getByTestId('mobile-register-business-name'), 'North Studio');
-    fireEvent.press(screen.getByTestId('mobile-register-type-Family Law'));
     fireEvent.changeText(screen.getByTestId('mobile-register-email'), 'owner@northstudio.com');
     fireEvent.changeText(screen.getByTestId('mobile-register-password'), 'secret123!');
     fireEvent.changeText(screen.getByTestId('mobile-register-confirm-password'), 'secret123!');
@@ -96,7 +95,7 @@ describe('MobileAuthScreen', () => {
     expect(onRegister).toHaveBeenCalledWith(
       expect.objectContaining({
         businessName: 'North Studio',
-        businessType: 'Family Law',
+        businessType: 'Salon',
         email: 'owner@northstudio.com',
         password: 'secret123!',
         confirmPassword: 'secret123!',
