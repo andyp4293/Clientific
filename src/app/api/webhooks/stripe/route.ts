@@ -25,6 +25,7 @@ import {
   normalizeSubscriptionPlan,
 } from '@/lib/plan-utils';
 import { sanitizeStripeEnvValue } from '@/lib/stripe-env';
+import { buildIdempotencyFingerprint, runIdempotentJson } from '@/lib/idempotency';
 
 function getPlanFromPriceId(priceId: string): string | null {
   const entry = Object.entries(PRICING_PLANS).find(
@@ -57,49 +58,66 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const webhookIdempotencyKey =
+    event.id || buildIdempotencyFingerprint(['stripe-webhook-fallback', event.type, body]);
+
   try {
-    switch (event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.Checkout.Session;
-        await handleCheckoutCompleted(session);
-        break;
-      }
+    return await runIdempotentJson({
+      scope: 'stripe-webhook',
+      ownerId: 'stripe',
+      key: webhookIdempotencyKey,
+      requestHash: buildIdempotencyFingerprint([
+        'stripe-webhook',
+        webhookIdempotencyKey,
+        event.type,
+      ]),
+      ttlMs: 30 * 24 * 60 * 60 * 1000,
+      lockMs: 5 * 60 * 1000,
+      handler: async () => {
+        switch (event.type) {
+          case 'checkout.session.completed': {
+            const session = event.data.object as Stripe.Checkout.Session;
+            await handleCheckoutCompleted(session);
+            break;
+          }
 
-      case 'customer.subscription.updated': {
-        const subscription = event.data.object as Stripe.Subscription;
-        await handleSubscriptionUpdated(subscription);
-        break;
-      }
+          case 'customer.subscription.updated': {
+            const subscription = event.data.object as Stripe.Subscription;
+            await handleSubscriptionUpdated(subscription);
+            break;
+          }
 
-      case 'customer.subscription.deleted': {
-        const subscription = event.data.object as Stripe.Subscription;
-        await handleSubscriptionDeleted(subscription);
-        break;
-      }
+          case 'customer.subscription.deleted': {
+            const subscription = event.data.object as Stripe.Subscription;
+            await handleSubscriptionDeleted(subscription);
+            break;
+          }
 
-      case 'invoice.payment_succeeded': {
-        const invoice = event.data.object as Stripe.Invoice;
-        await handleInvoicePaymentSucceeded(invoice);
-        break;
-      }
+          case 'invoice.payment_succeeded': {
+            const invoice = event.data.object as Stripe.Invoice;
+            await handleInvoicePaymentSucceeded(invoice);
+            break;
+          }
 
-      case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice;
-        await handleInvoicePaymentFailed(invoice);
-        break;
-      }
+          case 'invoice.payment_failed': {
+            const invoice = event.data.object as Stripe.Invoice;
+            await handleInvoicePaymentFailed(invoice);
+            break;
+          }
 
-      case 'payment_intent.succeeded': {
-        const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        await handlePaymentIntentSucceeded(paymentIntent);
-        break;
-      }
+          case 'payment_intent.succeeded': {
+            const paymentIntent = event.data.object as Stripe.PaymentIntent;
+            await handlePaymentIntentSucceeded(paymentIntent);
+            break;
+          }
 
-      default:
-        console.log(`Unhandled event type: ${event.type}`);
-    }
+          default:
+            console.log(`Unhandled event type: ${event.type}`);
+        }
 
-    return NextResponse.json({ received: true });
+        return { body: { received: true } };
+      },
+    });
   } catch (error: any) {
     console.error('Webhook handler error:', error);
     return NextResponse.json(

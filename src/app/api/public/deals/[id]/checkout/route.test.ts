@@ -6,6 +6,11 @@ vi.mock('@/lib/prisma', () => ({
     deal: { findUnique: vi.fn() },
     dealPurchase: { update: vi.fn() },
     customer: { findFirst: vi.fn() },
+    idempotencyRecord: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
   },
 }));
 
@@ -67,6 +72,9 @@ import { POST } from './route';
 const mockDealFindUnique = prisma.deal.findUnique as ReturnType<typeof vi.fn>;
 const mockDealPurchaseUpdate = prisma.dealPurchase.update as ReturnType<typeof vi.fn>;
 const mockCustomerFindFirst = prisma.customer.findFirst as ReturnType<typeof vi.fn>;
+const mockIdempotencyCreate = prisma.idempotencyRecord.create as ReturnType<typeof vi.fn>;
+const mockIdempotencyFindUnique = prisma.idempotencyRecord.findUnique as ReturnType<typeof vi.fn>;
+const mockIdempotencyUpdate = prisma.idempotencyRecord.update as ReturnType<typeof vi.fn>;
 const mockSessionCreate = stripe.checkout.sessions.create as ReturnType<typeof vi.fn>;
 const mockCreatePending = createPendingDealPurchase as ReturnType<typeof vi.fn>;
 const mockFinalize = finalizeDealPurchaseFromCheckoutSession as ReturnType<typeof vi.fn>;
@@ -117,6 +125,8 @@ const readyConnectAccount = {
   details_submitted: true,
 };
 
+const idempotencyRecords = new Map<string, any>();
+
 function makeRequest(body: object, dealId = 'deal-1') {
   return new NextRequest(`http://localhost/api/public/deals/${dealId}/checkout`, {
     method: 'POST',
@@ -127,6 +137,7 @@ function makeRequest(body: object, dealId = 'deal-1') {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  idempotencyRecords.clear();
   mockDealFindUnique.mockResolvedValue(baseDeal);
   mockIsValidPhone.mockReturnValue(true);
   mockGetSelectable.mockReturnValue([{ id: 'svc-1', name: 'Haircut', price: 50, active: true }]);
@@ -140,6 +151,28 @@ beforeEach(() => {
   mockSessionCreate.mockResolvedValue({ id: 'cs_test_123', url: 'https://checkout.stripe.com/pay/cs_test_123' });
   mockDealPurchaseUpdate.mockResolvedValue({});
   mockCustomerFindFirst.mockResolvedValue(null);
+  mockIdempotencyCreate.mockImplementation(async ({ data }: any) => {
+    if (idempotencyRecords.has(data.key)) {
+      throw { code: 'P2002' };
+    }
+    const record = {
+      ...data,
+      responseStatus: data.responseStatus ?? null,
+      responseBody: data.responseBody ?? null,
+    };
+    idempotencyRecords.set(data.key, record);
+    return record;
+  });
+  mockIdempotencyFindUnique.mockImplementation(async ({ where }: any) => {
+    return idempotencyRecords.get(where.key) ?? null;
+  });
+  mockIdempotencyUpdate.mockImplementation(async ({ where, data }: any) => {
+    const existing = idempotencyRecords.get(where.key);
+    if (!existing) throw new Error(`Missing idempotency record ${where.key}`);
+    const updated = { ...existing, ...data };
+    idempotencyRecords.set(where.key, updated);
+    return updated;
+  });
 });
 
 describe('POST /api/public/deals/[id]/checkout', () => {
@@ -277,7 +310,8 @@ describe('POST /api/public/deals/[id]/checkout', () => {
         success_url: expect.stringContaining(`/deal-purchases/${basePurchase.token}`),
         cancel_url: expect.stringContaining(`/d/${baseDeal.id}`),
         metadata: expect.objectContaining({ kind: 'deal_purchase', dealPurchaseId: 'purchase-1' }),
-      })
+      }),
+      expect.objectContaining({ idempotencyKey: expect.any(String) })
     );
 
     expect(mockDealPurchaseUpdate).toHaveBeenCalledWith(
@@ -291,6 +325,24 @@ describe('POST /api/public/deals/[id]/checkout', () => {
 
     const callArg = mockSessionCreate.mock.calls[0][0];
     expect(callArg).not.toHaveProperty('payment_method_types');
+  });
+
+  it('replays duplicate purchase-link checkout requests without creating another purchase or Stripe session', async () => {
+    const payload = { customerName: 'Jane Doe', customerPhone: '5551234567', selectedServiceIds: ['svc-1'] };
+
+    const first = await POST(makeRequest(payload), { params: Promise.resolve({ id: 'deal-1' }) });
+    const second = await POST(makeRequest(payload), { params: Promise.resolve({ id: 'deal-1' }) });
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(second.headers.get('x-idempotency-replayed')).toBe('true');
+    await expect(second.json()).resolves.toEqual({
+      url: 'https://checkout.stripe.com/pay/cs_test_123',
+      purchaseId: 'purchase-1',
+    });
+    expect(mockCreatePending).toHaveBeenCalledTimes(1);
+    expect(mockSessionCreate).toHaveBeenCalledTimes(1);
+    expect(mockDealPurchaseUpdate).toHaveBeenCalledTimes(1);
   });
 
   it('finalizes a free deal immediately without creating a Stripe session', async () => {

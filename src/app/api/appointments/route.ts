@@ -28,6 +28,12 @@ import {
   ServiceBookingSegment,
   shouldCreateSegmentedServiceBooking,
 } from '@/lib/service-staff-assignments';
+import {
+  buildAutomaticIdempotencyKey,
+  buildIdempotencyFingerprint,
+  getRequestIdempotencyKey,
+  runIdempotentJson,
+} from '@/lib/idempotency';
 
 const businessMidnightUTC = businessDayStart;
 
@@ -370,6 +376,30 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const appointmentFingerprint = [
+      'dashboard-appointment-create',
+      business.id,
+      customerId,
+      serviceIds,
+      serviceStaffAssignments,
+      staffId || null,
+      start.toISOString(),
+      end.toISOString(),
+      effectiveDuration,
+      typeof notes === 'string' ? notes.trim() : null,
+      appointmentSmsConsent === true,
+    ];
+    const idempotencyKey =
+      getRequestIdempotencyKey(req) ??
+      buildAutomaticIdempotencyKey('dashboard-appointment-create', appointmentFingerprint);
+
+    return await runIdempotentJson({
+      scope: 'dashboard-appointment-create',
+      ownerId: business.id,
+      key: idempotencyKey,
+      requestHash: buildIdempotencyFingerprint(appointmentFingerprint),
+      ttlMs: 15 * 60 * 1000,
+      handler: async () => {
     const conflicts = await findStaffConflicts({
       businessId: business.id,
       segments: createSegmentedAppointments ? segments : undefined,
@@ -379,10 +409,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (conflicts.length > 0) {
-      return NextResponse.json(
-        { error: 'Time slot is not available' },
-        { status: 409 }
-      );
+      return { body: { error: 'Time slot is not available' }, status: 409 };
     }
 
     if (appointmentSmsConsent === true) {
@@ -398,14 +425,14 @@ export async function POST(req: NextRequest) {
       });
 
       if (!manualConsentCustomer) {
-        return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
+        return { body: { error: 'Customer not found' }, status: 404 };
       }
 
       if (!manualConsentCustomer.phone) {
-        return NextResponse.json(
-          { error: 'Customer needs a phone number before appointment texts can be enabled' },
-          { status: 400 }
-        );
+        return {
+          body: { error: 'Customer needs a phone number before appointment texts can be enabled' },
+          status: 400,
+        };
       }
     }
 
@@ -616,30 +643,35 @@ export async function POST(req: NextRequest) {
     }
 
     revalidateTag(`dashboard-stats-${business.id}`, {});
-    return NextResponse.json({
-      appointment,
-      appointments,
-      appointmentBatchUrl: createSegmentedAppointments
-        ? `${getConfiguredAppBaseUrl()}/appt/batch/${createOnlineAppointmentBatchToken({
-            b: business.id,
-            a: appointments.map((createdAppointment) => createdAppointment.id),
-          })}`
-        : null,
-      smsNotification: smsResult?.success
-        ? 'Confirmation SMS sent'
-        : appointment.customer.phone
-          ? canSendTransactionalSms
-            ? 'SMS notification failed'
-            : 'Customer has not opted into SMS'
-          : 'No phone number provided',
-      reminderNotification: reminderResult?.success
-        ? '2-hour reminder scheduled'
-        : appointment.customer.phone
-          ? canSendTransactionalSms
-            ? 'Reminder scheduling skipped or failed'
-            : 'Customer has not opted into SMS'
-          : 'No phone number provided',
-    }, { status: 201 });
+    return {
+      body: {
+        appointment,
+        appointments,
+        appointmentBatchUrl: createSegmentedAppointments
+          ? `${getConfiguredAppBaseUrl()}/appt/batch/${createOnlineAppointmentBatchToken({
+              b: business.id,
+              a: appointments.map((createdAppointment) => createdAppointment.id),
+            })}`
+          : null,
+        smsNotification: smsResult?.success
+          ? 'Confirmation SMS sent'
+          : appointment.customer.phone
+            ? canSendTransactionalSms
+              ? 'SMS notification failed'
+              : 'Customer has not opted into SMS'
+            : 'No phone number provided',
+        reminderNotification: reminderResult?.success
+          ? '2-hour reminder scheduled'
+          : appointment.customer.phone
+            ? canSendTransactionalSms
+              ? 'Reminder scheduling skipped or failed'
+              : 'Customer has not opted into SMS'
+            : 'No phone number provided',
+      },
+      status: 201,
+    };
+      },
+    });
   } catch (error: any) {
     console.error('Create appointment error:', error);
     return NextResponse.json(

@@ -27,6 +27,12 @@ import {
   shouldCreateSegmentedServiceBooking,
 } from '@/lib/service-staff-assignments';
 import { resolveMobileAppointmentStartTime } from '@/lib/mobile-appointment-time';
+import {
+  buildAutomaticIdempotencyKey,
+  buildIdempotencyFingerprint,
+  getRequestIdempotencyKey,
+  runIdempotentJson,
+} from '@/lib/idempotency';
 
 function buildOverlapWhere(start: Date, end: Date) {
   return [
@@ -524,6 +530,30 @@ export async function POST(request: Request) {
       }
     }
 
+    const appointmentFingerprint = [
+      'mobile-appointment-create',
+      business.id,
+      appointmentCustomer.id,
+      serviceIds,
+      serviceStaffAssignments,
+      staffId || null,
+      start.toISOString(),
+      end.toISOString(),
+      appointmentDuration,
+      typeof notes === 'string' ? notes.trim() : null,
+      appointmentSmsConsent === true,
+    ];
+    const idempotencyKey =
+      getRequestIdempotencyKey(request) ??
+      buildAutomaticIdempotencyKey('mobile-appointment-create', appointmentFingerprint);
+
+    return await runIdempotentJson({
+      scope: 'mobile-appointment-create',
+      ownerId: business.id,
+      key: idempotencyKey,
+      requestHash: buildIdempotencyFingerprint(appointmentFingerprint),
+      ttlMs: 15 * 60 * 1000,
+      handler: async () => {
     const conflicts = await findStaffConflicts({
       businessId: business.id,
       segments: createSegmentedAppointments ? segments : undefined,
@@ -533,15 +563,15 @@ export async function POST(request: Request) {
     });
 
     if (conflicts.length > 0) {
-      return NextResponse.json({ error: 'Time slot is not available' }, { status: 409 });
+      return { body: { error: 'Time slot is not available' }, status: 409 };
     }
 
     if (appointmentSmsConsent === true) {
       if (!appointmentCustomer.phone) {
-        return NextResponse.json(
-          { error: 'Customer needs a phone number before appointment texts can be enabled' },
-          { status: 400 },
-        );
+        return {
+          body: { error: 'Customer needs a phone number before appointment texts can be enabled' },
+          status: 400,
+        };
       }
     }
 
@@ -724,8 +754,8 @@ export async function POST(request: Request) {
       link: '/dashboard/appointments',
     });
 
-    return NextResponse.json(
-      {
+    return {
+      body: {
         appointment: {
           id: appointment.id,
           customerId: appointment.customer.id,
@@ -773,8 +803,10 @@ export async function POST(request: Request) {
             })}`
           : null,
       },
-      { status: 201 },
-    );
+      status: 201,
+    };
+      },
+    });
   } catch (error) {
     console.error('POST /api/mobile/appointments error:', error);
     return NextResponse.json({ error: 'Unable to create mobile appointment' }, { status: 500 });

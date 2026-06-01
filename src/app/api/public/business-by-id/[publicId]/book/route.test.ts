@@ -10,6 +10,11 @@ vi.mock('@/lib/prisma', () => ({
     customer: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
     notification: { create: vi.fn() },
     smsConsentEvent: { create: vi.fn() },
+    idempotencyRecord: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
   },
 }));
 
@@ -25,6 +30,8 @@ vi.mock('@/lib/email', () => ({
 import { prisma } from '@/lib/prisma';
 import { sendAppointmentConfirmation } from '@/lib/twilio';
 import { POST } from './route';
+
+const idempotencyRecords = new Map<string, any>();
 
 function req(body: Record<string, unknown>) {
   return new NextRequest('http://localhost/api/public/business-by-id/pub_123/book', {
@@ -45,6 +52,7 @@ const BASE_BODY = {
 describe('POST /api/public/business-by-id/[publicId]/book', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    idempotencyRecords.clear();
 
     vi.mocked(prisma.business.findUnique).mockResolvedValue({
       id: 'biz-1',
@@ -87,6 +95,28 @@ describe('POST /api/public/business-by-id/[publicId]/book', () => {
     } as any);
     vi.mocked(prisma.smsConsentEvent.create).mockResolvedValue({ id: 'evt-1' } as any);
     vi.mocked(prisma.notification.create).mockResolvedValue({ id: 'notif-1' } as any);
+    vi.mocked(prisma.idempotencyRecord.create).mockImplementation(async ({ data }: any) => {
+      if (idempotencyRecords.has(data.key)) {
+        throw { code: 'P2002' };
+      }
+      const record = {
+        ...data,
+        responseStatus: data.responseStatus ?? null,
+        responseBody: data.responseBody ?? null,
+      };
+      idempotencyRecords.set(data.key, record);
+      return record;
+    });
+    vi.mocked(prisma.idempotencyRecord.findUnique).mockImplementation(async ({ where }: any) => {
+      return idempotencyRecords.get(where.key) ?? null;
+    });
+    vi.mocked(prisma.idempotencyRecord.update).mockImplementation(async ({ where, data }: any) => {
+      const existing = idempotencyRecords.get(where.key);
+      if (!existing) throw new Error(`Missing idempotency record ${where.key}`);
+      const updated = { ...existing, ...data };
+      idempotencyRecords.set(where.key, updated);
+      return updated;
+    });
   });
 
   it('uses business AI number as sender for booking confirmation SMS', async () => {
@@ -227,6 +257,23 @@ describe('POST /api/public/business-by-id/[publicId]/book', () => {
         senderPhone: '+18557654989',
       })
     );
+  });
+
+  it('replays duplicate booking submissions without creating another appointment or sending duplicate texts', async () => {
+    const first = await POST(req(BASE_BODY), { params: Promise.resolve({ publicId: 'pub_123' }) });
+    const second = await POST(req(BASE_BODY), { params: Promise.resolve({ publicId: 'pub_123' }) });
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(second.headers.get('x-idempotency-replayed')).toBe('true');
+    await expect(second.json()).resolves.toMatchObject({
+      success: true,
+      appointment: expect.objectContaining({ id: 'appt-1' }),
+    });
+    expect(prisma.customer.create).toHaveBeenCalledTimes(1);
+    expect(prisma.appointment.create).toHaveBeenCalledTimes(1);
+    expect(sendAppointmentConfirmation).toHaveBeenCalledTimes(1);
+    expect(prisma.notification.create).toHaveBeenCalledTimes(1);
   });
 
   it('keeps marketing opt-in separate while still applying transactional booking consent', async () => {

@@ -27,6 +27,11 @@ vi.mock('@/lib/prisma', () => ({
       findUnique: vi.fn(),
       update: vi.fn(),
     },
+    idempotencyRecord: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
   },
 }));
 
@@ -97,6 +102,9 @@ import { POST as checkoutPost } from '@/app/api/checkout/create/route';
 const mockSession = getServerSession as ReturnType<typeof vi.fn>;
 const mockFindUnique = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockUpdate = prisma.business.update as ReturnType<typeof vi.fn>;
+const mockIdempotencyCreate = prisma.idempotencyRecord.create as ReturnType<typeof vi.fn>;
+const mockIdempotencyFindUnique = prisma.idempotencyRecord.findUnique as ReturnType<typeof vi.fn>;
+const mockIdempotencyUpdate = prisma.idempotencyRecord.update as ReturnType<typeof vi.fn>;
 const mockCustomerCreate = stripe.customers.create as ReturnType<typeof vi.fn>;
 const mockPortalCreate = stripe.billingPortal.sessions.create as ReturnType<typeof vi.fn>;
 const mockSubRetrieve = stripe.subscriptions.retrieve as ReturnType<typeof vi.fn>;
@@ -118,6 +126,8 @@ const makeBusiness = (overrides = {}) => ({
   ...overrides,
 });
 
+const idempotencyRecords = new Map<string, any>();
+
 function makeReq(url: string, method = 'GET', body?: object): NextRequest {
   return new NextRequest(url, {
     method,
@@ -127,6 +137,29 @@ function makeReq(url: string, method = 'GET', body?: object): NextRequest {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  idempotencyRecords.clear();
+  mockIdempotencyCreate.mockImplementation(async ({ data }: any) => {
+    if (idempotencyRecords.has(data.key)) {
+      throw { code: 'P2002' };
+    }
+    const record = {
+      ...data,
+      responseStatus: data.responseStatus ?? null,
+      responseBody: data.responseBody ?? null,
+    };
+    idempotencyRecords.set(data.key, record);
+    return record;
+  });
+  mockIdempotencyFindUnique.mockImplementation(async ({ where }: any) => {
+    return idempotencyRecords.get(where.key) ?? null;
+  });
+  mockIdempotencyUpdate.mockImplementation(async ({ where, data }: any) => {
+    const existing = idempotencyRecords.get(where.key);
+    if (!existing) throw new Error(`Missing idempotency record ${where.key}`);
+    const updated = { ...existing, ...data };
+    idempotencyRecords.set(where.key, updated);
+    return updated;
+  });
   mockPriceRetrieve.mockImplementation(async (priceId: string) => {
     const prices: Record<string, { active: boolean; currency: string; recurring: { interval: 'month' | 'year' }; unit_amount: number }> = {
       price_starter_monthly: { active: true, currency: 'usd', recurring: { interval: 'month' }, unit_amount: 3900 },
@@ -536,12 +569,15 @@ describe('POST /api/checkout/create', () => {
     const res = await checkoutPost(makeReq('http://localhost:3000/api/checkout/create', 'POST', { plan: 'starter', billingPeriod: 'monthly' }));
     expect(res.status).toBe(200);
 
-    expect(mockCheckoutCreate).toHaveBeenCalledWith(expect.objectContaining({
-      subscription_data: expect.objectContaining({ trial_period_days: 14 }),
-      line_items: expect.arrayContaining([
-        expect.objectContaining({ price: 'price_starter_monthly', quantity: 1 }),
-      ]),
-    }));
+    expect(mockCheckoutCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subscription_data: expect.objectContaining({ trial_period_days: 14 }),
+        line_items: expect.arrayContaining([
+          expect.objectContaining({ price: 'price_starter_monthly', quantity: 1 }),
+        ]),
+      }),
+      expect.objectContaining({ idempotencyKey: expect.any(String) })
+    );
 
     const body = await res.json();
     expect(body.url).toBe('https://checkout.stripe.com/session_new');
@@ -589,15 +625,18 @@ describe('POST /api/checkout/create', () => {
     const res = await checkoutPost(makeReq('http://localhost:3000/api/checkout/create', 'POST', { plan: 'base', billingPeriod: 'monthly' }));
     expect(res.status).toBe(200);
 
-    expect(mockCheckoutCreate).toHaveBeenCalledWith(expect.objectContaining({
-      line_items: expect.arrayContaining([
-        expect.objectContaining({ price: 'price_starter_monthly', quantity: 1 }),
-      ]),
-      subscription_data: expect.objectContaining({
+    expect(mockCheckoutCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        line_items: expect.arrayContaining([
+          expect.objectContaining({ price: 'price_starter_monthly', quantity: 1 }),
+        ]),
+        subscription_data: expect.objectContaining({
+          metadata: expect.objectContaining({ plan: 'starter' }),
+        }),
         metadata: expect.objectContaining({ plan: 'starter' }),
       }),
-      metadata: expect.objectContaining({ plan: 'starter' }),
-    }));
+      expect.objectContaining({ idempotencyKey: expect.any(String) })
+    );
   });
 
   it('creates checkout session without trial for a returning subscriber', async () => {
@@ -611,6 +650,24 @@ describe('POST /api/checkout/create', () => {
     expect(callArgs.subscription_data.trial_period_days).toBeUndefined();
   });
 
+  it('replays duplicate subscription checkout requests without creating another Stripe session', async () => {
+    mockSession.mockResolvedValue({ user: { id: 'biz-1', email: 'test@example.com' } });
+    mockFindUnique.mockResolvedValue(makeBusiness({ stripeSubscriptionId: null }));
+    mockCheckoutCreate.mockResolvedValue({ url: 'https://checkout.stripe.com/session_idempotent' });
+    const payload = { plan: 'starter', billingPeriod: 'monthly' };
+
+    const first = await checkoutPost(makeReq('http://localhost:3000/api/checkout/create', 'POST', payload));
+    const second = await checkoutPost(makeReq('http://localhost:3000/api/checkout/create', 'POST', payload));
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(second.headers.get('x-idempotency-replayed')).toBe('true');
+    await expect(second.json()).resolves.toEqual({
+      url: 'https://checkout.stripe.com/session_idempotent',
+    });
+    expect(mockCheckoutCreate).toHaveBeenCalledTimes(1);
+  });
+
   it('falls back to the monthly price when yearly billing is requested but the plan is monthly-only', async () => {
     mockSession.mockResolvedValue({ user: { email: 'test@example.com' } });
     mockFindUnique.mockResolvedValue(makeBusiness({ stripeSubscriptionId: null }));
@@ -618,11 +675,14 @@ describe('POST /api/checkout/create', () => {
 
     await checkoutPost(makeReq('http://localhost:3000/api/checkout/create', 'POST', { plan: 'pro', billingPeriod: 'yearly' }));
 
-    expect(mockCheckoutCreate).toHaveBeenCalledWith(expect.objectContaining({
-      line_items: expect.arrayContaining([
-        expect.objectContaining({ price: 'price_pro_monthly' }),
-      ]),
-    }));
+    expect(mockCheckoutCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        line_items: expect.arrayContaining([
+          expect.objectContaining({ price: 'price_pro_monthly' }),
+        ]),
+      }),
+      expect.objectContaining({ idempotencyKey: expect.any(String) })
+    );
   });
 
   it('creates a Stripe customer when none exists and saves the ID', async () => {
@@ -651,10 +711,13 @@ describe('POST /api/checkout/create', () => {
 
     await checkoutPost(makeReq('https://clientific.app/api/checkout/create', 'POST', { plan: 'starter' }));
 
-    expect(mockCheckoutCreate).toHaveBeenCalledWith(expect.objectContaining({
-      success_url: 'https://clientific.app/dashboard?checkout=success',
-      cancel_url: 'https://clientific.app/pricing?checkout=canceled',
-    }));
+    expect(mockCheckoutCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success_url: 'https://clientific.app/dashboard?checkout=success',
+        cancel_url: 'https://clientific.app/pricing?checkout=canceled',
+      }),
+      expect.objectContaining({ idempotencyKey: expect.any(String) })
+    );
 
     process.env.NEXT_PUBLIC_APP_URL = origEnv;
   });

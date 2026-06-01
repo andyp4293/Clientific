@@ -24,6 +24,12 @@ import {
   ServiceBookingSegment,
   shouldCreateSegmentedServiceBooking,
 } from '@/lib/service-staff-assignments';
+import {
+  buildAutomaticIdempotencyKey,
+  buildIdempotencyFingerprint,
+  getRequestIdempotencyKey,
+  runIdempotentJson,
+} from '@/lib/idempotency';
 
 type PublicBusinessLookup = { slug: string } | { publicId: string };
 
@@ -294,6 +300,31 @@ export async function handlePublicBookingRequest({
       }
     }
 
+    const bookingFingerprint = [
+      'public-booking',
+      business.id,
+      normalizedCustomerPhone,
+      customerName.trim(),
+      typeof customerEmail === 'string' ? customerEmail.trim() : null,
+      typeof notes === 'string' ? notes.trim() : null,
+      serviceIds,
+      serviceStaffAssignments,
+      staffId || null,
+      start.toISOString(),
+      end.toISOString(),
+      effectiveDuration,
+    ];
+    const idempotencyKey =
+      getRequestIdempotencyKey(req) ??
+      buildAutomaticIdempotencyKey('public-booking', bookingFingerprint);
+
+    return await runIdempotentJson({
+      scope: 'public-booking',
+      ownerId: business.id,
+      key: idempotencyKey,
+      requestHash: buildIdempotencyFingerprint(bookingFingerprint),
+      ttlMs: 15 * 60 * 1000,
+      handler: async () => {
     const conflicts = await findStaffConflicts({
       businessId: business.id,
       segments: createSegmentedAppointments ? segments : undefined,
@@ -303,7 +334,7 @@ export async function handlePublicBookingRequest({
     });
 
     if (conflicts.length > 0) {
-      return NextResponse.json({ error: 'Time slot is no longer available' }, { status: 409 });
+      return { body: { error: 'Time slot is no longer available' }, status: 409 };
     }
 
     const customerPhoneData = buildCustomerPhoneData(customerPhone);
@@ -504,25 +535,29 @@ export async function handlePublicBookingRequest({
       sendPush: business.notifyNewBookingEmail !== false,
     });
 
-    return NextResponse.json({
-      success: true,
-      appointment,
-      appointments,
-      appointmentBatchUrl: createSegmentedAppointments ? appointmentUrl : null,
-      message: createSegmentedAppointments
-        ? 'Appointment requests submitted! The business will confirm each service shortly.'
-        : 'Appointment request submitted! The business will confirm shortly.',
-      smsNotification: smsResult?.success
-        ? 'Confirmation SMS sent'
-        : customer.phone
-          ? 'SMS notification failed'
-          : 'No phone number provided',
-      smsDebug: {
-        attempted: !!(customer.phone && transactionalConsent),
-        consentGiven: !!transactionalConsent,
-        hasPhone: !!customer.phone,
-        error: smsResult?.error || null,
-        sid: smsResult?.sid || null,
+    return {
+      body: {
+        success: true,
+        appointment,
+        appointments,
+        appointmentBatchUrl: createSegmentedAppointments ? appointmentUrl : null,
+        message: createSegmentedAppointments
+          ? 'Appointment requests submitted! The business will confirm each service shortly.'
+          : 'Appointment request submitted! The business will confirm shortly.',
+        smsNotification: smsResult?.success
+          ? 'Confirmation SMS sent'
+          : customer.phone
+            ? 'SMS notification failed'
+            : 'No phone number provided',
+        smsDebug: {
+          attempted: !!(customer.phone && transactionalConsent),
+          consentGiven: !!transactionalConsent,
+          hasPhone: !!customer.phone,
+          error: smsResult?.error || null,
+          sid: smsResult?.sid || null,
+        },
+      },
+    };
       },
     });
   } catch (error: any) {

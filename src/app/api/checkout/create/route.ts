@@ -7,6 +7,12 @@ import { getAppBaseUrlFromRequest } from '@/lib/app-url';
 import { getPricingPlanKey, normalizeSubscriptionPlan } from '@/lib/plan-utils';
 import { getSessionBusinessId } from '@/lib/session-business';
 import { normalizeBillingProvider } from '@/lib/billing-provider';
+import {
+  buildAutomaticIdempotencyKey,
+  buildIdempotencyFingerprint,
+  getRequestIdempotencyKey,
+  runIdempotentJson,
+} from '@/lib/idempotency';
 
 function createPriceConfigurationError(message: string) {
   return Object.assign(new Error(message), {
@@ -130,59 +136,82 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create or get Stripe customer
-    let customerId = business.stripeCustomerId;
+    const checkoutFingerprint = [
+      'subscription-checkout',
+      business.id,
+      normalizedPlan,
+      useYearlyPrice ? 'yearly' : 'monthly',
+      priceId,
+    ];
+    const idempotencyKey =
+      getRequestIdempotencyKey(req) ??
+      buildAutomaticIdempotencyKey('subscription-checkout', checkoutFingerprint);
 
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: business.email,
-        name: business.name,
-        metadata: {
-          businessId: business.id,
-        },
-      });
-      customerId = customer.id;
+    return await runIdempotentJson({
+      scope: 'subscription-checkout',
+      ownerId: business.id,
+      key: idempotencyKey,
+      requestHash: buildIdempotencyFingerprint(checkoutFingerprint),
+      ttlMs: 30 * 60 * 1000,
+      handler: async ({ idempotencyKey: stripeIdempotencyKey }) => {
+        // Create or get Stripe customer
+        let customerId = business.stripeCustomerId;
 
-      // Save customer ID
-      await prisma.business.update({
-        where: { id: business.id },
-        data: { stripeCustomerId: customerId },
-      });
-    }
+        if (!customerId) {
+          const customer = await stripe.customers.create({
+            email: business.email,
+            name: business.name,
+            metadata: {
+              businessId: business.id,
+            },
+          });
+          customerId = customer.id;
 
-    const checkoutTrialDays = getCheckoutTrialDays(business);
-    await validateCheckoutPrice({ priceId, expectedAmount, expectedInterval });
+          // Save customer ID
+          await prisma.business.update({
+            where: { id: business.id },
+            data: { stripeCustomerId: customerId },
+          });
+        }
 
-    // Derive base URL — prefer env var, fall back to the request origin
-    const appUrl = getAppBaseUrlFromRequest(req.url);
+        const checkoutTrialDays = getCheckoutTrialDays(business);
+        await validateCheckoutPrice({ priceId, expectedAmount, expectedInterval });
 
-    // Create Checkout Session
-    const checkoutSession = await stripe.checkout.sessions.create({
-      customer: customerId,
-      mode: 'subscription',
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      subscription_data: {
-        ...(checkoutTrialDays ? { trial_period_days: checkoutTrialDays } : {}),
-        metadata: {
-          businessId: business.id,
-          plan: normalizedPlan,
-        },
-      },
-      success_url: `${appUrl}/dashboard?checkout=success`,
-      cancel_url: `${appUrl}/pricing?checkout=canceled`,
-      metadata: {
-        businessId: business.id,
-        plan: normalizedPlan,
+        // Derive base URL — prefer env var, fall back to the request origin
+        const appUrl = getAppBaseUrlFromRequest(req.url);
+
+        // Create Checkout Session
+        const checkoutSession = await stripe.checkout.sessions.create(
+          {
+            customer: customerId,
+            mode: 'subscription',
+            payment_method_types: ['card'],
+            line_items: [
+              {
+                price: priceId,
+                quantity: 1,
+              },
+            ],
+            subscription_data: {
+              ...(checkoutTrialDays ? { trial_period_days: checkoutTrialDays } : {}),
+              metadata: {
+                businessId: business.id,
+                plan: normalizedPlan,
+              },
+            },
+            success_url: `${appUrl}/dashboard?checkout=success`,
+            cancel_url: `${appUrl}/pricing?checkout=canceled`,
+            metadata: {
+              businessId: business.id,
+              plan: normalizedPlan,
+            },
+          },
+          { idempotencyKey: stripeIdempotencyKey }
+        );
+
+        return { body: { url: checkoutSession.url } };
       },
     });
-
-    return NextResponse.json({ url: checkoutSession.url });
   } catch (error: any) {
     console.error('Checkout error:', error);
 
