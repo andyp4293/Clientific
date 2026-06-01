@@ -37,6 +37,8 @@ type TrialReminderBusiness = {
   trialEndsAt: Date | null;
   stripeSubscriptionId: string | null;
   stripePriceId: string | null;
+  appStoreOriginalTransactionId: string | null;
+  appStoreProductId: string | null;
 };
 
 type TrialReminderResult =
@@ -61,6 +63,8 @@ const trialReminderBusinessSelect = {
   trialEndsAt: true,
   stripeSubscriptionId: true,
   stripePriceId: true,
+  appStoreOriginalTransactionId: true,
+  appStoreProductId: true,
 } as const;
 
 function isUniqueConstraintError(error: unknown) {
@@ -90,8 +94,8 @@ function shouldSendTrialReminder(business: TrialReminderBusiness) {
     return 'missing email';
   }
 
-  if (business.billingProvider !== 'stripe') {
-    return 'not a Stripe-managed subscription';
+  if (!['stripe', 'app_store'].includes(business.billingProvider ?? '')) {
+    return 'not an auto-renewing billing provider';
   }
 
   if (business.subscriptionStatus !== 'trialing') {
@@ -102,8 +106,16 @@ function shouldSendTrialReminder(business: TrialReminderBusiness) {
     return 'missing trial end date';
   }
 
-  if (!business.stripeSubscriptionId) {
+  if (business.billingProvider === 'stripe' && !business.stripeSubscriptionId) {
     return 'missing Stripe subscription';
+  }
+
+  if (
+    business.billingProvider === 'app_store' &&
+    !business.appStoreOriginalTransactionId &&
+    !business.appStoreProductId
+  ) {
+    return 'missing App Store subscription';
   }
 
   return null;
@@ -193,9 +205,21 @@ export async function sendDueTrialEndingReminders({
     const { startsAt, endsBefore } = getTrialWindow(now, window.daysBefore);
     const businesses = await prisma.business.findMany({
       where: {
-        billingProvider: 'stripe',
+        billingProvider: { in: ['stripe', 'app_store'] },
         subscriptionStatus: 'trialing',
-        stripeSubscriptionId: { not: null },
+        OR: [
+          {
+            billingProvider: 'stripe',
+            stripeSubscriptionId: { not: null },
+          },
+          {
+            billingProvider: 'app_store',
+            OR: [
+              { appStoreOriginalTransactionId: { not: null } },
+              { appStoreProductId: { not: null } },
+            ],
+          },
+        ],
         trialEndsAt: {
           gte: startsAt,
           lt: endsBefore,

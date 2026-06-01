@@ -59,6 +59,8 @@ const baseBusiness = {
   trialEndsAt: new Date('2026-06-08T13:00:00.000Z'),
   stripeSubscriptionId: 'sub_123',
   stripePriceId: 'price_pro',
+  appStoreOriginalTransactionId: null,
+  appStoreProductId: null,
 };
 
 describe('trial reminders', () => {
@@ -105,9 +107,8 @@ describe('trial reminders', () => {
       1,
       expect.objectContaining({
         where: expect.objectContaining({
-          billingProvider: 'stripe',
+          billingProvider: { in: ['stripe', 'app_store'] },
           subscriptionStatus: 'trialing',
-          stripeSubscriptionId: { not: null },
           trialEndsAt: {
             gte: new Date('2026-06-08T12:00:00.000Z'),
             lt: new Date('2026-06-09T12:00:00.000Z'),
@@ -158,11 +159,40 @@ describe('trial reminders', () => {
     expect(mockSendTrialEndingReminderEmail).not.toHaveBeenCalled();
   });
 
-  it('skips App Store-managed trials because Apple handles App Store billing notices', async () => {
+  it('sends App Store-managed trial reminders as a backup to Apple billing notices', async () => {
     const result = await sendTrialReminderForBusiness({
       business: {
         ...baseBusiness,
         billingProvider: 'app_store',
+        stripeSubscriptionId: null,
+        appStoreOriginalTransactionId: '200000000000000',
+        appStoreProductId: 'app.clientific.mobile.pro.monthly',
+      },
+      noticeType: 'trial_ends_in_1_day',
+      reminderLabel: '1 day',
+      source: 'test',
+    });
+
+    expect(result).toEqual({
+      status: 'sent',
+      noticeId: 'notice-1',
+    });
+    expect(mockTrialReminderCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          billingProvider: 'app_store',
+        }),
+      }),
+    );
+    expect(mockSendTrialEndingReminderEmail).toHaveBeenCalled();
+  });
+
+  it('skips non-auto-renewing manual trials that cannot charge after the trial', async () => {
+    const result = await sendTrialReminderForBusiness({
+      business: {
+        ...baseBusiness,
+        billingProvider: 'none',
+        stripeSubscriptionId: null,
       },
       noticeType: 'trial_ends_in_1_day',
       reminderLabel: '1 day',
@@ -171,10 +201,9 @@ describe('trial reminders', () => {
 
     expect(result).toEqual({
       status: 'skipped',
-      reason: 'not a Stripe-managed subscription',
+      reason: 'not an auto-renewing billing provider',
     });
     expect(mockTrialReminderCreate).not.toHaveBeenCalled();
-    expect(mockSendTrialEndingReminderEmail).not.toHaveBeenCalled();
   });
 
   it('rolls back the durable notice marker when the email provider fails', async () => {
