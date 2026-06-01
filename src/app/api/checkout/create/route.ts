@@ -13,6 +13,7 @@ import {
   getRequestIdempotencyKey,
   runIdempotentJson,
 } from '@/lib/idempotency';
+import { getCheckoutAuthorizationDisclosure } from '@/lib/auto-renewal-disclosure';
 
 function createPriceConfigurationError(message: string) {
   return Object.assign(new Error(message), {
@@ -179,6 +180,12 @@ export async function POST(req: NextRequest) {
 
         // Derive base URL — prefer env var, fall back to the request origin
         const appUrl = getAppBaseUrlFromRequest(req.url);
+        const checkoutDisclosure = getCheckoutAuthorizationDisclosure({
+          planName: planConfig.name,
+          price: useYearlyPrice ? planConfig.yearlyPrice : planConfig.price,
+          interval: useYearlyPrice ? 'yearly' : 'monthly',
+          trialDays: checkoutTrialDays ?? null,
+        });
 
         // Create Checkout Session
         const checkoutSession = await stripe.checkout.sessions.create(
@@ -204,6 +211,11 @@ export async function POST(req: NextRequest) {
             metadata: {
               businessId: business.id,
               plan: normalizedPlan,
+            },
+            custom_text: {
+              submit: {
+                message: checkoutDisclosure,
+              },
             },
           },
           { idempotencyKey: stripeIdempotencyKey }

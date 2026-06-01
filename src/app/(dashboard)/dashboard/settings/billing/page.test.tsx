@@ -108,6 +108,13 @@ describe('Dashboard billing page', () => {
 
     await screen.findByText(/managed on the web/i);
 
+    expect(screen.getByTestId('current-auto-renewal-disclosure')).toHaveTextContent(
+      'Clientific automatically charges $39/month plus applicable taxes until you cancel.',
+    );
+    expect(screen.getByTestId('current-auto-renewal-disclosure')).toHaveTextContent(
+      'Your subscription renews monthly unless canceled before the next billing date.',
+    );
+
     fireEvent.click(screen.getByRole('button', { name: /^manage subscription$/i }));
 
     await waitFor(() => {

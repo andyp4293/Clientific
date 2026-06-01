@@ -35,6 +35,8 @@ type MobileBillingScreenProps = {
 
 type AppStorePlanKey = 'starter' | 'pro' | 'premium';
 
+const AUTO_RENEWAL_DISCLOSURE_TITLE = 'Auto-renewal disclosure';
+
 function getPackagePlanKey(aPackage: PurchasesPackage): AppStorePlanKey | null {
   const searchValue = [
     aPackage.identifier,
@@ -142,10 +144,49 @@ function getPackageDurationCopy(aPackage: PurchasesPackage) {
   }
 }
 
+function getPackageRenewalIntervalCopy(aPackage: PurchasesPackage) {
+  switch (aPackage.product.subscriptionPeriod) {
+    case 'P1W':
+      return 'weekly';
+    case 'P1M':
+      return 'monthly';
+    case 'P2M':
+      return 'every 2 months';
+    case 'P3M':
+      return 'every 3 months';
+    case 'P6M':
+      return 'every 6 months';
+    case 'P1Y':
+      return 'yearly';
+    default:
+      return 'automatically';
+  }
+}
+
+function getPackagePriceIntervalCopy(aPackage: PurchasesPackage) {
+  switch (aPackage.product.subscriptionPeriod) {
+    case 'P1W':
+      return 'per week';
+    case 'P1M':
+      return 'per month';
+    case 'P2M':
+      return 'every 2 months';
+    case 'P3M':
+      return 'every 3 months';
+    case 'P6M':
+      return 'every 6 months';
+    case 'P1Y':
+      return 'per year';
+    default:
+      return 'per billing period';
+  }
+}
+
 function getPackageRenewalCopy(aPackage: PurchasesPackage) {
-  return `After the 14-day free trial, renews for ${aPackage.product.priceString}/${getPackageDurationCopy(aPackage)
-    .replace(' auto-renewing subscription', '')
-    .toLowerCase()} unless canceled at least 24 hours before renewal.`;
+  const chargeInterval = getPackagePriceIntervalCopy(aPackage);
+  const renewalInterval = getPackageRenewalIntervalCopy(aPackage);
+
+  return `After the 14-day free trial, your Apple Account will be charged ${aPackage.product.priceString} ${chargeInterval}. This auto-renewable subscription renews ${renewalInterval} unless canceled at least 24 hours before the trial ends or before the next renewal. You can manage or cancel in App Store account settings.`;
 }
 
 export function MobileBillingScreen({
@@ -361,6 +402,9 @@ export function MobileBillingScreen({
                         <Text style={[styles.packageDetail, { color: theme.mutedText }]}>
                           {getPackageDurationCopy(aPackage)}
                         </Text>
+                        <Text style={[styles.packageLegalTitle, { color: theme.text }]}>
+                          {AUTO_RENEWAL_DISCLOSURE_TITLE}
+                        </Text>
                         <Text style={[styles.packageLegal, { color: theme.mutedText }]}>
                           {getPackageRenewalCopy(aPackage)}
                         </Text>
@@ -418,8 +462,11 @@ export function MobileBillingScreen({
                   styles.subscriptionLegalCard,
                   { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
                 ]}>
+                <Text style={[styles.packageLegalTitle, { color: theme.text }]}>
+                  {AUTO_RENEWAL_DISCLOSURE_TITLE}
+                </Text>
                 <Text style={[styles.legalText, { color: theme.mutedText }]}>
-                  Manage or cancel subscriptions in your App Store account settings.
+                  App Store subscriptions renew automatically until canceled. Manage or cancel subscriptions in your App Store account settings.
                 </Text>
                 <View style={styles.legalLinksRow}>
                   <Pressable
@@ -830,6 +877,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '700',
+  },
+  packageLegalTitle: {
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '800',
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
   },
   packageLegal: {
     fontSize: 13,

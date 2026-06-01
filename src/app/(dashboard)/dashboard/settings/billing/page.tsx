@@ -13,6 +13,7 @@ import {
   getBillingPaymentMethodSummary,
   normalizeBillingProvider,
 } from '@/lib/billing-provider';
+import { AUTO_RENEWAL_DISCLOSURE_TITLE } from '@/lib/auto-renewal-disclosure';
 
 const APPLE_SUBSCRIPTION_HELP_URL = 'https://support.apple.com/118428';
 
@@ -166,6 +167,11 @@ export default function BillingPage() {
       : null,
   );
   const invoiceEmptyState = getBillingInvoiceEmptyState(billingProvider);
+  const currentRenewalDisclosure = isWebManaged
+    ? isTrial
+      ? `At the end of your current free trial, Clientific automatically charges $${planDetails.price}/month plus applicable taxes until you cancel. Your subscription renews monthly unless canceled before the next billing date. You can cancel anytime in Billing; access continues until the end of the current paid period.`
+      : `Clientific automatically charges $${planDetails.price}/month plus applicable taxes until you cancel. Your subscription renews monthly unless canceled before the next billing date. You can cancel anytime in Billing; access continues until the end of the current paid period.`
+    : null;
 
   const openPortal = async () => {
     if (!isWebManaged) {
@@ -341,6 +347,17 @@ export default function BillingPage() {
                     day: 'numeric',
                     year: 'numeric',
                   })}
+                </div>
+              ) : null}
+              {currentRenewalDisclosure ? (
+                <div
+                  className="mt-5 rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-xs leading-5 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100"
+                  data-testid="current-auto-renewal-disclosure"
+                >
+                  <p className="font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300">
+                    {AUTO_RENEWAL_DISCLOSURE_TITLE}
+                  </p>
+                  <p className="mt-1">{currentRenewalDisclosure}</p>
                 </div>
               ) : null}
             </div>

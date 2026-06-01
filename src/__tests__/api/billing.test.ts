@@ -572,6 +572,13 @@ describe('POST /api/checkout/create', () => {
     expect(mockCheckoutCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         subscription_data: expect.objectContaining({ trial_period_days: 14 }),
+        custom_text: {
+          submit: {
+            message: expect.stringContaining(
+              'By continuing to checkout, you authorize recurring billing.',
+            ),
+          },
+        },
         line_items: expect.arrayContaining([
           expect.objectContaining({ price: 'price_starter_monthly', quantity: 1 }),
         ]),
@@ -648,6 +655,11 @@ describe('POST /api/checkout/create', () => {
 
     const callArgs = mockCheckoutCreate.mock.calls[0][0];
     expect(callArgs.subscription_data.trial_period_days).toBeUndefined();
+    expect(callArgs.custom_text.submit.message).toContain('starts when checkout is completed');
+    expect(callArgs.custom_text.submit.message).toContain(
+      'automatically charges $69/month plus applicable taxes until you cancel',
+    );
+    expect(callArgs.custom_text.submit.message).not.toContain('free trial');
   });
 
   it('replays duplicate subscription checkout requests without creating another Stripe session', async () => {

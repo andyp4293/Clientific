@@ -4,6 +4,10 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { getPublicPlanSlug } from '@/lib/plan-utils';
 import { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/pricing-plans';
+import {
+  AUTO_RENEWAL_DISCLOSURE_TITLE,
+  getCheckoutAuthorizationDisclosure,
+} from '@/lib/auto-renewal-disclosure';
 
 interface Props {
   status: string;
@@ -117,6 +121,11 @@ export function UpgradePricingCards({ status, hasStripeCustomer, trialExpired = 
           const planSlug = getPublicPlanSlug(key.toLowerCase());
           const price = plan.price;
           const isLoading = loading === planSlug;
+          const renewalDisclosure = getCheckoutAuthorizationDisclosure({
+            planName: plan.name,
+            price,
+          });
+
           return (
             <div
               key={key}
@@ -161,6 +170,15 @@ export function UpgradePricingCards({ status, hasStripeCustomer, trialExpired = 
                   </li>
                 ))}
               </ul>
+              <div
+                className="mb-5 rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-xs leading-5 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100"
+                data-testid={`upgrade-auto-renewal-disclosure-${planSlug}`}
+              >
+                <p className="font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300">
+                  {AUTO_RENEWAL_DISCLOSURE_TITLE}
+                </p>
+                <p className="mt-1">{renewalDisclosure}</p>
+              </div>
               <button
                 onClick={() => void handleUpgrade(planSlug)}
                 disabled={isLoading}

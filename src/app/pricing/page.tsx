@@ -8,6 +8,10 @@ import { APP_SUPPORT_PATH } from '@/lib/brand';
 import { getPublicPlanSlug, getPricingPlanKey } from '@/lib/plan-utils';
 import { PRICING_PLANS, VISIBLE_SELF_SERVE_PLAN_KEYS } from '@/lib/pricing-plans';
 import { PublicSiteHeader } from '@/components/layout/PublicSiteHeader';
+import {
+  AUTO_RENEWAL_DISCLOSURE_TITLE,
+  getCheckoutAuthorizationDisclosure,
+} from '@/lib/auto-renewal-disclosure';
 
 function PricingContent() {
   const { status } = useSession();
@@ -79,7 +83,7 @@ function PricingContent() {
           <div className="mx-auto grid max-w-4xl grid-cols-1 gap-3 min-[520px]:grid-cols-3">
             {[
               '14-day free trial',
-              'Cancel anytime',
+              'Cancel before your next renewal',
               'Secure checkout powered by Stripe',
             ].map((item) => (
               <div
@@ -97,6 +101,11 @@ function PricingContent() {
             const plan = PRICING_PLANS[key];
             const publicSlug = getPublicPlanSlug(key.toLowerCase());
             const isLoading = loadingPlan === publicSlug;
+            const renewalDisclosure = getCheckoutAuthorizationDisclosure({
+              planName: plan.name,
+              price: plan.price,
+            });
+
             return (
               <div
                 key={key}
@@ -159,6 +168,27 @@ function PricingContent() {
                   ))}
                 </ul>
 
+                <div
+                  className="mb-5 rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-xs leading-5 text-amber-950 shadow-sm dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100"
+                  data-testid={`auto-renewal-disclosure-${publicSlug}`}
+                >
+                  <p className="font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300">
+                    {AUTO_RENEWAL_DISCLOSURE_TITLE}
+                  </p>
+                  <p className="mt-1">{renewalDisclosure}</p>
+                  <p className="mt-2">
+                    Review our{' '}
+                    <Link href="/terms" className="font-semibold underline underline-offset-2">
+                      Terms of Use
+                    </Link>{' '}
+                    and{' '}
+                    <Link href="/privacy" className="font-semibold underline underline-offset-2">
+                      Privacy Policy
+                    </Link>
+                    .
+                  </p>
+                </div>
+
                 <button
                   onClick={() => void handleSubscribe(publicSlug)}
                   disabled={isLoading}
@@ -177,7 +207,7 @@ function PricingContent() {
 
         <div className="mt-16 text-center">
           <p className="text-gray-600 dark:text-gray-300 mb-2">
-            Includes a 14-day free trial. No credit card required to start.
+            Includes a 14-day free trial. A payment method is required when you choose a paid plan, and subscriptions renew automatically unless canceled before the next billing date.
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Questions about which plan fits best?{' '}

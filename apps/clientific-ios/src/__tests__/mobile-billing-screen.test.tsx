@@ -317,8 +317,16 @@ describe('MobileBillingScreen', () => {
     ).toBeTruthy();
     expect(screen.getAllByText('Monthly auto-renewing subscription').length).toBeGreaterThan(0);
     expect(
+      screen.getAllByText('Auto-renewal disclosure').length,
+    ).toBeGreaterThan(0);
+    expect(
       screen.getByText(
-        'After the 14-day free trial, renews for $49.00/monthly unless canceled at least 24 hours before renewal.',
+        'After the 14-day free trial, your Apple Account will be charged $49.00 per month. This auto-renewable subscription renews monthly unless canceled at least 24 hours before the trial ends or before the next renewal. You can manage or cancel in App Store account settings.',
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        'App Store subscriptions renew automatically until canceled. Manage or cancel subscriptions in your App Store account settings.',
       ),
     ).toBeTruthy();
     fireEvent.press(screen.getByTestId('mobile-billing-purchase-starter_monthly'));
