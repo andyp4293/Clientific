@@ -48,6 +48,16 @@ interface StaffTemporaryPasswordDetails {
   loginUrl?: string;
 }
 
+interface TrialEndingReminderEmailDetails {
+  to: string;
+  businessName: string;
+  planName: string;
+  priceLabel: string;
+  trialEndsAt: Date;
+  billingUrl?: string;
+  reminderLabel?: string;
+}
+
 export async function sendNewBookingEmail(businessEmail: string, details: NewBookingDetails): Promise<void> {
   const resend = new Resend(getResendApiKey());
   const FROM = getResendFromEmail();
@@ -102,6 +112,102 @@ export async function sendNewBookingEmail(businessEmail: string, details: NewBoo
         <p style="color: #9ca3af; font-size: 12px; margin: 0;">
           You're receiving this because new appointment notifications are enabled for ${details.businessName}.
           You can turn this off in Settings → Notifications.
+        </p>
+      </div>
+    `,
+  });
+}
+
+export async function sendTrialEndingReminderEmail(
+  details: TrialEndingReminderEmailDetails,
+): Promise<void> {
+  const resend = new Resend(getResendApiKey());
+  const FROM = getResendFromEmail();
+  const billingUrl = details.billingUrl ?? `${getConfiguredAppBaseUrl()}/dashboard/settings/billing`;
+  const trialEndDate = details.trialEndsAt.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  const safeBusinessName = escapeHtml(details.businessName);
+  const safePlanName = escapeHtml(details.planName);
+  const safePriceLabel = escapeHtml(details.priceLabel);
+  const safeTrialEndDate = escapeHtml(trialEndDate);
+  const safeBillingUrl = escapeHtml(billingUrl);
+  const reminderIntro = details.reminderLabel
+    ? `Your ${APP_NAME} free trial ends in ${details.reminderLabel}.`
+    : `Your ${APP_NAME} free trial is ending soon.`;
+
+  const text = [
+    reminderIntro,
+    '',
+    `Business: ${details.businessName}`,
+    `Plan: ${details.planName}`,
+    `Trial end date: ${trialEndDate}`,
+    `Recurring charge after trial: ${details.priceLabel} plus applicable taxes until canceled.`,
+    '',
+    'To avoid being charged, cancel before the trial ends.',
+    `Manage or cancel your subscription: ${billingUrl}`,
+    '',
+    `Questions? Email ${APP_SUPPORT_EMAIL}.`,
+  ].join('\n');
+
+  await resend.emails.send({
+    from: `${APP_NAME} <${FROM}>`,
+    to: details.to,
+    subject: `${APP_NAME} trial ending reminder`,
+    text,
+    html: `
+      <div style="font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; background: #ffffff;">
+        <div style="margin-bottom: 24px;">
+          <span style="font-size: 22px; font-weight: 800; color: #0f172a;">${APP_NAME}</span>
+        </div>
+        <p style="margin: 0 0 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #047857;">Free trial reminder</p>
+        <h1 style="font-size: 24px; line-height: 1.25; font-weight: 800; color: #0f172a; margin: 0 0 12px;">Your ${APP_NAME} trial is ending soon</h1>
+        <p style="color: #475569; margin: 0 0 24px; line-height: 1.65;">
+          ${escapeHtml(reminderIntro)} This is a reminder before your first paid subscription charge.
+        </p>
+
+        <table style="width: 100%; border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; margin-bottom: 24px;">
+          <tbody>
+            <tr>
+              <td style="padding: 12px 14px; color: #64748b; font-size: 14px; white-space: nowrap;">Business</td>
+              <td style="padding: 12px 14px; color: #0f172a; font-size: 14px; font-weight: 700;">${safeBusinessName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 12px 14px; color: #64748b; font-size: 14px; white-space: nowrap;">Plan</td>
+              <td style="padding: 12px 14px; color: #0f172a; font-size: 14px; font-weight: 700;">${safePlanName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 12px 14px; color: #64748b; font-size: 14px; white-space: nowrap;">Trial ends</td>
+              <td style="padding: 12px 14px; color: #0f172a; font-size: 14px; font-weight: 700;">${safeTrialEndDate}</td>
+            </tr>
+            <tr>
+              <td style="padding: 12px 14px; color: #64748b; font-size: 14px; white-space: nowrap;">After trial</td>
+              <td style="padding: 12px 14px; color: #0f172a; font-size: 14px; font-weight: 700;">${safePriceLabel} plus applicable taxes until canceled</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 14px; padding: 16px; margin-bottom: 24px;">
+          <p style="margin: 0; color: #9a3412; font-size: 14px; line-height: 1.6;">
+            To avoid being charged, cancel before the trial ends. You can manage or cancel your subscription from your billing settings.
+          </p>
+        </div>
+
+        <a href="${safeBillingUrl}"
+           style="display: inline-block; background: #059669; color: #fff; font-weight: 800;
+                  padding: 13px 24px; border-radius: 12px; text-decoration: none; margin-bottom: 20px;">
+          Manage subscription
+        </a>
+        <p style="color: #64748b; font-size: 13px; line-height: 1.6; margin: 0;">
+          If the button does not work, copy and paste this link into your browser:<br />
+          <a href="${safeBillingUrl}" style="color: #047857;">${safeBillingUrl}</a>
+        </p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+        <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+          Need help? Contact ${APP_SUPPORT_EMAIL}.
         </p>
       </div>
     `,

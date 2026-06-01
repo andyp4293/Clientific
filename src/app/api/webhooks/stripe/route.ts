@@ -26,6 +26,7 @@ import {
 } from '@/lib/plan-utils';
 import { sanitizeStripeEnvValue } from '@/lib/stripe-env';
 import { buildIdempotencyFingerprint, runIdempotentJson } from '@/lib/idempotency';
+import { sendStripeTrialWillEndReminder } from '@/lib/trial-reminders';
 
 function getPlanFromPriceId(priceId: string): string | null {
   const entry = Object.entries(PRICING_PLANS).find(
@@ -84,6 +85,12 @@ export async function POST(req: NextRequest) {
           case 'customer.subscription.updated': {
             const subscription = event.data.object as Stripe.Subscription;
             await handleSubscriptionUpdated(subscription);
+            break;
+          }
+
+          case 'customer.subscription.trial_will_end': {
+            const subscription = event.data.object as Stripe.Subscription;
+            await handleSubscriptionTrialWillEnd(subscription);
             break;
           }
 
@@ -162,6 +169,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       stripeCurrentPeriodEnd: new Date(
         (subscription as any).current_period_end * 1000
       ),
+      trialEndsAt: subscription.trial_end
+        ? new Date(subscription.trial_end * 1000)
+        : null,
     },
   });
 
@@ -218,6 +228,13 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   revalidateTag(`subscription-status-${business.id}`, {});
   revalidateTag(`dashboard-stats-${business.id}`, {});
   revalidateTag(`business-${business.id}`, {});
+}
+
+async function handleSubscriptionTrialWillEnd(subscription: Stripe.Subscription) {
+  const result = await sendStripeTrialWillEndReminder(subscription);
+  if (result.status === 'failed') {
+    throw result.error;
+  }
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {

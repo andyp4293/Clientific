@@ -45,6 +45,10 @@ vi.mock('@/lib/app-url', () => ({
   getConfiguredAppBaseUrl: vi.fn(() => 'https://clientific.net'),
 }));
 
+vi.mock('@/lib/trial-reminders', () => ({
+  sendStripeTrialWillEndReminder: vi.fn(),
+}));
+
 // Mock @/lib/stripe but keep webhooks real so constructEvent actually runs.
 // This means tests exercise the full signature verification path and will
 // catch env var issues (e.g. trailing \n in STRIPE_WEBHOOK_SECRET).
@@ -84,11 +88,13 @@ import {
   finalizeDealPurchaseFromCheckoutSession,
   finalizeDealPurchaseFromPaymentIntent,
 } from '@/lib/deal-purchases';
+import { sendStripeTrialWillEndReminder } from '@/lib/trial-reminders';
 import { POST } from './route';
 
 const mockBusinessFindUnique = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockBusinessUpdate = prisma.business.update as ReturnType<typeof vi.fn>;
 const mockNotificationCreate = prisma.notification.create as ReturnType<typeof vi.fn>;
+const mockSendStripeTrialWillEndReminder = sendStripeTrialWillEndReminder as ReturnType<typeof vi.fn>;
 
 /** Creates a request with a real Stripe-Signature header. */
 function makeSignedRequest(event: object, signingSecret = TEST_SECRET) {
@@ -105,6 +111,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   process.env.STRIPE_WEBHOOK_SECRET = TEST_SECRET;
   mockNotificationCreate.mockResolvedValue({});
+  mockSendStripeTrialWillEndReminder.mockResolvedValue({ status: 'sent', noticeId: 'notice-1' });
 });
 
 afterEach(() => {
@@ -254,6 +261,58 @@ describe('Stripe webhook — customer.subscription.updated', () => {
     const res = await POST(makeSignedRequest(makeSubscriptionEvent()));
     expect(res.status).toBe(200);
     expect(mockBusinessUpdate).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// customer.subscription.trial_will_end
+// ---------------------------------------------------------------------------
+
+describe('Stripe webhook — customer.subscription.trial_will_end', () => {
+  it('sends a trial-ending reminder from Stripe’s pre-conversion webhook', async () => {
+    const subscription = {
+      id: 'sub_123',
+      status: 'trialing',
+      trial_end: 1700259200,
+      current_period_end: 1700000000,
+      items: { data: [{ price: { id: 'price_pro' } }] },
+    };
+
+    const res = await POST(makeSignedRequest({
+      type: 'customer.subscription.trial_will_end',
+      data: {
+        object: subscription,
+      },
+    }));
+
+    expect(res.status).toBe(200);
+    expect(mockSendStripeTrialWillEndReminder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'sub_123',
+        trial_end: 1700259200,
+      }),
+    );
+  });
+
+  it('returns 500 if the required trial-ending reminder cannot be sent', async () => {
+    mockSendStripeTrialWillEndReminder.mockResolvedValueOnce({
+      status: 'failed',
+      error: new Error('Resend unavailable'),
+    });
+
+    const res = await POST(makeSignedRequest({
+      type: 'customer.subscription.trial_will_end',
+      data: {
+        object: {
+          id: 'sub_123',
+          status: 'trialing',
+          trial_end: 1700259200,
+          items: { data: [{ price: { id: 'price_pro' } }] },
+        },
+      },
+    }));
+
+    expect(res.status).toBe(500);
   });
 });
 

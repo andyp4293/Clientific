@@ -18,6 +18,7 @@ import {
   sendEmailVerificationEmail,
   sendStaffTemporaryPasswordEmail,
   sendSupportContactEmail,
+  sendTrialEndingReminderEmail,
 } from './email';
 
 describe('email sender configuration', () => {
@@ -105,5 +106,31 @@ describe('email sender configuration', () => {
     );
     expect(sent.html).toContain('Create your own password when prompted');
     expect(sent.html).toContain('only appointments assigned to you');
+  });
+
+  it('sends trial-ending reminders with auto-renewal charge and cancellation terms', async () => {
+    await sendTrialEndingReminderEmail({
+      to: 'owner@example.com',
+      businessName: 'Clientific Studio',
+      planName: 'Pro',
+      priceLabel: '$69/month',
+      trialEndsAt: new Date('2026-06-15T15:00:00.000Z'),
+      billingUrl: 'https://clientific.app/dashboard/settings/billing',
+      reminderLabel: '7 days',
+    });
+
+    expect(mockSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: 'Clientific <noreply@clientific.app>',
+        to: 'owner@example.com',
+        subject: 'Clientific trial ending reminder',
+        text: expect.stringContaining('Recurring charge after trial: $69/month plus applicable taxes until canceled.'),
+        html: expect.stringContaining('$69/month plus applicable taxes until canceled'),
+      }),
+    );
+    const sent = mockSend.mock.calls.at(-1)?.[0];
+    expect(sent.text).toContain('To avoid being charged, cancel before the trial ends.');
+    expect(sent.text).toContain('Manage or cancel your subscription: https://clientific.app/dashboard/settings/billing');
+    expect(sent.html).toContain('To avoid being charged, cancel before the trial ends.');
   });
 });

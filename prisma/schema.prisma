@@ -111,6 +111,7 @@ model Business {
   staff                         Staff[]
   bankAccount                   BusinessBankAccount?
   revenueCatWebhookEvents       RevenueCatWebhookEvent[]
+  trialReminderNotices          TrialReminderNotice[]
 }
 
 model BusinessBankAccount {
@@ -433,6 +434,24 @@ model Notification {
   business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId, read, createdAt])
+}
+
+model TrialReminderNotice {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  businessId      String
+  noticeType      String
+  trialEndsAt     DateTime
+  billingProvider String
+  email           String
+  source          String
+  sentAt          DateTime @default(now())
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, noticeType, trialEndsAt])
+  @@index([trialEndsAt])
+  @@index([businessId, createdAt])
 }
 
 model MobilePushDevice {
