@@ -22,7 +22,7 @@ vi.mock('@/lib/prisma', () => ({
       update: vi.fn(),
       updateMany: vi.fn(),
     },
-    notification: { create: vi.fn() },
+    notification: { create: vi.fn(), count: vi.fn() },
     aiCallSession: { upsert: vi.fn(), findUnique: vi.fn(), deleteMany: vi.fn() },
     $transaction: vi.fn(),
   },
@@ -158,6 +158,7 @@ describe('POST /api/webhooks/vapi', () => {
     } as any);
     vi.mocked(prisma.customer.updateMany).mockResolvedValue({ count: 1 } as any);
     vi.mocked(prisma.notification.create).mockResolvedValue({ id: 'notif-1' } as any);
+    vi.mocked(prisma.notification.count).mockResolvedValue(0);
     vi.mocked(prisma.aiCallSession.upsert).mockResolvedValue({ id: 'call-session-1' } as any);
     vi.mocked(prisma.aiCallSession.findUnique).mockResolvedValue(null);
     vi.mocked(prisma.aiCallSession.deleteMany).mockResolvedValue({ count: 0 } as any);
@@ -409,6 +410,39 @@ describe('POST /api/webhooks/vapi', () => {
         }),
       })
     );
+  });
+
+  it('does not fetch legacy public recording URLs from end-of-call reports', async () => {
+    const originalFetch = global.fetch;
+    const fetchSpy = vi.fn();
+    global.fetch = fetchSpy as any;
+
+    try {
+      const res = await POST(
+        req({
+          message: {
+            type: 'end-of-call-report',
+            phoneNumber: { id: 'phone-1' },
+            call: {
+              id: 'call-1',
+              phoneNumberId: 'phone-1',
+              customer: { number: '+15551234567' },
+            },
+            recordingUrl: 'https://storage.vapi.ai/call-1.wav',
+            stereoRecordingUrl: 'https://storage.vapi.ai/call-1-stereo.wav',
+            videoRecordingUrl: 'https://storage.vapi.ai/call-1.mp4',
+          },
+        })
+      );
+
+      expect(res.status).toBe(200);
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(prisma.aiCallSession.deleteMany).toHaveBeenCalledWith({
+        where: { callId: 'call-1' },
+      });
+    } finally {
+      global.fetch = originalFetch;
+    }
   });
 
   it('refuses availability when the requested staff member is off that day', async () => {
