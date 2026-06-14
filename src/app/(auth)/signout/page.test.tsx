@@ -1,8 +1,24 @@
-﻿import { describe, it, expect } from 'vitest';
-import * as pageModule from './page';
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
+import SignOutPage, { dynamic } from './page';
+
+const { redirectMock } = vi.hoisted(() => ({
+  redirectMock: vi.fn(),
+}));
+
+vi.mock('next/navigation', () => ({
+  redirect: redirectMock,
+}));
 
 describe('page module smoke test', () => {
-  it('exports a default page component', () => {
-    expect(typeof pageModule.default).toBe('function');
+  beforeEach(() => {
+    redirectMock.mockReset();
+  });
+
+  it('forces a dynamic server redirect through the cookie-clearing sign-out route', () => {
+    expect(dynamic).toBe('force-dynamic');
+
+    SignOutPage();
+
+    expect(redirectMock).toHaveBeenCalledWith('/api/auth/force-signout?callbackUrl=/login');
   });
 });
