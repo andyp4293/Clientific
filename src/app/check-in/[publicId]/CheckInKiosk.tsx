@@ -91,11 +91,11 @@ function KeypadButton({
     <button
       type="button"
       onClick={onClick}
-      className={`group relative min-h-[84px] overflow-hidden rounded-[1.65rem] border border-gray-200 bg-white/80 text-left shadow-[0_18px_45px_-28px_rgba(16,72,56,0.42)] transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_24px_50px_-28px_rgba(16,72,56,0.55)] dark:border-white/10 dark:bg-white/[0.06] dark:hover:border-primary/40 ${className}`}
+      className={`kiosk-keypad-button group relative min-h-[58px] touch-manipulation select-none overflow-hidden rounded-2xl border border-gray-200 bg-white/80 text-left shadow-[0_18px_45px_-28px_rgba(16,72,56,0.42)] transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_24px_50px_-28px_rgba(16,72,56,0.55)] dark:border-white/10 dark:bg-white/[0.06] dark:hover:border-primary/40 sm:min-h-[66px] sm:rounded-[1.4rem] md:min-h-[72px] ${className}`}
     >
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent opacity-0 transition group-hover:opacity-100" />
-      <div className="flex h-full flex-col items-center justify-center gap-1 px-3 py-4">
-        <span className="text-2xl font-semibold text-gray-950 dark:text-white">{label}</span>
+      <div className="flex h-full flex-col items-center justify-center gap-1 px-2 py-3 sm:px-3 sm:py-4">
+        <span className="text-xl font-semibold text-gray-950 dark:text-white sm:text-2xl">{label}</span>
         {hint ? (
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
             {hint}
@@ -310,22 +310,22 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
   const successProgressPercent = `${(successCountdown / SUCCESS_RESET_SECONDS) * 100}%`;
 
   return (
-    <div className="page-shell min-h-screen px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
-      <div className="mx-auto max-w-4xl space-y-3 sm:space-y-4">
+    <div className="kiosk-page-shell page-shell min-h-screen px-2 py-2 sm:px-4 sm:py-4 lg:px-8 lg:py-8">
+      <div className="mx-auto max-w-4xl space-y-2 sm:space-y-3">
         {viewerCanManage ? (
           <PublicOwnerBackButton fallbackHref="/dashboard/checkins" label="Back to dashboard" />
         ) : null}
 
-        <section className="brand-panel relative overflow-hidden rounded-[2.25rem] border border-gray-200/70 bg-[radial-gradient(circle_at_top,_rgba(16,138,99,0.18),_transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.92),rgba(247,250,249,0.9))] p-5 shadow-[0_32px_120px_-64px_rgba(12,40,32,0.48)] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top,_rgba(16,138,99,0.16),_transparent_38%),linear-gradient(180deg,rgba(14,26,30,0.96),rgba(12,22,28,0.98))] sm:p-6 md:min-h-[680px] md:p-8 lg:p-10">
-          <div className="pointer-events-none absolute -right-20 top-0 h-56 w-56 rounded-full bg-primary/10 blur-3xl dark:bg-primary/18" />
-          <div className="pointer-events-none absolute -left-16 bottom-0 h-48 w-48 rounded-full bg-white/50 blur-3xl dark:bg-primary/8" />
+        <section className="kiosk-panel brand-panel relative rounded-[1.5rem] border border-gray-200/70 bg-[radial-gradient(circle_at_top,_rgba(16,138,99,0.18),_transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.92),rgba(247,250,249,0.9))] p-4 shadow-[0_32px_120px_-64px_rgba(12,40,32,0.48)] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top,_rgba(16,138,99,0.16),_transparent_38%),linear-gradient(180deg,rgba(14,26,30,0.96),rgba(12,22,28,0.98))] sm:rounded-[2rem] sm:p-5 md:p-6 lg:p-8">
+          <div className="pointer-events-none absolute right-0 top-0 h-40 w-40 rounded-full bg-primary/10 blur-3xl dark:bg-primary/18 sm:h-56 sm:w-56" />
+          <div className="pointer-events-none absolute bottom-0 left-0 h-36 w-36 rounded-full bg-white/50 blur-3xl dark:bg-primary/8 sm:h-48 sm:w-48" />
 
-          <div className="relative mx-auto flex w-full max-w-2xl flex-col space-y-5 border-b border-gray-200/80 pb-6 dark:border-white/10">
-            <div className="space-y-3">
+          <div className="flex w-full flex-col space-y-3 border-b border-gray-200/80 pb-4 dark:border-white/10 sm:space-y-4 sm:pb-5 lg:mx-auto lg:max-w-2xl">
+            <div className="space-y-2 sm:space-y-3">
               <span className="inline-flex w-fit rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.32em] text-primary dark:border-primary/25 dark:bg-primary/12">
                 Check in
               </span>
-              <h1 className="text-4xl font-bold tracking-[-0.03em] text-gray-950 dark:text-white sm:text-5xl">
+              <h1 className="text-3xl font-bold tracking-[-0.03em] text-gray-950 dark:text-white sm:text-4xl md:text-5xl">
                 {business.name}
               </h1>
               <p className="text-base font-medium text-gray-700 dark:text-gray-200 sm:text-lg">
@@ -335,16 +335,16 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
           </div>
 
           {quickStep === 'phone' ? (
-            <div className="relative mx-auto flex w-full max-w-2xl flex-col justify-center space-y-6 pt-6 md:min-h-[580px]">
-              <div className="rounded-[2rem] border border-gray-200/80 bg-white/90 p-5 shadow-[0_28px_80px_-48px_rgba(16,72,56,0.42)] backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.05] sm:p-6">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
+            <div className="kiosk-phone-step flex w-full flex-col justify-center gap-4 pt-4 sm:gap-5 sm:pt-5 lg:mx-auto lg:max-w-2xl">
+              <div className="rounded-[1.5rem] border border-gray-200/80 bg-white/90 p-4 shadow-[0_28px_80px_-48px_rgba(16,72,56,0.42)] backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.05] sm:rounded-[1.8rem] sm:p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                  <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">
                       Phone number
                     </p>
-                    <div className="mt-3 flex items-baseline gap-3">
-                      <span className="text-lg font-semibold text-gray-500 dark:text-gray-400 sm:text-xl">+1</span>
-                      <p className="text-4xl font-bold tracking-[-0.04em] text-gray-950 dark:text-white sm:text-5xl">
+                    <div className="mt-2 flex min-w-0 items-baseline gap-2 sm:gap-3">
+                      <span className="text-base font-semibold text-gray-500 dark:text-gray-400 sm:text-lg">+1</span>
+                      <p className="max-w-full whitespace-nowrap text-[1.85rem] font-bold tracking-[-0.05em] text-gray-950 dark:text-white sm:text-4xl md:text-5xl">
                         {quickFormattedPhone || '(___) ___-____'}
                       </p>
                     </div>
@@ -352,14 +352,14 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
                   <button
                     type="button"
                     onClick={resetFlow}
-                    className="rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:text-gray-950 dark:border-white/10 dark:text-gray-300 dark:hover:text-white"
+                    className="hidden self-start rounded-full border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:text-gray-950 dark:border-white/10 dark:text-gray-300 dark:hover:text-white sm:inline-flex sm:self-auto sm:px-4 sm:py-2"
                   >
                     Clear
                   </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 {KEYPAD_KEYS.map((key) => (
                   <KeypadButton
                     key={key}
@@ -376,7 +376,7 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
                   {quickLookupError}
                 </div>
               ) : (
-                <p className="text-center text-sm font-medium text-gray-500 dark:text-gray-400">
+                <p className="kiosk-helper-text text-center text-sm font-medium text-gray-500 dark:text-gray-400">
                   Type from the keyboard or use the keypad below.
                 </p>
               )}
@@ -385,7 +385,7 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
                 type="button"
                 onClick={() => void handleLookup()}
                 disabled={!quickPhoneReady || isSubmitting}
-                className="btn-primary min-h-[60px] w-full text-base font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                className="btn-primary min-h-[52px] w-full text-base font-semibold disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-[56px]"
               >
                 {isSubmitting ? 'Checking number...' : 'Continue'}
               </button>
@@ -393,7 +393,7 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
           ) : null}
 
             {quickStep === 'new' ? (
-              <div className="mx-auto flex w-full max-w-2xl flex-col justify-center space-y-6 md:min-h-[580px]">
+              <div className="flex w-full flex-col justify-center space-y-5 pt-4 sm:space-y-6 sm:pt-5 lg:mx-auto lg:max-w-2xl">
                 <div className="space-y-3">
                   <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">New customer</p>
                   <h2 className="text-3xl font-bold text-gray-950 dark:text-white sm:text-4xl">
@@ -492,7 +492,7 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
             ) : null}
 
             {quickStep === 'multiple' ? (
-              <div className="mx-auto flex w-full max-w-3xl flex-col justify-center space-y-6 md:min-h-[580px]">
+              <div className="flex w-full flex-col justify-center space-y-5 pt-4 sm:space-y-6 sm:pt-5 lg:mx-auto lg:max-w-3xl">
                 <div className="space-y-3">
                   <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">Pick the right customer</p>
                   <h2 className="text-3xl font-bold text-gray-950 dark:text-white sm:text-4xl">
@@ -559,7 +559,7 @@ export default function CheckInKiosk({ business, viewerCanManage }: CheckInKiosk
             ) : null}
 
             {quickStep === 'success' && quickSuccess ? (
-              <div className="mx-auto flex w-full max-w-2xl flex-col justify-center space-y-6 text-center md:min-h-[580px]">
+              <div className="flex w-full flex-col justify-center space-y-5 pt-4 text-center sm:space-y-6 sm:pt-5 lg:mx-auto lg:max-w-2xl">
                 <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-primary/12 text-primary">
                   <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M5 13l4 4L19 7" />

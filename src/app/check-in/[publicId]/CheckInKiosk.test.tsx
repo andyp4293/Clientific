@@ -39,6 +39,23 @@ describe('CheckInKiosk', () => {
     expect(screen.getByRole('button', { name: 'Back to dashboard' })).toBeInTheDocument();
   });
 
+  it('uses the compact kiosk layout needed for constrained iPad Safari sheets', () => {
+    const { container } = render(
+      <CheckInKiosk
+        business={{ name: 'ABC Nails', publicId: 'pub_123', logoUrl: null }}
+        viewerCanManage={false}
+      />
+    );
+    const shell = container.firstElementChild;
+
+    expect(shell).toHaveClass('kiosk-page-shell');
+    expect(shell).not.toHaveClass('overflow-x-hidden');
+    expect(screen.getByRole('button', { name: '1' })).toHaveClass('kiosk-keypad-button');
+    expect(screen.getByRole('button', { name: '1' })).toHaveClass('min-h-[58px]');
+    expect(screen.getByText('(___) ___-____')).toHaveClass('whitespace-nowrap');
+    expect(screen.getByRole('button', { name: 'Continue' })).toHaveClass('min-h-[52px]');
+  });
+
   it('shows a checked SMS consent checkbox on the new-customer step', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
