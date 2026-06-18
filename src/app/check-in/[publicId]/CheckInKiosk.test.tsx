@@ -11,9 +11,25 @@ import CheckInKiosk from './CheckInKiosk';
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('CheckInKiosk', () => {
+  function renderKiosk(viewerCanManage = false) {
+    return render(
+      <CheckInKiosk
+        business={{ name: 'ABC Nails', publicId: 'pub_123', logoUrl: null }}
+        viewerCanManage={viewerCanManage}
+      />
+    );
+  }
+
+  function tapKeypadDigits(digits: string) {
+    for (const digit of digits) {
+      fireEvent.click(screen.getByRole('button', { name: digit }));
+    }
+  }
+
   it('shows the business name prominently with the simpler enter-your-number copy', () => {
     render(
       <CheckInKiosk
@@ -29,23 +45,13 @@ describe('CheckInKiosk', () => {
   });
 
   it('keeps the owner back action when the logged-in business opens the page', () => {
-    render(
-      <CheckInKiosk
-        business={{ name: 'ABC Nails', publicId: 'pub_123', logoUrl: null }}
-        viewerCanManage
-      />
-    );
+    renderKiosk(true);
 
     expect(screen.getByRole('button', { name: 'Back to dashboard' })).toBeInTheDocument();
   });
 
   it('uses the compact kiosk layout needed for constrained iPad Safari sheets', () => {
-    const { container } = render(
-      <CheckInKiosk
-        business={{ name: 'ABC Nails', publicId: 'pub_123', logoUrl: null }}
-        viewerCanManage={false}
-      />
-    );
+    const { container } = renderKiosk();
     const shell = container.firstElementChild;
 
     expect(shell).toHaveClass('kiosk-page-shell');
@@ -56,22 +62,111 @@ describe('CheckInKiosk', () => {
     expect(screen.getByRole('button', { name: 'Continue' })).toHaveClass('min-h-[52px]');
   });
 
+  it('formats keypad taps, caps extra digits, and supports delete and clear', () => {
+    renderKiosk();
+    const continueButton = screen.getByRole('button', { name: 'Continue' });
+
+    expect(continueButton).toBeDisabled();
+
+    tapKeypadDigits('201555018899');
+
+    expect(screen.getByText('(201) 555-0188')).toBeInTheDocument();
+    expect(screen.queryByText('(201) 555-018899')).not.toBeInTheDocument();
+    expect(continueButton).toBeEnabled();
+
+    fireEvent.click(screen.getByRole('button', { name: /delete/i }));
+
+    expect(screen.getByText('(201) 555-018')).toBeInTheDocument();
+    expect(continueButton).toBeDisabled();
+
+    const keypadClearButton = screen.getAllByRole('button', { name: 'Clear' }).at(-1);
+    expect(keypadClearButton).toBeDefined();
+    fireEvent.click(keypadClearButton!);
+
+    expect(screen.getByText('(___) ___-____')).toBeInTheDocument();
+    expect(continueButton).toBeDisabled();
+  });
+
+  it('checks in an existing customer immediately from keypad entry', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          status: 'existing',
+          customer: {
+            id: 'cust_123',
+            name: 'Jane Smith',
+            phone: '2015550188',
+            email: null,
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          checkIn: {
+            checkInTime: '2026-06-17T23:12:00.000Z',
+          },
+        }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderKiosk();
+    tapKeypadDigits('2015550188');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Thanks, Jane.')).toBeInTheDocument();
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/public/business-by-id/pub_123/check-in?phone=2015550188'
+    );
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/public/business-by-id/pub_123/check-in');
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({
+      customerId: 'cust_123',
+      phone: '2015550188',
+    });
+  });
+
+  it('shows lookup errors without leaving the keypad flow', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'Check-in lookup is temporarily unavailable.' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderKiosk();
+    tapKeypadDigits('2015550188');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Check-in lookup is temporarily unavailable.')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+    expect(screen.getByText('(201) 555-0188')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('shows a checked SMS consent checkbox on the new-customer step', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         status: 'new',
         normalizedPhone: '8482612613',
         displayPhone: '(848) 261-2613',
       }),
-    } as never);
+    });
+    vi.stubGlobal('fetch', fetchMock);
 
-    render(
-      <CheckInKiosk
-        business={{ name: 'ABC Nails', publicId: 'pub_123', logoUrl: null }}
-        viewerCanManage={false}
-      />
-    );
+    renderKiosk();
 
     for (const digit of '8482612613') {
       fireEvent.keyDown(window, { key: digit });
@@ -88,7 +183,7 @@ describe('CheckInKiosk', () => {
     });
 
     expect(smsConsentCheckbox).toBeChecked();
-    expect(global.fetch).toHaveBeenCalledWith(
+    expect(fetchMock).toHaveBeenCalledWith(
       '/api/public/business-by-id/pub_123/check-in?phone=8482612613'
     );
   });
