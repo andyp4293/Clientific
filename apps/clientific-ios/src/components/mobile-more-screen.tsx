@@ -676,7 +676,6 @@ export function MobileMoreScreen({
             onJumpToToday={onJumpCheckInsToToday}
             onLookup={onLookupCheckIn}
             onNextDate={onNextCheckInsDate}
-            onOpenUrl={onOpenExternalUrl}
             onPreviousDate={onPreviousCheckInsDate}
             onRefresh={onRefreshCheckIns}
             onSelectDate={onSelectCheckInsDate}

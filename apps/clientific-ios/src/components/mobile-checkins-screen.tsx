@@ -30,7 +30,6 @@ type MobileCheckinsScreenProps = {
   onJumpToToday: () => void;
   onLookup: (phone: string) => Promise<MobileCheckInLookupResponse>;
   onNextDate: () => void;
-  onOpenUrl: (url: string) => Promise<void>;
   onPreviousDate: () => void;
   onRefresh: () => Promise<void>;
   onSelectDate: (dateKey: string) => void;
@@ -40,6 +39,7 @@ type MobileCheckinsScreenProps = {
 type ClientificTheme = ReturnType<typeof getClientificTheme>;
 
 const PHONE_DIGIT_COUNT = 10;
+const KEYPAD_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clear', '0', 'back'] as const;
 
 function sanitizePhoneDigits(value: string) {
   const digits = value.replace(/\D/g, '');
@@ -268,7 +268,6 @@ export function MobileCheckinsScreen({
   onJumpToToday,
   onLookup,
   onNextDate,
-  onOpenUrl,
   onPreviousDate,
   onRefresh,
   onSelectDate,
@@ -285,6 +284,7 @@ export function MobileCheckinsScreen({
   const [newCustomerEmail, setNewCustomerEmail] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isNativeCheckInOpen, setIsNativeCheckInOpen] = useState(false);
   const [calendarMonthAnchor, setCalendarMonthAnchor] = useState<Date>(
     parseDateKey(data?.selectedDate ?? formatDateKey(new Date())) ?? new Date(),
   );
@@ -350,6 +350,37 @@ export function MobileCheckinsScreen({
     }
   }
 
+  async function handleNativeContinue() {
+    const normalizedPhone = sanitizePhoneDigits(phoneDigits);
+    if (normalizedPhone.length !== PHONE_DIGIT_COUNT) {
+      setLookupError('Enter a full 10-digit phone number.');
+      return;
+    }
+
+    setIsLookingUp(true);
+    setLookupError(null);
+    setLookupResult(null);
+    setSuccessMessage(null);
+
+    try {
+      const result = await onLookup(normalizedPhone);
+      if (result.status === 'existing') {
+        await handleSubmit({ customerId: result.customer.id });
+        return;
+      }
+
+      setLookupResult(result);
+      if (result.status === 'new') {
+        setNewCustomerName('');
+        setNewCustomerEmail('');
+      }
+    } catch (lookupIssue) {
+      setLookupError(lookupIssue instanceof Error ? lookupIssue.message : 'Unable to find customer.');
+    } finally {
+      setIsLookingUp(false);
+    }
+  }
+
   async function handleSubmit(input: MobileCheckInSubmissionInput) {
     setIsSubmitting(true);
     setLookupError(null);
@@ -385,6 +416,41 @@ export function MobileCheckinsScreen({
     copyTimeoutRef.current = setTimeout(() => setCopiedDeviceLink(false), 1600);
   }
 
+  function openNativeCheckIn() {
+    setPhoneDigits('');
+    setLookupResult(null);
+    setLookupError(null);
+    setSuccessMessage(null);
+    setNewCustomerName('');
+    setNewCustomerEmail('');
+    setIsNativeCheckInOpen(true);
+  }
+
+  function closeNativeCheckIn() {
+    setIsNativeCheckInOpen(false);
+    setLookupResult(null);
+    setLookupError(null);
+    setSuccessMessage(null);
+  }
+
+  function handleKeypadPress(key: (typeof KEYPAD_KEYS)[number]) {
+    setLookupError(null);
+    setLookupResult(null);
+    setSuccessMessage(null);
+
+    if (key === 'clear') {
+      setPhoneDigits('');
+      return;
+    }
+
+    if (key === 'back') {
+      setPhoneDigits((current) => current.slice(0, -1));
+      return;
+    }
+
+    setPhoneDigits((current) => sanitizePhoneDigits(`${current}${key}`));
+  }
+
   function openCalendar() {
     const dateKey = data?.selectedDate ?? formatDateKey(new Date());
     setCalendarMonthAnchor(parseDateKey(dateKey) ?? new Date(`${dateKey}T12:00:00`));
@@ -394,6 +460,219 @@ export function MobileCheckinsScreen({
   function handleCalendarSelect(dateKey: string) {
     onSelectDate(dateKey);
     setIsCalendarOpen(false);
+  }
+
+  if (isNativeCheckInOpen) {
+    const formattedPhone = formatPhoneEntry(phoneDigits);
+
+    return (
+      <ScrollView
+        contentContainerStyle={[styles.nativeContainer, { backgroundColor: theme.background }]}
+        style={{ backgroundColor: theme.background }}
+        testID="mobile-checkins-native-page">
+        <View style={styles.nativeTopBar}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={closeNativeCheckIn}
+            style={[
+              styles.nativeBackButton,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
+            testID="mobile-checkins-native-back">
+            <Feather color={theme.text} name="chevron-left" size={18} />
+            <Text style={[styles.nativeBackText, { color: theme.text }]}>Back</Text>
+          </Pressable>
+        </View>
+
+        <View
+          style={[
+            styles.nativeHero,
+            { backgroundColor: theme.surface, borderColor: theme.border },
+          ]}>
+          <Text style={[styles.eyebrow, { color: theme.accent }]}>In-app check-in</Text>
+          <Text style={[styles.nativeTitle, { color: theme.text }]}>
+            {data?.business.name ?? 'Guest check-in'}
+          </Text>
+          <Text style={[styles.nativeSubtitle, { color: theme.mutedText }]}>
+            Enter the customer&apos;s phone number here without leaving Clientific.
+          </Text>
+
+          <View
+            style={[
+              styles.nativePhoneCard,
+              { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+            ]}>
+            <Text style={[styles.lookupLabel, { color: theme.mutedText }]}>Phone number</Text>
+            <View style={styles.nativePhoneRow}>
+              <Text style={[styles.nativeCountryCode, { color: theme.mutedText }]}>+1</Text>
+              <Text
+                adjustsFontSizeToFit
+                numberOfLines={1}
+                style={[styles.nativePhoneText, { color: theme.text }]}
+                testID="mobile-checkins-native-phone-display">
+                {formattedPhone || '(___) ___-____'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.nativeKeypadGrid}>
+            {KEYPAD_KEYS.map((key) => {
+              const label = key === 'clear' ? 'Clear' : key === 'back' ? 'Delete' : key;
+              return (
+                <Pressable
+                  accessibilityRole="button"
+                  key={key}
+                  onPress={() => handleKeypadPress(key)}
+                  style={[
+                    styles.nativeKeypadButton,
+                    { backgroundColor: theme.surface, borderColor: theme.border },
+                  ]}
+                  testID={`mobile-checkins-native-key-${key}`}>
+                  <Text style={[styles.nativeKeypadLabel, { color: theme.text }]}>{label}</Text>
+                  {key === 'back' ? (
+                    <Text style={[styles.nativeKeypadHint, { color: theme.mutedText }]}>
+                      Backspace
+                    </Text>
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {lookupError ? (
+            <View
+              style={[
+                styles.noticeCard,
+                { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+              ]}>
+              <Text style={[styles.noticeText, { color: theme.danger }]}>{lookupError}</Text>
+            </View>
+          ) : null}
+
+          {successMessage ? (
+            <View
+              style={[
+                styles.noticeCard,
+                { backgroundColor: theme.accentSoft, borderColor: theme.border },
+              ]}>
+              <Text style={[styles.noticeTitle, { color: theme.accent }]}>Checked in</Text>
+              <Text style={[styles.noticeText, { color: theme.text }]}>{successMessage}</Text>
+            </View>
+          ) : null}
+
+          {lookupResult?.status === 'multiple' ? (
+            <View style={styles.stack}>
+              <Text style={[styles.sectionText, { color: theme.mutedText }]}>
+                Multiple customers match this number. Pick the right profile to continue.
+              </Text>
+              {lookupResult.customers.map((customer) => (
+                <View
+                  key={customer.id}
+                  style={[
+                    styles.matchCard,
+                    { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                  ]}>
+                  <Text style={[styles.matchTitle, { color: theme.text }]}>{customer.name}</Text>
+                  <Text style={[styles.matchText, { color: theme.mutedText }]}>
+                    {customer.phoneDisplay ?? 'No phone'} · {customer.lastVisitLabel ?? 'No recent visit'}
+                  </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={isSubmitting}
+                    onPress={() => void handleSubmit({ customerId: customer.id })}
+                    style={[styles.secondaryButton, { borderColor: theme.border }]}
+                    testID={`mobile-checkins-native-submit-${customer.id}`}>
+                    <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+                      Use this customer
+                    </Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          {lookupResult?.status === 'new' ? (
+            <View
+              style={[
+                styles.matchCard,
+                { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+              ]}>
+              <Text style={[styles.matchTitle, { color: theme.text }]}>New customer</Text>
+              <Text style={[styles.matchText, { color: theme.mutedText }]}>
+                {lookupResult.displayPhone}
+              </Text>
+              <TextInput
+                autoCapitalize="words"
+                onChangeText={setNewCustomerName}
+                placeholder="Customer name"
+                placeholderTextColor={theme.mutedText}
+                style={[
+                  styles.textInput,
+                  { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text },
+                ]}
+                testID="mobile-checkins-native-new-name"
+                value={newCustomerName}
+              />
+              <TextInput
+                autoCapitalize="none"
+                keyboardType="email-address"
+                onChangeText={setNewCustomerEmail}
+                placeholder="Email (optional)"
+                placeholderTextColor={theme.mutedText}
+                style={[
+                  styles.textInput,
+                  { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text },
+                ]}
+                testID="mobile-checkins-native-new-email"
+                value={newCustomerEmail}
+              />
+              <Pressable
+                accessibilityRole="button"
+                disabled={isSubmitting || newCustomerName.trim().length === 0}
+                onPress={() =>
+                  void handleSubmit({
+                    phone: lookupResult.normalizedPhone,
+                    customerName: newCustomerName.trim(),
+                    customerEmail: newCustomerEmail.trim() || undefined,
+                  })
+                }
+                style={[
+                  styles.primaryButton,
+                  {
+                    backgroundColor:
+                      newCustomerName.trim().length > 0 ? theme.accent : theme.surfaceMuted,
+                    opacity: newCustomerName.trim().length > 0 ? 1 : 0.72,
+                  },
+                ]}
+                testID="mobile-checkins-native-submit-new">
+                <Text style={styles.primaryButtonText}>
+                  {isSubmitting ? 'Checking in...' : 'Create and check in'}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !phoneReady || isLookingUp || isSubmitting }}
+            disabled={!phoneReady || isLookingUp || isSubmitting}
+            onPress={() => void handleNativeContinue()}
+            style={[
+              styles.primaryButton,
+              styles.nativeContinueButton,
+              {
+                backgroundColor: phoneReady ? theme.accent : theme.surfaceMuted,
+                opacity: phoneReady ? 1 : 0.72,
+              },
+            ]}
+            testID="mobile-checkins-native-continue">
+            <Text style={styles.primaryButtonText}>
+              {isLookingUp || isSubmitting ? 'Checking in...' : 'Continue'}
+            </Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    );
   }
 
   return (
@@ -418,7 +697,7 @@ export function MobileCheckinsScreen({
             {data?.dateLabel ?? 'Guest arrivals'}
           </Text>
           <Text style={[styles.heroSubtitle, { color: theme.mutedText }]}>
-            Pick the day, run staff-assisted arrivals, and open the same in-store check-in link you use on the web dashboard.
+            Pick the day, run staff-assisted arrivals, and launch an in-app check-in station without leaving Clientific.
           </Text>
 
           <View style={styles.dateToolbar}>
@@ -513,7 +792,7 @@ export function MobileCheckinsScreen({
               ]}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>In-store check-in</Text>
               <Text style={[styles.sectionText, { color: theme.mutedText }]}>
-                Use this same public link for your front desk, a kiosk tablet, or a self-serve device in the salon.
+                Open the native check-in page on this iPad, or copy the public device link for a separate kiosk.
               </Text>
 
               <View
@@ -545,19 +824,19 @@ export function MobileCheckinsScreen({
                   </Pressable>
                   <Pressable
                     accessibilityRole="button"
-                    disabled={!checkInUrl}
-                    onPress={() => void onOpenUrl(checkInUrl)}
+                    disabled={!data}
+                    onPress={openNativeCheckIn}
                     style={[
                       styles.secondaryButton,
                       {
                         backgroundColor: theme.surface,
                         borderColor: theme.border,
-                        opacity: checkInUrl ? 1 : 0.72,
+                        opacity: data ? 1 : 0.72,
                       },
                     ]}
                     testID="mobile-checkins-open-link">
                     <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
-                      Open check-in
+                      Open in app
                     </Text>
                   </Pressable>
                 </View>
@@ -571,7 +850,7 @@ export function MobileCheckinsScreen({
                   ]}>
                   <Text style={[styles.hintTitle, { color: theme.text }]}>Front desk</Text>
                   <Text style={[styles.sectionText, { color: theme.mutedText }]}>
-                    Open the link on the salon phone, tablet, or kiosk device for staff-assisted arrivals.
+                    Open the in-app station on this iPad for staff-assisted arrivals.
                   </Text>
                 </View>
                 <View
@@ -581,7 +860,7 @@ export function MobileCheckinsScreen({
                   ]}>
                   <Text style={[styles.hintTitle, { color: theme.text }]}>Self-serve</Text>
                   <Text style={[styles.sectionText, { color: theme.mutedText }]}>
-                    Keep the link handy so guests can launch the same check-in flow from another device when needed.
+                    Keep the copied link handy when guests need to check in from another device.
                   </Text>
                 </View>
               </View>
@@ -858,6 +1137,100 @@ export function MobileCheckinsScreen({
 }
 
 const styles = StyleSheet.create({
+  nativeContainer: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 32,
+    gap: 14,
+  },
+  nativeTopBar: {
+    alignItems: 'flex-start',
+  },
+  nativeBackButton: {
+    minHeight: 44,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  nativeBackText: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
+  nativeHero: {
+    borderWidth: 1,
+    borderRadius: 28,
+    paddingHorizontal: 18,
+    paddingVertical: 20,
+    gap: 14,
+  },
+  nativeTitle: {
+    fontSize: 34,
+    lineHeight: 40,
+    fontWeight: '900',
+  },
+  nativeSubtitle: {
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  nativePhoneCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 8,
+  },
+  nativePhoneRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+  },
+  nativeCountryCode: {
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: '800',
+  },
+  nativePhoneText: {
+    flex: 1,
+    fontSize: 38,
+    lineHeight: 46,
+    fontWeight: '900',
+  },
+  nativeKeypadGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  nativeKeypadButton: {
+    minHeight: 62,
+    borderRadius: 20,
+    borderWidth: 1,
+    flexBasis: '30.8%',
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+  },
+  nativeKeypadLabel: {
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: '900',
+  },
+  nativeKeypadHint: {
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+  },
+  nativeContinueButton: {
+    minHeight: 54,
+  },
   container: {
     paddingHorizontal: 20,
     paddingTop: 18,

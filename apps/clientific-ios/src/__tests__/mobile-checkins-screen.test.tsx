@@ -36,7 +36,6 @@ function renderScreen(
       onJumpToToday={jest.fn()}
       onLookup={jest.fn()}
       onNextDate={jest.fn()}
-      onOpenUrl={jest.fn().mockResolvedValue(undefined)}
       onPreviousDate={jest.fn()}
       onRefresh={jest.fn().mockResolvedValue(undefined)}
       onSelectDate={jest.fn()}
@@ -46,11 +45,15 @@ function renderScreen(
   );
 }
 
-describe('MobileCheckinsScreen', () => {
-  it('shows in-store check-in tools that mirror the web dashboard flow', async () => {
-    const onOpenUrl = jest.fn().mockResolvedValue(undefined);
+function expectNativeContinueDisabled(isDisabled: boolean) {
+  expect(screen.getByTestId('mobile-checkins-native-continue').props.accessibilityState).toEqual({
+    disabled: isDisabled,
+  });
+}
 
-    renderScreen({ onOpenUrl });
+describe('MobileCheckinsScreen', () => {
+  it('copies the public device link but opens check-in inside the native app', async () => {
+    renderScreen();
 
     expect(screen.getByText('In-store check-in')).toBeTruthy();
     expect(screen.getByText('Device link')).toBeTruthy();
@@ -63,9 +66,81 @@ describe('MobileCheckinsScreen', () => {
     });
 
     fireEvent.press(screen.getByTestId('mobile-checkins-open-link'));
-    await waitFor(() => {
-      expect(onOpenUrl).toHaveBeenCalledWith('https://www.clientific.app/check-in/CF-8QXLBD');
+    expect(screen.getByTestId('mobile-checkins-native-page')).toBeTruthy();
+    expect(screen.getByText('In-app check-in')).toBeTruthy();
+    expect(screen.getByText('Clientific Studio')).toBeTruthy();
+  });
+
+  it('runs the in-app keypad check-in without opening a website', async () => {
+    const onLookup = jest.fn().mockResolvedValue({
+      status: 'existing',
+      customer: {
+        id: 'cust-1',
+        name: 'Jordan Lee',
+        phone: '+15551234567',
+        email: 'jordan@example.com',
+        phoneDisplay: '(555) 123-4567',
+        lastVisitLabel: 'Mar 20, 2026',
+      },
     });
+    const onSubmit = jest.fn().mockResolvedValue({
+      checkIn: {
+        id: 'check-1',
+        customerId: 'cust-1',
+        customerName: 'Jordan Lee',
+        phoneDisplay: '(555) 123-4567',
+        serviceName: null,
+        staffName: null,
+        amountSpentLabel: null,
+        checkedInAtLabel: '1:45 PM',
+        lastVisitLabel: 'Mar 20, 2026',
+      },
+    });
+    const onRefresh = jest.fn().mockResolvedValue(undefined);
+
+    renderScreen({ onLookup, onRefresh, onSubmit });
+
+    fireEvent.press(screen.getByTestId('mobile-checkins-open-link'));
+    expectNativeContinueDisabled(true);
+
+    for (const digit of '5551234567') {
+      fireEvent.press(screen.getByTestId(`mobile-checkins-native-key-${digit}`));
+    }
+
+    expect(screen.getByTestId('mobile-checkins-native-phone-display').props.children).toBe(
+      '(555) 123-4567',
+    );
+    expectNativeContinueDisabled(false);
+
+    fireEvent.press(screen.getByTestId('mobile-checkins-native-continue'));
+
+    await waitFor(() => {
+      expect(onLookup).toHaveBeenCalledWith('5551234567');
+      expect(onSubmit).toHaveBeenCalledWith({ customerId: 'cust-1' });
+      expect(onRefresh).toHaveBeenCalled();
+    });
+
+    expect(screen.getByText('Jordan Lee checked in at 1:45 PM.')).toBeTruthy();
+  });
+
+  it('supports delete and clear in the in-app keypad flow', () => {
+    renderScreen();
+
+    fireEvent.press(screen.getByTestId('mobile-checkins-open-link'));
+    for (const digit of '5551234567') {
+      fireEvent.press(screen.getByTestId(`mobile-checkins-native-key-${digit}`));
+    }
+
+    fireEvent.press(screen.getByTestId('mobile-checkins-native-key-back'));
+    expect(screen.getByTestId('mobile-checkins-native-phone-display').props.children).toBe(
+      '(555) 123-456',
+    );
+    expectNativeContinueDisabled(true);
+
+    fireEvent.press(screen.getByTestId('mobile-checkins-native-key-clear'));
+    expect(screen.getByTestId('mobile-checkins-native-phone-display').props.children).toBe(
+      '(___) ___-____',
+    );
   });
 
   it('opens the calendar picker and lets the operator choose another day', () => {

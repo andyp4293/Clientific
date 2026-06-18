@@ -8,7 +8,7 @@
     "scheme": "clientific",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "app.clientific.mobile",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false

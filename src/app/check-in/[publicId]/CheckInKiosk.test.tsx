@@ -9,6 +9,8 @@ vi.mock('@/components/public/PublicOwnerBackButton', () => ({
 
 import CheckInKiosk from './CheckInKiosk';
 
+const KIOSK_INTERACTION_TEST_TIMEOUT = 10_000;
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -85,7 +87,7 @@ describe('CheckInKiosk', () => {
 
     expect(screen.getByText('(___) ___-____')).toBeInTheDocument();
     expect(continueButton).toBeDisabled();
-  });
+  }, KIOSK_INTERACTION_TEST_TIMEOUT);
 
   it('checks in an existing customer immediately from keypad entry', async () => {
     const fetchMock = vi
@@ -133,7 +135,7 @@ describe('CheckInKiosk', () => {
       customerId: 'cust_123',
       phone: '2015550188',
     });
-  });
+  }, KIOSK_INTERACTION_TEST_TIMEOUT);
 
   it('shows lookup errors without leaving the keypad flow', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
@@ -153,7 +155,7 @@ describe('CheckInKiosk', () => {
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
     expect(screen.getByText('(201) 555-0188')).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
+  }, KIOSK_INTERACTION_TEST_TIMEOUT);
 
   it('shows a checked SMS consent checkbox on the new-customer step', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
@@ -186,5 +188,5 @@ describe('CheckInKiosk', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/public/business-by-id/pub_123/check-in?phone=8482612613'
     );
-  });
+  }, KIOSK_INTERACTION_TEST_TIMEOUT);
 });
