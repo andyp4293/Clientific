@@ -15,6 +15,15 @@ out
 coverage
 .nyc_output
 
+# Native app sources and generated release artifacts are not part of the
+# Next.js web deployment package.
+apps/clientific-ios
+apps/output
+output
+test-artifacts
+marketing
+*.ipa
+
 # Misc
 .DS_Store
 *.pem
