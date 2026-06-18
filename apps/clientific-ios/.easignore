@@ -1,0 +1,33 @@
+# dependencies and local Expo state
+node_modules/
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+*.tsbuildinfo
+
+# generated native projects/build products
+ios/
+android/
+.tmp/
+build-artifacts/
+builds/
+*.ipa
+
+# local App Store/media working folders are uploaded separately
+screenshots/
+metadata/
+
+# local env/secrets
+.env*.local
+*.pem
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# OS/editor noise
+.DS_Store
+npm-debug.*
+yarn-debug.*
+yarn-error.*

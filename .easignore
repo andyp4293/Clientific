@@ -1,0 +1,52 @@
+# EAS runs from this monorepo root when the iOS project lives under apps/.
+# Keep remote iOS uploads clear of generated web/test/build artifacts.
+
+# Root-local dependencies and generated output.
+node_modules/
+.next/
+.vercel/
+.git
+.git/
+.git/**
+.claude/
+.husky/
+.tmp/
+tmp/
+output/
+test-artifacts/
+test-results/
+marketing/
+app-store-preview-assets/
+tsconfig.tsbuildinfo
+.DS_Store
+.env*
+
+# App-local files generated during local builds or App Store asset work.
+apps/clientific-ios/node_modules/
+apps/clientific-ios/.expo/
+apps/clientific-ios/dist/
+apps/clientific-ios/web-build/
+apps/clientific-ios/expo-env.d.ts
+apps/clientific-ios/*.tsbuildinfo
+apps/clientific-ios/ios/
+apps/clientific-ios/android/
+apps/clientific-ios/.tmp/
+apps/clientific-ios/build-artifacts/
+apps/clientific-ios/builds/
+apps/clientific-ios/*.ipa
+apps/clientific-ios/screenshots/
+apps/clientific-ios/metadata/
+
+# Local secrets/noise.
+apps/clientific-ios/.env*.local
+apps/clientific-ios/.env*
+apps/clientific-ios/*.pem
+apps/clientific-ios/*.p8
+apps/clientific-ios/*.p12
+apps/clientific-ios/*.key
+apps/clientific-ios/*.mobileprovision
+apps/clientific-ios/.DS_Store
+apps/clientific-ios/npm-debug.*
+apps/clientific-ios/yarn-debug.*
+apps/clientific-ios/yarn-error.*
+apps/output/
