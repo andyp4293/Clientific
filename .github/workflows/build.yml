@@ -13,6 +13,8 @@ jobs:
       DATABASE_URL: postgresql://test:test@localhost:5432/clientific_test
       NEXTAUTH_SECRET: test-secret
       NEXTAUTH_URL: http://localhost:3000
+      TZ: America/New_York
+      VAPI_PRIVATE_KEY: test-vapi-private-key
 
     strategy:
       matrix:
