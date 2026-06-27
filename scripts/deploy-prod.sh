@@ -44,10 +44,20 @@ deployment_url="$(
   ' "$deploy_log"
 )"
 
-deployment_host="${deployment_url#https://}"
-deployment_host="${deployment_host#http://}"
-deployment_host="${deployment_host%%/*}"
-deployment_host="$(printf '%s' "$deployment_host" | tr -d '\r\n')"
+deployment_host="$(
+  node -e '
+    const raw = process.argv[1]
+      .replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "")
+      .replace(/\u001b\][^\u0007]*(\u0007|\u001b\\)/g, "")
+      .replace(/[^\x20-\x7e]/g, "");
+    const match = raw.match(/[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/);
+    if (!match) {
+      console.error(`Unable to find a deployment host in: ${raw}`);
+      process.exit(1);
+    }
+    console.log(match[0]);
+  ' "$deployment_url"
+)"
 
 if [[ -z "$deployment_host" ]]; then
   echo "Unable to determine deployment host from: $deployment_url" >&2
@@ -63,10 +73,11 @@ done
 echo ""
 echo "==> Verify production domain aliases"
 for domain in "${domains[@]}"; do
-  inspect_output="$(npx vercel inspect "$domain")"
+  inspect_output="$(npx vercel inspect "$domain" 2>&1)"
   printf '%s\n' "$inspect_output"
+  normalized_inspect_output="$(printf '%s' "$inspect_output" | LC_ALL=C tr -cd '\11\12\15\40-\176')"
 
-  if [[ "$inspect_output" != *"$deployment_host"* ]]; then
+  if [[ "$normalized_inspect_output" != *"$deployment_host"* ]]; then
     echo "Expected $domain to point at $deployment_host, but Vercel inspect did not confirm it." >&2
     exit 1
   fi
