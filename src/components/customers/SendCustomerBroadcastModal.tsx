@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { MessageSquare, ShieldCheck, Users, X } from "lucide-react";
+import { AlertTriangle, MessageSquare, ShieldCheck, Users, X } from "lucide-react";
 import { toast } from "sonner";
+import { formatCustomerBroadcastSms } from "@/lib/customer-broadcast-format";
 
 type CustomerGroup = {
   id: string;
@@ -38,6 +39,7 @@ type BroadcastPreview = {
 };
 
 interface SendCustomerBroadcastModalProps {
+  businessName: string;
   groups: CustomerGroup[];
   isOpen: boolean;
   onClose: () => void;
@@ -55,6 +57,7 @@ function getAudienceLabel(target: BroadcastTarget, selectedGroupCount: number) {
 }
 
 export default function SendCustomerBroadcastModal({
+  businessName,
   groups,
   isOpen,
   onClose,
@@ -67,7 +70,7 @@ export default function SendCustomerBroadcastModal({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [confirming, setConfirming] = useState(false);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
 
   const selectedGroupKey = selectedGroupIds.join("|");
   const canLoadPreview = target === "all" || selectedGroupIds.length > 0;
@@ -86,6 +89,13 @@ export default function SendCustomerBroadcastModal({
       .map((group) => group.name)
       .join(", ");
   }, [groups, selectedGroupIds]);
+  const finalSmsPreview = useMemo(() => {
+    if (!trimmedMessage) return "";
+    return formatCustomerBroadcastSms({
+      businessName,
+      message: trimmedMessage,
+    });
+  }, [businessName, trimmedMessage]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -96,7 +106,7 @@ export default function SendCustomerBroadcastModal({
       setPreviewLoading(false);
       setLoading(false);
       setError("");
-      setConfirming(false);
+      setIsConfirmDialogOpen(false);
     }
   }, [isOpen]);
 
@@ -105,7 +115,7 @@ export default function SendCustomerBroadcastModal({
       return;
     }
 
-    setConfirming(false);
+    setIsConfirmDialogOpen(false);
   }, [isOpen, message, selectedGroupKey, target]);
 
   useEffect(() => {
@@ -167,6 +177,11 @@ export default function SendCustomerBroadcastModal({
     onClose();
   };
 
+  const handleCancelConfirmation = () => {
+    if (loading) return;
+    setIsConfirmDialogOpen(false);
+  };
+
   const toggleGroup = (groupId: string) => {
     setSelectedGroupIds((current) =>
       current.includes(groupId)
@@ -198,12 +213,11 @@ export default function SendCustomerBroadcastModal({
       return;
     }
 
-    if (!confirming) {
-      setError("");
-      setConfirming(true);
-      return;
-    }
+    setError("");
+    setIsConfirmDialogOpen(true);
+  };
 
+  const sendBroadcast = async () => {
     setLoading(true);
     setError("");
 
@@ -229,7 +243,7 @@ export default function SendCustomerBroadcastModal({
       if (data.failed > 0) {
         setError(`${data.sent} texts sent. ${data.failed} failed and were logged.`);
         setPreview(data);
-        setConfirming(false);
+        setIsConfirmDialogOpen(false);
         return;
       }
 
@@ -238,6 +252,7 @@ export default function SendCustomerBroadcastModal({
       onClose();
     } catch (sendError: any) {
       setError(sendError?.message || "Failed to send broadcast");
+      setIsConfirmDialogOpen(false);
     } finally {
       setLoading(false);
     }
@@ -414,12 +429,6 @@ export default function SendCustomerBroadcastModal({
               </div>
             </section>
 
-            {confirming ? (
-              <div className="rounded-[28px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800 dark:border-amber-800/70 dark:bg-amber-900/20 dark:text-amber-200">
-                Ready to send this exact text to {eligibleCount} SMS subscriber
-                {eligibleCount === 1 ? "" : "s"}. This cannot be undone.
-              </div>
-            ) : null}
           </div>
 
           <div
@@ -434,9 +443,7 @@ export default function SendCustomerBroadcastModal({
               >
                 {loading
                   ? "Sending..."
-                  : confirming
-                    ? `Send to ${eligibleCount} subscriber${eligibleCount === 1 ? "" : "s"}`
-                    : "Review broadcast"}
+                  : "Review broadcast"}
               </button>
               <button
                 type="button"
@@ -449,6 +456,96 @@ export default function SendCustomerBroadcastModal({
             </div>
           </div>
         </form>
+
+        {isConfirmDialogOpen ? (
+          <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 px-4 py-4 backdrop-blur-sm sm:items-center">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="customer-broadcast-confirm-title"
+              className="w-full max-w-lg overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900"
+            >
+              <div className="border-b border-gray-200 bg-gradient-to-b from-amber-50 to-white px-5 py-5 dark:border-gray-700 dark:from-amber-900/20 dark:to-gray-900 sm:px-6">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">
+                    <AlertTriangle className="h-6 w-6" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-200">
+                      Final confirmation
+                    </p>
+                    <h4 id="customer-broadcast-confirm-title" className="mt-1 text-xl font-semibold text-gray-950 dark:text-white">
+                      Send this SMS broadcast?
+                    </h4>
+                    <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                      This will send one text message to {eligibleCount} opted-in SMS subscriber
+                      {eligibleCount === 1 ? "" : "s"}. This action cannot be undone.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 px-5 py-5 sm:px-6">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/80">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                      Audience
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-gray-950 dark:text-white">
+                      {getAudienceLabel(target, selectedGroupIds.length)}
+                    </p>
+                    {target === "groups" && selectedGroupNames ? (
+                      <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">{selectedGroupNames}</p>
+                    ) : null}
+                  </div>
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/80">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                      Recipients
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-gray-950 dark:text-white">
+                      {eligibleCount} subscriber{eligibleCount === 1 ? "" : "s"}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                      Opt-outs and blocked customers are excluded.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-950/40">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                    Final SMS preview
+                  </p>
+                  <p className="mt-2 max-h-36 overflow-y-auto whitespace-pre-wrap text-sm leading-6 text-gray-800 dark:text-gray-200">
+                    {finalSmsPreview}
+                  </p>
+                </div>
+
+                <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800 dark:border-amber-800/70 dark:bg-amber-900/20 dark:text-amber-100">
+                  This is the exact SMS body that will be sent to every eligible recipient.
+                </p>
+              </div>
+
+              <div className="grid gap-3 border-t border-gray-200 bg-gray-50 px-5 py-4 dark:border-gray-700 dark:bg-gray-900/80 sm:flex sm:flex-row-reverse sm:px-6">
+                <button
+                  type="button"
+                  onClick={sendBroadcast}
+                  disabled={loading}
+                  className="w-full btn-primary sm:w-auto sm:min-w-[180px]"
+                >
+                  {loading ? "Sending..." : "Send broadcast"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelConfirmation}
+                  disabled={loading}
+                  className="w-full btn-outline sm:w-auto sm:min-w-[140px]"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

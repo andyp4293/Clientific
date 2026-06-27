@@ -54,6 +54,7 @@ type CustomerGroup = {
 type CustomerSearchMatch = Pick<Customer, "id" | "name" | "email" | "phone">;
 
 interface CustomerListProps {
+  businessName?: string;
   customers: Customer[];
   groups: CustomerGroup[];
   initialSearch?: string;
@@ -233,6 +234,7 @@ function buildPaginationItems(currentPage: number, totalPages: number) {
 }
 
 export default function CustomerList({
+  businessName = "Your business",
   customers,
   groups,
   initialSearch = "",
@@ -1384,6 +1386,7 @@ export default function CustomerList({
       />
 
       <SendCustomerBroadcastModal
+        businessName={businessName}
         groups={groupRecords}
         isOpen={isBroadcastModalOpen}
         onClose={() => setIsBroadcastModalOpen(false)}

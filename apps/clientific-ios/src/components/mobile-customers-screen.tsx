@@ -114,6 +114,22 @@ const VISIT_FILTER_OPTIONS: Array<{ value: MobileCustomerVisitFilter; label: str
   { value: 'visited', label: 'Visited before' },
   { value: 'never', label: 'Never visited' },
 ];
+const SMS_COMPLIANCE_FOOTER = 'Reply STOP to opt out, HELP for help.';
+
+function appendSmsComplianceFooter(message: string): string {
+  const trimmed = message.trim();
+  const alreadyHasFooter =
+    /reply\s+stop\s+to\s+opt\s*out[, ]+\s*help\s+for\s+help\.?$/i.test(trimmed) ||
+    /reply\s+stop\s+to\s+opt\s*out\.?$/i.test(trimmed);
+
+  if (alreadyHasFooter) return trimmed;
+  return `${trimmed} ${SMS_COMPLIANCE_FOOTER}`;
+}
+
+function formatBroadcastSmsPreview(businessName: string, message: string) {
+  const displayName = businessName.trim() || 'Your business';
+  return appendSmsComplianceFooter(`${displayName}: ${message.trim()}`);
+}
 
 function buildPaginationItems(currentPage: number, totalPages: number): PaginationItem[] {
   if (totalPages <= 5) {
@@ -436,7 +452,6 @@ export function MobileCustomersScreen({
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [isBroadcastPreviewLoading, setIsBroadcastPreviewLoading] = useState(false);
   const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
-  const [isBroadcastConfirming, setIsBroadcastConfirming] = useState(false);
 
   const paginationItems = useMemo(
     () => buildPaginationItems(data?.currentPage ?? 1, data?.totalPages ?? 1),
@@ -456,19 +471,19 @@ export function MobileCustomersScreen({
     isBroadcastSheetVisible && (broadcastTarget === 'all' || broadcastGroupIds.length > 0);
   const broadcastEligibleCount = broadcastPreview?.eligibleCount ?? 0;
   const broadcastMessage = broadcastMessageDraft.trim();
+  const broadcastBusinessName = data?.business.name?.trim() || 'Your business';
+  const broadcastFinalSmsPreview = useMemo(
+    () =>
+      broadcastMessage
+        ? formatBroadcastSmsPreview(broadcastBusinessName, broadcastMessage)
+        : '',
+    [broadcastBusinessName, broadcastMessage],
+  );
   const canSendBroadcast =
     Boolean(broadcastMessage) &&
     broadcastMessage.length <= 500 &&
     Boolean(broadcastPreview) &&
     broadcastEligibleCount > 0;
-
-  useEffect(() => {
-    if (!isBroadcastSheetVisible) {
-      return;
-    }
-
-    setIsBroadcastConfirming(false);
-  }, [broadcastGroupKey, broadcastMessageDraft, broadcastTarget, isBroadcastSheetVisible]);
 
   useEffect(() => {
     if (!isBroadcastSheetVisible) {
@@ -560,7 +575,6 @@ export function MobileCustomersScreen({
     setBroadcastGroupIds([]);
     setBroadcastMessageDraft('');
     setBroadcastPreview(null);
-    setIsBroadcastConfirming(false);
     setSheetError(null);
     setSheetNotice(null);
     setIsBroadcastSheetVisible(true);
@@ -794,7 +808,37 @@ export function MobileCustomersScreen({
     }
   };
 
-  const handleSendBroadcastNow = async () => {
+  const sendBroadcastAfterConfirmation = async () => {
+    if (!onSendCustomerBroadcast) {
+      setSheetError('Broadcast messaging is unavailable in this app version.');
+      return;
+    }
+
+    setIsSendingBroadcast(true);
+    setSheetError(null);
+
+    try {
+      const result = await onSendCustomerBroadcast({
+        target: broadcastTarget,
+        groupIds: broadcastTarget === 'groups' ? broadcastGroupIds : [],
+        message: broadcastMessage,
+      });
+      setBroadcastPreview(result);
+      setSheetNotice(
+        result.failed > 0
+          ? `${result.sent} texts sent. ${result.failed} failed and were logged.`
+          : `Broadcast sent to ${result.sent} SMS subscriber${result.sent === 1 ? '' : 's'}.`,
+      );
+      setIsBroadcastSheetVisible(false);
+      setBroadcastMessageDraft('');
+    } catch (sendError) {
+      setSheetError(sendError instanceof Error ? sendError.message : 'Unable to send broadcast.');
+    } finally {
+      setIsSendingBroadcast(false);
+    }
+  };
+
+  const handleSendBroadcastNow = () => {
     if (!broadcastMessage) {
       setSheetError('Message is required.');
       return;
@@ -820,35 +864,26 @@ export function MobileCustomersScreen({
       return;
     }
 
-    if (!isBroadcastConfirming) {
-      setSheetError(null);
-      setIsBroadcastConfirming(true);
-      return;
-    }
-
-    setIsSendingBroadcast(true);
     setSheetError(null);
-
-    try {
-      const result = await onSendCustomerBroadcast({
-        target: broadcastTarget,
-        groupIds: broadcastTarget === 'groups' ? broadcastGroupIds : [],
-        message: broadcastMessage,
-      });
-      setBroadcastPreview(result);
-      setSheetNotice(
-        result.failed > 0
-          ? `${result.sent} texts sent. ${result.failed} failed and were logged.`
-          : `Broadcast sent to ${result.sent} SMS subscriber${result.sent === 1 ? '' : 's'}.`,
-      );
-      setIsBroadcastSheetVisible(false);
-      setBroadcastMessageDraft('');
-      setIsBroadcastConfirming(false);
-    } catch (sendError) {
-      setSheetError(sendError instanceof Error ? sendError.message : 'Unable to send broadcast.');
-    } finally {
-      setIsSendingBroadcast(false);
-    }
+    Alert.alert(
+      'Send SMS broadcast?',
+      `Exact SMS:\n${broadcastFinalSmsPreview}\n\nThis will send one text message to ${broadcastEligibleCount} opted-in SMS subscriber${
+        broadcastEligibleCount === 1 ? '' : 's'
+      }. This action cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Send broadcast',
+          style: 'destructive',
+          onPress: () => {
+            void sendBroadcastAfterConfirmation();
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -1759,7 +1794,6 @@ export function MobileCustomersScreen({
           setIsBroadcastSheetVisible(false);
           setBroadcastMessageDraft('');
           setBroadcastPreview(null);
-          setIsBroadcastConfirming(false);
           setSheetError(null);
         }}
         subtitle="Send one SMS to customers with marketing consent while respecting opt-outs and group promotion settings."
@@ -1904,16 +1938,15 @@ export function MobileCustomersScreen({
             {broadcastMessage.length}/500
           </Text>
 
-          {isBroadcastConfirming ? (
+          {broadcastFinalSmsPreview ? (
             <View
               style={[
                 styles.noticeCard,
                 { backgroundColor: theme.accentSoft, borderColor: theme.border },
               ]}>
-              <Text style={[styles.noticeTitle, { color: theme.accent }]}>Ready to send</Text>
+              <Text style={[styles.noticeTitle, { color: theme.accent }]}>Final SMS preview</Text>
               <Text style={[styles.noticeText, { color: theme.text }]}>
-                This will send the message to {broadcastEligibleCount} SMS subscriber
-                {broadcastEligibleCount === 1 ? '' : 's'}.
+                {broadcastFinalSmsPreview}
               </Text>
             </View>
           ) : null}
@@ -1934,11 +1967,7 @@ export function MobileCustomersScreen({
             ]}
             testID="mobile-broadcast-send">
             <Text style={styles.footerPrimaryButtonText}>
-              {isSendingBroadcast
-                ? 'Sending...'
-                : isBroadcastConfirming
-                  ? `Send to ${broadcastEligibleCount}`
-                  : 'Review broadcast'}
+              {isSendingBroadcast ? 'Sending...' : 'Review broadcast'}
             </Text>
           </Pressable>
         </View>

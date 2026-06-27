@@ -1,8 +1,9 @@
 import { Prisma } from '@prisma/client';
+import { formatCustomerBroadcastSms } from '@/lib/customer-broadcast-format';
 import { buildPromotionSmsAudienceWhere, normalizeCustomerGroupIds } from '@/lib/customer-groups';
 import { normalizeOptionalPhoneNumber } from '@/lib/phone';
 import { prisma } from '@/lib/prisma';
-import { appendSmsComplianceFooter, sendSMS } from '@/lib/twilio';
+import { sendSMS } from '@/lib/twilio';
 
 export const CUSTOMER_BROADCAST_MAX_MESSAGE_LENGTH = 500;
 export const CUSTOMER_BROADCAST_MESSAGE_TYPE = 'customer_broadcast';
@@ -48,13 +49,6 @@ export function normalizeCustomerBroadcastTarget(value: unknown): CustomerBroadc
 
 export function normalizeCustomerBroadcastMessage(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
-}
-
-export function formatCustomerBroadcastSms(args: {
-  businessName: string;
-  message: string;
-}) {
-  return appendSmsComplianceFooter(`${args.businessName}: ${args.message.trim()}`);
 }
 
 export function buildCustomerBroadcastAudienceWhere(args: {

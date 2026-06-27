@@ -52,7 +52,11 @@ export default async function CustomersPage({
     visit: params.visit,
   });
 
-  const [totalCustomers, customers, groups] = await Promise.all([
+  const [business, totalCustomers, customers, groups] = await Promise.all([
+    prisma.business.findUnique({
+      where: { id: businessId },
+      select: { name: true },
+    }),
     prisma.customer.count({ where }),
     prisma.customer.findMany({
       where,
@@ -101,6 +105,7 @@ export default async function CustomersPage({
       </div>
 
       <CustomerList
+        businessName={business?.name ?? "Your business"}
         customers={customers}
         groups={groups}
         initialSearch={params.search}

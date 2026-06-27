@@ -1,6 +1,6 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { Alert, StyleSheet } from 'react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { MobileCustomersScreen } from '@/components/mobile-customers-screen';
 import type { MobileCustomerFilters, MobileCustomersSummary } from '@/lib/clientific-api';
 
@@ -279,6 +279,7 @@ describe('MobileCustomersScreen', () => {
   });
 
   it('previews and confirms a subscriber broadcast without sending on the first tap', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
     const onPreviewCustomerBroadcast = jest.fn().mockResolvedValue({
       dryRun: true,
       target: 'all',
@@ -345,12 +346,34 @@ describe('MobileCustomersScreen', () => {
     });
 
     fireEvent.changeText(screen.getByTestId('mobile-broadcast-message'), 'We have openings today.');
+    expect(
+      screen.getByText(
+        'Clientific Studio: We have openings today. Reply STOP to opt out, HELP for help.',
+      ),
+    ).toBeTruthy();
     fireEvent.press(screen.getByTestId('mobile-broadcast-send'));
 
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Send SMS broadcast?',
+      'Exact SMS:\nClientific Studio: We have openings today. Reply STOP to opt out, HELP for help.\n\nThis will send one text message to 3 opted-in SMS subscribers. This action cannot be undone.',
+      expect.any(Array),
+    );
     expect(onSendCustomerBroadcast).not.toHaveBeenCalled();
-    expect(screen.getByText(/This will send the message to 3 SMS subscribers/i)).toBeTruthy();
+
+    const cancelButton = (alertSpy.mock.calls[0][2] as Array<{ text?: string; onPress?: () => void }>).find(
+      (button) => button.text === 'Cancel',
+    );
+    cancelButton?.onPress?.();
+    expect(onSendCustomerBroadcast).not.toHaveBeenCalled();
 
     fireEvent.press(screen.getByTestId('mobile-broadcast-send'));
+    const sendButton = (alertSpy.mock.calls[1][2] as Array<{ text?: string; onPress?: () => void }>).find(
+      (button) => button.text === 'Send broadcast',
+    );
+    expect(sendButton).toMatchObject({ style: 'destructive' });
+    await act(async () => {
+      sendButton?.onPress?.();
+    });
 
     await waitFor(() => {
       expect(onSendCustomerBroadcast).toHaveBeenCalledWith({
@@ -360,6 +383,8 @@ describe('MobileCustomersScreen', () => {
       });
       expect(screen.getByText('Broadcast sent to 3 SMS subscribers.')).toBeTruthy();
     });
+
+    alertSpy.mockRestore();
   });
 
   it('shows no sms approval wording for customers without sms consent', async () => {

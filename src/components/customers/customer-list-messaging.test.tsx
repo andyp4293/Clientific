@@ -99,7 +99,7 @@ describe('CustomerList messaging', () => {
         }),
       } as Response);
 
-    render(<CustomerList customers={[buildCustomer()]} groups={groups} />);
+    render(<CustomerList businessName="Test Salon" customers={[buildCustomer()]} groups={groups} />);
 
     const mobileList = screen.getByTestId('customer-mobile-list');
     fireEvent.click(within(mobileList).getByRole('button', { name: /^text$/i }));
@@ -147,7 +147,7 @@ describe('CustomerList messaging', () => {
       }),
     } as Response);
 
-    render(<CustomerList customers={[buildCustomer()]} groups={groups} />);
+    render(<CustomerList businessName="Test Salon" customers={[buildCustomer()]} groups={groups} />);
 
     const mobileList = screen.getByTestId('customer-mobile-list');
     fireEvent.click(within(mobileList).getByRole('button', { name: /^text$/i }));
@@ -189,7 +189,7 @@ describe('CustomerList messaging', () => {
         }),
       } as Response);
 
-    render(<CustomerList customers={[buildCustomer()]} groups={groups} />);
+    render(<CustomerList businessName="Test Salon" customers={[buildCustomer()]} groups={groups} />);
 
     fireEvent.click(screen.getByRole('button', { name: /text subscribers/i }));
 
@@ -206,10 +206,24 @@ describe('CustomerList messaging', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /review broadcast/i }));
 
-    expect(screen.getByText(/ready to send this exact text to 2 sms subscribers/i)).toBeInTheDocument();
+    const firstConfirmDialog = screen.getByRole('dialog', { name: /send this sms broadcast/i });
+    expect(
+      within(firstConfirmDialog).getByText(/This will send one text message to 2 opted-in SMS subscribers/i),
+    ).toBeInTheDocument();
+    expect(
+      within(firstConfirmDialog).getByText(
+        'Test Salon: We have two openings this afternoon. Reply STOP to opt out, HELP for help.',
+      ),
+    ).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole('button', { name: /send to 2 subscribers/i }));
+    fireEvent.click(within(firstConfirmDialog).getByRole('button', { name: /^cancel$/i }));
+    expect(screen.queryByRole('dialog', { name: /send this sms broadcast/i })).not.toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: /review broadcast/i }));
+    const finalConfirmDialog = screen.getByRole('dialog', { name: /send this sms broadcast/i });
+    fireEvent.click(within(finalConfirmDialog).getByRole('button', { name: /send broadcast/i }));
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
     expect(JSON.parse(vi.mocked(fetch).mock.calls[1][1]?.body as string)).toEqual({

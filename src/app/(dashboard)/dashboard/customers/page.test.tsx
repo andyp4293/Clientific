@@ -11,6 +11,9 @@ vi.mock('@/app/api/auth/[...nextauth]/route', () => ({
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
+    business: {
+      findUnique: vi.fn(),
+    },
     customer: {
       count: vi.fn(),
       findMany: vi.fn(),
@@ -52,6 +55,7 @@ import { startRecentTwilioKeywordSync } from '@/lib/twilio-keyword-sync';
 import CustomersPage from './page';
 
 const mockGetServerSession = getServerSession as unknown as ReturnType<typeof vi.fn>;
+const mockBusinessFindUnique = prisma.business.findUnique as ReturnType<typeof vi.fn>;
 const mockCount = prisma.customer.count as ReturnType<typeof vi.fn>;
 const mockFindMany = prisma.customer.findMany as ReturnType<typeof vi.fn>;
 const mockGroupFindMany = prisma.customerGroup.findMany as ReturnType<typeof vi.fn>;
@@ -62,6 +66,7 @@ describe('CustomersPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockStartRecentTwilioKeywordSync.mockImplementation(() => undefined);
+    mockBusinessFindUnique.mockResolvedValue({ name: 'Test Salon' });
     mockCount.mockResolvedValue(0);
     mockFindMany.mockResolvedValue([]);
     mockGroupFindMany.mockResolvedValue([]);
@@ -95,6 +100,10 @@ describe('CustomersPage', () => {
     } as any);
 
     expect(mockStartRecentTwilioKeywordSync).toHaveBeenCalledTimes(1);
+    expect(mockBusinessFindUnique).toHaveBeenCalledWith({
+      where: { id: 'biz-1' },
+      select: { name: true },
+    });
     expect(mockCount).toHaveBeenCalledWith({
       where: {
         businessId: 'biz-1',
@@ -167,6 +176,7 @@ describe('CustomersPage', () => {
     });
     const customerListElement = (page as any).props.children[1];
     expect(customerListElement.props).toMatchObject({
+      businessName: 'Test Salon',
       initialTab: 'groups',
       currentPage: 2,
       pageSize: 25,

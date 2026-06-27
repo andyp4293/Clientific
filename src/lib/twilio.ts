@@ -7,9 +7,11 @@ import {
   normalizeOptionalPhoneNumber,
   normalizePhoneNumber,
 } from '@/lib/phone';
+import { appendSmsComplianceFooter } from '@/lib/sms-compliance';
 import { ensureSharedPlatformSmsWebhookConfigured } from '@/lib/twilio-routing';
 
 export { isE164PhoneNumber, isValidPhoneNumber, normalizeOptionalPhoneNumber } from '@/lib/phone';
+export { SMS_COMPLIANCE_FOOTER, appendSmsComplianceFooter } from '@/lib/sms-compliance';
 
 interface SendSMSParams {
   to: string;
@@ -143,17 +145,6 @@ interface KioskDealPurchaseDetails extends KioskSignupDetails {
 interface DirectCustomerMessageDetails {
   businessName: string;
   message: string;
-}
-
-const SMS_COMPLIANCE_FOOTER = 'Reply STOP to opt out, HELP for help.';
-export function appendSmsComplianceFooter(message: string): string {
-  const trimmed = message.trim();
-  const alreadyHasFooter =
-    /reply\s+stop\s+to\s+opt\s*out[, ]+\s*help\s+for\s+help\.?$/i.test(trimmed) ||
-    /reply\s+stop\s+to\s+opt\s*out\.?$/i.test(trimmed);
-
-  if (alreadyHasFooter) return trimmed;
-  return `${trimmed} ${SMS_COMPLIANCE_FOOTER}`;
 }
 
 export function formatPhoneNumber(phone: string): string {
