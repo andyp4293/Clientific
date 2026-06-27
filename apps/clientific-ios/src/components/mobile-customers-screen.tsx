@@ -272,6 +272,30 @@ function getDealsStatusAppearance(
       };
 }
 
+function getMarketingSmsStatusAppearance(
+  theme: ReturnType<typeof getClientificTheme>,
+  customer: Pick<
+    MobileCustomerDetail | MobileCustomersSummary['customers'][number],
+    'smsMarketingConsent' | 'smsOptedOut'
+  >,
+) {
+  if (customer.smsMarketingConsent && !customer.smsOptedOut) {
+    return {
+      label: 'Marketing SMS on',
+      backgroundColor: theme.accentSoft,
+      borderColor: theme.border,
+      textColor: theme.accent,
+    };
+  }
+
+  return {
+    label: 'Marketing SMS denied',
+    backgroundColor: 'rgba(217, 119, 6, 0.12)',
+    borderColor: theme.border,
+    textColor: colorFromScheme(theme, '#b45309', '#f7c46b'),
+  };
+}
+
 function colorFromScheme(
   theme: ReturnType<typeof getClientificTheme>,
   lightColor: string,
@@ -1279,6 +1303,7 @@ export function MobileCustomersScreen({
                 data.customers.map((customer) => {
                   const smsAppearance = getSmsStatusAppearance(theme, customer);
                   const dealsAppearance = getDealsStatusAppearance(theme, customer);
+                  const marketingSmsAppearance = getMarketingSmsStatusAppearance(theme, customer);
 
                   return (
                     <View
@@ -1356,6 +1381,22 @@ export function MobileCustomersScreen({
                               { color: dealsAppearance.textColor },
                             ]}>
                             {dealsAppearance.label}
+                          </Text>
+                        </View>
+                        <View
+                          style={[
+                            styles.statusPill,
+                            {
+                              backgroundColor: marketingSmsAppearance.backgroundColor,
+                              borderColor: marketingSmsAppearance.borderColor,
+                            },
+                          ]}>
+                          <Text
+                            style={[
+                              styles.statusPillText,
+                              { color: marketingSmsAppearance.textColor },
+                            ]}>
+                            {marketingSmsAppearance.label}
                           </Text>
                         </View>
                       </View>
@@ -1469,6 +1510,7 @@ export function MobileCustomersScreen({
                               lastVisitLabel: customer.lastVisitLabel,
                               totalSpentLabel: customer.totalSpentLabel,
                               smsConsent: customer.smsConsent,
+                              smsMarketingConsent: customer.smsMarketingConsent,
                               smsOptedOut: customer.smsOptedOut,
                               dealSmsBlocked: customer.dealSmsBlocked,
                               visitsCount: customer.visitsCount,
@@ -2172,6 +2214,15 @@ export function MobileCustomersScreen({
                     <DetailLine
                       label="Deals SMS"
                       value={selectedCustomer.dealSmsBlocked ? 'Blocked by you' : 'Allowed'}
+                      theme={theme}
+                    />
+                    <DetailLine
+                      label="Marketing SMS"
+                      value={
+                        selectedCustomer.smsMarketingConsent && !selectedCustomer.smsOptedOut
+                          ? 'Marketing SMS on'
+                          : 'Marketing SMS denied'
+                      }
                       theme={theme}
                     />
                     <DetailLine

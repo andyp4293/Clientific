@@ -86,6 +86,7 @@ describe('GET /api/mobile/customers', () => {
         totalSpent: 120,
         segment: 'VIP',
         smsConsent: true,
+        smsMarketingConsent: true,
         smsOptedOut: false,
         dealSmsBlocked: false,
         _count: {
@@ -125,6 +126,7 @@ describe('GET /api/mobile/customers', () => {
       name: 'Jordan Lee',
       totalSpentLabel: '$120.00',
       segmentLabel: 'VIP',
+      smsMarketingConsent: true,
       visitsCount: 3,
     });
   });
@@ -162,6 +164,7 @@ describe('POST /api/mobile/customers', () => {
       totalSpent: 0,
       segment: 'NEW',
       smsConsent: false,
+      smsMarketingConsent: false,
       smsOptedOut: false,
       dealSmsBlocked: false,
       _count: {
@@ -188,6 +191,7 @@ describe('POST /api/mobile/customers', () => {
     expect(body.customer).toMatchObject({
       name: 'Jordan Lee',
       segmentLabel: 'New',
+      smsMarketingConsent: false,
       visitsCount: 0,
     });
     expect(mockCreateCustomer).toHaveBeenCalledWith(

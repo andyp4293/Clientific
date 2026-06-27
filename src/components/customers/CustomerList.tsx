@@ -26,6 +26,7 @@ type Customer = {
   email: string | null;
   phone: string | null;
   smsConsent: boolean;
+  smsMarketingConsent: boolean;
   smsOptedOut: boolean;
   dealSmsBlocked?: boolean;
   totalSpent: number;
@@ -130,6 +131,28 @@ function getSmsStatus(customer: Pick<Customer, "phone" | "smsConsent" | "smsOpte
     description: "SMS permission has not been given",
     className:
       "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+  };
+}
+
+function getMarketingSmsStatus(
+  customer: Pick<Customer, "smsMarketingConsent" | "smsOptedOut">
+) {
+  if (customer.smsMarketingConsent && !customer.smsOptedOut) {
+    return {
+      label: "Marketing SMS on",
+      description: "Included in subscriber broadcasts",
+      className:
+        "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+    };
+  }
+
+  return {
+    label: "Marketing SMS denied",
+    description: customer.smsOptedOut
+      ? "Opted out of subscriber broadcasts"
+      : "Not included in subscriber broadcasts",
+    className:
+      "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
   };
 }
 
@@ -995,6 +1018,7 @@ export default function CustomerList({
               {customerRecords.map((customer) => {
                 const smsStatus = getSmsStatus(customer);
                 const dealSmsStatus = getDealSmsStatus(customer);
+                const marketingSmsStatus = getMarketingSmsStatus(customer);
 
                 return (
                   <article
@@ -1040,8 +1064,16 @@ export default function CustomerList({
                         >
                           {dealSmsStatus.label}
                         </span>
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${marketingSmsStatus.className}`}
+                        >
+                          {marketingSmsStatus.label}
+                        </span>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           {smsStatus.description}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {marketingSmsStatus.description}
                         </p>
                       </div>
                     </div>
@@ -1146,6 +1178,7 @@ export default function CustomerList({
                   {customerRecords.map((customer) => {
                     const smsStatus = getSmsStatus(customer);
                     const dealSmsStatus = getDealSmsStatus(customer);
+                    const marketingSmsStatus = getMarketingSmsStatus(customer);
 
                     return (
                       <tr key={customer.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
@@ -1199,9 +1232,17 @@ export default function CustomerList({
                               >
                                 {dealSmsStatus.label}
                               </span>
+                              <span
+                                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${marketingSmsStatus.className}`}
+                              >
+                                {marketingSmsStatus.label}
+                              </span>
                             </div>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
                               {smsStatus.description}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {marketingSmsStatus.description}
                             </p>
                           </div>
                         </td>

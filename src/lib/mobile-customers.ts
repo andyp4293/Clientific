@@ -124,6 +124,7 @@ export function formatMobileCustomerRecord(customer: {
   totalSpent: number | null;
   segment: string;
   smsConsent: boolean;
+  smsMarketingConsent: boolean;
   smsOptedOut: boolean;
   dealSmsBlocked?: boolean | null;
   _count: {
@@ -149,6 +150,7 @@ export function formatMobileCustomerRecord(customer: {
     segment: customer.segment,
     segmentLabel: getCustomerSegmentLabel(customer.segment),
     smsConsent: customer.smsConsent,
+    smsMarketingConsent: customer.smsMarketingConsent,
     smsOptedOut: customer.smsOptedOut,
     dealSmsBlocked: customer.dealSmsBlocked === true,
     visitsCount: customer._count.checkIns,
@@ -168,6 +170,7 @@ export function formatMobileCustomerDetail(customer: {
   totalSpent: number | null;
   segment: string;
   smsConsent: boolean;
+  smsMarketingConsent: boolean;
   smsOptedOut: boolean;
   dealSmsBlocked?: boolean | null;
   _count: {
@@ -221,6 +224,7 @@ export function formatMobileCustomerDetail(customer: {
     lastVisitLabel: formatCustomerDateLabel(customer.lastVisit),
     totalSpentLabel: formatCustomerCurrencyLabel(customer.totalSpent),
     smsConsent: customer.smsConsent,
+    smsMarketingConsent: customer.smsMarketingConsent,
     smsOptedOut: customer.smsOptedOut,
     dealSmsBlocked: customer.dealSmsBlocked === true,
     visitsCount: customer._count.checkIns,

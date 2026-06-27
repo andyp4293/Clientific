@@ -304,6 +304,7 @@ export type MobileCustomerRecord = {
   segment: string;
   segmentLabel: string;
   smsConsent: boolean;
+  smsMarketingConsent: boolean;
   smsOptedOut: boolean;
   dealSmsBlocked: boolean;
   visitsCount: number;
@@ -340,6 +341,7 @@ export type MobileCustomerDetail = {
   lastVisitLabel: string;
   totalSpentLabel: string;
   smsConsent: boolean;
+  smsMarketingConsent: boolean;
   smsOptedOut: boolean;
   dealSmsBlocked: boolean;
   visitsCount: number;

@@ -30,6 +30,7 @@ type Customer = {
   email: string | null;
   phone: string | null;
   smsConsent: boolean;
+  smsMarketingConsent: boolean;
   smsOptedOut: boolean;
   dealSmsBlocked?: boolean;
   segment: string;
@@ -268,6 +269,19 @@ export default function CustomerDetail({
               <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Deals SMS</div>
               <div className="mt-1 text-gray-900 dark:text-gray-100">
                 {customerRecord.dealSmsBlocked ? "Deals blocked by you" : "Deals SMS allowed"}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Marketing SMS</div>
+              <div className="mt-1 text-gray-900 dark:text-gray-100">
+                {customerRecord.smsMarketingConsent && !customerRecord.smsOptedOut
+                  ? "Marketing SMS on"
+                  : "Marketing SMS denied"}
+              </div>
+              <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {customerRecord.smsMarketingConsent && !customerRecord.smsOptedOut
+                  ? "Included in subscriber broadcasts."
+                  : "Not included in subscriber broadcasts."}
               </div>
             </div>
           </div>

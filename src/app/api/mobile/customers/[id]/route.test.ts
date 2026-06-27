@@ -40,6 +40,7 @@ const customerRecord = {
   totalSpent: 120,
   segment: 'VIP',
   smsConsent: true,
+  smsMarketingConsent: true,
   smsOptedOut: false,
   dealSmsBlocked: false,
   _count: {
@@ -88,6 +89,7 @@ describe('GET /api/mobile/customers/[id]', () => {
     expect(body.customer).toMatchObject({
       id: 'cust-1',
       segmentLabel: 'VIP',
+      smsMarketingConsent: true,
       visitsCount: 3,
       appointmentsCount: 2,
     });

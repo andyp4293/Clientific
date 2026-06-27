@@ -46,6 +46,7 @@ const data: MobileCustomersSummary = {
       segment: 'VIP',
       segmentLabel: 'VIP',
       smsConsent: true,
+      smsMarketingConsent: true,
       smsOptedOut: false,
       dealSmsBlocked: false,
       visitsCount: 3,
@@ -85,6 +86,7 @@ function renderScreen() {
         lastVisitLabel: 'Mar 29, 2026',
         totalSpentLabel: '$120.00',
         smsConsent: true,
+        smsMarketingConsent: true,
         smsOptedOut: false,
         dealSmsBlocked: false,
         visitsCount: 3,
@@ -115,6 +117,7 @@ function renderScreen() {
         lastVisitLabel: 'Mar 29, 2026',
         totalSpentLabel: '$120.00',
         smsConsent: true,
+        smsMarketingConsent: true,
         smsOptedOut: false,
         dealSmsBlocked: false,
         visitsCount: 3,
@@ -396,6 +399,7 @@ describe('MobileCustomersScreen', () => {
             {
               ...data.customers[0],
               smsConsent: false,
+              smsMarketingConsent: false,
               smsOptedOut: false,
             },
           ],
@@ -432,6 +436,7 @@ describe('MobileCustomersScreen', () => {
       expect(StyleSheet.flatten(badgeContainer?.props.style)).toMatchObject({
         backgroundColor: 'rgba(217, 119, 6, 0.12)',
       });
+      expect(screen.getByText('Marketing SMS denied')).toBeTruthy();
     });
   });
 
@@ -439,6 +444,7 @@ describe('MobileCustomersScreen', () => {
     renderScreen();
 
     expect(screen.getByText('Deals SMS allowed')).toBeTruthy();
+    expect(screen.getByText('Marketing SMS on')).toBeTruthy();
     expect(screen.getAllByText('VIP').length).toBeGreaterThan(0);
     expect(screen.getByText('Joined')).toBeTruthy();
     expect(screen.getByText('Spent')).toBeTruthy();
@@ -477,6 +483,7 @@ describe('MobileCustomersScreen', () => {
           lastVisitLabel: 'Mar 29, 2026',
           totalSpentLabel: '$120.00',
           smsConsent: true,
+          smsMarketingConsent: true,
           smsOptedOut: false,
           dealSmsBlocked: false,
           visitsCount: 3,

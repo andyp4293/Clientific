@@ -150,6 +150,7 @@ const customers: MobileCustomersSummary = {
       segment: 'VIP',
       segmentLabel: 'VIP',
       smsConsent: true,
+      smsMarketingConsent: true,
       smsOptedOut: false,
       dealSmsBlocked: false,
       visitsCount: 3,

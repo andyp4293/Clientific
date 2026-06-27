@@ -43,6 +43,7 @@ const baseCustomer = {
   email: "jane@example.com",
   phone: "+15551234567",
   smsConsent: true,
+  smsMarketingConsent: true,
   smsOptedOut: false,
   segment: "VIP",
   totalSpent: 250,
