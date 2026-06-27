@@ -66,7 +66,7 @@ try {
     Write-Host ""
     Write-Host "==> Skip Vercel deploy (--SkipDeploy)"
   } else {
-    Invoke-CmdStep -Name "Deploy to Vercel production" -Command "npx vercel --prod"
+    Invoke-CmdStep -Name "Deploy to Vercel production and verify clientific.app aliases" -Command "bash ./scripts/deploy-prod.sh"
   }
 
   Write-Host ""

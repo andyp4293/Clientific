@@ -5,36 +5,41 @@ This repo uses a fail-fast deployment contract:
 1. `npm test`
 2. `npx next build`
 3. `git push`
-4. `npx vercel --prod`
+4. `npm run deploy:prod`
 
 If any step fails, later steps do not run.
 
 ## Default Command
 
-```powershell
+```bash
 npm run deploy:prod
 ```
 
 This runs:
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/deploy-prod.ps1
+```bash
+bash ./scripts/deploy-prod.sh
 ```
+
+The script runs `npx vercel --prod --yes`, aliases the resulting deployment to
+`clientific.app` and `www.clientific.app`, and verifies both domains with
+`vercel inspect`. Do not treat a deploy as complete if either custom domain still
+points at an older deployment.
 
 ## Manual Fallback Commands
 
-```powershell
-cmd /c npm test
-cmd /c npx next build
+```bash
+npm test
+npx next build
 git push
-cmd /c npx vercel --prod
+npm run deploy:prod
 ```
 
 ## Post-Deploy Twilio Webhook Wiring
 
 After deploy, point the toll-free SMS webhook at the inbound compliance route:
 
-```powershell
+```bash
 twilio phone-numbers:update +18557654989 --sms-url=https://clientific.app/api/webhooks/twilio-sms --sms-method=POST
 ```
 
@@ -42,24 +47,10 @@ twilio phone-numbers:update +18557654989 --sms-url=https://clientific.app/api/we
 
 Mirror historical transactional SMS consent into the new marketing consent flag:
 
-```powershell
+```bash
 npm run db:push
 npm run db:generate
 npm run db:backfill:sms-marketing
-```
-
-## Script Options
-
-For safe local verification without mutating remote state:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/deploy-prod.ps1 -SkipPush -SkipDeploy
-```
-
-To intentionally verify fail-fast behavior at the test step:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/deploy-prod.ps1 -TestCommand "npm run does-not-exist" -SkipPush -SkipDeploy
 ```
 
 ## Validation Checklist
