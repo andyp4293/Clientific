@@ -18,6 +18,8 @@ import type {
   MobileCheckInSubmissionInput,
   MobileCheckInsSummary,
   MobileCustomerViewSummary,
+  MobileCustomerBroadcastInput,
+  MobileCustomerBroadcastResult,
   MobileCustomerDetail,
   MobileCustomerFilters,
   MobileCustomerGroupInput,
@@ -192,6 +194,12 @@ type MobileAppShellProps = {
   onSaveBusinessProfile: (input: MobileOnboardingInput) => Promise<void>;
   onSendReviewRequest: (customerId: string) => Promise<void>;
   onSendCustomerMessage: (customerId: string, message: string) => Promise<void>;
+  onPreviewCustomerBroadcast: (
+    input: MobileCustomerBroadcastInput,
+  ) => Promise<MobileCustomerBroadcastResult>;
+  onSendCustomerBroadcast: (
+    input: MobileCustomerBroadcastInput,
+  ) => Promise<MobileCustomerBroadcastResult>;
   onShareCustomerViewLink: (label: string, url: string) => Promise<void>;
   onShareDeal: (deal: MobileDealsSummary['deals'][number]) => Promise<void>;
   onShareReferral: () => Promise<void>;
@@ -375,6 +383,8 @@ export function MobileAppShell({
   onSaveBusinessProfile,
   onSendReviewRequest,
   onSendCustomerMessage,
+  onPreviewCustomerBroadcast,
+  onSendCustomerBroadcast,
   onShareCustomerViewLink,
   onShareDeal,
   onShareReferral,
@@ -523,6 +533,8 @@ export function MobileAppShell({
               onRefresh={onRefreshCustomers}
               onSendReviewRequest={onSendReviewRequest}
               onSendCustomerMessage={onSendCustomerMessage}
+              onPreviewCustomerBroadcast={onPreviewCustomerBroadcast}
+              onSendCustomerBroadcast={onSendCustomerBroadcast}
               onUpdateCustomer={onUpdateCustomer}
               onUpdateGroup={onUpdateCustomerGroup}
             />

@@ -88,6 +88,7 @@ const messageTypeLabels: Record<string, string> = {
   reschedule: "Reschedule",
   review_request: "Review Request",
   custom: "Direct Message",
+  customer_broadcast: "Customer Broadcast",
 };
 
 export default function CustomerDetail({

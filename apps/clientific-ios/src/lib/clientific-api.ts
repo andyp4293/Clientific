@@ -368,6 +368,31 @@ export type MobileDirectMessageQuota = {
   isActive: boolean;
 };
 
+export type MobileCustomerBroadcastTarget = 'all' | 'groups';
+
+export type MobileCustomerBroadcastInput = {
+  target: MobileCustomerBroadcastTarget;
+  groupIds?: string[];
+  message?: string;
+};
+
+export type MobileCustomerBroadcastResult = {
+  dryRun: boolean;
+  target: MobileCustomerBroadcastTarget;
+  eligibleCount: number;
+  skippedDuplicateCount: number;
+  skippedInvalidPhoneCount: number;
+  disabledGroupCount: number;
+  selectedGroups: MobileCustomerGroupBadge[];
+  recipientsPreview: Array<{
+    id: string;
+    name: string;
+    phone: string;
+  }>;
+  sent: number;
+  failed: number;
+};
+
 export type MobileCustomerSmsLogSummary = {
   logs: MobileCustomerSmsLog[];
   quota: MobileDirectMessageQuota | null;
@@ -1076,6 +1101,40 @@ export async function sendMobileCustomerMessage(
       body: JSON.stringify({ message }),
     },
   );
+}
+
+export async function previewMobileCustomerBroadcast(
+  token: string,
+  input: MobileCustomerBroadcastInput,
+) {
+  return requestJson<MobileCustomerBroadcastResult>('/api/mobile/customers/broadcast', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      ...input,
+      dryRun: true,
+    }),
+  });
+}
+
+export async function sendMobileCustomerBroadcast(
+  token: string,
+  input: MobileCustomerBroadcastInput,
+) {
+  return requestJson<MobileCustomerBroadcastResult>('/api/mobile/customers/broadcast', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      ...input,
+      confirmSend: true,
+    }),
+  });
 }
 
 export async function sendMobileReviewRequest(token: string, customerId: string) {

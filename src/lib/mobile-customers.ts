@@ -24,6 +24,7 @@ const MESSAGE_TYPE_LABELS: Record<string, string> = {
   reschedule: 'Reschedule',
   review_request: 'Review Request',
   custom: 'Direct Message',
+  customer_broadcast: 'Customer Broadcast',
 };
 
 export function formatCustomerDateLabel(value: Date | null | undefined) {

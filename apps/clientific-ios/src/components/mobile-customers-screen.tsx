@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Feather from '@expo/vector-icons/Feather';
 import {
   ActivityIndicator,
@@ -18,6 +18,8 @@ import {
 import { initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type {
   MobileCustomerContactFilter,
+  MobileCustomerBroadcastInput,
+  MobileCustomerBroadcastResult,
   MobileCustomerDetail,
   MobileCustomerFilters,
   MobileCustomerGroupInput,
@@ -33,6 +35,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type CustomersTab = 'customers' | 'groups';
 type CustomerDetailTab = 'overview' | 'history' | 'messages';
+type CustomerBroadcastTarget = 'all' | 'groups';
 
 type MobileCustomersScreenProps = {
   data: MobileCustomersSummary | null;
@@ -56,6 +59,12 @@ type MobileCustomersScreenProps = {
   onRefresh: () => Promise<void>;
   onSendReviewRequest: (customerId: string) => Promise<void>;
   onSendCustomerMessage: (customerId: string, message: string) => Promise<void>;
+  onPreviewCustomerBroadcast?: (
+    input: MobileCustomerBroadcastInput,
+  ) => Promise<MobileCustomerBroadcastResult>;
+  onSendCustomerBroadcast?: (
+    input: MobileCustomerBroadcastInput,
+  ) => Promise<MobileCustomerBroadcastResult>;
   onUpdateCustomer: (customerId: string, input: MobileCustomerInput) => Promise<MobileCustomerDetail>;
   onUpdateGroup: (groupId: string, input: MobileCustomerGroupInput) => Promise<void>;
 };
@@ -392,6 +401,8 @@ export function MobileCustomersScreen({
   onRefresh,
   onSendReviewRequest,
   onSendCustomerMessage,
+  onPreviewCustomerBroadcast,
+  onSendCustomerBroadcast,
   onUpdateCustomer,
   onUpdateGroup,
 }: MobileCustomersScreenProps) {
@@ -402,6 +413,7 @@ export function MobileCustomersScreen({
   const [isCustomerSheetVisible, setIsCustomerSheetVisible] = useState(false);
   const [isGroupSheetVisible, setIsGroupSheetVisible] = useState(false);
   const [isMessageSheetVisible, setIsMessageSheetVisible] = useState(false);
+  const [isBroadcastSheetVisible, setIsBroadcastSheetVisible] = useState(false);
   const [isDetailSheetVisible, setIsDetailSheetVisible] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<MobileCustomerDetail | null>(null);
   const [editingGroup, setEditingGroup] = useState<MobileCustomerGroupRecord | null>(null);
@@ -410,6 +422,10 @@ export function MobileCustomersScreen({
   const [customerForm, setCustomerForm] = useState<CustomerFormState>(createEmptyCustomerForm);
   const [groupForm, setGroupForm] = useState<GroupFormState>(createGroupFormFromGroup());
   const [messageDraft, setMessageDraft] = useState('');
+  const [broadcastTarget, setBroadcastTarget] = useState<CustomerBroadcastTarget>('all');
+  const [broadcastGroupIds, setBroadcastGroupIds] = useState<string[]>([]);
+  const [broadcastMessageDraft, setBroadcastMessageDraft] = useState('');
+  const [broadcastPreview, setBroadcastPreview] = useState<MobileCustomerBroadcastResult | null>(null);
   const [sheetError, setSheetError] = useState<string | null>(null);
   const [sheetNotice, setSheetNotice] = useState<string | null>(null);
   const [isSavingCustomer, setIsSavingCustomer] = useState(false);
@@ -418,6 +434,9 @@ export function MobileCustomersScreen({
   const [isMessageLoading, setIsMessageLoading] = useState(false);
   const [isSendingReviewRequest, setIsSendingReviewRequest] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [isBroadcastPreviewLoading, setIsBroadcastPreviewLoading] = useState(false);
+  const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
+  const [isBroadcastConfirming, setIsBroadcastConfirming] = useState(false);
 
   const paginationItems = useMemo(
     () => buildPaginationItems(data?.currentPage ?? 1, data?.totalPages ?? 1),
@@ -432,6 +451,85 @@ export function MobileCustomersScreen({
     searchDraft.trim() || filters.group || filters.sms || filters.contact || filters.visit,
   );
   const shouldShowPaginationControls = (data?.totalPages ?? 1) > 1;
+  const broadcastGroupKey = broadcastGroupIds.join('|');
+  const canLoadBroadcastPreview =
+    isBroadcastSheetVisible && (broadcastTarget === 'all' || broadcastGroupIds.length > 0);
+  const broadcastEligibleCount = broadcastPreview?.eligibleCount ?? 0;
+  const broadcastMessage = broadcastMessageDraft.trim();
+  const canSendBroadcast =
+    Boolean(broadcastMessage) &&
+    broadcastMessage.length <= 500 &&
+    Boolean(broadcastPreview) &&
+    broadcastEligibleCount > 0;
+
+  useEffect(() => {
+    if (!isBroadcastSheetVisible) {
+      return;
+    }
+
+    setIsBroadcastConfirming(false);
+  }, [broadcastGroupKey, broadcastMessageDraft, broadcastTarget, isBroadcastSheetVisible]);
+
+  useEffect(() => {
+    if (!isBroadcastSheetVisible) {
+      return;
+    }
+
+    if (!canLoadBroadcastPreview) {
+      setBroadcastPreview(null);
+      setIsBroadcastPreviewLoading(false);
+      return;
+    }
+
+    if (!onPreviewCustomerBroadcast) {
+      setSheetError('Broadcast messaging is unavailable in this app version.');
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadPreview = async () => {
+      setIsBroadcastPreviewLoading(true);
+      setSheetError(null);
+
+      try {
+        const nextPreview = await onPreviewCustomerBroadcast({
+          target: broadcastTarget,
+          groupIds: broadcastTarget === 'groups' ? broadcastGroupIds : [],
+        });
+
+        if (!cancelled) {
+          setBroadcastPreview(nextPreview);
+        }
+      } catch (previewError) {
+        if (!cancelled) {
+          setBroadcastPreview(null);
+          setSheetError(
+            previewError instanceof Error
+              ? previewError.message
+              : 'Unable to load the broadcast audience.',
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsBroadcastPreviewLoading(false);
+        }
+      }
+    };
+
+    void loadPreview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    broadcastGroupKey,
+    broadcastGroupIds,
+    broadcastTarget,
+    canLoadBroadcastPreview,
+    isBroadcastSheetVisible,
+    onPreviewCustomerBroadcast,
+  ]);
 
   const openCreateCustomer = () => {
     setEditingCustomer(null);
@@ -457,6 +555,17 @@ export function MobileCustomersScreen({
     setIsGroupSheetVisible(true);
   };
 
+  const openBroadcastSheet = () => {
+    setBroadcastTarget('all');
+    setBroadcastGroupIds([]);
+    setBroadcastMessageDraft('');
+    setBroadcastPreview(null);
+    setIsBroadcastConfirming(false);
+    setSheetError(null);
+    setSheetNotice(null);
+    setIsBroadcastSheetVisible(true);
+  };
+
   const openEditGroup = (group: MobileCustomerGroupRecord) => {
     setEditingGroup(group);
     setGroupForm(createGroupFormFromGroup(group));
@@ -475,6 +584,14 @@ export function MobileCustomersScreen({
       contact: '',
       visit: '',
     });
+  };
+
+  const toggleBroadcastGroup = (groupId: string) => {
+    setBroadcastGroupIds((current) =>
+      current.includes(groupId)
+        ? current.filter((entry) => entry !== groupId)
+        : [...current, groupId],
+    );
   };
 
   const handleOpenDetail = async (customerId: string) => {
@@ -677,6 +794,63 @@ export function MobileCustomersScreen({
     }
   };
 
+  const handleSendBroadcastNow = async () => {
+    if (!broadcastMessage) {
+      setSheetError('Message is required.');
+      return;
+    }
+
+    if (broadcastMessage.length > 500) {
+      setSheetError('Message must be 500 characters or less.');
+      return;
+    }
+
+    if (broadcastTarget === 'groups' && broadcastGroupIds.length === 0) {
+      setSheetError('Select at least one customer group.');
+      return;
+    }
+
+    if (!broadcastPreview || broadcastEligibleCount === 0) {
+      setSheetError('There are no eligible SMS subscribers in this audience.');
+      return;
+    }
+
+    if (!onSendCustomerBroadcast) {
+      setSheetError('Broadcast messaging is unavailable in this app version.');
+      return;
+    }
+
+    if (!isBroadcastConfirming) {
+      setSheetError(null);
+      setIsBroadcastConfirming(true);
+      return;
+    }
+
+    setIsSendingBroadcast(true);
+    setSheetError(null);
+
+    try {
+      const result = await onSendCustomerBroadcast({
+        target: broadcastTarget,
+        groupIds: broadcastTarget === 'groups' ? broadcastGroupIds : [],
+        message: broadcastMessage,
+      });
+      setBroadcastPreview(result);
+      setSheetNotice(
+        result.failed > 0
+          ? `${result.sent} texts sent. ${result.failed} failed and were logged.`
+          : `Broadcast sent to ${result.sent} SMS subscriber${result.sent === 1 ? '' : 's'}.`,
+      );
+      setIsBroadcastSheetVisible(false);
+      setBroadcastMessageDraft('');
+      setIsBroadcastConfirming(false);
+    } catch (sendError) {
+      setSheetError(sendError instanceof Error ? sendError.message : 'Unable to send broadcast.');
+    } finally {
+      setIsSendingBroadcast(false);
+    }
+  };
+
   return (
     <>
       <ScrollView
@@ -714,15 +888,32 @@ export function MobileCustomersScreen({
                     : `${data?.groups.length ?? 0} groups`}
                 </Text>
               </View>
-              <Pressable
-                accessibilityRole="button"
-                onPress={activeTab === 'customers' ? openCreateCustomer : openCreateGroup}
-                style={[styles.addButton, { backgroundColor: theme.accent }]}
-                testID="mobile-customers-add">
-                <Text style={styles.addButtonText}>
-                  {activeTab === 'customers' ? 'Add customer' : 'Add group'}
-                </Text>
-              </Pressable>
+              <View style={styles.heroActionGroup}>
+                {activeTab === 'customers' ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={openBroadcastSheet}
+                    style={[
+                      styles.secondaryHeroButton,
+                      { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                    ]}
+                    testID="mobile-customers-broadcast-open">
+                    <Feather color={theme.text} name="message-circle" size={16} />
+                    <Text style={[styles.secondaryHeroButtonText, { color: theme.text }]}>
+                      Text subscribers
+                    </Text>
+                  </Pressable>
+                ) : null}
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={activeTab === 'customers' ? openCreateCustomer : openCreateGroup}
+                  style={[styles.addButton, { backgroundColor: theme.accent }]}
+                  testID="mobile-customers-add">
+                  <Text style={styles.addButtonText}>
+                    {activeTab === 'customers' ? 'Add customer' : 'Add group'}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           </View>
 
@@ -1565,6 +1756,196 @@ export function MobileCustomersScreen({
 
       <FullScreenSheet
         onClose={() => {
+          setIsBroadcastSheetVisible(false);
+          setBroadcastMessageDraft('');
+          setBroadcastPreview(null);
+          setIsBroadcastConfirming(false);
+          setSheetError(null);
+        }}
+        subtitle="Send one SMS to customers with marketing consent while respecting opt-outs and group promotion settings."
+        title="Text subscribers"
+        visible={isBroadcastSheetVisible}>
+        <ScrollView contentContainerStyle={styles.sheetContent} style={{ backgroundColor: theme.background }}>
+          {sheetError ? <InlineErrorCard message={sheetError} theme={theme} /> : null}
+
+          <View style={[styles.detailSectionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Text style={[styles.detailSectionTitle, { color: theme.text }]}>Audience</Text>
+            <View style={styles.broadcastTargetGrid}>
+              {(['all', 'groups'] as const).map((option) => {
+                const selected = broadcastTarget === option;
+                return (
+                  <Pressable
+                    key={option}
+                    accessibilityRole="button"
+                    onPress={() => setBroadcastTarget(option)}
+                    style={[
+                      styles.broadcastTargetOption,
+                      selected
+                        ? { backgroundColor: theme.accent, borderColor: theme.accent }
+                        : { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                    ]}
+                    testID={`mobile-broadcast-target-${option}`}>
+                    <Text
+                      style={
+                        selected
+                          ? styles.broadcastTargetSelectedTitle
+                          : [styles.broadcastTargetTitle, { color: theme.text }]
+                      }>
+                      {option === 'all' ? 'All subscribers' : 'Groups'}
+                    </Text>
+                    <Text
+                      style={
+                        selected
+                          ? styles.broadcastTargetSelectedMeta
+                          : [styles.broadcastTargetMeta, { color: theme.mutedText }]
+                      }>
+                      {option === 'all'
+                        ? 'Every eligible SMS customer'
+                        : 'Only selected audiences'}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {broadcastTarget === 'groups' ? (
+              <View style={styles.optionRow}>
+                {data?.groups.length ? (
+                  data.groups.map((group) => {
+                    const selected = broadcastGroupIds.includes(group.id);
+                    return (
+                      <Pressable
+                        key={group.id}
+                        accessibilityRole="button"
+                        onPress={() => toggleBroadcastGroup(group.id)}
+                        style={[
+                          styles.broadcastGroupPill,
+                          selected
+                            ? { backgroundColor: theme.accentSoft, borderColor: theme.accent }
+                            : { backgroundColor: theme.surfaceMuted, borderColor: theme.border },
+                        ]}
+                        testID={`mobile-broadcast-group-${group.id}`}>
+                        <Text
+                          style={[
+                            styles.broadcastGroupName,
+                            { color: selected ? theme.accent : theme.text },
+                          ]}>
+                          {group.name}
+                        </Text>
+                        <Text style={[styles.broadcastGroupMeta, { color: theme.mutedText }]}>
+                          {group.promotionSmsEnabled
+                            ? `${group.membersCount} customer${group.membersCount === 1 ? '' : 's'}`
+                            : 'SMS off'}
+                        </Text>
+                      </Pressable>
+                    );
+                  })
+                ) : (
+                  <Text style={[styles.emptyInlineText, { color: theme.mutedText }]}>
+                    No groups yet.
+                  </Text>
+                )}
+              </View>
+            ) : null}
+          </View>
+
+          <View style={[styles.detailSectionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Text style={[styles.detailSectionTitle, { color: theme.text }]}>Eligible recipients</Text>
+            <Text
+              style={[styles.broadcastEligibleCount, { color: theme.text }]}
+              testID="mobile-broadcast-eligible-count">
+              {isBroadcastPreviewLoading ? '...' : String(broadcastEligibleCount)}
+            </Text>
+            <Text style={[styles.detailMetaLine, { color: theme.mutedText }]}>
+              {isBroadcastPreviewLoading
+                ? 'Checking consent, opt-out status, and group settings.'
+                : broadcastEligibleCount === 1
+                  ? '1 customer can receive this broadcast.'
+                  : `${broadcastEligibleCount} customers can receive this broadcast.`}
+            </Text>
+            {broadcastPreview &&
+            (broadcastPreview.skippedDuplicateCount > 0 ||
+              broadcastPreview.skippedInvalidPhoneCount > 0 ||
+              broadcastPreview.disabledGroupCount > 0) ? (
+              <Text style={[styles.detailMetaLine, { color: theme.mutedText }]}>
+                Excluded {broadcastPreview.skippedDuplicateCount} duplicate phone
+                {broadcastPreview.skippedDuplicateCount === 1 ? '' : 's'}
+                {broadcastPreview.skippedInvalidPhoneCount > 0
+                  ? ` and ${broadcastPreview.skippedInvalidPhoneCount} invalid phone ${
+                      broadcastPreview.skippedInvalidPhoneCount === 1 ? 'number' : 'numbers'
+                    }`
+                  : ''}
+                {broadcastPreview.disabledGroupCount > 0
+                  ? `; ${broadcastPreview.disabledGroupCount} selected group ${
+                      broadcastPreview.disabledGroupCount === 1 ? 'has' : 'have'
+                    } promotion SMS off`
+                  : ''}
+                .
+              </Text>
+            ) : null}
+          </View>
+
+          <FieldLabel label="Message" themeText={theme.text} />
+          <TextInput
+            multiline
+            onChangeText={setBroadcastMessageDraft}
+            placeholder="Type the message you want to send"
+            placeholderTextColor={theme.mutedText}
+            style={[
+              styles.formInput,
+              styles.messageInput,
+              { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text },
+            ]}
+            testID="mobile-broadcast-message"
+            textAlignVertical="top"
+            value={broadcastMessageDraft}
+          />
+          <Text style={[styles.characterCount, { color: theme.mutedText }]}>
+            {broadcastMessage.length}/500
+          </Text>
+
+          {isBroadcastConfirming ? (
+            <View
+              style={[
+                styles.noticeCard,
+                { backgroundColor: theme.accentSoft, borderColor: theme.border },
+              ]}>
+              <Text style={[styles.noticeTitle, { color: theme.accent }]}>Ready to send</Text>
+              <Text style={[styles.noticeText, { color: theme.text }]}>
+                This will send the message to {broadcastEligibleCount} SMS subscriber
+                {broadcastEligibleCount === 1 ? '' : 's'}.
+              </Text>
+            </View>
+          ) : null}
+        </ScrollView>
+        <View style={[styles.sheetFooter, { backgroundColor: theme.background, borderColor: theme.border }]}>
+          <Pressable
+            accessibilityRole="button"
+            disabled={isSendingBroadcast || isBroadcastPreviewLoading || !canSendBroadcast}
+            onPress={handleSendBroadcastNow}
+            style={[
+              styles.footerPrimaryButton,
+              {
+                backgroundColor:
+                  isSendingBroadcast || isBroadcastPreviewLoading || !canSendBroadcast
+                    ? theme.surfaceMuted
+                    : theme.accent,
+              },
+            ]}
+            testID="mobile-broadcast-send">
+            <Text style={styles.footerPrimaryButtonText}>
+              {isSendingBroadcast
+                ? 'Sending...'
+                : isBroadcastConfirming
+                  ? `Send to ${broadcastEligibleCount}`
+                  : 'Review broadcast'}
+            </Text>
+          </Pressable>
+        </View>
+      </FullScreenSheet>
+
+      <FullScreenSheet
+        onClose={() => {
           setIsDetailSheetVisible(false);
           setSelectedCustomer(null);
           setSelectedMessages(null);
@@ -2082,6 +2463,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
+    flexWrap: 'wrap',
   },
   heroBadge: {
     minHeight: 34,
@@ -2096,6 +2478,30 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     fontWeight: '800',
     letterSpacing: 0.3,
+  },
+  heroActionGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flexWrap: 'wrap',
+    gap: 8,
+    flexShrink: 1,
+  },
+  secondaryHeroButton: {
+    minHeight: 46,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 14,
+    flexShrink: 1,
+  },
+  secondaryHeroButtonText: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '800',
   },
   addButton: {
     minHeight: 46,
@@ -2231,6 +2637,64 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 16,
     fontWeight: '700',
+  },
+  broadcastTargetGrid: {
+    gap: 10,
+  },
+  broadcastTargetOption: {
+    minHeight: 78,
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    justifyContent: 'center',
+    gap: 4,
+  },
+  broadcastTargetTitle: {
+    fontSize: 15,
+    lineHeight: 19,
+    fontWeight: '800',
+  },
+  broadcastTargetMeta: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  broadcastTargetSelectedTitle: {
+    color: '#f8fffc',
+    fontSize: 15,
+    lineHeight: 19,
+    fontWeight: '800',
+  },
+  broadcastTargetSelectedMeta: {
+    color: 'rgba(248, 255, 252, 0.82)',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  broadcastGroupPill: {
+    minHeight: 52,
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    justifyContent: 'center',
+    gap: 2,
+  },
+  broadcastGroupName: {
+    fontSize: 13,
+    lineHeight: 16,
+    fontWeight: '800',
+  },
+  broadcastGroupMeta: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '700',
+  },
+  broadcastEligibleCount: {
+    fontSize: 38,
+    lineHeight: 44,
+    fontWeight: '800',
   },
   clearFiltersButton: {
     alignSelf: 'flex-start',

@@ -278,6 +278,90 @@ describe('MobileCustomersScreen', () => {
     expect(screen.getByRole('tab', { name: 'Customers 55' })).toBeTruthy();
   });
 
+  it('previews and confirms a subscriber broadcast without sending on the first tap', async () => {
+    const onPreviewCustomerBroadcast = jest.fn().mockResolvedValue({
+      dryRun: true,
+      target: 'all',
+      eligibleCount: 3,
+      skippedDuplicateCount: 0,
+      skippedInvalidPhoneCount: 0,
+      disabledGroupCount: 0,
+      selectedGroups: [],
+      recipientsPreview: [],
+      sent: 0,
+      failed: 0,
+    });
+    const onSendCustomerBroadcast = jest.fn().mockResolvedValue({
+      dryRun: false,
+      target: 'all',
+      eligibleCount: 3,
+      skippedDuplicateCount: 0,
+      skippedInvalidPhoneCount: 0,
+      disabledGroupCount: 0,
+      selectedGroups: [],
+      recipientsPreview: [],
+      sent: 3,
+      failed: 0,
+    });
+
+    render(
+      <MobileCustomersScreen
+        data={data}
+        error={null}
+        filters={filters}
+        isLoading={false}
+        isRefreshing={false}
+        searchDraft=""
+        onChangeFilter={jest.fn()}
+        onChangeSearchDraft={jest.fn()}
+        onClearFilters={jest.fn()}
+        onCreateCustomer={jest.fn().mockResolvedValue(undefined)}
+        onCreateGroup={jest.fn().mockResolvedValue(undefined)}
+        onDeleteCustomer={jest.fn().mockResolvedValue(undefined)}
+        onDeleteGroup={jest.fn().mockResolvedValue(undefined)}
+        onFetchCustomerDetail={jest.fn().mockResolvedValue(null)}
+        onFetchCustomerMessages={jest.fn().mockResolvedValue({ logs: [], quota: null })}
+        onGoToPage={jest.fn()}
+        onNextPage={jest.fn()}
+        onPreviousPage={jest.fn()}
+        onRefresh={jest.fn().mockResolvedValue(undefined)}
+        onSendReviewRequest={jest.fn().mockResolvedValue(undefined)}
+        onSendCustomerMessage={jest.fn().mockResolvedValue(undefined)}
+        onPreviewCustomerBroadcast={onPreviewCustomerBroadcast}
+        onSendCustomerBroadcast={onSendCustomerBroadcast}
+        onUpdateCustomer={jest.fn().mockResolvedValue(null)}
+        onUpdateGroup={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId('mobile-customers-broadcast-open'));
+
+    await waitFor(() => {
+      expect(onPreviewCustomerBroadcast).toHaveBeenCalledWith({
+        target: 'all',
+        groupIds: [],
+      });
+      expect(screen.getByTestId('mobile-broadcast-eligible-count').props.children).toBe('3');
+    });
+
+    fireEvent.changeText(screen.getByTestId('mobile-broadcast-message'), 'We have openings today.');
+    fireEvent.press(screen.getByTestId('mobile-broadcast-send'));
+
+    expect(onSendCustomerBroadcast).not.toHaveBeenCalled();
+    expect(screen.getByText(/This will send the message to 3 SMS subscribers/i)).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('mobile-broadcast-send'));
+
+    await waitFor(() => {
+      expect(onSendCustomerBroadcast).toHaveBeenCalledWith({
+        target: 'all',
+        groupIds: [],
+        message: 'We have openings today.',
+      });
+      expect(screen.getByText('Broadcast sent to 3 SMS subscribers.')).toBeTruthy();
+    });
+  });
+
   it('shows no sms approval wording for customers without sms consent', async () => {
     render(
       <MobileCustomersScreen

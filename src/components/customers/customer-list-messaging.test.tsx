@@ -156,6 +156,70 @@ describe('CustomerList messaging', () => {
     expect(screen.getByRole('button', { name: /limit reached/i })).toBeDisabled();
   });
 
+  it('previews and confirms a subscriber broadcast before posting the real send', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          dryRun: true,
+          target: 'all',
+          eligibleCount: 2,
+          skippedDuplicateCount: 1,
+          skippedInvalidPhoneCount: 0,
+          disabledGroupCount: 0,
+          selectedGroups: [],
+          recipientsPreview: [],
+          sent: 0,
+          failed: 0,
+        }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          dryRun: false,
+          target: 'all',
+          eligibleCount: 2,
+          skippedDuplicateCount: 1,
+          skippedInvalidPhoneCount: 0,
+          disabledGroupCount: 0,
+          selectedGroups: [],
+          recipientsPreview: [],
+          sent: 2,
+          failed: 0,
+        }),
+      } as Response);
+
+    render(<CustomerList customers={[buildCustomer()]} groups={groups} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /text subscribers/i }));
+
+    expect(await screen.findByText(/2 customers can receive this broadcast/i)).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string)).toEqual({
+      dryRun: true,
+      target: 'all',
+      groupIds: [],
+    });
+
+    fireEvent.change(screen.getByLabelText(/^message$/i), {
+      target: { value: 'We have two openings this afternoon.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /review broadcast/i }));
+
+    expect(screen.getByText(/ready to send this exact text to 2 sms subscribers/i)).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: /send to 2 subscribers/i }));
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[1][1]?.body as string)).toEqual({
+      target: 'all',
+      groupIds: [],
+      message: 'We have two openings this afternoon.',
+      confirmSend: true,
+    });
+  });
+
   it('shows SMS status badges for opted-out, enabled, and denied customers', () => {
     render(
       <CustomerList

@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import AddCustomerModal from "./AddCustomerModal";
 import CustomerGroupModal from "./CustomerGroupModal";
 import EditCustomerModal from "./EditCustomerModal";
+import SendCustomerBroadcastModal from "./SendCustomerBroadcastModal";
 import SendCustomerMessageModal from "./SendCustomerMessageModal";
 import { CustomSelect } from "@/components/ui/CustomSelect";
 import { formatPhoneForDisplay } from "@/lib/phone";
@@ -15,6 +16,7 @@ import {
   type CustomerSmsFilter,
   type CustomerVisitFilter,
 } from "@/lib/customer-filter-options";
+import { MessageSquare } from "lucide-react";
 
 type CustomerTab = "customers" | "groups";
 
@@ -257,12 +259,17 @@ export default function CustomerList({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<CustomerGroup | null>(null);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [messagingCustomer, setMessagingCustomer] = useState<Customer | null>(null);
   const searchCacheRef = useRef<Map<string, CustomerSearchMatch[]>>(new Map());
   const searchBlurTimeoutRef = useRef<number | null>(null);
   const hasOverlayOpen =
-    isAddModalOpen || isGroupModalOpen || editingCustomer !== null || messagingCustomer !== null;
+    isAddModalOpen ||
+    isGroupModalOpen ||
+    isBroadcastModalOpen ||
+    editingCustomer !== null ||
+    messagingCustomer !== null;
   const groupFilterOptions = groupRecords.map((group) => ({
     value: group.id,
     label: group.name,
@@ -734,12 +741,22 @@ export default function CustomerList({
             </div>
 
             {activeTab === "customers" ? (
-              <button
-                onClick={() => setIsAddModalOpen(true)}
-                className="btn-primary whitespace-nowrap"
-              >
-                + Add Customer
-              </button>
+              <div className="grid gap-2 sm:flex sm:items-center">
+                <button
+                  type="button"
+                  onClick={() => setIsBroadcastModalOpen(true)}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white/95 px-4 py-3 text-sm font-semibold text-gray-900 shadow-[0_1px_0_rgba(255,255,255,0.55)] transition-colors hover:border-primary/30 hover:bg-primary/[0.05] hover:text-primary dark:border-gray-700 dark:bg-gray-900/85 dark:text-gray-100 dark:shadow-none dark:hover:border-primary/40 dark:hover:bg-primary/[0.08] dark:hover:text-primary sm:rounded-full sm:px-4 sm:py-2.5"
+                >
+                  <MessageSquare className="h-4 w-4" aria-hidden="true" />
+                  Text subscribers
+                </button>
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="btn-primary whitespace-nowrap"
+                >
+                  + Add Customer
+                </button>
+              </div>
             ) : (
               <button
                 onClick={openCreateGroupModal}
@@ -1364,6 +1381,12 @@ export default function CustomerList({
         onSaved={handleGroupSaved}
         onDeleted={handleGroupDeleted}
         onViewMembers={handleViewGroupMembers}
+      />
+
+      <SendCustomerBroadcastModal
+        groups={groupRecords}
+        isOpen={isBroadcastModalOpen}
+        onClose={() => setIsBroadcastModalOpen(false)}
       />
 
       {messagingCustomer && (

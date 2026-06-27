@@ -50,6 +50,7 @@ import {
   getClientificWebUrl,
   lookupMobileCheckIn,
   lookupMobileRedemption,
+  previewMobileCustomerBroadcast,
   MobileAiReceptionistSummary,
   MobileAiReceptionistUpdateInput,
   MobileAppointmentInput,
@@ -58,6 +59,7 @@ import {
   MobileBillingSummary,
   MobileBusinessHoursSummary,
   MobileBusinessProfile,
+  MobileCustomerBroadcastInput,
   MobileCustomerFilters,
   MobileCustomerGroupInput,
   MobileCustomerInput,
@@ -88,6 +90,7 @@ import {
   resendVerificationCode,
   sendMobileReviewRequest,
   sendMobileCustomerMessage,
+  sendMobileCustomerBroadcast,
   syncMobileAppStoreSubscription,
   unregisterMobilePushToken,
   updateMobileAiReceptionist,
@@ -2672,6 +2675,51 @@ export function ClientificNativeApp() {
     [handleSessionError, session],
   );
 
+  const handlePreviewCustomerBroadcast = useCallback(
+    async (input: MobileCustomerBroadcastInput) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        return await previewMobileCustomerBroadcast(session.token, input);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to preview the broadcast audience.', setCustomersError);
+        throw new Error(getReadableError(error, 'Unable to preview the broadcast audience.'));
+      }
+    },
+    [handleSessionError, session],
+  );
+
+  const handleSendCustomerBroadcast = useCallback(
+    async (input: MobileCustomerBroadcastInput) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        const result = await sendMobileCustomerBroadcast(session.token, input);
+        await loadCustomers(session.token, {
+          page: customersPage,
+          search: customersSearchQuery,
+          filters: customerFilters,
+        });
+        return result;
+      } catch (error) {
+        await handleSessionError(error, 'Unable to send the broadcast.', setCustomersError);
+        throw new Error(getReadableError(error, 'Unable to send the broadcast.'));
+      }
+    },
+    [
+      customerFilters,
+      customersPage,
+      customersSearchQuery,
+      handleSessionError,
+      loadCustomers,
+      session,
+    ],
+  );
+
   const handleSendCustomerReviewRequest = useCallback(
     async (customerId: string) => {
       if (!session) {
@@ -3484,6 +3532,8 @@ export function ClientificNativeApp() {
       onSaveBusinessProfile={handleSaveBusinessProfile}
       onSendReviewRequest={handleSendCustomerReviewRequest}
       onSendCustomerMessage={handleSendCustomerMessage}
+      onPreviewCustomerBroadcast={handlePreviewCustomerBroadcast}
+      onSendCustomerBroadcast={handleSendCustomerBroadcast}
       onShareCustomerViewLink={shareCustomerViewLink}
       onShareDeal={shareDeal}
       onShareReferral={shareReferral}
