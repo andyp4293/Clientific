@@ -31,6 +31,8 @@ const mockFindAppointments = prisma.appointment.findMany as ReturnType<typeof vi
 const mockReferralCount = prisma.referral.count as ReturnType<typeof vi.fn>;
 const mockReferralAggregate = prisma.referralCommission.aggregate as ReturnType<typeof vi.fn>;
 
+const activeSubscriptionEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetBearerToken.mockReturnValue('token');
@@ -45,7 +47,7 @@ beforeEach(() => {
     subscriptionPlan: 'starter',
     subscriptionStatus: 'active',
     billingProvider: 'stripe',
-    subscriptionCurrentPeriodEnd: new Date('2026-07-01T00:00:00.000Z'),
+    subscriptionCurrentPeriodEnd: activeSubscriptionEnd,
     phone: '+15551234567',
     street: '123 Main St',
     city: 'New York',

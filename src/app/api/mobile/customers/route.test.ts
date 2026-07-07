@@ -163,8 +163,8 @@ describe('POST /api/mobile/customers', () => {
       lastVisit: null,
       totalSpent: 0,
       segment: 'NEW',
-      smsConsent: false,
-      smsMarketingConsent: false,
+      smsConsent: true,
+      smsMarketingConsent: true,
       smsOptedOut: false,
       dealSmsBlocked: false,
       _count: {
@@ -191,7 +191,7 @@ describe('POST /api/mobile/customers', () => {
     expect(body.customer).toMatchObject({
       name: 'Jordan Lee',
       segmentLabel: 'New',
-      smsMarketingConsent: false,
+      smsMarketingConsent: true,
       visitsCount: 0,
     });
     expect(mockCreateCustomer).toHaveBeenCalledWith(
@@ -199,6 +199,67 @@ describe('POST /api/mobile/customers', () => {
         data: expect.objectContaining({
           businessId: 'biz-1',
           name: 'Jordan Lee',
+          phone: '5551234567',
+          smsConsent: true,
+          smsMarketingConsent: true,
+          smsMarketingConsentAt: expect.any(Date),
+          smsOptedOut: false,
+          smsOptedOutAt: null,
+        }),
+      }),
+    );
+  });
+
+  it('keeps mobile customers without phone numbers out of SMS by default', async () => {
+    mockFindCustomer.mockResolvedValue(null);
+    mockCreateCustomer.mockResolvedValue({
+      id: 'cust-2',
+      name: 'No Phone',
+      email: null,
+      phone: null,
+      createdAt: new Date('2026-03-18T14:00:00.000Z'),
+      lastVisit: null,
+      totalSpent: 0,
+      segment: 'NEW',
+      smsConsent: false,
+      smsMarketingConsent: false,
+      smsOptedOut: false,
+      dealSmsBlocked: false,
+      _count: {
+        checkIns: 0,
+      },
+      groupMemberships: [],
+    });
+
+    const response = await POST(
+      new Request('https://www.clientific.app/api/mobile/customers', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name: 'No Phone',
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    const body = await response.json();
+
+    expect(body.customer).toMatchObject({
+      name: 'No Phone',
+      smsConsent: false,
+      smsMarketingConsent: false,
+    });
+    expect(mockCreateCustomer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          businessId: 'biz-1',
+          name: 'No Phone',
+          phone: null,
+          smsConsent: false,
+          smsMarketingConsent: false,
+          smsMarketingConsentAt: null,
+          smsOptedOut: false,
+          smsOptedOutAt: null,
         }),
       }),
     );

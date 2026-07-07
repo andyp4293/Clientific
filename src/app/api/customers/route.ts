@@ -133,6 +133,7 @@ export async function POST(request: NextRequest) {
     // Format phone number if provided
     const formattedPhone = phone ? formatPhoneNumber(phone) : null;
     const phoneData = buildCustomerPhoneData(phone);
+    const hasSmsPhone = Boolean(phoneData.phone);
 
     // Check for duplicate email or phone
     if (email || formattedPhone) {
@@ -178,6 +179,11 @@ export async function POST(request: NextRequest) {
         email: email ? email.toLowerCase() : null,
         phone: phoneData.phone,
         phoneLookupKey: phoneData.phoneLookupKey,
+        smsConsent: hasSmsPhone,
+        smsMarketingConsent: hasSmsPhone,
+        smsMarketingConsentAt: hasSmsPhone ? new Date() : null,
+        smsOptedOut: false,
+        smsOptedOutAt: null,
         birthday: birthday ? new Date(birthday) : null,
         notes: notes || null,
         dealSmsBlocked,

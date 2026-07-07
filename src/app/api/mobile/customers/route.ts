@@ -206,6 +206,7 @@ export async function POST(request: Request) {
 
     const formattedPhone = phone ? formatPhoneNumber(phone) : null;
     const phoneData = buildCustomerPhoneData(phone);
+    const hasSmsPhone = Boolean(phoneData.phone);
 
     if (email || formattedPhone) {
       const existing = await prisma.customer.findFirst({
@@ -251,6 +252,11 @@ export async function POST(request: Request) {
         email: email || null,
         phone: phoneData.phone,
         phoneLookupKey: phoneData.phoneLookupKey,
+        smsConsent: hasSmsPhone,
+        smsMarketingConsent: hasSmsPhone,
+        smsMarketingConsentAt: hasSmsPhone ? new Date() : null,
+        smsOptedOut: false,
+        smsOptedOutAt: null,
         birthday: birthday ? new Date(birthday) : null,
         notes: notes || null,
         dealSmsBlocked,
