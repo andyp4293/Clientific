@@ -19,6 +19,7 @@ import {
   createMobileStaff,
   createMobileCustomer,
   createMobileCustomerGroup,
+  createMobileDeal,
   createMobileCheckIn,
   createMobileAppointment,
   ClientificApiError,
@@ -30,6 +31,7 @@ import {
   confirmVerificationCode,
   deleteMobileCustomer,
   deleteMobileCustomerGroup,
+  deleteMobileDeal,
   fetchMobileAiReceptionist,
   fetchMobileAppointments,
   fetchMobileBilling,
@@ -68,6 +70,7 @@ import {
   MobileCheckInsSummary,
   MobileCustomerViewSummary,
   MobileCustomersSummary,
+  MobileDealInput,
   MobileDealRecord,
   MobileDealsSummary,
   MobileFundsSummary,
@@ -99,6 +102,7 @@ import {
   updateMobileBusinessProfile,
   updateMobileCustomer,
   updateMobileCustomerGroup,
+  updateMobileDeal,
   updateMobileServiceGroup,
   updateMobileService,
   updateMobileStaffPassword,
@@ -2806,6 +2810,67 @@ export function ClientificNativeApp() {
     [customerFilters, customersPage, customersSearchQuery, handleSessionError, loadCustomers, session],
   );
 
+  const handleLoadDealComposerResources = useCallback(async () => {
+    if (!session) {
+      throw new Error('Sign in again to continue.');
+    }
+
+    if (!services && !isLoadingServices) {
+      await loadServices(session.token);
+    }
+  }, [isLoadingServices, loadServices, services, session]);
+
+  const handleCreateDeal = useCallback(
+    async (input: MobileDealInput) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await createMobileDeal(session.token, input);
+        await loadDeals(session.token, true);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to create deal.', setDealsError);
+        throw new Error(getReadableError(error, 'Unable to create deal.'));
+      }
+    },
+    [handleSessionError, loadDeals, session],
+  );
+
+  const handleUpdateDeal = useCallback(
+    async (dealId: string, input: Partial<MobileDealInput>) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await updateMobileDeal(session.token, dealId, input);
+        await loadDeals(session.token, true);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to update deal.', setDealsError);
+        throw new Error(getReadableError(error, 'Unable to update deal.'));
+      }
+    },
+    [handleSessionError, loadDeals, session],
+  );
+
+  const handleDeleteDeal = useCallback(
+    async (dealId: string) => {
+      if (!session) {
+        throw new Error('Sign in again to continue.');
+      }
+
+      try {
+        await deleteMobileDeal(session.token, dealId);
+        await loadDeals(session.token, true);
+      } catch (error) {
+        await handleSessionError(error, 'Unable to delete deal.', setDealsError);
+        throw new Error(getReadableError(error, 'Unable to delete deal.'));
+      }
+    },
+    [handleSessionError, loadDeals, session],
+  );
+
   const handleCreateServiceGroup = useCallback(
     async (input: MobileServiceGroupInput) => {
       if (!session) {
@@ -3468,12 +3533,14 @@ export function ClientificNativeApp() {
       onCreateCustomer={handleCreateCustomer}
       onCreateCustomerGroup={handleCreateCustomerGroup}
       onCreateCheckIn={handleCreateCheckIn}
+      onCreateDeal={handleCreateDeal}
       onCreateServiceGroup={handleCreateServiceGroup}
       onCreateService={handleCreateService}
       onCreateStaff={handleCreateStaff}
       onDeleteAccount={handleDeleteAccount}
       onDeleteCustomer={handleDeleteCustomer}
       onDeleteCustomerGroup={handleDeleteCustomerGroup}
+      onDeleteDeal={handleDeleteDeal}
       onDeleteAppointment={handleDeleteAppointment}
       onDeleteServiceGroup={handleDeleteServiceGroup}
       onDeleteService={handleDeleteService}
@@ -3487,6 +3554,7 @@ export function ClientificNativeApp() {
       onSelectCheckInsDate={selectCheckInsDate}
       onLookupCheckIn={handleLookupCheckIn}
       onLookupRedeemCode={handleLookupRedeemCode}
+      onLoadDealComposerResources={handleLoadDealComposerResources}
       onLoadAppointmentComposerResources={async () => {
         if (!session) {
           throw new Error('Sign in again to continue.');
@@ -3544,6 +3612,7 @@ export function ClientificNativeApp() {
       onUpdateAppointment={handleUpdateAppointment}
       onUpdateCustomer={handleUpdateCustomer}
       onUpdateCustomerGroup={handleUpdateCustomerGroup}
+      onUpdateDeal={handleUpdateDeal}
       onUpdateServiceGroup={handleUpdateServiceGroup}
       onUpdateService={handleUpdateService}
       onUpdateStaff={handleUpdateStaff}

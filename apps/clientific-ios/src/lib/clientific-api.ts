@@ -143,11 +143,28 @@ export type MobileDealRecord = {
   id: string;
   title: string;
   description: string | null;
+  active: boolean;
+  discountType: 'percent_off' | 'amount_off' | 'free_service';
+  discountValue: number;
   discountLabel: string;
+  deliveryType: 'purchase_link' | 'code_claim';
   statusLabel: string;
   statusTone: 'live' | 'scheduled' | 'ended' | 'draft';
+  startsAt: string;
+  startsAtValue: string;
+  expiresAt: string;
+  expiresAtValue: string;
   windowLabel: string;
   deliveryLabel: string;
+  serviceScope: 'all_services' | 'selected_services';
+  eligibleServices: Array<{
+    id: string;
+    name: string;
+    price: number | null;
+  }>;
+  newCustomersOnly: boolean;
+  maxRedemptions: number | null;
+  redemptionCount: number;
   purchasesCount: number;
   redemptionsCount: number;
   revenueLabel: string;
@@ -165,6 +182,21 @@ export type MobileDealsSummary = {
     ended: number;
   };
   deals: MobileDealRecord[];
+};
+
+export type MobileDealInput = {
+  title: string;
+  description?: string | null;
+  active?: boolean;
+  discountType: 'percent_off' | 'amount_off' | 'free_service';
+  discountValue?: number;
+  deliveryType?: 'purchase_link';
+  serviceScope: 'all_services' | 'selected_services';
+  eligibleServiceIds?: string[];
+  newCustomersOnly?: boolean;
+  startsAt: string;
+  expiresAt: string;
+  maxRedemptions?: number | null;
 };
 
 export type MobileReferralEntry = {
@@ -920,6 +952,41 @@ export async function deleteMobileAppointment(token: string, appointmentId: stri
 
 export async function fetchMobileDeals(token: string) {
   return requestJson<MobileDealsSummary>('/api/mobile/deals', {
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function createMobileDeal(token: string, input: MobileDealInput) {
+  return requestJson<{ deal: MobileDealRecord }>('/api/mobile/deals', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateMobileDeal(
+  token: string,
+  dealId: string,
+  input: Partial<MobileDealInput>,
+) {
+  return requestJson<{ deal: MobileDealRecord }>(`/api/mobile/deals/${dealId}`, {
+    method: 'PATCH',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteMobileDeal(token: string, dealId: string) {
+  return requestJson<{ success: true }>(`/api/mobile/deals/${dealId}`, {
+    method: 'DELETE',
     headers: {
       authorization: `Bearer ${token}`,
     },

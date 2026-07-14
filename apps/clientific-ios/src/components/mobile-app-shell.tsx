@@ -27,6 +27,7 @@ import type {
   MobileCustomerRecord,
   MobileCustomerSmsLogSummary,
   MobileCustomersSummary,
+  MobileDealInput,
   MobileDealsSummary,
   MobileFundsSummary,
   MobileHomeSummary,
@@ -136,12 +137,14 @@ type MobileAppShellProps = {
   onCreateCheckIn: (
     input: MobileCheckInSubmissionInput,
   ) => Promise<MobileCheckInMutationResponse>;
+  onCreateDeal: (input: MobileDealInput) => Promise<void>;
   onCreateService: (input: MobileServiceInput) => Promise<void>;
   onCreateServiceGroup: (input: MobileServiceGroupInput) => Promise<void>;
   onCreateStaff: (input: MobileStaffInput) => Promise<void>;
   onDeleteAccount: () => Promise<void>;
   onDeleteCustomer: (customerId: string) => Promise<void>;
   onDeleteCustomerGroup: (groupId: string) => Promise<void>;
+  onDeleteDeal: (dealId: string) => Promise<void>;
   onDeleteAppointment: (appointmentId: string) => Promise<void>;
   onDeleteService: (serviceId: string) => Promise<void>;
   onDeleteServiceGroup: (groupId: string) => Promise<void>;
@@ -213,6 +216,7 @@ type MobileAppShellProps = {
     groupId: string,
     input: MobileCustomerGroupInput,
   ) => Promise<void>;
+  onUpdateDeal: (dealId: string, input: Partial<MobileDealInput>) => Promise<void>;
   onUpdateAppointment: (
     appointmentId: string,
     input: MobileAppointmentUpdateInput,
@@ -234,6 +238,7 @@ type MobileAppShellProps = {
   services: MobileServicesSummary | null;
   servicesError: string | null;
   onLoadAppointmentComposerResources: () => Promise<void>;
+  onLoadDealComposerResources: () => Promise<void>;
 };
 
 const TAB_LABELS: Array<{ key: MobileAppTab; label: string; icon: MobileNavIconName }> = [
@@ -325,12 +330,14 @@ export function MobileAppShell({
   onCreateCustomer,
   onCreateCustomerGroup,
   onCreateCheckIn,
+  onCreateDeal,
   onCreateService,
   onCreateServiceGroup,
   onCreateStaff,
   onDeleteAccount,
   onDeleteCustomer,
   onDeleteCustomerGroup,
+  onDeleteDeal,
   onDeleteAppointment,
   onDeleteService,
   onDeleteServiceGroup,
@@ -393,6 +400,7 @@ export function MobileAppShell({
   onUpdateAppointment,
   onUpdateCustomer,
   onUpdateCustomerGroup,
+  onUpdateDeal,
   onUpdateServiceGroup,
   onUpdateService,
   onUpdateStaff,
@@ -407,6 +415,7 @@ export function MobileAppShell({
   services,
   servicesError,
   onLoadAppointmentComposerResources,
+  onLoadDealComposerResources,
 }: MobileAppShellProps) {
   const colorScheme = useColorScheme();
   const theme = getClientificTheme(colorScheme);
@@ -544,12 +553,18 @@ export function MobileAppShell({
             <MobileDealsScreen
               data={deals}
               error={dealsError}
+              isDealComposerLoading={isServicesLoading}
               isLoading={isDealsLoading}
               isRefreshing={isDealsRefreshing}
+              onCreateDeal={onCreateDeal}
+              onDeleteDeal={onDeleteDeal}
+              onLoadDealComposerResources={onLoadDealComposerResources}
               onOpenFunds={onOpenFunds}
               onOpenUrl={onOpenExternalUrl}
               onRefresh={onRefreshDeals}
               onShareDeal={onShareDeal}
+              onUpdateDeal={onUpdateDeal}
+              servicesSummary={services}
             />
           ) : null}
 

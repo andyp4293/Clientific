@@ -2,7 +2,11 @@ import React from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { MobileAppShell } from '@/components/mobile-app-shell';
-import type { MobileCustomerFilters, MobileCustomersSummary } from '@/lib/clientific-api';
+import type {
+  MobileCustomerFilters,
+  MobileCustomersSummary,
+  MobileDealsSummary,
+} from '@/lib/clientific-api';
 
 const business = {
   id: 'biz-1',
@@ -165,7 +169,7 @@ const customers: MobileCustomersSummary = {
   ],
 };
 
-const deals = {
+const deals: MobileDealsSummary = {
   business,
   payoutReady: true,
   payoutSetupMessage: null,
@@ -180,11 +184,24 @@ const deals = {
       id: 'deal-1',
       title: 'Spring Special',
       description: 'Bring in new guests.',
+      active: true,
+      discountType: 'percent_off',
+      discountValue: 20,
       discountLabel: '20% off',
+      deliveryType: 'purchase_link',
       statusLabel: 'Live',
       statusTone: 'live' as const,
+      startsAt: '2026-03-28T00:00:00.000Z',
+      startsAtValue: '2026-03-28',
+      expiresAt: '2026-04-04T23:59:59.999Z',
+      expiresAtValue: '2026-04-04',
       windowLabel: 'Mar 28 - Apr 4',
       deliveryLabel: 'Purchase link',
+      serviceScope: 'all_services',
+      eligibleServices: [],
+      newCustomersOnly: false,
+      maxRedemptions: null,
+      redemptionCount: 1,
       purchasesCount: 2,
       redemptionsCount: 1,
       revenueLabel: '$95.00',
@@ -505,12 +522,14 @@ function createShellProps(
     onCreateCustomer: jest.fn().mockResolvedValue(undefined),
     onCreateCustomerGroup: jest.fn().mockResolvedValue(undefined),
     onCreateCheckIn: jest.fn().mockResolvedValue(undefined),
+    onCreateDeal: jest.fn().mockResolvedValue(undefined),
     onCreateServiceGroup: jest.fn().mockResolvedValue(undefined),
     onCreateService: jest.fn().mockResolvedValue(undefined),
     onCreateStaff: jest.fn().mockResolvedValue(undefined),
     onDeleteAccount: jest.fn().mockResolvedValue(undefined),
     onDeleteCustomer: jest.fn().mockResolvedValue(undefined),
     onDeleteCustomerGroup: jest.fn().mockResolvedValue(undefined),
+    onDeleteDeal: jest.fn().mockResolvedValue(undefined),
     onDeleteAppointment: jest.fn().mockResolvedValue(undefined),
     onDeleteServiceGroup: jest.fn().mockResolvedValue(undefined),
     onDeleteService: jest.fn().mockResolvedValue(undefined),
@@ -558,6 +577,7 @@ function createShellProps(
       customer: null,
       alreadyUsed: false,
     }),
+    onLoadDealComposerResources: jest.fn().mockResolvedValue(undefined),
     onLoadAppointmentComposerResources: jest.fn().mockResolvedValue(undefined),
     onNextCheckInsDate: jest.fn(),
     onNextAppointmentsDate: jest.fn(),
@@ -665,6 +685,7 @@ function createShellProps(
       appointments: [],
     }),
     onUpdateCustomerGroup: jest.fn().mockResolvedValue(undefined),
+    onUpdateDeal: jest.fn().mockResolvedValue(undefined),
     onUpdateServiceGroup: jest.fn().mockResolvedValue(undefined),
     onUpdateService: jest.fn().mockResolvedValue(undefined),
     onUpdateStaff: jest.fn().mockResolvedValue(undefined),
